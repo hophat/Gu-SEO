@@ -20,8 +20,8 @@ pages_build_output_dir = "./public"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "pages-seo"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_name = "pages-seo-db"
+database_id = "23944eb5-3929-491b-86e3-77fb66dff5e8"
 
 [[r2_buckets]]
 binding = "IMAGES"
