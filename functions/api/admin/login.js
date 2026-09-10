@@ -30,7 +30,8 @@ function clientIp(request) {
 
 export const onRequestPost = async ({ env, request }) => {
   if (!env?.DB) return json(500, { error: 'no_db' });
-  if (!env?.ADMIN_TOKEN) {
+  const adminToken = await getAdminToken(env);
+  if (!adminToken) {
     return json(503, { error: 'config_incomplete', detail: 'ADMIN_TOKEN secret required (used as the session-signing key).' });
   }
 
