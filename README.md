@@ -1,8 +1,8 @@
 <div align="center">
 
-# pages-seo
+# pages-seo · AI Content Factory
 
-**A self-hosted programmatic-SEO + daily-AI-blog toolkit that runs entirely on Cloudflare.**
+**A self-hosted Multi-Project / Multi-Brand programmatic-SEO + autonomous AI content platform running on Cloudflare.**
 
 [![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white)](https://pages.cloudflare.com)
 [![Workers AI](https://img.shields.io/badge/Workers%20AI-included-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/workers-ai/)
@@ -10,9 +10,15 @@
 [![Demo](https://img.shields.io/badge/live%20demo-seo.benjaminb.xyz-0a0a0a)](https://seo.benjaminb.xyz)
 [![Made by Benjamin Bloch](https://img.shields.io/badge/made%20by-Benjamin%20Bloch-f5cf3e)](https://benjaminb.xyz)
 
-Plug in a URL (or a keyword list), point a cron at it, and `pages-seo` quietly publishes programmatic landing pages and a daily blog post — each with a hero image — and pings IndexNow so Bing/Yandex/Seznam crawl them within minutes.
+Multi-Brand AI Content Platform supporting independent project configuration, topic discovery engine, AI model abstraction (Workers AI, OpenAI, Anthropic, Gemini, DeepSeek), publishing abstraction (Internal D1, Webhook, Custom API, WordPress), and autonomous daily scheduling.
 
-**Free tier covers most cases.** No servers, no Docker, no Vercel bill at scale.
+---
+
+### Initial Seed Projects
+- **Gulagi**: Retail shops, e-commerce, Google Maps, local SEO, website conversion (`https://docs.gulagi.com`).
+- **GuRouter**: AI, LLMs, Agents, coding, APIs, infrastructure (`https://blogs.gurouter.com`).
+
+---
 
 [**Live demo →**](https://seo.benjaminb.xyz)  ·  [**5-minute setup**](#-5-minute-setup)  ·  [**Architecture**](#%EF%B8%8F-architecture)  ·  [**AI providers**](#-ai-providers)
 

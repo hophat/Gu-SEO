@@ -7,6 +7,8 @@ import { onPublish as gscOnPublish } from '../../../_lib/google_indexing.js';
 import { syncSitemapAliases } from '../../../_lib/links/aliases.js';
 import { storeEmbedding } from '../../../_lib/dedup.js';
 import { scorePost, statusForScore } from '../../../_lib/quality.js';
+import { getProject } from '../../../_lib/projects.js';
+import { dispatchPublication } from '../../../_lib/publishing/publisher.js';
 
 export const onRequestPost = async ({ request, env, waitUntil }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -44,13 +46,13 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
   await env.DB.prepare(
     `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown,
         hero_image_key, hero_image_alt, status, topic_seed, keywords,
-        ai_provider, created_at, published_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ai_provider, project_id, created_at, published_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     postId, job.slug, job.title, job.meta_description, job.body_markdown,
     job.hero_image_key, job.hero_image_alt, finalStatus,
     job.topic_key, job.keywords,
-    job.ai_provider, t, t
+    job.ai_provider, job.project_id || null, t, t
   ).run();
   await env.DB.prepare(
     "UPDATE blog_jobs SET status='published', blog_post_id=?, updated_at=? WHERE id=?"
@@ -77,6 +79,30 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
       body_markdown: job.body_markdown,
       meta_description: job.meta_description,
     }).catch(() => {}));
+
+    if (job.project_id) {
+      waitUntil((async () => {
+        const proj = await getProject(env, job.project_id).catch(() => null);
+        if (proj) {
+          await dispatchPublication({
+            project: proj,
+            article: {
+              id: postId,
+              slug: job.slug,
+              title: job.title,
+              meta_description: job.meta_description,
+              body_markdown: job.body_markdown,
+              hero_image_key: job.hero_image_key,
+              keywords: job.keywords,
+              published_at: t,
+            },
+            env,
+          }).catch(err => {
+            audit(env, 'publisher', 'dispatch_error', postId, { error: err.message, project_id: job.project_id });
+          });
+        }
+      })());
+    }
   }
 
   // Log the quality verdict so the audit timeline shows WHY a post

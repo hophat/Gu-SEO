@@ -97,10 +97,11 @@ export const onRequestPost = async ({ request, env }) => {
 
   const id = newId();
   const t  = nowSec();
+  const projectId = body.project_id || null;
   await env.DB.prepare(
-    `INSERT INTO blog_jobs (id, status, topic_key, topic_angle, created_at, updated_at)
-     VALUES (?, 'created', ?, ?, ?, ?)`
-  ).bind(id, topic.key, topic.angle, t, t).run();
+    `INSERT INTO blog_jobs (id, status, topic_key, topic_angle, project_id, created_at, updated_at)
+     VALUES (?, 'created', ?, ?, ?, ?, ?)`
+  ).bind(id, topic.key, topic.angle, projectId, t, t).run();
 
   if (slot) {
     await env.DB.prepare(

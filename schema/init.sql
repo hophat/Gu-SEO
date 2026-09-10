@@ -373,3 +373,128 @@ CREATE INDEX IF NOT EXISTS idx_admin_notices_active
   ON admin_notices(dismissed_at, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_admin_notices_kind
   ON admin_notices(kind, dismissed_at);
+
+-- ============================================================================
+-- MULTI-PROJECT / MULTI-BRAND EXTENSIONS (Phase 1)
+-- ============================================================================
+
+-- Core projects table
+CREATE TABLE IF NOT EXISTS projects (
+  id              TEXT PRIMARY KEY,                  -- 16-byte hex or slug identifier
+  slug            TEXT UNIQUE NOT NULL,              -- unique project slug (e.g. 'gulagi', 'gurouter')
+  name            TEXT NOT NULL,                     -- human readable project name
+  description     TEXT,
+  website_url     TEXT,                              -- main website url
+  publishing_url  TEXT,                              -- target publishing endpoint/docs url
+  language        TEXT NOT NULL DEFAULT 'vi',        -- content language (e.g. 'vi', 'en')
+  timezone        TEXT NOT NULL DEFAULT 'Asia/Ho_Chi_Minh',
+  status          TEXT NOT NULL DEFAULT 'active',    -- active | paused | archived
+  approval_mode   TEXT NOT NULL DEFAULT 'auto',      -- auto | approval
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+CREATE INDEX IF NOT EXISTS idx_projects_slug ON projects(slug);
+
+-- Brand guidelines & identity per project
+CREATE TABLE IF NOT EXISTS project_brands (
+  project_id         TEXT PRIMARY KEY,
+  business_type      TEXT,
+  tone               TEXT,
+  audience           TEXT,
+  key_themes         TEXT,                           -- newline- or comma-separated themes
+  topics_to_avoid    TEXT,
+  service_area       TEXT,
+  cta                TEXT,
+  created_at         INTEGER NOT NULL,
+  updated_at         INTEGER NOT NULL
+);
+
+-- Project Knowledge Base (FAQs, guidelines, domain facts)
+CREATE TABLE IF NOT EXISTS project_knowledge (
+  id              TEXT PRIMARY KEY,
+  project_id      TEXT NOT NULL,
+  title           TEXT NOT NULL,
+  content_type    TEXT NOT NULL DEFAULT 'notes',     -- docs | faq | guidelines | notes
+  content         TEXT NOT NULL,
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_project_knowledge_pid ON project_knowledge(project_id);
+
+-- AI configuration per project
+CREATE TABLE IF NOT EXISTS project_ai_configs (
+  project_id              TEXT PRIMARY KEY,
+  default_text_provider   TEXT NOT NULL DEFAULT 'workers-ai',
+  default_image_provider  TEXT NOT NULL DEFAULT 'workers-ai',
+  text_model              TEXT,
+  image_model             TEXT,
+  min_words               INTEGER NOT NULL DEFAULT 1500,
+  max_words               INTEGER NOT NULL DEFAULT 3000,
+  temperature             REAL NOT NULL DEFAULT 0.7,
+  system_prompt_override  TEXT,
+  created_at              INTEGER NOT NULL,
+  updated_at              INTEGER NOT NULL
+);
+
+-- Publishing configuration per project (Internal D1, Webhook, Custom API, WordPress)
+CREATE TABLE IF NOT EXISTS project_publishing_configs (
+  project_id       TEXT PRIMARY KEY,
+  publisher_type   TEXT NOT NULL DEFAULT 'internal_d1', -- internal_d1 | webhook | custom_api | wordpress
+  endpoint_url     TEXT,
+  auth_header      TEXT,
+  config_json      TEXT,                              -- JSON options for publisher
+  created_at       INTEGER NOT NULL,
+  updated_at       INTEGER NOT NULL
+);
+
+-- Topic Candidates & Repository per project
+CREATE TABLE IF NOT EXISTS project_topics (
+  id                   TEXT PRIMARY KEY,
+  project_id           TEXT NOT NULL,
+  key                  TEXT NOT NULL,
+  angle                TEXT NOT NULL,
+  category             TEXT,
+  source               TEXT NOT NULL DEFAULT 'ai',    -- ai | manual | research
+  relevance_score      INTEGER NOT NULL DEFAULT 80,
+  business_value_score INTEGER NOT NULL DEFAULT 80,
+  status               TEXT NOT NULL DEFAULT 'candidate', -- candidate | selected | used | archived
+  times_used           INTEGER NOT NULL DEFAULT 0,
+  last_used_at         INTEGER,
+  created_at           INTEGER NOT NULL,
+  updated_at           INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_project_topics_pid_status
+  ON project_topics(project_id, status);
+
+-- Per-project schedules for autonomous publishing
+CREATE TABLE IF NOT EXISTS project_schedules (
+  project_id          TEXT PRIMARY KEY,
+  frequency           TEXT NOT NULL DEFAULT 'daily',  -- daily | weekly | custom
+  cron_expression     TEXT NOT NULL DEFAULT '0 8 * * *',
+  preferred_time_utc  TEXT NOT NULL DEFAULT '08:00',
+  is_active           INTEGER NOT NULL DEFAULT 1,
+  last_run_at         INTEGER,
+  next_run_at         INTEGER,
+  created_at          INTEGER NOT NULL,
+  updated_at          INTEGER NOT NULL
+);
+
+-- Structured AI Run logs for cost and token tracking
+CREATE TABLE IF NOT EXISTS ai_runs (
+  id                TEXT PRIMARY KEY,
+  project_id        TEXT,
+  task_type         TEXT NOT NULL,                    -- topic | outline | article | seo | image | quality
+  provider          TEXT NOT NULL,
+  model             TEXT,
+  prompt_tokens     INTEGER NOT NULL DEFAULT 0,
+  completion_tokens INTEGER NOT NULL DEFAULT 0,
+  total_tokens      INTEGER NOT NULL DEFAULT 0,
+  cost_usd          REAL NOT NULL DEFAULT 0,
+  duration_ms       INTEGER NOT NULL DEFAULT 0,
+  status            TEXT NOT NULL DEFAULT 'success',  -- success | error
+  error             TEXT,
+  created_at        INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ai_runs_pid_created ON ai_runs(project_id, created_at DESC);
+

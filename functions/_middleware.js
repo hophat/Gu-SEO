@@ -50,11 +50,13 @@ export const onRequest = async ({ request, env, next }) => {
   // Root → minimal sign-in landing. We serve the dedicated file
   // public/sign-in.html via the ASSETS binding rather than
   // redirecting, so the URL stays clean.
-  const signin = await env.ASSETS.fetch(new URL('/sign-in.html', url));
-  if (signin.ok) {
-    const headers = new Headers(signin.headers);
-    headers.set('Cache-Control', 'public, max-age=300');
-    return new Response(signin.body, { status: signin.status, headers });
+  if (env?.ASSETS?.fetch) {
+    const signin = await env.ASSETS.fetch(new URL('/sign-in.html', url));
+    if (signin.ok) {
+      const headers = new Headers(signin.headers);
+      headers.set('Cache-Control', 'public, max-age=300');
+      return new Response(signin.body, { status: signin.status, headers });
+    }
   }
   // Fallback if the file is missing for any reason — redirect to /admin.
   return Response.redirect(new URL('/admin', url).toString(), 302);
