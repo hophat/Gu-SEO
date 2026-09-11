@@ -488,7 +488,7 @@ async function workersAIText(env, prompt) {
 async function workersAIImage(env, prompt) {
   if (!env?.AI) throw new Error('workers_ai_binding_missing');
   const model = env.WORKERS_AI_IMAGE_MODEL || WORKERS_AI_IMAGE_MODEL;
-  const r = await env.AI.run(model, { prompt, num_steps: 4 });
+  const r = await env.AI.run(model, { prompt });
   const usage = { provider: 'workers-ai', model, prompt_tokens: 1, completion_tokens: 0, estimated: true };
   if (r instanceof ReadableStream) {
     const chunks = [];
