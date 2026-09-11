@@ -196,6 +196,21 @@ function buildArticlePrompt(angle, brand, opts = {}) {
   const brandUrl = brand?.url || '/';
   const cta = brand?.cta || 'Sign up to get started.';
   const aliases = aliasBlock(brand?.aliases);
+  const lang = (brand?.language || opts.language || 'vi').toLowerCase();
+  const isVi = lang.startsWith('vi');
+  const langInstruction = isVi
+    ? [
+        '# NGÔN NGỮ BẮT BUỘC (LANGUAGE REQUIREMENT):',
+        '- BẮT BUỘC viết toàn bộ bài viết (Tiêu đề, Meta description, H2, H3, FAQ, Nội dung, Alt text) HOÀN TOÀN BẰNG TIẾNG VIỆT tự nhiên, chuẩn văn phong chuyên gia tại Việt Nam.',
+        '- Riêng "slug" và "hero_image_prompt": slug viết dạng không dấu kebab-case (vi-du-bai-viet), hero_image_prompt viết bằng tiếng Anh để mô hình tạo ảnh hiểu được.',
+        '',
+      ].join('\n')
+    : [
+        '# LANGUAGE REQUIREMENT:',
+        `- Write the entire article in ${lang.toUpperCase()}.`,
+        '',
+      ].join('\n');
+
   // Length targets — read from settings via the caller. Defaults
   // assume the operator wants a definitive, long-form guide.
   const minWords = opts.minWords || 2500;
@@ -210,6 +225,7 @@ function buildArticlePrompt(angle, brand, opts = {}) {
     `You are a senior content writer for ${brandName} (${brandUrl}).`,
     `Today's topic angle: "${angle}"`,
     ``,
+    langInstruction,
     brandDNABlock(brand),
     `# Reader context`,
     voiceBlock(brand),
@@ -254,18 +270,30 @@ function buildArticlePrompt(angle, brand, opts = {}) {
   ].join('\n');
 }
 
-function buildProgrammaticPrompt(keyword, brand) {
+function buildProgrammaticPrompt(keyword, brand, opts = {}) {
   brand = expandBrandFields(brand, { primary_keyword: keyword });
   const brandName = brand?.name || 'this site';
   const brandUrl = brand?.url || '/';
   const cta = brand?.cta || 'Sign up to get started.';
   const aliases = aliasBlock(brand?.aliases);
+  const lang = (brand?.language || opts.language || 'vi').toLowerCase();
+  const isVi = lang.startsWith('vi');
+  const langInstruction = isVi
+    ? [
+        '# NGÔN NGỮ BẮT BUỘC (LANGUAGE REQUIREMENT):',
+        '- BẮT BUỘC viết toàn bộ trang landing page (Tiêu đề, Meta description, H2, FAQ, Nội dung) HOÀN TOÀN BẰNG TIẾNG VIỆT tự nhiên, chuẩn SEO.',
+        '- Riêng "slug" viết dạng không dấu kebab-case, "hero_image_prompt" viết bằng tiếng Anh.',
+        '',
+      ].join('\n')
+    : '';
+
   return [
     `# Brief`,
     `You are building a programmatic SEO landing page for ${brandName} (${brandUrl}).`,
     `Target keyword (verbatim, this is the search query): "${keyword}"`,
     'This page needs to rank for that exact query and serve the reader who typed it.',
     '',
+    langInstruction,
     brandDNABlock(brand),
     `# Reader context`,
     voiceBlock(brand),

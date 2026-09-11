@@ -50,6 +50,9 @@ export function esc(s) {
 // kebab-case slugifier — keeps a-z 0-9, collapses everything else.
 export function slugify(input) {
   return String(input)
+    .replace(/đ/g, 'd').replace(/Đ/g, 'd')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
