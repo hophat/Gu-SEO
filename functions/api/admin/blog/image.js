@@ -20,7 +20,7 @@ import { adminGate } from '../../../_lib/auth.js';
 import { generateImage } from '../../../_lib/ai.js';
 import { loadSettings } from '../../../_lib/settings.js';
 
-function sniffImageFormat(bytes) {
+export function sniffImageFormat(bytes) {
   if (bytes?.length > 2 && bytes[0] === 0xff && bytes[1] === 0xd8) return { ext: 'jpg', type: 'image/jpeg' };
   if (bytes?.length > 11 && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return { ext: 'webp', type: 'image/webp' };
   return { ext: 'png', type: 'image/png' };
