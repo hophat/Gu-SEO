@@ -1,11 +1,11 @@
 import { json } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
-import { envWithVault } from '../../../_lib/secret_vault.js';
+import { vaultedEnv } from '../../../_lib/ai.js';
 
 export const onRequestGet = async ({ env, request }) => {
   try {
     const gate = await adminGate(env, request); if (gate) return gate;
-    const overlayed = await envWithVault(env, ['GUROUTER_API_KEY', 'GUROUTER_BASE_URL']);
+    const overlayed = await vaultedEnv(env);
     const apiKey = overlayed?.GUROUTER_API_KEY;
 
     if (!apiKey) {
