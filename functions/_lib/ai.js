@@ -795,11 +795,12 @@ async function cerebrasText(env, prompt) {
 async function gurouterText(env, prompt) {
   if (!env?.GUROUTER_API_KEY) throw new Error('gurouter_not_configured');
   const baseUrl = (env?.GUROUTER_BASE_URL || 'https://gurouter.com/v1').replace(/\/+$/, '');
+  const model = env?.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-v4-flash';
   return chatCompletion({
     provider: 'gurouter',
     url: `${baseUrl}/chat/completions`,
     apiKey: env.GUROUTER_API_KEY,
-    model: env.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-chat',
+    model,
     prompt,
   });
 }
