@@ -792,6 +792,18 @@ async function cerebrasText(env, prompt) {
   });
 }
 
+async function gurouterText(env, prompt) {
+  if (!env?.GUROUTER_API_KEY) throw new Error('gurouter_not_configured');
+  const baseUrl = (env?.GUROUTER_BASE_URL || 'https://api.gurouter.com/v1').replace(/\/+$/, '');
+  return chatCompletion({
+    provider: 'gurouter',
+    url: `${baseUrl}/chat/completions`,
+    apiKey: env.GUROUTER_API_KEY,
+    model: env.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-chat',
+    prompt,
+  });
+}
+
 // ── provider registry ─────────────────────────────────────────────────
 
 // Order matters: when no `provider` is specified, we walk the list in
@@ -799,6 +811,7 @@ async function cerebrasText(env, prompt) {
 // Workers AI is first because it's always present in this deployment.
 const TEXT_PROVIDERS = [
   { name: 'workers-ai', available: (e) => !!e?.AI,                call: workersAIText  },
+  { name: 'gurouter',   available: (e) => !!e?.GUROUTER_API_KEY,  call: gurouterText   },
   { name: 'openai',     available: (e) => !!e?.OPENAI_API_KEY,    call: openAIText     },
   { name: 'anthropic',  available: (e) => !!e?.ANTHROPIC_API_KEY, call: anthropicText  },
   { name: 'gemini',     available: (e) => !!e?.GEMINI_API_KEY,    call: geminiText     },
@@ -828,6 +841,7 @@ function orderProviders(registry, env, preferred) {
 // Every provider-secret name we care about, for vault overlay.
 import { envWithVault } from './secret_vault.js';
 const PROVIDER_SECRET_NAMES = [
+  'GUROUTER_API_KEY',
   'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY',
   'GROQ_API_KEY', 'DEEPSEEK_API_KEY', 'MISTRAL_API_KEY',
   'TOGETHER_API_KEY', 'CEREBRAS_API_KEY',

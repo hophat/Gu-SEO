@@ -894,6 +894,19 @@
       ],
     },
     {
+      name: 'gurouter', label: 'GuRouter', envKey: 'GUROUTER_API_KEY',
+      text: true, image: false, optional: true,
+      modelEnvKey: 'GUROUTER_TEXT_MODEL',
+      modelDefault: 'deepseek/deepseek-chat',
+      models: [
+        { id: 'deepseek/deepseek-chat',     label: 'DeepSeek V3 (via GuRouter)' },
+        { id: 'deepseek/deepseek-reasoner', label: 'DeepSeek R1 (Reasoning)' },
+        { id: 'openai/gpt-4o',              label: 'GPT-4o (via GuRouter)' },
+        { id: 'openai/gpt-4o-mini',         label: 'GPT-4o Mini (Fast)' },
+        { id: 'anthropic/claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
+      ],
+    },
+    {
       name: 'groq', label: 'Groq', envKey: 'GROQ_API_KEY',
       text: true, image: false, optional: true,
       modelEnvKey: 'GROQ_TEXT_MODEL',
@@ -2765,6 +2778,7 @@
       const grid = $('#wiz-providers');
       grid.innerHTML = '';
       const opts = [
+        { label: 'GuRouter (AI Gateway)', envKey: 'GUROUTER_API_KEY' },
         { label: 'OpenAI',           envKey: 'OPENAI_API_KEY' },
         { label: 'Anthropic Claude', envKey: 'ANTHROPIC_API_KEY' },
         { label: 'Google Gemini',    envKey: 'GEMINI_API_KEY' },

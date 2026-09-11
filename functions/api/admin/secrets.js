@@ -16,6 +16,7 @@ import { setVaultSecret, describeKeys } from '../../_lib/secret_vault.js';
 
 // The same list as PROVIDER_SECRET_NAMES in ai.js — keep them in sync.
 const ALLOWED = [
+  'GUROUTER_API_KEY',
   'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY',
   'GROQ_API_KEY', 'DEEPSEEK_API_KEY', 'MISTRAL_API_KEY',
   'TOGETHER_API_KEY', 'CEREBRAS_API_KEY',
