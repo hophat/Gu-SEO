@@ -3,21 +3,21 @@ import { adminGate } from '../../../_lib/auth.js';
 import { envWithVault } from '../../../_lib/secret_vault.js';
 
 export const onRequestGet = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
-  const overlayed = await envWithVault(env);
-  const apiKey = overlayed?.GUROUTER_API_KEY;
-
-  if (!apiKey) {
-    return json(400, {
-      ok: false,
-      error: 'gurouter_not_configured',
-      hint: 'Save GUROUTER_API_KEY in Settings first.',
-    });
-  }
-
-  const baseUrl = (overlayed?.GUROUTER_BASE_URL || 'https://api.gurouter.com/v1').replace(/\/+$/, '');
-
   try {
+    const gate = await adminGate(env, request); if (gate) return gate;
+    const overlayed = await envWithVault(env);
+    const apiKey = overlayed?.GUROUTER_API_KEY;
+
+    if (!apiKey) {
+      return json(400, {
+        ok: false,
+        error: 'gurouter_not_configured',
+        hint: 'Save GUROUTER_API_KEY in Settings first.',
+      });
+    }
+
+    const baseUrl = (overlayed?.GUROUTER_BASE_URL || 'https://api.gurouter.com/v1').replace(/\/+$/, '');
+
     const res = await fetch(`${baseUrl}/models`, {
       method: 'GET',
       headers: {
@@ -56,7 +56,7 @@ export const onRequestGet = async ({ env, request }) => {
   } catch (err) {
     return json(500, {
       ok: false,
-      error: 'fetch_failed',
+      error: 'server_error',
       detail: err.message,
     });
   }
