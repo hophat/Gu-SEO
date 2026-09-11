@@ -16,7 +16,7 @@ export const onRequestGet = async ({ env, request }) => {
       });
     }
 
-    const baseUrl = (overlayed?.GUROUTER_BASE_URL || 'https://api.gurouter.com/v1').replace(/\/+$/, '');
+    const baseUrl = (overlayed?.GUROUTER_BASE_URL || 'https://gurouter.com/v1').replace(/\/+$/, '');
 
     const res = await fetch(`${baseUrl}/models`, {
       method: 'GET',
