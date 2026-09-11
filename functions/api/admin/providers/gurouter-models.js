@@ -5,7 +5,7 @@ import { envWithVault } from '../../../_lib/secret_vault.js';
 export const onRequestGet = async ({ env, request }) => {
   try {
     const gate = await adminGate(env, request); if (gate) return gate;
-    const overlayed = await envWithVault(env);
+    const overlayed = await envWithVault(env, ['GUROUTER_API_KEY', 'GUROUTER_BASE_URL']);
     const apiKey = overlayed?.GUROUTER_API_KEY;
 
     if (!apiKey) {
