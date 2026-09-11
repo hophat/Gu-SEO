@@ -388,6 +388,9 @@
     // permissively without worrying about double-fires.
     if (name === _activeTab) return;
     _activeTab = name;
+    if (location.hash !== '#' + name) {
+      history.replaceState(null, '', '#' + name);
+    }
 
     // Resolve to the parent group if this page is a child.
     const parent = findParentTab(name);
@@ -2237,7 +2240,17 @@
     // topbar
     const ow = $('#open-wizard'); if (ow) ow.addEventListener('click', () => Wizard.open());
 
-    activateTab('overview');
+    const initialTab = (location.hash || '').replace(/^#/, '').trim();
+    const validTabs = ['overview', 'blog', 'calendar', 'brand', 'prog', 'links', 'covers', 'seo', 'embeds', 'status', 'updates', 'usage', 'settings'];
+    if (initialTab && validTabs.includes(initialTab)) {
+      activateTab(initialTab);
+    } else {
+      activateTab('overview');
+    }
+    window.addEventListener('hashchange', () => {
+      const h = (location.hash || '').replace(/^#/, '').trim();
+      if (h && validTabs.includes(h)) activateTab(h);
+    });
     // First-login auto-launch — check onboarding state and offer the
     // wizard if it hasn't been completed yet.
     Wizard.maybeAutoOpen();
