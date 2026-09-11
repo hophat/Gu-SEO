@@ -347,19 +347,86 @@
   }
 
   // ── tabs ────────────────────────────────────────────────────────
-  // Friendly labels for the sub-nav (data-children is just IDs).
-  const SUBTAB_LABELS = {
-    blog: 'Daily blog',
-    calendar: 'Calendar',
-    brand: 'Brand DNA',
-    prog: 'Programmatic',
-    links: 'Links',
-    seo: 'SEO',
-    embeds: 'Embeds',
-    status: 'Status',
-    updates: 'Updates',
-    usage: 'Usage',
+  let currentLang = localStorage.getItem('ps_lang') || 'vi';
+
+  const SUBTAB_LABELS_MAP = {
+    vi: {
+      blog: 'Blog hàng ngày',
+      calendar: 'Lịch bài viết',
+      brand: 'Brand DNA',
+      prog: 'Programmatic SEO',
+      links: 'Liên kết',
+      seo: 'SEO & IndexNow',
+      embeds: 'Widget nhúng',
+      status: 'Trạng thái',
+      updates: 'Cập nhật',
+      usage: 'Chi phí & Token',
+    },
+    en: {
+      blog: 'Daily blog',
+      calendar: 'Calendar',
+      brand: 'Brand DNA',
+      prog: 'Programmatic',
+      links: 'Links',
+      seo: 'SEO',
+      embeds: 'Embeds',
+      status: 'Status',
+      updates: 'Updates',
+      usage: 'Usage',
+    }
   };
+
+  const TAB_LABELS_MAP = {
+    vi: {
+      overview: 'Tổng quan',
+      blog: 'Bài viết',
+      brand: 'Thương hiệu',
+      covers: 'Ảnh bìa',
+      seo: 'Phân phối',
+      status: 'Hệ thống',
+      settings: 'Cài đặt',
+    },
+    en: {
+      overview: 'Overview',
+      blog: 'Blog',
+      brand: 'Brand',
+      covers: 'Covers',
+      seo: 'Distribution',
+      status: 'System',
+      settings: 'Settings',
+    }
+  };
+
+  function applyLanguage(lang) {
+    currentLang = lang;
+    try { localStorage.setItem('ps_lang', lang); } catch {}
+    const langBtn = $('#lang-toggle');
+    if (langBtn) langBtn.textContent = lang === 'vi' ? 'EN' : 'VI';
+
+    $$('.tab').forEach((t) => {
+      const tabName = t.dataset.tab;
+      const textNode = Array.from(t.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+      if (textNode && TAB_LABELS_MAP[lang]?.[tabName]) {
+        textNode.textContent = TAB_LABELS_MAP[lang][tabName] + ' ';
+      }
+    });
+
+    const sub = document.getElementById('subtabs');
+    if (sub) {
+      for (const btn of sub.querySelectorAll('.subtab')) {
+        const kid = btn.dataset.tab;
+        btn.textContent = SUBTAB_LABELS_MAP[lang]?.[kid] || kid;
+      }
+    }
+
+    const wizardBtn = $('#open-wizard');
+    if (wizardBtn) wizardBtn.textContent = lang === 'vi' ? 'Trình thiết lập' : 'Setup wizard';
+    const lockBtn = $('#lock');
+    if (lockBtn) lockBtn.textContent = lang === 'vi' ? 'Đăng xuất' : 'Sign out';
+  }
+
+  // Friendly labels for the sub-nav (data-children is just IDs).
+  const SUBTAB_LABELS = SUBTAB_LABELS_MAP[currentLang];
 
   // Walk the top-level tabs and find which one owns this page name.
   // Returns { parentTab, children } or null if the page is a top-level
@@ -422,7 +489,7 @@
             const btn = document.createElement('button');
             btn.className = 'subtab';
             btn.dataset.tab = kid;
-            btn.textContent = SUBTAB_LABELS[kid] || kid;
+            btn.textContent = SUBTAB_LABELS_MAP[currentLang]?.[kid] || SUBTAB_LABELS[kid] || kid;
             btn.addEventListener('click', () => activateTab(kid));
             sub.appendChild(btn);
           }
@@ -2279,6 +2346,13 @@
 
     // topbar
     const ow = $('#open-wizard'); if (ow) ow.addEventListener('click', () => Wizard.open());
+    const langBtn = $('#lang-toggle');
+    if (langBtn) {
+      langBtn.addEventListener('click', () => {
+        applyLanguage(currentLang === 'vi' ? 'en' : 'vi');
+      });
+    }
+    applyLanguage(currentLang);
 
     const initialTab = (location.hash || '').replace(/^#/, '').trim();
     const validTabs = ['overview', 'blog', 'calendar', 'brand', 'prog', 'links', 'covers', 'seo', 'embeds', 'status', 'updates', 'usage', 'settings'];
