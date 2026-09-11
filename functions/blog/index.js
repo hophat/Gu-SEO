@@ -43,6 +43,7 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
   ).bind(PAGE_SIZE, offset).all();
   const posts = r.results || [];
 
+  const settings = await loadSettings(env).catch(() => ({}));
   const isVi = true;
   const siteName = env.SITE_NAME || settings.site_name || 'Gulagi';
   const siteDesc = env.SITE_DESCRIPTION || settings.site_description ||
