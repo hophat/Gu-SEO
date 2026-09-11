@@ -24,16 +24,20 @@ export const onRequestPost = async ({ request, env }) => {
     urls = body.urls; source = 'caller_supplied';
   } else {
     try {
-      const r = await fetch(new URL('/sitemap.xml', request.url).toString());
+      const r = await fetch(`https://gulagi.com/sitemap-pages.xml`);
       if (!r.ok) throw new Error('sitemap_http_' + r.status);
-      urls = extractLocs(await r.text());
+      const text = await r.text();
+      urls = extractLocs(text).filter(u => u.includes('gulagi.com'));
       source = 'sitemap';
     } catch {
       urls = []; source = 'failed';
     }
   }
   if (!urls.length) return json(400, { error: 'no_urls', source });
-  const r = await pingIndexNow(env, urls, request);
-  audit(env, 'admin', 'indexnow_ping', null, { url_count: urls.length, ok: r.ok, source });
+  const r = await pingIndexNow(env, urls, request, 'gulagi.com');
+  audit(env, 'admin', 'indexnow_ping', null, { url_count: urls.length, ok: r.ok, rate_limited: r.rate_limited, source });
+  if (r.rate_limited) {
+    return json(200, { ok: true, rate_limited: true, status: r.status, message: 'IndexNow rate limited (too many pings). Bing will crawl naturally.', urls, source });
+  }
   return json(r.ok ? 200 : 502, { ...r, urls, source });
 };

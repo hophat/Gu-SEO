@@ -11,10 +11,6 @@ import { getSiteIdentity } from './site_identity.js';
 
 const INDEXNOW_URL = 'https://api.indexnow.org/indexnow';
 
-// Resolve the host the page lives on. The widely-known case is the
-// user's own domain (e.g. blog.example.com). We use the request URL's
-// hostname when available; falls back to the resolved SITE_URL
-// (Pages secret or D1 setting).
 export async function getHost(env, request) {
   if (request) try { return new URL(request.url).hostname; } catch { /* */ }
   const id = await getSiteIdentity(env);
@@ -22,14 +18,11 @@ export async function getHost(env, request) {
   return null;
 }
 
-export async function pingIndexNow(env, urls, request = null) {
-  // Resolve via Pages secret first, D1 setting second. Both browser
-  // and 1-click Deploy installs end up with the key in D1; only the
-  // CLI install path puts it in a Pages secret.
+export async function pingIndexNow(env, urls, request = null, hostOverride = null) {
   const key = await getIndexNowKey(env);
   if (!key) return { ok: false, error: 'indexnow_not_configured' };
   if (!urls || !urls.length) return { ok: false, error: 'no_urls' };
-  const host = await getHost(env, request);
+  const host = hostOverride || await getHost(env, request);
   if (!host) return { ok: false, error: 'no_host' };
 
   const r = await fetch(INDEXNOW_URL, {
@@ -38,9 +31,11 @@ export async function pingIndexNow(env, urls, request = null) {
     body: JSON.stringify({
       host,
       key,
-      urlList: urls.slice(0, 10000), // IndexNow per-request cap
+      keyLocation: `https://${host}/${key}.txt`,
+      urlList: urls.slice(0, 10000),
     }),
   });
   const body = await r.text().catch(() => '');
-  return { ok: r.ok || r.status === 202, status: r.status, body, urls };
+  const isRateLimit = r.status === 429;
+  return { ok: r.ok || r.status === 202 || isRateLimit, status: r.status, body, urls, rate_limited: isRateLimit };
 }

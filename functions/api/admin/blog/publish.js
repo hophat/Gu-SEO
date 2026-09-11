@@ -70,8 +70,10 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
   // the post is force-published.
   if (finalStatus === 'published') {
     const host = new URL(request.url).hostname;
-    const newUrls = [`https://${host}/blog`, `https://${host}/blog/${job.slug}`];
-    waitUntil(pingIndexNow(env, newUrls, request).catch(() => {}));
+    const isBlogDomain = host === 'gu-seo.pages.dev';
+    const blogHost = isBlogDomain ? 'gulagi.com' : host;
+    const newUrls = [`https://${blogHost}/blog`, `https://${blogHost}/blog/${job.slug}`];
+    waitUntil(pingIndexNow(env, newUrls, request, blogHost).catch(() => {}));
     waitUntil(gscOnPublish(env, newUrls).catch(() => {}));
     waitUntil(syncSitemapAliases(env).catch(() => {}));
     waitUntil(storeEmbedding(env, job.slug, {
