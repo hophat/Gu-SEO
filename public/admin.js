@@ -380,6 +380,7 @@
     vi: {
       overview: 'Tổng quan',
       blog: 'Bài viết',
+      calendar: 'Lịch bài viết',
       brand: 'Thương hiệu',
       covers: 'Ảnh bìa',
       seo: 'Phân phối',
@@ -389,6 +390,7 @@
     en: {
       overview: 'Overview',
       blog: 'Blog',
+      calendar: 'Calendar',
       brand: 'Brand',
       covers: 'Covers',
       seo: 'Distribution',
