@@ -1136,6 +1136,46 @@
         setTimeout(() => (saveBtn.textContent = 'Apply'), 1800);
       };
       wrap.append(lbl, sel, saveBtn);
+
+      if (p.name === 'gurouter') {
+        const fetchBtn = document.createElement('button');
+        fetchBtn.className = 'btn btn-ghost btn-sm';
+        fetchBtn.textContent = '🔄 Fetch models';
+        fetchBtn.title = 'Fetch available models live from GuRouter API';
+        fetchBtn.onclick = async () => {
+          fetchBtn.disabled = true;
+          fetchBtn.textContent = 'Fetching…';
+          try {
+            const resp = await api('/api/admin/providers/gurouter-models');
+            if (resp.status === 200 && resp.body?.ok && Array.isArray(resp.body.models)) {
+              const fetched = resp.body.models;
+              const cur = sel.value;
+              sel.innerHTML = '';
+              for (const m of fetched) {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.label || m.id;
+                if (m.id === cur) opt.selected = true;
+                sel.appendChild(opt);
+              }
+              fetchBtn.textContent = `✓ ${fetched.length} models`;
+              setTimeout(() => (fetchBtn.textContent = '🔄 Fetch models'), 2500);
+            } else {
+              alert(resp.body?.hint || resp.body?.error || 'Failed to fetch models from GuRouter. Make sure GUROUTER_API_KEY is saved.');
+              fetchBtn.textContent = 'Failed';
+              setTimeout(() => (fetchBtn.textContent = '🔄 Fetch models'), 2000);
+            }
+          } catch (err) {
+            alert('Fetch error: ' + err.message);
+            fetchBtn.textContent = 'Error';
+            setTimeout(() => (fetchBtn.textContent = '🔄 Fetch models'), 2000);
+          } finally {
+            fetchBtn.disabled = false;
+          }
+        };
+        wrap.append(fetchBtn);
+      }
+
       return wrap;
     }
   }
