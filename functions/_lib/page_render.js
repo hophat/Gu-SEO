@@ -178,7 +178,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
 
   const relatedHTML = (kind === 'blog' && related.length) ? `
 <aside class="read-next">
-  <h2 class="read-next-title">Read next</h2>
+  <h2 class="read-next-title">Bài viết liên quan</h2>
   <ul class="read-next-list">
     ${related.map((r) => {
       // Same fallback as the blog index: stored R2 hero, else the live
@@ -253,7 +253,7 @@ ${preloadHero}
   <nav><a href="/blog">Blog</a></nav>
 </header>
 <main class="post-shell">
-  <div class="crumb"><a href="/">Home</a>${kind === 'blog' ? ' · <a href="/blog">Blog</a>' : ''}</div>
+  <div class="crumb"><a href="/">Trang chủ</a>${kind === 'blog' ? ' · <a href="/blog">Blog</a>' : ''}</div>
   <h1 class="post-title">${esc(post.title)}</h1>
   <div class="post-date">${esc(dateStr)}</div>
   ${heroImg}
@@ -261,7 +261,7 @@ ${preloadHero}
   ${relatedHTML}
 </main>
 <footer class="foot">
-  <span>${esc(site.name)}</span> · <a href="/">Home</a> · <a href="/blog">Blog</a>
+  <span>${esc(site.name)}</span> · <a href="/">Trang chủ</a> · <a href="/blog">Blog</a>
 </footer>
 </body>
 </html>`;

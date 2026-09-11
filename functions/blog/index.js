@@ -43,15 +43,19 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
   ).bind(PAGE_SIZE, offset).all();
   const posts = r.results || [];
 
-  const settings = await loadSettings(env).catch(() => ({}));
-  const siteName = env.SITE_NAME || settings.site_name || 'pages-seo';
+  const isVi = true;
+  const siteName = env.SITE_NAME || settings.site_name || 'Gulagi';
   const siteDesc = env.SITE_DESCRIPTION || settings.site_description ||
-                   `Articles from ${siteName}.`;
+                   (isVi ? 'Bài viết và giải pháp phát triển kinh doanh từ Gulagi.' : `Articles from ${siteName}.`);
 
   const items = posts.map((p, i) => {
-    const date = new Date((p.published_at || 0) * 1000).toLocaleDateString('en-GB', {
-      year: 'numeric', month: 'long', day: 'numeric',
-    });
+    const date = isVi
+      ? new Date((p.published_at || 0) * 1000).toLocaleDateString('vi-VN', {
+          year: 'numeric', month: 'long', day: 'numeric',
+        })
+      : new Date((p.published_at || 0) * 1000).toLocaleDateString('en-GB', {
+          year: 'numeric', month: 'long', day: 'numeric',
+        });
     // Prefer the stored R2 hero image; fall back to the live cover
     // template so a card is never blank.
     const imgSrc = p.hero_image_key
@@ -107,21 +111,21 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
   // also gives Google a hint about the collection size.
   const pagerHTML = totalPages > 1 ? `
 <nav class="pager" aria-label="Blog pagination">
-  ${prevHref ? `<a class="pager-prev" rel="prev" href="${prevHref}">← Newer</a>` : ''}
+  ${prevHref ? `<a class="pager-prev" rel="prev" href="${prevHref}">${isVi ? '← Trang trước' : '← Newer'}</a>` : ''}
   <span class="pager-nums">${pagerLinks}</span>
-  ${nextHref ? `<a class="pager-next" rel="next" href="${nextHref}">Older →</a>` : ''}
-  <span class="pager-pos">Page ${page} of ${totalPages} · ${total} post${total === 1 ? '' : 's'}</span>
+  ${nextHref ? `<a class="pager-next" rel="next" href="${nextHref}">${isVi ? 'Trang sau →' : 'Older →'}</a>` : ''}
+  <span class="pager-pos">${isVi ? `Trang ${page} trên ${totalPages} · ${total} bài viết` : `Page ${page} of ${totalPages} · ${total} post${total === 1 ? '' : 's'}`}</span>
 </nav>` : (total > 0 ? `
 <nav class="pager pager-single" aria-label="Blog pagination">
-  <span class="pager-pos">${total} post${total === 1 ? '' : 's'}</span>
+  <span class="pager-pos">${isVi ? `${total} bài viết` : `${total} post${total === 1 ? '' : 's'}`}</span>
 </nav>` : '');
 
   // Page-specific title hint: page 1 keeps the canonical "Blog ·
   // brand"; later pages append "page N" so the SERP listing
   // disambiguates.
   const titleStr = page === 1
-    ? `Blog · ${siteName}`
-    : `Blog · page ${page} · ${siteName}`;
+    ? (isVi ? `Blog · ${siteName}` : `Blog · ${siteName}`)
+    : (isVi ? `Blog · Trang ${page} · ${siteName}` : `Blog · page ${page} · ${siteName}`);
 
   // JSON-LD: WebSite with SearchAction. The archive page is the
   // canonical "site search entry point" for the SERP Sitelinks
@@ -207,14 +211,14 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
     <form id="blog-search-form" role="search" action="/blog" method="GET" class="blog-search">
       <input id="blog-search-input"
              type="search" name="q"
-             placeholder="Search posts…"
+             placeholder="${isVi ? 'Tìm kiếm bài viết…' : 'Search posts…'}"
              autocomplete="off" spellcheck="false"
-             aria-label="Search posts"
+             aria-label="${isVi ? 'Tìm kiếm bài viết' : 'Search posts'}"
              value="" />
       <button type="submit" class="blog-search-go" aria-label="Search">→</button>
     </form>
   </header>
-  ${posts.length ? `<ul id="blog-list">${items}</ul>` : '<ul id="blog-list" hidden></ul><p id="blog-noposts" class="lede">First post lands soon.</p>'}
+  ${posts.length ? `<ul id="blog-list">${items}</ul>` : `<ul id="blog-list" hidden></ul><p id="blog-noposts" class="lede">${isVi ? 'Các bài viết sẽ sớm xuất hiện.' : 'First post lands soon.'}</p>`}
   <div id="blog-empty" class="blog-empty" hidden></div>
   ${pagerHTML}
 </main>
