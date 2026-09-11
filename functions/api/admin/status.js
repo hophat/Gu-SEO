@@ -143,9 +143,21 @@ async function checkProviders(env) {
 
 // Pages secrets the install flow set. Surface them so the user can
 // see whether self-repair is wired up.
-function checkRepairSecrets(env) {
+async function checkRepairSecrets(env) {
+  const settings = await loadSettings(env).catch(() => ({}));
   const need = ['CF_API_TOKEN', 'CF_ACCOUNT_ID', 'CF_PROJECT', 'CF_D1_ID', 'CF_R2_NAME'];
-  const missing = need.filter((k) => !env?.[k] || !String(env[k]).trim());
+  const missing = need.filter((k) => {
+    const fromEnv = env?.[k] && String(env[k]).trim();
+    if (fromEnv) return false;
+    const fromSettingKey = {
+      'CF_ACCOUNT_ID': 'install_cf_account',
+      'CF_PROJECT': 'install_cf_project',
+      'CF_D1_ID': 'install_d1_id',
+      'CF_R2_NAME': 'install_r2_name',
+    }[k];
+    if (fromSettingKey && settings?.[fromSettingKey]) return false;
+    return true;
+  });
   return {
     ok: missing.length === 0,
     missing,
@@ -158,7 +170,7 @@ function checkRepairSecrets(env) {
 export const onRequestGet = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
 
-  const [db, r2, ai, content, failures, budget, providers] = await Promise.all([
+  const [db, r2, ai, content, failures, budget, providers, repair] = await Promise.all([
     checkDb(env),
     checkR2(env),
     checkAI(env),
@@ -166,8 +178,8 @@ export const onRequestGet = async ({ env, request }) => {
     checkRecentFailures(env),
     checkBudget(env),
     checkProviders(env),
+    checkRepairSecrets(env),
   ]);
-  const repair = checkRepairSecrets(env);
 
   const checks = [
     { id: 'db',         label: 'D1 database',          ...db },
