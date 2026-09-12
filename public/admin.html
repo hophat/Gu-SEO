@@ -131,6 +131,7 @@
          with data-children is active. Hidden otherwise. -->
     <nav id="subtabs" class="subtabs" hidden></nav>
     <div class="topbar-tools">
+      <div id="project-scope" class="project-scope"><label for="project-switcher" class="sr-only">Project</label><select id="project-switcher" class="project-switcher"></select><span id="project-badge" class="project-badge" hidden></span></div>
       <!-- Version badge. Shows your installed version (short sha or
            release tag). When upstream is ahead, an orange dot appears
            and the button links to the Updates tab. Populated by
@@ -380,7 +381,7 @@
 
       <div class="card">
         <div class="card-eyebrow">Step 2 · Review &amp; edit</div>
-        <h2>Brand DNA</h2>
+        <h2>Brand DNA <span id="brand-project-info" class="dim" style="font-size:13px;font-weight:normal;margin-left:8px;"></span></h2>
         <p>Every field below is editable. Once you click Save, these flow into every blog post and programmatic page the toolkit generates.</p>
         <div class="form-grid">
           <label>

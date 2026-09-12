@@ -72,8 +72,27 @@ async function recentTitleList(env, limit = 40) {
 
 // Operator-facing batch planner. Distributes `days` ideas starting at
 // `startOffset` days from today, skipping dates already taken.
-export async function planCalendar(env, { days = 28, replace = false, preferredProvider = '', startOffset = 1, source = 'admin-calendar' } = {}) {
-  const settings = await loadSettings(env);
+export async function planCalendar(env, { days = 28, replace = false, preferredProvider = '', startOffset = 1, source = 'admin-calendar', projectId = null, brand = null } = {}) {
+  let activeBrand = brand;
+  if (!activeBrand && projectId && env?.DB?.prepare) {
+    const row = await env.DB.prepare(
+      `SELECT business_type, tone, audience, key_themes, topics_to_avoid, service_area, cta
+         FROM project_brands WHERE project_id = ? LIMIT 1`
+    ).bind(projectId).first().catch(() => null);
+    if (row) {
+      activeBrand = {
+        brand_business_type:   row.business_type,
+        brand_voice_tone:      row.tone,
+        brand_target_audience: row.audience,
+        brand_key_themes:      row.key_themes,
+        brand_topics_to_avoid: row.topics_to_avoid,
+        brand_service_area:    row.service_area,
+        brand_cta:             row.cta,
+      };
+    }
+  }
+
+  const settings = activeBrand || await loadSettings(env);
   if (!settings.brand_business_type && !settings.brand_target_audience) {
     const err = new Error('no_brand_dna');
     err.code = 'no_brand_dna';
@@ -82,17 +101,25 @@ export async function planCalendar(env, { days = 28, replace = false, preferredP
 
   const today = new Date(isoDate(new Date()) + 'T00:00:00Z');
   if (replace) {
-    await env.DB.prepare(
-      `DELETE FROM content_calendar WHERE status = 'scheduled' AND scheduled_for >= ?`
-    ).bind(isoDate(today)).run();
+    if (projectId) {
+      await env.DB.prepare(
+        `DELETE FROM content_calendar WHERE status = 'scheduled' AND scheduled_for >= ? AND project_id = ?`
+      ).bind(isoDate(today), projectId).run();
+    } else {
+      await env.DB.prepare(
+        `DELETE FROM content_calendar WHERE status = 'scheduled' AND scheduled_for >= ?`
+      ).bind(isoDate(today)).run();
+    }
   }
 
   const horizon = addDays(today, days * 2 + startOffset);
+  const projectFilter = projectId ? `AND (project_id = ? OR project_id IS NULL)` : ``;
+  const takenArgs = projectId ? [isoDate(today), isoDate(horizon), projectId] : [isoDate(today), isoDate(horizon)];
   const takenRows = await env.DB.prepare(
     `SELECT scheduled_for FROM content_calendar
       WHERE status IN ('scheduled','generating','draft','published')
-        AND scheduled_for >= ? AND scheduled_for <= ?`
-  ).bind(isoDate(today), isoDate(horizon)).all().catch(() => ({ results: [] }));
+        AND scheduled_for >= ? AND scheduled_for <= ? ${projectFilter}`
+  ).bind(...takenArgs).all().catch(() => ({ results: [] }));
   const taken = new Set((takenRows.results || []).map((r) => r.scheduled_for));
 
   const prompt = buildPlannerPrompt(settings, days, await recentTitleList(env));
@@ -119,6 +146,7 @@ export async function planCalendar(env, { days = 28, replace = false, preferredP
     if (!title) { cursor = addDays(cursor, 1); continue; }
     slots.push({
       id: newId(),
+      project_id: projectId || null,
       scheduled_for: isoDate(cursor),
       title,
       primary_keyword: String(raw?.primary_keyword || '').trim().slice(0, 120) || null,
@@ -134,9 +162,9 @@ export async function planCalendar(env, { days = 28, replace = false, preferredP
   const batch = slots.map((s) =>
     env.DB.prepare(
       `INSERT INTO content_calendar
-         (id, scheduled_for, title, primary_keyword, angle, status, source, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'scheduled', 'planner', ?, ?)`
-    ).bind(s.id, s.scheduled_for, s.title, s.primary_keyword, s.angle, now, now)
+         (id, project_id, scheduled_for, title, primary_keyword, angle, status, source, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'scheduled', 'planner', ?, ?)`
+    ).bind(s.id, s.project_id, s.scheduled_for, s.title, s.primary_keyword, s.angle, now, now)
   );
   await env.DB.batch(batch);
   return { slots, provider: out.provider };

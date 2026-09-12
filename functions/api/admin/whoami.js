@@ -33,10 +33,34 @@ export const onRequestGet = async ({ request, env }) => {
   const auth = await requireAdminAsync(env, request);
   if (!auth) return json(401, { error: 'unauthorized' });
   const identity = await getSiteIdentity(env);
+
+  const role = auth.role || 'super_admin';
+  const projectId = auth.projectId || null;
+  let projects = [];
+
+  if (env?.DB) {
+    try {
+      if (role === 'super_admin') {
+        const res = await env.DB.prepare(
+          `SELECT id, slug, name, website_url, publishing_url FROM projects ORDER BY created_at ASC`
+        ).all();
+        projects = res?.results || [];
+      } else if (role === 'project_admin' && projectId) {
+        const res = await env.DB.prepare(
+          `SELECT id, slug, name, website_url, publishing_url FROM projects WHERE id = ? LIMIT 1`
+        ).bind(projectId).all();
+        projects = res?.results || [];
+      }
+    } catch {}
+  }
+
   return json(200, {
     ok: true,
     email: auth.email || null,
     via: auth.via,
+    role,
+    project_id: projectId,
+    projects,
     site_name: identity.name,
     site_url: identity.url,
   });

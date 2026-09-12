@@ -220,11 +220,22 @@
   }
 
   async function api(path, opts = {}) {
+    let finalPath = path;
+    if (finalPath.startsWith('/api/admin/') && !finalPath.startsWith('/api/admin/whoami') && !finalPath.startsWith('/api/admin/login') && !finalPath.startsWith('/api/admin/logout')) {
+      const activeId = window.__psActiveProjectId;
+      if (activeId) {
+        const u = new URL(finalPath, window.location.origin);
+        if (!u.searchParams.has('project_id')) {
+          u.searchParams.set('project_id', activeId);
+          finalPath = u.pathname + u.search;
+        }
+      }
+    }
     const headers = { 'content-type': 'application/json', ...(opts.headers || {}) };
     // `credentials: 'same-origin'` is the default, but we set it
     // explicitly so the session cookie ALWAYS rides along — including
     // for POST/PUT/DELETE where some browsers default differently.
-    const r = await fetch(path, { ...opts, headers, credentials: 'same-origin' });
+    const r = await fetch(finalPath, { ...opts, headers, credentials: 'same-origin' });
     let body = null;
     try { body = await r.json(); } catch { /* not JSON */ }
     return { status: r.status, body };
@@ -1065,6 +1076,17 @@
     // Pre-seed the URL input with the saved source_url if any.
     const urlIn = $('#brand-url');
     if (urlIn && !urlIn.value) urlIn.value = body?.brand?.source_url || '';
+
+    const curProj = _allProjects.find((p) => p.id === window.__psActiveProjectId)
+      || _allProjects.find((p) => p.id === body?.project_id);
+    const infoEl = $('#brand-project-info');
+    if (infoEl) {
+      if (curProj) {
+        infoEl.textContent = `(${curProj.name}${curProj.website_url ? ' · ' + curProj.website_url : ''})`;
+      } else {
+        infoEl.textContent = '';
+      }
+    }
   }
 
   async function generateBrand() {
@@ -2678,15 +2700,83 @@
   })();
 
 
+  let _allProjects = [];
+
+  function initProjectScope(whoami) {
+    const role = whoami?.role || 'super_admin';
+    const projects = whoami?.projects || [];
+    const projectId = whoami?.project_id || null;
+    _allProjects = projects;
+
+    const switcher = $('#project-switcher');
+    const badge = $('#project-badge');
+    const scope = $('#project-scope');
+    if (!scope) return;
+
+    if (role === 'project_admin') {
+      if (switcher) switcher.hidden = true;
+      if (badge) {
+        badge.hidden = false;
+        const current = projects.find((p) => p.id === projectId) || { name: whoami?.site_name || 'Project' };
+        badge.textContent = `🏪 ${current.name}`;
+      }
+      window.__psActiveProjectId = projectId;
+      return;
+    }
+
+    if (role === 'super_admin') {
+      if (badge) badge.hidden = true;
+      if (!switcher) return;
+      switcher.hidden = false;
+      clearChildren(switcher);
+
+      for (const p of projects) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        switcher.appendChild(opt);
+      }
+
+      const stored = localStorage.getItem('ps_active_project_id');
+      const foundStored = projects.some((p) => p.id === stored);
+      const selectedId = foundStored ? stored : (projects[0]?.id || null);
+
+      if (selectedId) {
+        switcher.value = selectedId;
+        window.__psActiveProjectId = selectedId;
+        localStorage.setItem('ps_active_project_id', selectedId);
+      }
+
+      switcher.onchange = () => {
+        const newId = switcher.value;
+        localStorage.setItem('ps_active_project_id', newId);
+        window.__psActiveProjectId = newId;
+        if (_activeTab) {
+          const tabToReload = _activeTab;
+          _activeTab = null;
+          activateTab(tabToReload);
+        }
+      };
+    }
+  }
+
   // (Command palette + slash-DSL removed at user request, 2026-05-19.
   // The action handlers below — runBlogChain, runProgNext, pingIndexNow,
   // loadUsage, refreshPricing, generateBrand, saveBrand, runBrandFilter,
   // applyToTarget, etc. — remain wired to their tab buttons.)
 
   // ── mount ───────────────────────────────────────────────────────
-  function mount() {
+  async function mount() {
     $('#gate').hidden = true;
     $('#dash').hidden = false;
+
+    try {
+      const { status, body } = await api('/api/admin/whoami');
+      if (status === 200 && body?.ok) {
+        initProjectScope(body);
+      }
+    } catch {}
+
     $$('.tab').forEach((t) => t.addEventListener('click', () => activateTab(t.dataset.tab)));
     $('#lock').addEventListener('click', doLogout);
     // Theme toggle. Applied early in <head> via the IIFE in

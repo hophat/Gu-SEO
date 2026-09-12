@@ -49,13 +49,19 @@ async function sessionAuth(env, request) {
   if (!sessionId) return null;
   const now = Math.floor(Date.now() / 1000);
   const row = await env.DB.prepare(
-    `SELECT s.id, s.user_id, s.expires_at, u.email
+    `SELECT s.id, s.user_id, s.expires_at, u.email, u.role, u.project_id
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.id = ? LIMIT 1`
   ).bind(sessionId).first().catch(() => null);
   if (!row) return null;
   if (row.expires_at <= now) return null;
-  return { sessionId: row.id, userId: row.user_id, email: row.email };
+  return {
+    sessionId: row.id,
+    userId: row.user_id,
+    email: row.email,
+    role: row.role || 'super_admin',
+    projectId: row.project_id || null,
+  };
 }
 
 // Legacy sync path. The bearer check is now async because it has to
@@ -83,5 +89,82 @@ export async function adminGate(env, request) {
   if (missing.length) return json(503, configError(missing));
   const auth = await requireAdminAsync(env, request);
   if (!auth) return json(401, { error: 'unauthorized' });
+  return null;
+}
+
+export async function resolveTenantContext(env, request, auth) {
+  if (!auth) return null;
+  const isSuperAdmin = auth.via === 'bearer' || auth.role === 'super_admin';
+
+  let requestedProjectId = null;
+  try {
+    const url = new URL(request.url);
+    requestedProjectId = url.searchParams.get('project_id');
+  } catch {}
+
+  if (!requestedProjectId && request.headers?.get) {
+    requestedProjectId = request.headers.get('X-Project-Id') || request.headers.get('x-project-id');
+  }
+
+  if (!requestedProjectId && typeof request.clone === 'function') {
+    try {
+      const cloned = request.clone();
+      const body = await cloned.json();
+      if (body?.project_id) requestedProjectId = body.project_id;
+    } catch {}
+  }
+
+  if (isSuperAdmin) {
+    if (requestedProjectId) {
+      const project = await env?.DB?.prepare?.(
+        `SELECT id, slug FROM projects WHERE id = ? OR slug = ? LIMIT 1`
+      )?.bind(requestedProjectId, requestedProjectId)?.first()?.catch(() => null);
+
+      if (project) {
+        return {
+          isSuperAdmin: true,
+          activeProjectId: project.id,
+          activeProjectSlug: project.slug,
+          allowedProjectIds: 'all',
+        };
+      }
+      return null;
+    }
+
+    const firstActive = await env?.DB?.prepare?.(
+      `SELECT id, slug FROM projects WHERE status = 'active' ORDER BY created_at ASC LIMIT 1`
+    )?.bind?.()?.first?.()?.catch(() => null);
+
+    return {
+      isSuperAdmin: true,
+      activeProjectId: firstActive?.id || null,
+      activeProjectSlug: firstActive?.slug || null,
+      allowedProjectIds: 'all',
+    };
+  }
+
+  if (auth.role === 'project_admin') {
+    if (requestedProjectId && requestedProjectId !== auth.projectId) {
+      return null;
+    }
+
+    let activeProjectSlug = null;
+    if (auth.projectId && env?.DB) {
+      const project = await env.DB.prepare(
+        `SELECT id, slug FROM projects WHERE id = ? LIMIT 1`
+      ).bind(auth.projectId).first().catch(() => null);
+      if (project) {
+        activeProjectSlug = project.slug;
+      }
+    }
+
+    return {
+      isSuperAdmin: false,
+      activeProjectId: auth.projectId,
+      activeProjectSlug,
+      allowedProjectIds: auth.projectId ? [auth.projectId] : [],
+    };
+  }
+
   return null;
 }

@@ -83,7 +83,93 @@ async function runTests() {
   assert.equal(loggedRun.total_tokens, 3600);
   console.log('✓ AI Run Logging verified.');
 
-  console.log('\nALL TESTS PASSED SUCCESSFULLY! (5/5)');
+  console.log('6. Verifying Scoped Brand DNA, Calendar, and Blog Admin APIs...');
+  const { onRequestGet: getBrandDna, onRequestPut: putBrandDna } = await import('../functions/api/admin/brand-dna.js');
+  const { onRequestGet: getCalendar, onRequestPost: postCalendar } = await import('../functions/api/admin/calendar/index.js');
+  const { onRequestGet: getBlogList } = await import('../functions/api/admin/blog/list.js');
+  const { onRequestGet: getBlogJobs } = await import('../functions/api/admin/blog/jobs.js');
+
+  env.ADMIN_TOKEN = 'test-admin-token-123';
+  const makeReq = (url, opts = {}) => ({
+    url,
+    headers: new Map([
+      ['Authorization', 'Bearer test-admin-token-123'],
+      ...(opts.headers ? Object.entries(opts.headers) : []),
+    ]),
+    clone() { return this; },
+    json: async () => opts.body || {},
+    ...opts,
+  });
+
+  const wrapReq = (req) => ({
+    ...req,
+    headers: {
+      get: (h) => {
+        for (const [k, v] of req.headers.entries()) {
+          if (k.toLowerCase() === h.toLowerCase()) return v;
+        }
+        return null;
+      }
+    }
+  });
+
+  const reqGulagiBrand = wrapReq(makeReq('https://example.com/api/admin/brand-dna?project_id=' + projGulagi.id));
+  const resGulagiBrand = await getBrandDna({ env, request: reqGulagiBrand });
+  const dataGulagiBrand = await resGulagiBrand.json();
+  assert.equal(resGulagiBrand.status, 200);
+  assert.equal(dataGulagiBrand.ok, true);
+  assert.equal(dataGulagiBrand.project_id, projGulagi.id);
+  assert.equal(dataGulagiBrand.brand.business_type, GULAGI_PROJECT.brand.business_type);
+
+  const reqGuRouterPut = wrapReq(makeReq('https://example.com/api/admin/brand-dna?project_id=' + projGuRouter.id, {
+    method: 'PUT',
+    body: {
+      business_type: 'GuRouter Updated Tech Stack',
+      voice_tone: 'Authoritative, technical',
+      target_audience: 'Engineers and CTOs',
+      skip_auto_plan: true,
+    }
+  }));
+  const resGuRouterPut = await putBrandDna({ env, request: reqGuRouterPut, waitUntil: () => {} });
+  assert.equal(resGuRouterPut.status, 200);
+  const updatedBrand = env.tables.project_brands.get(projGuRouter.id);
+  assert.equal(updatedBrand.business_type, 'GuRouter Updated Tech Stack');
+  assert.equal(updatedBrand.tone, 'Authoritative, technical');
+
+  const reqCalPost = wrapReq(makeReq('https://example.com/api/admin/calendar?project_id=' + projGulagi.id, {
+    method: 'POST',
+    body: {
+      scheduled_for: '2026-09-15',
+      title: 'Gulagi Local SEO Tactics',
+      primary_keyword: 'local seo',
+    }
+  }));
+  const resCalPost = await postCalendar({ env, request: reqCalPost });
+  const dataCalPost = await resCalPost.json();
+  assert.equal(resCalPost.status, 200);
+  assert.equal(dataCalPost.project_id, projGulagi.id);
+
+  const reqCalGet = wrapReq(makeReq('https://example.com/api/admin/calendar?project_id=' + projGulagi.id));
+  const resCalGet = await getCalendar({ env, request: reqCalGet });
+  const dataCalGet = await resCalGet.json();
+  assert.equal(resCalGet.status, 200);
+  assert.equal(dataCalGet.project_id, projGulagi.id);
+  assert.ok(dataCalGet.slots.length > 0);
+
+  const reqBlogList = wrapReq(makeReq('https://example.com/api/admin/blog/list?project_id=' + projGulagi.id));
+  const resBlogList = await getBlogList({ env, request: reqBlogList });
+  const dataBlogList = await resBlogList.json();
+  assert.equal(resBlogList.status, 200);
+  assert.equal(dataBlogList.project_id, projGulagi.id);
+
+  const reqBlogJobs = wrapReq(makeReq('https://example.com/api/admin/blog/jobs?project_id=' + projGulagi.id));
+  const resBlogJobs = await getBlogJobs({ env, request: reqBlogJobs });
+  const dataBlogJobs = await resBlogJobs.json();
+  assert.equal(resBlogJobs.status, 200);
+  assert.equal(dataBlogJobs.project_id, projGulagi.id);
+  console.log('✓ Scoped Brand DNA, Calendar, and Blog Admin APIs verified.');
+
+  console.log('\nALL TESTS PASSED SUCCESSFULLY! (6/6)');
 }
 
 runTests().catch(err => {

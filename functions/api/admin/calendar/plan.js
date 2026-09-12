@@ -6,11 +6,15 @@
 // the operator's "Regenerate" button share the same code.
 
 import { json, audit } from '../../../_lib/util.js';
-import { adminGate } from '../../../_lib/auth.js';
+import { requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 import { planCalendar } from '../../../_lib/calendar_planner.js';
 
 export const onRequestPost = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const activeProjectId = tenant?.activeProjectId || null;
+
   let body = {};
   try { body = await request.json(); } catch { /* allow empty */ }
   const days     = Math.max(1, Math.min(60, parseInt(body.days, 10) || 28));
@@ -18,9 +22,20 @@ export const onRequestPost = async ({ env, request }) => {
   const provider = String(body.provider || '').trim() || '';
 
   try {
-    const result = await planCalendar(env, { days, replace, preferredProvider: provider });
-    await audit(env, 'admin', 'calendar.plan', '', JSON.stringify({ days, inserted: result.slots.length, replace }));
-    return json(200, { ok: true, inserted: result.slots.length, slots: result.slots });
+    const result = await planCalendar(env, {
+      days,
+      replace,
+      preferredProvider: provider,
+      projectId: activeProjectId,
+    });
+    await audit(env, 'admin', 'calendar.plan', '', JSON.stringify({ days, inserted: result.slots.length, replace, project_id: activeProjectId }));
+    return json(200, {
+      ok: true,
+      inserted: result.slots.length,
+      slots: result.slots,
+      project_id: activeProjectId,
+      project_slug: tenant?.activeProjectSlug || null,
+    });
   } catch (e) {
     if (e.code === 'no_brand_dna') {
       return json(422, { error: 'no_brand_dna', detail: 'Save your Brand DNA before planning.' });

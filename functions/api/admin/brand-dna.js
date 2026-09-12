@@ -19,7 +19,7 @@
 // reviewed by a human before going into the prompt pipeline.
 
 import { json, nowSec, audit } from '../../_lib/util.js';
-import { adminGate } from '../../_lib/auth.js';
+import { requireAdminAsync, resolveTenantContext } from '../../_lib/auth.js';
 import { scrapeUrl, scrapeToPromptInput } from '../../_lib/scrape.js';
 import { loadSettings, setSetting } from '../../_lib/settings.js';
 // recordUsage + estimateTokens imported below.
@@ -248,25 +248,65 @@ function sanitiseField(s, max) {
 // ─── handlers ─────────────────────────────────────────────────────
 
 export const onRequestGet = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  if (!tenant || !tenant.activeProjectId) {
+    return json(400, { error: 'missing_or_invalid_project' });
+  }
+
+  let brandRow = null;
+  if (env?.DB?.prepare) {
+    brandRow = await env.DB.prepare(
+      `SELECT business_type, tone, audience, key_themes, topics_to_avoid, service_area, cta
+         FROM project_brands WHERE project_id = ? LIMIT 1`
+    ).bind(tenant.activeProjectId).first().catch(() => null);
+  }
+
+  if (brandRow) {
+    return json(200, {
+      ok: true,
+      brand: {
+        business_type:   brandRow.business_type || '',
+        voice_tone:      brandRow.tone || '',
+        target_audience: brandRow.audience || '',
+        key_themes:      brandRow.key_themes || '',
+        topics_to_avoid: brandRow.topics_to_avoid || '',
+        service_area:    brandRow.service_area || '',
+        cta:             brandRow.cta || '',
+      },
+      project_id: tenant.activeProjectId,
+      project_slug: tenant.activeProjectSlug,
+    });
+  }
+
   const s = await loadSettings(env);
   return json(200, {
     ok: true,
     brand: {
-      business_type:    s.brand_business_type,
-      voice_tone:       s.brand_voice_tone,
-      target_audience:  s.brand_target_audience,
-      key_themes:       s.brand_key_themes,
-      topics_to_avoid:  s.brand_topics_to_avoid,
-      service_area:     s.brand_service_area,
-      source_url:       s.brand_source_url,
-      generated_at:     s.brand_generated_at,
+      business_type:    s.brand_business_type || '',
+      voice_tone:       s.brand_voice_tone || '',
+      target_audience:  s.brand_target_audience || '',
+      key_themes:       s.brand_key_themes || '',
+      topics_to_avoid:  s.brand_topics_to_avoid || '',
+      service_area:     s.brand_service_area || '',
+      cta:              s.brand_cta || '',
+      source_url:       s.brand_source_url || '',
+      generated_at:     s.brand_generated_at || '',
     },
+    project_id: tenant.activeProjectId,
+    project_slug: tenant.activeProjectSlug,
   });
 };
 
 export const onRequestPost = async ({ env, request, waitUntil }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  if (!tenant || !tenant.activeProjectId) {
+    return json(400, { error: 'missing_or_invalid_project' });
+  }
+
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
   const url = String(body?.url || '').trim();
@@ -309,34 +349,84 @@ export const onRequestPost = async ({ env, request, waitUntil }) => {
     key_themes:       sanitiseField(p.key_themes, 1_200),
     topics_to_avoid:  sanitiseField(body.topics_to_avoid || p.topics_to_avoid, 600),
     service_area:     sanitiseField(body.service_area    || p.service_area, 400),
+    cta:              sanitiseField(body.cta             || p.cta, 400),
     source_url:       scrape.url,
     provider:         result.provider,
   };
-  waitUntil(audit(env, 'admin', 'brand_dna_generate', null, { url: scrape.url, provider: result.provider }));
-  return json(200, { ok: true, brand, scrape_summary: {
-    title: scrape.title,
-    body_chars: scrape.body_text.length,
-    h2_count: scrape.headings.h2.length,
-  } });
+  waitUntil(audit(env, 'admin', 'brand_dna_generate', null, { url: scrape.url, provider: result.provider, project_id: tenant.activeProjectId }));
+  return json(200, {
+    ok: true,
+    brand,
+    project_id: tenant.activeProjectId,
+    project_slug: tenant.activeProjectSlug,
+    scrape_summary: {
+      title: scrape.title,
+      body_chars: scrape.body_text.length,
+      h2_count: scrape.headings.h2.length,
+    }
+  });
 };
 
 export const onRequestPut = async ({ env, request, waitUntil }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  if (!tenant || !tenant.activeProjectId) {
+    return json(400, { error: 'missing_or_invalid_project' });
+  }
+
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
 
+  const business_type   = sanitiseField(body.business_type, 2_400);
+  const voice_tone      = sanitiseField(body.voice_tone || body.tone, 1_200);
+  const target_audience = sanitiseField(body.target_audience || body.audience, 2_000);
+  const key_themes      = sanitiseField(body.key_themes, 1_200);
+  const topics_to_avoid = sanitiseField(body.topics_to_avoid, 600);
+  const service_area    = sanitiseField(body.service_area, 400);
+  const cta             = sanitiseField(body.cta, 400);
+  const source_url      = sanitiseField(body.source_url, 400);
+  const t               = nowSec();
+
+  if (env?.DB?.prepare) {
+    await env.DB.prepare(
+      `INSERT INTO project_brands (project_id, business_type, tone, audience, key_themes, topics_to_avoid, service_area, cta, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(project_id) DO UPDATE SET
+         business_type = excluded.business_type,
+         tone = excluded.tone,
+         audience = excluded.audience,
+         key_themes = excluded.key_themes,
+         topics_to_avoid = excluded.topics_to_avoid,
+         service_area = excluded.service_area,
+         cta = excluded.cta,
+         updated_at = excluded.updated_at`
+    ).bind(
+      tenant.activeProjectId,
+      business_type,
+      voice_tone,
+      target_audience,
+      key_themes,
+      topics_to_avoid,
+      service_area,
+      cta,
+      t,
+      t
+    ).run();
+  }
+
   const fields = {
-    brand_business_type:    sanitiseField(body.business_type, 2_400),
-    brand_voice_tone:       sanitiseField(body.voice_tone, 1_200),
-    brand_target_audience:  sanitiseField(body.target_audience, 2_000),
-    brand_key_themes:       sanitiseField(body.key_themes, 1_200),
-    brand_topics_to_avoid:  sanitiseField(body.topics_to_avoid, 600),
-    brand_service_area:     sanitiseField(body.service_area, 400),
-    brand_source_url:       sanitiseField(body.source_url, 400),
+    brand_business_type:    business_type,
+    brand_voice_tone:       voice_tone,
+    brand_target_audience:  target_audience,
+    brand_key_themes:       key_themes,
+    brand_topics_to_avoid:  topics_to_avoid,
+    brand_service_area:     service_area,
+    brand_source_url:       source_url,
     brand_generated_at:     new Date().toISOString(),
   };
   for (const [k, v] of Object.entries(fields)) await setSetting(env, k, v);
-  audit(env, 'admin', 'brand_dna_save', null, { source_url: fields.brand_source_url });
+  audit(env, 'admin', 'brand_dna_save', null, { source_url: fields.brand_source_url, project_id: tenant.activeProjectId });
 
   // Auto-plan the content calendar on first save (or any save when the
   // calendar is empty). Runs in the background so the PUT returns fast.
@@ -349,12 +439,13 @@ export const onRequestPut = async ({ env, request, waitUntil }) => {
   let planned = false;
   const skipAutoPlan = !!body?.skip_auto_plan;
   try {
-    if (!skipAutoPlan) {
+    if (!skipAutoPlan && env?.DB?.prepare) {
       const today = new Date().toISOString().slice(0, 10);
       const future = await env.DB.prepare(
         `SELECT COUNT(*) AS n FROM content_calendar
-          WHERE scheduled_for >= ? AND status IN ('scheduled','generating','draft')`
-      ).bind(today).first().catch(() => ({ n: 0 }));
+          WHERE scheduled_for >= ? AND status IN ('scheduled','generating','draft')
+            AND (project_id = ? OR project_id IS NULL)`
+      ).bind(today, tenant.activeProjectId).first().catch(() => ({ n: 0 }));
       if (!future || !future.n) {
         planned = true;
         const url = new URL(request.url);
@@ -363,14 +454,21 @@ export const onRequestPut = async ({ env, request, waitUntil }) => {
             method: 'POST',
             headers: {
               'content-type': 'application/json',
+              'x-project-id': tenant.activeProjectId,
               cookie: request.headers.get('cookie') || '',
             },
-            body: JSON.stringify({ days: 28, replace: false }),
+            body: JSON.stringify({ days: 28, replace: false, project_id: tenant.activeProjectId }),
           }).catch(() => {})
         );
       }
     }
   } catch { /* best-effort; the calendar tab can always plan manually */ }
 
-  return json(200, { ok: true, saved: BRAND_DNA_KEYS.length, planning: planned });
+  return json(200, {
+    ok: true,
+    saved: BRAND_DNA_KEYS.length,
+    planning: planned,
+    project_id: tenant.activeProjectId,
+    project_slug: tenant.activeProjectSlug,
+  });
 };

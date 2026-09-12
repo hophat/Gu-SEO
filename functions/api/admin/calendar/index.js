@@ -8,7 +8,7 @@
 // blog chain for it. Published posts link back via post_id.
 
 import { json, nowSec, newId, audit } from '../../../_lib/util.js';
-import { adminGate } from '../../../_lib/auth.js';
+import { requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 
 const VALID_STATUSES = ['scheduled', 'generating', 'draft', 'published', 'skipped'];
 
@@ -36,26 +36,42 @@ async function enrichWithPosts(env, rows) {
 }
 
 export const onRequestGet = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const activeProjectId = tenant?.activeProjectId || null;
+
   const url = new URL(request.url);
-  const from = url.searchParams.get('from'); // YYYY-MM-DD inclusive
-  const to   = url.searchParams.get('to');   // YYYY-MM-DD inclusive
+  const from = url.searchParams.get('from');
+  const to   = url.searchParams.get('to');
 
   let q, args;
+  const projectClause = activeProjectId ? `(project_id = ? OR project_id IS NULL)` : `1=1`;
+
   if (isValidDate(from) && isValidDate(to)) {
-    q = `SELECT * FROM content_calendar WHERE scheduled_for >= ? AND scheduled_for <= ? ORDER BY scheduled_for ASC, created_at ASC`;
-    args = [from, to];
+    q = `SELECT * FROM content_calendar WHERE scheduled_for >= ? AND scheduled_for <= ? AND ${projectClause} ORDER BY scheduled_for ASC, created_at ASC`;
+    args = activeProjectId ? [from, to, activeProjectId] : [from, to];
   } else {
-    q = `SELECT * FROM content_calendar ORDER BY scheduled_for ASC LIMIT 120`;
-    args = [];
+    q = `SELECT * FROM content_calendar WHERE ${projectClause} ORDER BY scheduled_for ASC LIMIT 120`;
+    args = activeProjectId ? [activeProjectId] : [];
   }
   const r = await env.DB.prepare(q).bind(...args).all().catch(() => ({ results: [] }));
   const rows = await enrichWithPosts(env, r.results || []);
-  return json(200, { ok: true, slots: rows, today: todayUtc() });
+  return json(200, {
+    ok: true,
+    slots: rows,
+    today: todayUtc(),
+    project_id: activeProjectId,
+    project_slug: tenant?.activeProjectSlug || null,
+  });
 };
 
 export const onRequestPost = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const activeProjectId = tenant?.activeProjectId || null;
+
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
   const scheduled_for = String(body?.scheduled_for || '').trim();
@@ -67,20 +83,21 @@ export const onRequestPost = async ({ env, request }) => {
   const now = nowSec();
   await env.DB.prepare(
     `INSERT INTO content_calendar
-       (id, scheduled_for, title, primary_keyword, angle, status, source, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'scheduled', 'manual', ?, ?)`
+       (id, project_id, scheduled_for, title, primary_keyword, angle, status, source, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'scheduled', 'manual', ?, ?)`
   ).bind(
-    id, scheduled_for, title.slice(0, 200),
+    id, activeProjectId, scheduled_for, title.slice(0, 200),
     String(body?.primary_keyword || '').trim().slice(0, 120) || null,
     String(body?.angle || '').trim().slice(0, 500) || null,
     now, now,
   ).run();
-  await audit(env, 'admin', 'calendar.create', id, JSON.stringify({ scheduled_for, title }));
-  return json(200, { ok: true, id });
+  await audit(env, 'admin', 'calendar.create', id, JSON.stringify({ scheduled_for, title, project_id: activeProjectId }));
+  return json(200, { ok: true, id, project_id: activeProjectId });
 };
 
 export const onRequestPatch = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
   const id = String(body?.id || '').trim();
@@ -120,7 +137,8 @@ export const onRequestPatch = async ({ env, request }) => {
 };
 
 export const onRequestDelete = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
   const id = new URL(request.url).searchParams.get('id');
   if (!id) return json(400, { error: 'missing_id' });
   // Only allow deleting non-published slots — a published slot links a
