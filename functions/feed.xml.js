@@ -11,7 +11,7 @@
 
 import { loadSettings } from './_lib/settings.js';
 import { esc } from './_lib/util.js';
-import { resolveProjectForRequest } from './_lib/project_scope.js';
+import { resolveProjectForRequest, resolveProjectBySlug } from './_lib/project_scope.js';
 
 const ITEMS_LIMIT = 30;
 
@@ -29,16 +29,19 @@ function absUrl(request, path) {
 
 export const onRequestGet = async ({ env, request, params }) => {
   const settings = await loadSettings(env).catch(() => ({}));
-  const siteName = env.SITE_NAME || settings.site_name || 'pages-seo';
-  const siteDesc = env.SITE_DESCRIPTION || settings.site_description ||
-                   `Articles from ${siteName}.`;
   const projectSlug = String(params?.project || '').toLowerCase() || null;
   const basePath = projectSlug ? `/${projectSlug}` : '';
+  const project = projectSlug
+    ? await resolveProjectBySlug(env, projectSlug).catch(() => null)
+    : await resolveProjectForRequest(env, request).catch(() => null);
+  if (projectSlug && !project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
+  const projectId = project?.id || null;
   const siteUrl = absUrl(request, `${basePath}/`);
   const feedUrl = absUrl(request, `${basePath}/feed.xml`);
 
-  const project = await resolveProjectForRequest(env, request).catch(() => null);
-  const projectId = project?.id || null;
+  const siteName = project?.site_name || env.SITE_NAME || settings.site_name || 'pages-seo';
+  const siteDesc = project?.site_description || env.SITE_DESCRIPTION || settings.site_description ||
+                   `Articles from ${siteName}.`;
 
   const postsSql = projectId
     ? `SELECT slug, title, meta_description, published_at

@@ -7,6 +7,24 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.0 — 2026-09-12
+
+### Added
+- **Per-project blogs on a shared host.** Each project can publish under `https://<host>/<slug>/blog` (`…/blog/page/N`, `…/blog/<post>`, `…/p/<slug>`, `…/feed.xml`, `…/sitemap.xml`) alongside its own domain. Canonical, og, JSON-LD, pagination and related-post links all carry the path prefix.
+- **Per-project public branding.** `projects.site_name`, `site_description` and `logo_url` drive the blog header/footer, `<title>`, meta description, og:site_name and RSS feed, falling back to the global `SITE_NAME`/`SITE_DESCRIPTION`/`SITE_LOGO_URL`.
+- **Multi-tenant cron fan-out.** `/api/admin/cron/tick` runs each scheduled task across every active project: daily post, programmatic batch (up to 10 pages per project) and weekly refresh (up to 2 per project). The cron Worker now makes one call per schedule.
+
+### Fixed
+- **Scheduled publishing only ever ran for one project.** The cron Worker called the blog pipeline without a `project_id`, so only the host-matched project auto-published; USaS Global and GuRouter never generated anything automatically.
+- **JIT calendar planning ignored the tenant.** `planSingleForToday` used global settings, matched slots across all projects and inserted without `project_id`, so a named project could claim another tenant's topic.
+- **Duplicate detection compared across tenants.** Blog dedup now scopes its embedding search to the project.
+- **IndexNow / Search Console advertised unreachable URLs.** Publish and refresh pings now use each project's publishing base (origin + path prefix); programmatic pings no longer leak the internal `gu-seo.pages.dev` hostname.
+
+### Changed
+- **Shared-host resolution matches host + path.** Projects resolve by host and longest matching path prefix, so `seo.gulagi.com/usasglobal` cannot shadow the root project on `seo.gulagi.com`. An explicit `?project=<slug>` still wins.
+- **Gulagi's `publishing_url`** is now `https://gulagi.com` (was `https://docs.gulagi.com`).
+- **Cron Worker renamed to `gulagi-cron-worker`** in `cron-worker/wrangler.jsonc` to match the deployment; `BLOG_URL` also derives the tick endpoint (optional `TICK_URL` overrides).
+
 ## 1.2.0 — 2026-09-12
 
 ### Added

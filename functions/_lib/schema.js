@@ -610,6 +610,12 @@ CREATE INDEX IF NOT EXISTS idx_trend_topics_project ON trend_topics(project_id, 
 ALTER TABLE ai_usage ADD COLUMN project_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_ai_usage_project ON ai_usage(project_id, created_at DESC);
 
+-- Per-project public branding. Empty/NULL falls back to the global
+-- SITE_NAME / SITE_DESCRIPTION / SITE_LOGO_URL env values.
+ALTER TABLE projects ADD COLUMN site_name TEXT;
+ALTER TABLE projects ADD COLUMN site_description TEXT;
+ALTER TABLE projects ADD COLUMN logo_url TEXT;
+
 
 
 `;

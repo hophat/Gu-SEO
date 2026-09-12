@@ -11,6 +11,7 @@ import { onPublish as gscOnPublish } from '../../../_lib/google_indexing.js';
 import { syncSitemapAliases } from '../../../_lib/links/aliases.js';
 import { storeEmbedding } from '../../../_lib/dedup.js';
 import { scorePost } from '../../../_lib/quality.js';
+import { publicBaseFor } from '../../../_lib/project_scope.js';
 
 const WEEKLY_CAP = 2;
 
@@ -154,9 +155,9 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
     `UPDATE refresh_jobs SET status='published', updated_at=? WHERE id=?`
   ).bind(t, jobId).run();
 
-  const host = new URL(request.url).hostname;
-  const blogHost = host === 'gu-seo.pages.dev' ? 'gulagi.com' : host;
-  const newUrls = [`https://${blogHost}/blog`, `https://${blogHost}/blog/${newSlug}`];
+  const base = await publicBaseFor(env, post.project_id || null, request);
+  const blogHost = new URL(base).hostname;
+  const newUrls = [`${base}/blog`, `${base}/blog/${newSlug}`];
   waitUntil(pingIndexNow(env, newUrls, request, blogHost).catch(() => {}));
   waitUntil(gscOnPublish(env, newUrls).catch(() => {}));
   waitUntil(syncSitemapAliases(env).catch(() => {}));

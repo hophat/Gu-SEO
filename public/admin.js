@@ -2306,15 +2306,22 @@
     return 'https://' + location.host;
   }
 
-  // Projects served from a shared host live under /<slug>/… instead of a
-  // dedicated hostname, so every public URL is origin + /<slug>.
   function activeProjectSlug() {
     return window.__psActiveProject?.slug || '';
   }
 
+  // Public base for the active project's blog: origin + optional /<slug>
+  // path prefix, derived from its publishing_url (or website_url).
   function activeProjectBase() {
-    const slug = activeProjectSlug();
-    return activeProjectOrigin() + (slug ? '/' + slug : '');
+    const project = window.__psActiveProject;
+    const raw = project?.publishing_url || project?.website_url || '';
+    try {
+      if (raw) {
+        const u = new URL(raw);
+        return u.origin + u.pathname.replace(/\/+$/, '');
+      }
+    } catch { /* malformed url */ }
+    return 'https://' + location.host;
   }
 
   function renderWidgetSnippet() {

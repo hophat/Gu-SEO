@@ -54,7 +54,7 @@ export function cosine(a, b) {
 //     scored: [{slug,title,score}] }
 //
 // `scored` lists the top 5 most-similar existing posts for debugging.
-export async function checkDuplicate(env, { title, angle }) {
+export async function checkDuplicate(env, { title, angle, projectId = null }) {
   if (!env?.AI || !env?.DB) {
     // Best-effort: if AI binding missing, never block.
     return { duplicate: false, similarity: 0, against: null, scored: [], skipped: 'no_ai_binding' };
@@ -64,12 +64,20 @@ export async function checkDuplicate(env, { title, angle }) {
   try { candidateVec = (await embed(env, candidate)).vector; }
   catch (e) { return { duplicate: false, similarity: 0, against: null, scored: [], error: String(e?.message || e) }; }
 
-  const rows = await env.DB.prepare(
-    `SELECT slug, title, meta_description, embedding
-       FROM blog_posts
-      WHERE status = 'published' AND embedding IS NOT NULL
-      ORDER BY published_at DESC LIMIT ?`
-  ).bind(RECENT_POSTS_TO_CHECK).all().catch(() => ({ results: [] }));
+  const rows = projectId
+    ? await env.DB.prepare(
+        `SELECT slug, title, meta_description, embedding
+           FROM blog_posts
+          WHERE status = 'published' AND embedding IS NOT NULL
+            AND (project_id = ? OR project_id IS NULL)
+          ORDER BY published_at DESC LIMIT ?`
+      ).bind(projectId, RECENT_POSTS_TO_CHECK).all().catch(() => ({ results: [] }))
+    : await env.DB.prepare(
+        `SELECT slug, title, meta_description, embedding
+           FROM blog_posts
+          WHERE status = 'published' AND embedding IS NOT NULL
+          ORDER BY published_at DESC LIMIT ?`
+      ).bind(RECENT_POSTS_TO_CHECK).all().catch(() => ({ results: [] }));
 
   const scored = [];
   for (const r of (rows.results || [])) {
@@ -98,12 +106,12 @@ export async function checkDuplicate(env, { title, angle }) {
 //   - tries: how many candidates we burned through
 //   - fallback: true if all candidates were duplicates and we picked the
 //               least-similar one anyway (logged so cron keeps publishing)
-export async function pickNonDuplicate(env, pickFn, { maxTries = 5 } = {}) {
+export async function pickNonDuplicate(env, pickFn, { maxTries = 5, projectId = null } = {}) {
   const burned = [];
   for (let i = 0; i < maxTries; i++) {
     const topic = await pickFn();
     if (!topic) break;
-    const dup = await checkDuplicate(env, { title: topic.angle, angle: topic.angle });
+    const dup = await checkDuplicate(env, { title: topic.angle, angle: topic.angle, projectId });
     if (!dup.duplicate) {
       return { topic, dup, tries: i + 1, fallback: false };
     }

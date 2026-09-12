@@ -46,14 +46,17 @@ export async function upsertProject(env, projectData) {
   if (!slug) throw new Error('Project slug is required');
 
   await env.DB.prepare(
-    `INSERT INTO projects (id, slug, name, description, website_url, publishing_url, language, timezone, status, approval_mode, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO projects (id, slug, name, description, website_url, publishing_url, site_name, site_description, logo_url, language, timezone, status, approval_mode, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        slug = excluded.slug,
        name = excluded.name,
        description = excluded.description,
        website_url = excluded.website_url,
        publishing_url = excluded.publishing_url,
+       site_name = excluded.site_name,
+       site_description = excluded.site_description,
+       logo_url = excluded.logo_url,
        language = excluded.language,
        timezone = excluded.timezone,
        status = excluded.status,
@@ -66,6 +69,9 @@ export async function upsertProject(env, projectData) {
     projectData.description || '',
     projectData.website_url || '',
     projectData.publishing_url || '',
+    projectData.site_name || null,
+    projectData.site_description || null,
+    projectData.logo_url || null,
     projectData.language || 'vi',
     projectData.timezone || 'Asia/Ho_Chi_Minh',
     projectData.status || 'active',

@@ -56,15 +56,16 @@ function buildPlannerPrompt(brand, days, recentTitles) {
   ].filter(Boolean).join('\n');
 }
 
-async function recentTitleList(env, limit = 40) {
+async function recentTitleList(env, limit = 40, projectId = null) {
+  const pf = projectId ? ` AND (project_id = ? OR project_id IS NULL)` : '';
   const recent = [];
   const recentPosts = await env.DB.prepare(
-    `SELECT title FROM blog_posts WHERE status='published' ORDER BY published_at DESC LIMIT ?`
-  ).bind(limit).all().catch(() => ({ results: [] }));
+    `SELECT title FROM blog_posts WHERE status='published'${pf} ORDER BY published_at DESC LIMIT ?`
+  ).bind(...(projectId ? [projectId, limit] : [limit])).all().catch(() => ({ results: [] }));
   const futureSlots = await env.DB.prepare(
     `SELECT title FROM content_calendar
-      WHERE status IN ('scheduled','generating','draft') ORDER BY scheduled_for ASC LIMIT ?`
-  ).bind(limit).all().catch(() => ({ results: [] }));
+      WHERE status IN ('scheduled','generating','draft')${pf} ORDER BY scheduled_for ASC LIMIT ?`
+  ).bind(...(projectId ? [projectId, limit] : [limit])).all().catch(() => ({ results: [] }));
   for (const r of (recentPosts.results || [])) recent.push(r.title);
   for (const r of (futureSlots.results || [])) recent.push(r.title);
   return recent;
@@ -174,8 +175,26 @@ export async function planCalendar(env, { days = 28, replace = false, preferredP
 // pass) and returns the freshly-inserted slot row. Cron uses this when
 // it asks `from_calendar:true` and finds the cupboard bare. Cheap: one
 // LLM call, no operator interaction.
-export async function planSingleForToday(env, { preferredProvider = '', source = 'cron-jit' } = {}) {
-  const settings = await loadSettings(env);
+export async function planSingleForToday(env, { preferredProvider = '', source = 'cron-jit', projectId = null } = {}) {
+  let settings = await loadSettings(env);
+  if (projectId && env?.DB?.prepare) {
+    const row = await env.DB.prepare(
+      `SELECT business_type, tone, audience, key_themes, topics_to_avoid, service_area, cta
+         FROM project_brands WHERE project_id = ? LIMIT 1`
+    ).bind(projectId).first().catch(() => null);
+    if (row) {
+      settings = {
+        ...settings,
+        brand_business_type:   row.business_type,
+        brand_voice_tone:      row.tone,
+        brand_target_audience: row.audience,
+        brand_key_themes:      row.key_themes,
+        brand_topics_to_avoid: row.topics_to_avoid,
+        brand_service_area:    row.service_area,
+        brand_cta:             row.cta,
+      };
+    }
+  }
   if (!settings.brand_business_type && !settings.brand_target_audience) {
     // No brand DNA = no useful plan. Caller should fall back to legacy
     // pickNextTopic() instead of erroring.
@@ -183,14 +202,19 @@ export async function planSingleForToday(env, { preferredProvider = '', source =
   }
   const today = isoDate(new Date());
   // If a slot already exists for today, don't double-up.
-  const existing = await env.DB.prepare(
-    `SELECT id FROM content_calendar WHERE scheduled_for = ? AND status='scheduled' LIMIT 1`
-  ).bind(today).first().catch(() => null);
+  const existing = projectId
+    ? await env.DB.prepare(
+        `SELECT id FROM content_calendar WHERE scheduled_for = ? AND status='scheduled'
+           AND (project_id = ? OR project_id IS NULL) LIMIT 1`
+      ).bind(today, projectId).first().catch(() => null)
+    : await env.DB.prepare(
+        `SELECT id FROM content_calendar WHERE scheduled_for = ? AND status='scheduled' LIMIT 1`
+      ).bind(today).first().catch(() => null);
   if (existing) {
     return env.DB.prepare(`SELECT * FROM content_calendar WHERE id = ?`).bind(existing.id).first();
   }
 
-  const prompt = buildPlannerPrompt(settings, 1, await recentTitleList(env, 30));
+  const prompt = buildPlannerPrompt(settings, 1, await recentTitleList(env, 40, projectId));
   let out;
   try {
     out = await callRawLLM(env, prompt, {
@@ -208,10 +232,10 @@ export async function planSingleForToday(env, { preferredProvider = '', source =
   const now = nowSec();
   await env.DB.prepare(
     `INSERT INTO content_calendar
-       (id, scheduled_for, title, primary_keyword, angle, status, source, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'scheduled', 'jit', ?, ?)`
+       (id, project_id, scheduled_for, title, primary_keyword, angle, status, source, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'scheduled', 'jit', ?, ?)`
   ).bind(
-    id, today, title,
+    id, projectId || null, today, title,
     String(idea?.primary_keyword || '').trim().slice(0, 120) || null,
     String(idea?.angle || '').trim().slice(0, 500) || null,
     now, now,

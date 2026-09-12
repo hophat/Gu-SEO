@@ -22,12 +22,19 @@ async function loadSlot(env, id) {
   ).bind(id).first().catch(() => null);
 }
 
-async function nextDueSlot(env) {
-  return env.DB.prepare(
-    `SELECT * FROM content_calendar
-      WHERE status = 'scheduled' AND scheduled_for <= ?
-      ORDER BY scheduled_for ASC, created_at ASC LIMIT 1`
-  ).bind(todayUtc()).first().catch(() => null);
+async function nextDueSlot(env, projectId) {
+  return projectId
+    ? env.DB.prepare(
+        `SELECT * FROM content_calendar
+          WHERE status = 'scheduled' AND scheduled_for <= ?
+            AND (project_id = ? OR project_id IS NULL)
+          ORDER BY scheduled_for ASC, created_at ASC LIMIT 1`
+      ).bind(todayUtc(), projectId).first().catch(() => null)
+    : env.DB.prepare(
+        `SELECT * FROM content_calendar
+          WHERE status = 'scheduled' AND scheduled_for <= ?
+          ORDER BY scheduled_for ASC, created_at ASC LIMIT 1`
+      ).bind(todayUtc()).first().catch(() => null);
 }
 
 export const onRequestPost = async ({ request, env }) => {
@@ -35,6 +42,9 @@ export const onRequestPost = async ({ request, env }) => {
   let body = {};
   try { body = await request.json(); } catch { /* empty body ok */ }
 
+  // A cron run names the project explicitly; an admin click may rely on
+  // the slot it claims. Either way the job must land in a project bucket.
+  let projectId = String(body.project_id || '').trim() || null;
   let topic = null;
   let slot  = null;
 
@@ -45,17 +55,19 @@ export const onRequestPost = async ({ request, env }) => {
       return json(409, { error: 'slot_not_runnable', detail: 'status=' + slot.status });
     }
   } else if (body.from_calendar) {
-    slot = await nextDueSlot(env);
+    slot = await nextDueSlot(env, projectId);
     // Empty calendar? Plan one fresh idea for today on the fly. Keeps
     // the daily cron self-healing — even if the operator forgets to
     // re-plan, the next run still produces something on-brand.
     if (!slot) {
-      slot = await planSingleForToday(env, { source: 'cron-jit' }).catch(() => null);
+      slot = await planSingleForToday(env, { source: 'cron-jit', projectId }).catch(() => null);
     }
     // Still nothing? Fall through to legacy topic picker.
   } else if (body.topic_key && body.angle) {
     topic = { key: String(body.topic_key), angle: String(body.angle) };
   }
+
+  if (!projectId && slot?.project_id) projectId = slot.project_id;
 
   if (slot) {
     topic = {
@@ -76,13 +88,13 @@ export const onRequestPost = async ({ request, env }) => {
   // Set body.skip_dedup:true to bypass entirely (useful for tests).
   let dupInfo = null;
   if (!body.skip_dedup && !topic && !slot) {
-    const pick = await pickNonDuplicate(env, () => pickNextTopic(env), { maxTries: 5 });
+    const pick = await pickNonDuplicate(env, () => pickNextTopic(env), { maxTries: 5, projectId });
     if (pick.topic) {
       topic = pick.topic;
       dupInfo = { similarity: pick.dup?.similarity, fallback: pick.fallback, tries: pick.tries, against: pick.dup?.against };
     }
   } else if (!body.skip_dedup && topic) {
-    const dup = await checkDuplicate(env, { title: topic.key, angle: topic.angle });
+    const dup = await checkDuplicate(env, { title: topic.key, angle: topic.angle, projectId });
     dupInfo = { similarity: dup.similarity, duplicate: dup.duplicate, against: dup.against };
     // Warn-only for operator-chosen topics.
     if (dup.duplicate) {
@@ -92,12 +104,16 @@ export const onRequestPost = async ({ request, env }) => {
     }
   }
 
-  if (!topic) topic = await pickNextTopic(env);
+  if (!topic) {
+    // The legacy topic pool is Gulagi-only; never use it for a named
+    // project or the post lands in the wrong tenant, off-brand.
+    if (projectId) return json(503, { error: 'no_project_topic', detail: 'no due calendar slot and no brand DNA for this project' });
+    topic = await pickNextTopic(env);
+  }
   if (!topic) return json(500, { error: 'no_topic_available' });
 
   const id = newId();
   const t  = nowSec();
-  const projectId = body.project_id || null;
   await env.DB.prepare(
     `INSERT INTO blog_jobs (id, status, topic_key, topic_angle, project_id, created_at, updated_at)
      VALUES (?, 'created', ?, ?, ?, ?, ?)`

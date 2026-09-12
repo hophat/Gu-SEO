@@ -29,7 +29,7 @@ export async function resolveProjectByHost(env, host, pathname = '/') {
   if (cached && cached.host === target && cached.path === pathname) return cached.project;
 
   const rows = await env.DB.prepare(
-    `SELECT id, slug, name, website_url, publishing_url FROM projects WHERE status = 'active'`
+    `SELECT id, slug, name, website_url, publishing_url, site_name, site_description, logo_url FROM projects WHERE status = 'active'`
   ).all().catch(() => ({ results: [] }));
 
   // A project is addressed either by a dedicated host or by a path prefix
@@ -68,9 +68,31 @@ export async function resolveProjectBySlug(env, slug) {
   const clean = String(slug || '').trim().toLowerCase();
   if (!clean || !/^[a-z0-9][a-z0-9-]{0,60}$/.test(clean)) return null;
   const row = await env?.DB?.prepare(
-    `SELECT id, slug, name, website_url, publishing_url FROM projects WHERE slug = ? LIMIT 1`
+    `SELECT id, slug, name, website_url, publishing_url, site_name, site_description, logo_url FROM projects WHERE slug = ? LIMIT 1`
   ).bind(clean).first().catch(() => null);
   return row || null;
 }
 
 export { normalizeHost };
+
+// Canonical public base (origin + /<slug> prefix) for a project's pages,
+// so IndexNow/GSC pings advertise the URL that actually serves the page.
+// Falls back to the request host, mapping the internal Pages host back
+// to the public site.
+export async function publicBaseFor(env, projectId, request) {
+  let fallback = '';
+  try {
+    const host = requestHost(request);
+    fallback = `https://${host === 'gu-seo.pages.dev' ? 'gulagi.com' : host}`;
+  } catch { fallback = ''; }
+
+  if (!projectId) return fallback;
+  const row = await env?.DB?.prepare?.(
+    `SELECT publishing_url, website_url FROM projects WHERE id = ? LIMIT 1`
+  )?.bind?.(projectId)?.first?.()?.catch(() => null);
+  const raw = row?.publishing_url || row?.website_url || '';
+  try {
+    const u = new URL(raw);
+    return u.origin + u.pathname.replace(/\/+$/, '');
+  } catch { return fallback; }
+}

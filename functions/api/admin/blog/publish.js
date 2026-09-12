@@ -9,6 +9,7 @@ import { storeEmbedding } from '../../../_lib/dedup.js';
 import { scorePost, statusForScore } from '../../../_lib/quality.js';
 import { getProject } from '../../../_lib/projects.js';
 import { dispatchPublication } from '../../../_lib/publishing/publisher.js';
+import { publicBaseFor } from '../../../_lib/project_scope.js';
 
 export const onRequestPost = async ({ request, env, waitUntil }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -69,10 +70,9 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
   // they crawl. The embedding is also deferred; we'll re-embed when
   // the post is force-published.
   if (finalStatus === 'published') {
-    const host = new URL(request.url).hostname;
-    const isBlogDomain = host === 'gu-seo.pages.dev';
-    const blogHost = isBlogDomain ? 'gulagi.com' : host;
-    const newUrls = [`https://${blogHost}/blog`, `https://${blogHost}/blog/${job.slug}`];
+    const base = await publicBaseFor(env, job.project_id || null, request);
+    const newUrls = [`${base}/blog`, `${base}/blog/${job.slug}`];
+    const blogHost = new URL(base).hostname;
     waitUntil(pingIndexNow(env, newUrls, request, blogHost).catch(() => {}));
     waitUntil(gscOnPublish(env, newUrls).catch(() => {}));
     waitUntil(syncSitemapAliases(env).catch(() => {}));

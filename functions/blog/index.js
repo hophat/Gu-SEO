@@ -65,8 +65,11 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
 
   const settings = await loadSettings(env).catch(() => ({}));
   const isVi = true;
-  const siteName = env.SITE_NAME || settings.site_name || 'Gulagi';
-  const siteDesc = env.SITE_DESCRIPTION || settings.site_description ||
+  const homeHost = (() => { try { return new URL(project?.website_url || '').hostname; } catch { return ''; } })();
+  const isGulagi = !project || !homeHost || /(^|\.)gulagi\.com$/.test(homeHost);
+  const homeUrl = project?.website_url || 'https://gulagi.com';
+  const siteName = project?.site_name || env.SITE_NAME || settings.site_name || 'Gulagi';
+  const siteDesc = project?.site_description || env.SITE_DESCRIPTION || settings.site_description ||
                    (isVi ? 'Bài viết và giải pháp phát triển kinh doanh từ Gulagi.' : `Articles from ${siteName}.`);
 
   const items = posts.map((p, i) => {
@@ -216,13 +219,13 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
 <body>
 <header class="site-header">
   <div class="header-inner">
-    <a class="header-brand" href="https://gulagi.com">
-      <span class="header-logo">Gulagi</span>
+    <a class="header-brand" href="${esc(homeUrl)}">
+      <span class="header-logo">${esc(siteName)}</span>
     </a>
     <nav class="header-nav">
-      <a href="https://gulagi.com">Trang chủ</a>
+      <a href="${esc(homeUrl)}">Trang chủ</a>
       <a href="${bp}/blog" class="active">Blog</a>
-      <a href="https://gulagi.com" class="header-cta">Tạo website ngay</a>
+      ${isGulagi ? `<a href="${esc(homeUrl)}" class="header-cta">Tạo website ngay</a>` : ''}
     </nav>
   </div>
 </header>
@@ -379,16 +382,14 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-brand">
-      <strong>Gulagi</strong> — Tạo website cho quán từ Google Maps
+      <strong>${esc(siteName)}</strong> — ${esc(siteDesc)}
     </div>
     <div class="footer-links">
-      <a href="https://gulagi.com">Trang chủ</a>
-      <a href="https://gulagi.com">Tạo website</a>
+      <a href="${esc(homeUrl)}">Trang chủ</a>
       <a href="${bp}/blog">Blog</a>
-      <a href="https://gulagi.com/faq">FAQ</a>
-      <a href="mailto:gulagi.com@gmail.com">Liên hệ</a>
+      <a href="${bp}/feed.xml">RSS</a>
     </div>
-    <div class="footer-copy">© ${new Date().getFullYear()} Gulagi. Bảo lưu mọi quyền.</div>
+    <div class="footer-copy">© ${new Date().getFullYear()} ${esc(siteName)}. Bảo lưu mọi quyền.</div>
   </div>
 </footer>
 </body>

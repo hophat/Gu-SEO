@@ -1,27 +1,26 @@
 // pages-seo cron Worker. Pages Functions kill background work after the
-// response closes, so we keep all multi-step orchestration in this Worker
-// — each step is a short HTTP call back to the Pages app, well within the
-// 30s subrequest budget.
+// response closes, so each schedule makes ONE short call to
+// /api/admin/cron/tick — that endpoint fans the task out across every
+// active project and runs the multi-step chain server-side, well within
+// the 30s subrequest budget.
 //
 // Cron schedules:
-//   - 0 8 * * *         daily blog start (or resume any draft first)
-//   - 0 10,14,18 * * *  retry-only windows for unfinished drafts
-//   - 0 9 * * *         programmatic-SEO batch (10 keywords per run)
-//   - 0 7 * * 1         weekly content refresh (Phase 2: max 2 rewrites)
+//   - 0 8 * * *         daily blog post for every active project
+//   - 0 9 * * *         programmatic-SEO batch (one page per project)
+//   - 0 7 * * 1         weekly content refresh (per project)
 //
-// Secrets: BLOG_URL, PROG_URL, ADMIN_TOKEN.
+// Secrets: ADMIN_TOKEN, and either TICK_URL or BLOG_URL
+// (BLOG_URL = https://<host>/api/admin/blog — TICK_URL is derived from it).
 
 export default {
   async scheduled(event, env, ctx) {
     const cron = event.cron || '';
     if (cron === '0 8 * * *') {
-      ctx.waitUntil(runBlogChain(env, 'daily', { resumeOnly: false }));
-    } else if (cron === '0 10,14,18 * * *') {
-      ctx.waitUntil(runBlogChain(env, 'retry', { resumeOnly: true }));
+      ctx.waitUntil(tick(env, 'blog', { source: 'daily' }));
     } else if (cron === '0 9 * * *') {
-      ctx.waitUntil(runProgrammaticBatch(env, 'daily_prog', { limit: 10 }));
+      ctx.waitUntil(tick(env, 'prog', { source: 'daily_prog', limit: 10 }));
     } else if (cron === '0 7 * * 1') {
-      ctx.waitUntil(runRefreshBatch(env, 'weekly_refresh', { limit: 2 }));
+      ctx.waitUntil(tick(env, 'refresh', { source: 'weekly_refresh', limit: 2 }));
     }
   },
 
@@ -33,15 +32,11 @@ export default {
 
     let result;
     if (url.pathname === '/run/blog') {
-      result = await runBlogChain(env, 'manual', { resumeOnly: false });
-    } else if (url.pathname === '/run/blog/retry') {
-      result = await runBlogChain(env, 'manual', { resumeOnly: true });
+      result = await tick(env, 'blog', { source: 'manual' });
     } else if (url.pathname === '/run/prog') {
-      const limit = parseInt(url.searchParams.get('limit'), 10) || 5;
-      result = await runProgrammaticBatch(env, 'manual', { limit });
+      result = await tick(env, 'prog', { source: 'manual', limit: parseInt(url.searchParams.get('limit'), 10) || 10 });
     } else if (url.pathname === '/run/refresh') {
-      const limit = parseInt(url.searchParams.get('limit'), 10) || 2;
-      result = await runRefreshBatch(env, 'manual', { limit });
+      result = await tick(env, 'refresh', { source: 'manual', limit: parseInt(url.searchParams.get('limit'), 10) || 2 });
     } else {
       return new Response('not found', { status: 404 });
     }
@@ -49,9 +44,19 @@ export default {
   },
 };
 
-async function call(env, url, body = '{}', method = 'POST') {
+function tickUrl(env) {
+  if (env.TICK_URL) return env.TICK_URL.replace(/\/+$/, '');
+  const base = (env.BLOG_URL || '').replace(/\/+$/, '');
+  if (!base) return '';
+  return base.replace(/\/blog$/, '') + '/cron/tick';
+}
+
+async function tick(env, task, { source = 'cron', limit = 0 } = {}) {
+  const url = tickUrl(env);
+  if (!url || !env.ADMIN_TOKEN) return { ok: false, error: 'missing_config', task, source };
+
   const init = {
-    method,
+    method: 'POST',
     headers: {
       'Authorization': `Bearer ${env.ADMIN_TOKEN}`,
       'Content-Type': 'application/json',
@@ -59,78 +64,12 @@ async function call(env, url, body = '{}', method = 'POST') {
       // apply the cron budget hard-stop (admin clicks aren't gated).
       'X-Source-Cron': '1',
     },
+    body: JSON.stringify({ task, limit }),
   };
-  if (method !== 'GET' && method !== 'HEAD') init.body = body;
+
   const r = await fetch(url, init);
   const text = await r.text();
-  let parsed = null;
-  try { parsed = JSON.parse(text); } catch { /* not json */ }
-  return { ok: r.ok, status: r.status, body: parsed || text.slice(0, 500) };
-}
-
-async function runBlogChain(env, source, { resumeOnly = false } = {}) {
-  const base = (env.BLOG_URL || '').replace(/\/+$/, '');
-  if (!base || !env.ADMIN_TOKEN) return { ok: false, error: 'missing_config', source };
-
-  // Try to resume oldest draft first.
-  const drafts = await call(env, `${base}/jobs`, null, 'GET').catch(() => null);
-  const oldest = drafts?.body?.jobs?.[drafts.body.jobs.length - 1];
-  let jobId;
-  let resumed = false;
-  if (oldest && oldest.status !== 'published') {
-    jobId = oldest.id;
-    resumed = true;
-    await call(env, `${base}/retry-job`, JSON.stringify({ id: jobId })).catch(() => {});
-  } else if (resumeOnly) {
-    return { ok: true, source, resumed: false, no_op: true };
-  } else {
-    // Prefer the next due calendar slot; falls back to the legacy
-    // topic picker on the server side if no slot is due.
-    const startR = await call(env, `${base}/start`, JSON.stringify({ from_calendar: true }));
-    jobId = startR?.body?.job_id;
-    if (!startR.ok || !jobId) return { ok: false, step: 'start', source, ...startR };
-  }
-  const payload = JSON.stringify({ job_id: jobId });
-  const textR = await call(env, `${base}/text`, payload);
-  if (!textR.ok) return { ok: false, step: 'text', job_id: jobId, source, resumed, ...textR };
-  const imgR = await call(env, `${base}/image`, payload);
-  if (!imgR.ok) return { ok: false, step: 'image', job_id: jobId, source, resumed, ...imgR };
-  const pubR = await call(env, `${base}/publish`, payload);
-  if (!pubR.ok) return { ok: false, step: 'publish', job_id: jobId, source, resumed, ...pubR };
-  return { ok: true, job_id: jobId, slug: pubR.body?.slug, source, resumed };
-}
-
-async function runProgrammaticBatch(env, source, { limit = 10 } = {}) {
-  const url = env.PROG_URL;
-  if (!url || !env.ADMIN_TOKEN) return { ok: false, error: 'missing_config', source };
-  const results = [];
-  for (let i = 0; i < limit; i++) {
-    const r = await call(env, url);
-    results.push({ step: i, status: r.status, body: r.body });
-    if (r.body && r.body.drained) break;
-    if (!r.ok) break; // stop on the first hard failure; cron can retry next window
-  }
-  return { ok: true, source, generated: results.length, results };
-}
-
-// Weekly content refresh (Phase 2). Idempotent: the scan endpoint
-// skips posts with open jobs, the run endpoint is idempotent on
-// published jobs, and the server enforces max 2 refreshes per week.
-// One attempt per job here — failures stay visible in admin + audit
-// for the next window instead of burning budget on blind retries.
-async function runRefreshBatch(env, source, { limit = 2 } = {}) {
-  const base = (env.BLOG_URL || '').replace(/\/+$/, '');
-  if (!base || !env.ADMIN_TOKEN) return { ok: false, error: 'missing_config', source };
-  const adminBase = base.replace(/\/blog$/, '') || base;
-  const scanR = await call(env, `${adminBase}/refresh/scan`, JSON.stringify({ limit }));
-  if (!scanR.ok) return { ok: false, step: 'scan', source, ...scanR };
-  const jobs = scanR.body?.jobs || [];
-  const results = [];
-  for (const j of jobs.slice(0, limit)) {
-    const r = await call(env, `${adminBase}/refresh/run`, JSON.stringify({ job_id: j.job_id }));
-    results.push({ job_id: j.job_id, slug: j.slug, status: r.status, body: r.body });
-    if (r.status === 429) break; // weekly cap reached — stop gracefully
-    if (!r.ok) break; // stop on first hard failure; next window retries
-  }
-  return { ok: true, source, scanned: jobs.length, refreshed: results.length, results };
+  let body = null;
+  try { body = JSON.parse(text); } catch { body = text.slice(0, 500); }
+  return { ok: r.ok, status: r.status, task, source, body };
 }

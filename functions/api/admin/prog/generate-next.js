@@ -12,6 +12,7 @@ import { sanitiseMarkdownLinks } from '../../../_lib/links/sanitise.js';
 import { buildAliasMap } from '../../../_lib/links/aliases.js';
 import { loadSettings } from '../../../_lib/settings.js';
 import { checkBudget } from '../../../_lib/usage.js';
+import { publicBaseFor } from '../../../_lib/project_scope.js';
 
 export const onRequestPost = async ({ request, env, waitUntil }) => {
   const auth = await requireAdminAsync(env, request);
@@ -185,9 +186,8 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
 
   // Only ping IndexNow when we actually published the page. Hidden
   // dupes don't need (or want) a crawl.
-  const host = new URL(request.url).hostname;
   if (publishStatus === 'published') {
-    const newUrls = [`https://${host}/p/${slug}`];
+    const newUrls = [`${await publicBaseFor(env, pid, request)}/p/${slug}`];
     waitUntil(pingIndexNow(env, newUrls, request).catch(() => {}));
     // Google Search Console: sitemap re-submit + optional Indexing
     // API ping. Skips silently when no GOOGLE_SA_JSON is in vault.

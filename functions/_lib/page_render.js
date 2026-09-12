@@ -3,12 +3,19 @@ import { esc } from './util.js';
 
 const HERO_W = 1200, HERO_H = 630;
 
-function brand(env) {
+function brand(env, project = null) {
+  let homeHost = '';
+  try { homeHost = new URL(project?.website_url || '').hostname; } catch { /* no website_url */ }
+  // The showcase CTAs (maps builder + lead magnet) are Gulagi-specific
+  // copy, so only the project that actually owns gulagi.com renders them.
+  const isGulagi = !project || !homeHost || /(^|\.)gulagi\.com$/.test(homeHost);
   return {
-    name: env?.SITE_NAME || 'Gulagi',
-    description: env?.SITE_DESCRIPTION || 'Tạo website cho quán từ Google Maps',
-    logoUrl: env?.SITE_LOGO_URL || null,
+    name: project?.site_name || env?.SITE_NAME || 'Gulagi',
+    description: project?.site_description || env?.SITE_DESCRIPTION || 'Tạo website cho quán từ Google Maps',
+    logoUrl: project?.logo_url || env?.SITE_LOGO_URL || null,
+    homeUrl: project?.website_url || env?.SITE_SIGNUP_URL || 'https://gulagi.com',
     ctaSignupUrl: env?.SITE_SIGNUP_URL || 'https://gulagi.com',
+    isGulagi,
   };
 }
 
@@ -106,9 +113,9 @@ function extractFAQ(post) {
   }] : [];
 }
 
-export function renderContentPage({ env, request, post, kind, related = [], settings = {}, basePath = '' }) {
+export function renderContentPage({ env, request, post, kind, related = [], settings = {}, basePath = '', project = null }) {
   const host = new URL(request.url).hostname;
-  const site = brand(env);
+  const site = brand(env, project);
   const urlPath = post.urlPath;
   const dateStr = new Date((post.published_at || 0) * 1000).toLocaleDateString('vi-VN', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -246,19 +253,21 @@ ${preloadHero}
 
 <header class="site-header">
   <div class="header-inner">
-    <a class="header-brand" href="https://gulagi.com">
-      <span class="header-logo">Gulagi</span>
+    <a class="header-brand" href="${esc(site.homeUrl)}">
+      ${site.logoUrl
+        ? `<img class="header-logo-img" src="${esc(site.logoUrl)}" alt="${esc(site.name)}" height="28" />`
+        : `<span class="header-logo">${esc(site.name)}</span>`}
     </a>
     <nav class="header-nav">
-      <a href="https://gulagi.com">Trang chủ</a>
+      <a href="${esc(site.homeUrl)}">Trang chủ</a>
       <a href="${basePath}/blog" class="active">Blog</a>
-      <a href="https://gulagi.com" class="header-cta">Tạo website ngay</a>
+      ${site.isGulagi ? `<a href="${esc(site.ctaSignupUrl)}" class="header-cta">Tạo website ngay</a>` : ''}
     </nav>
   </div>
 </header>
 
 <main class="post-shell">
-  <div class="crumb"><a href="https://gulagi.com">Trang chủ</a>${kind === 'blog' ? ` · <a href="${basePath}/blog">Blog</a>` : ''} · <span>${esc(post.title.slice(0, 40))}…</span></div>
+  <div class="crumb"><a href="${esc(site.homeUrl)}">Trang chủ</a>${kind === 'blog' ? ` · <a href="${basePath}/blog">Blog</a>` : ''} · <span>${esc(post.title.slice(0, 40))}…</span></div>
   <h1 class="post-title">${esc(post.title)}</h1>
   <div class="post-meta">
     <span class="post-date">${esc(dateStr)}</span>
@@ -268,17 +277,18 @@ ${preloadHero}
   ${heroImg}
   <article class="prose">
     ${bodyHTML}
+    ${site.isGulagi ? `
     <div class="article-cta">
       <div class="cta-box">
         <h3>Tạo website cho quán của bạn ngay</h3>
         <p>Chỉ cần dán link Google Maps, Gulagi sẽ tự động tạo website chuyên nghiệp cho quán.</p>
         <div class="mini-builder">
-          <form id="mini-builder-form" onsubmit="event.preventDefault();var url=this.querySelector('input').value.trim();if(url){window.location.href='https://gulagi.com/?maps='+encodeURIComponent(url);}">
+          <form id="mini-builder-form" onsubmit="event.preventDefault();var url=this.querySelector('input').value.trim();if(url){window.location.href='${esc(site.ctaSignupUrl)}/?maps='+encodeURIComponent(url);}">
             <input type="url" placeholder="Dán link Google Maps của quán..." required class="mini-builder-input" />
             <button type="submit" class="mini-builder-btn">Tạo web ngay →</button>
           </form>
         </div>
-        <a href="https://gulagi.com" class="cta-btn" style="margin-top:12px">Bắt đầu miễn phí →</a>
+        <a href="${esc(site.ctaSignupUrl)}" class="cta-btn" style="margin-top:12px">Bắt đầu miễn phí →</a>
       </div>
     </div>
     <div class="lead-form-box">
@@ -293,7 +303,7 @@ ${preloadHero}
         <button type="submit" id="lead-submit-btn" class="lead-submit-btn">Nhận cẩm nang miễn phí →</button>
         <div id="lead-form-msg" class="lead-form-msg" role="status" aria-live="polite"></div>
       </form>
-    </div>
+    </div>` : ''}
   </article>
   <div class="share-bar">
     <span class="share-label">Chia sẻ bài viết:</span>
@@ -321,23 +331,23 @@ ${preloadHero}
   ${relatedHTML}
 </main>
 
-<div class="sticky-cta" id="sticky-cta">
-  <a href="https://gulagi.com" class="sticky-cta-btn">Dán link Google Maps — Tạo web quán 30s</a>
-</div>
+${site.isGulagi ? `<div class="sticky-cta" id="sticky-cta">
+  <a href="${esc(site.ctaSignupUrl)}" class="sticky-cta-btn">Dán link Google Maps — Tạo web quán 30s</a>
+</div>` : ''}
 
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-brand">
-      <strong>Gulagi</strong> — Tạo website cho quán từ Google Maps
+      ${site.logoUrl
+        ? `<img src="${esc(site.logoUrl)}" alt="${esc(site.name)}" height="24" />`
+        : `<strong>${esc(site.name)}</strong>`} — ${esc(site.description)}
     </div>
     <div class="footer-links">
-      <a href="https://gulagi.com">Trang chủ</a>
-      <a href="https://gulagi.com">Tạo website</a>
+      <a href="${esc(site.homeUrl)}">Trang chủ</a>
       <a href="${basePath}/blog">Blog</a>
-      <a href="https://gulagi.com/faq">FAQ</a>
-      <a href="mailto:gulagi.com@gmail.com">Liên hệ</a>
+      <a href="${basePath}/feed.xml">RSS</a>
     </div>
-    <div class="footer-copy">© ${new Date().getFullYear()} Gulagi. Bảo lưu mọi quyền.</div>
+    <div class="footer-copy">© ${new Date().getFullYear()} ${esc(site.name)}. Bảo lưu mọi quyền.</div>
   </div>
 </footer>
 

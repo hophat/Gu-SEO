@@ -21,7 +21,8 @@ repo.
 | `public/**` | Static assets (HTML, CSS, JS for /install, /admin, /ai-setup, /repair, /docs) |
 | `schema/init.sql` | Authoritative D1 schema. **Must stay additive.** |
 | `functions/_lib/schema.js` | Bundled output of `schema/init.sql`. Regenerate with `node scripts/bundle-schema.js`. Never edit by hand. |
-| `cron-worker/` | Separate Cloudflare Worker that POSTs to `/api/admin/blog/cron-tick` daily |
+| `functions/[project]/**` | Per-project public routes on a shared host (`/<slug>/blog`, `/<slug>/p/<slug>`, `/<slug>/feed.xml`, `/<slug>/sitemap.xml`). Thin wrappers that delegate to the root renderers with `projectSlug` + `basePath`. |
+| `cron-worker/` | Separate Cloudflare Worker (`gulagi-cron-worker`) that POSTs one call per schedule to `/api/admin/cron/tick`, which fans the task out across every active project |
 | `cli/index.js` | Single-file Node installer used by `public/install/run.js` (the canonical install path) |
 | `public/install/run.{sh,py,js}` | Three identical installers shipped at `seo.benjaminb.xyz/install/run.*` |
 | `wrangler.template.toml` | Template shipped in the repo. The real `wrangler.toml` (with the user's D1/R2 ids) is **gitignored** — never commit it. |
@@ -65,6 +66,19 @@ repo.
 2. Start with `const gate = await adminGate(env, request); if (gate) return gate;`.
 3. Validate input. Return via `json()`.
 4. Log via `audit()` if it mutates anything.
+
+### Adding a project served under /<slug>/
+Projects on a shared host are addressed as `https://<host>/<slug>/…`. To
+wire one up:
+1. Set `projects.publishing_url` to the full public base, e.g.
+   `https://seo.gulagi.com/<slug>`; set `site_name` / `site_description`
+   / `logo_url` for public branding.
+2. The root renderers accept `projectSlug` + `basePath`; add a thin
+   wrapper under `functions/[project]/` that resolves the slug and
+   delegates. Wrapper import depth is `../../<file>.js` from
+   `[project]/` and `[project]/<dir>/`.
+3. Verify with `npm run build:functions` — a wrong relative import in a
+   wrapper only fails at deploy time otherwise.
 
 ### Adding a schema column
 1. Edit `schema/init.sql` with `ALTER TABLE … ADD COLUMN <name> <type> DEFAULT …`.

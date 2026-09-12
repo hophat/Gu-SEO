@@ -127,20 +127,18 @@ async function fetchEntries(env, host, project = null, basePath = '') {
       images,
     });
   }
-  if (!basePath) {
-    for (const p of (progs.results || [])) {
-      const images = p.hero_image_key ? [{
-        loc: `${site}/image/${p.hero_image_key}`,
-        title: p.title,
-        caption: p.hero_image_alt || p.meta_description || '',
-      }] : [];
-      entries.push({
-        path: `/p/${p.slug}`,
-        priority: '0.6', changefreq: 'monthly',
-        lastmod: isoDay(p.published_at),
-        images,
-      });
-    }
+  for (const p of (progs.results || [])) {
+    const images = p.hero_image_key ? [{
+      loc: `${site}/image/${p.hero_image_key}`,
+      title: p.title,
+      caption: p.hero_image_alt || p.meta_description || '',
+    }] : [];
+    entries.push({
+      path: `${basePath}/p/${p.slug}`,
+      priority: '0.6', changefreq: 'monthly',
+      lastmod: isoDay(p.published_at),
+      images,
+    });
   }
   return entries;
 }

@@ -94,7 +94,7 @@ export const onRequestGet = async ({ env, request, params }) => {
     }
   }
 
-  return new Response(renderContentPage({ env, request, post, kind: 'blog', related, settings, basePath }), {
+  return new Response(renderContentPage({ env, request, post, kind: 'blog', related, settings, basePath, project }), {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'public, max-age=600, s-maxage=3600',

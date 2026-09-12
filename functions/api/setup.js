@@ -129,7 +129,14 @@ export const onRequestPost = async ({ env, request }) => {
   //    on the one-click path we ship it bundled and run it here. Every
   //    statement is idempotent so re-runs are safe.
   for (const stmt of splitSql(SCHEMA_SQL)) {
-    await env.DB.prepare(stmt).run();
+    try {
+      await env.DB.prepare(stmt).run();
+    } catch (e) {
+      // `ALTER TABLE … ADD COLUMN` is not idempotent in SQLite, so a re-run
+      // against an already-migrated database reports "duplicate column
+      // name". Swallow only that; every other failure still propagates.
+      if (!/duplicate column name/i.test(String(e?.message || e))) throw e;
+    }
   }
 
   // 2/3. Generate secrets.

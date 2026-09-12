@@ -1,20 +1,39 @@
 // /p/<slug> — programmatic-SEO landing pages.
 import { renderContentPage } from '../_lib/page_render.js';
 import { loadSettings } from '../_lib/settings.js';
+import { resolveProjectForRequest, resolveProjectBySlug } from '../_lib/project_scope.js';
 
 export const onRequestGet = async ({ env, request, params }) => {
   const slug = String(params.slug || '').toLowerCase();
   if (!/^[a-z0-9-]+$/.test(slug)) {
     return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   }
-  const post = await env.DB.prepare(
-    `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
-            status, published_at
-       FROM prog_pages WHERE slug = ? LIMIT 1`
-  ).bind(slug).first();
+
+  const projectSlug = String(params.project || '').toLowerCase() || null;
+  const basePath = projectSlug ? `/${projectSlug}` : '';
+  let project = null;
+  if (projectSlug) {
+    project = await resolveProjectBySlug(env, projectSlug).catch(() => null);
+    if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
+  } else {
+    project = await resolveProjectForRequest(env, request).catch(() => null);
+  }
+  const projectId = project?.id || null;
+
+  const post = projectId
+    ? await env.DB.prepare(
+        `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
+                status, published_at
+           FROM prog_pages WHERE slug = ? AND project_id = ? LIMIT 1`
+      ).bind(slug, projectId).first()
+    : await env.DB.prepare(
+        `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
+                status, published_at
+           FROM prog_pages WHERE slug = ? LIMIT 1`
+      ).bind(slug).first();
   if (!post) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   if (post.status === 'hidden') return new Response('Gone', { status: 410, headers: { 'content-type': 'text/plain' } });
-  post.urlPath = '/p/' + post.slug;
+  post.urlPath = `${basePath}/p/` + post.slug;
   const settings = await loadSettings(env).catch(() => ({}));
   // See blog/[slug].js for the rationale — flag whether a default
   // cover template exists so page_render.js can route the hero src
@@ -31,7 +50,7 @@ export const onRequestGet = async ({ env, request, params }) => {
       settings._default_template_v = 0;
     }
   }
-  return new Response(renderContentPage({ env, request, post, kind: 'programmatic', settings }), {
+  return new Response(renderContentPage({ env, request, post, kind: 'programmatic', settings, basePath, project }), {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'public, max-age=600, s-maxage=3600',

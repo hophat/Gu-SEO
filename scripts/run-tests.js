@@ -169,7 +169,51 @@ async function runTests() {
   assert.equal(dataBlogJobs.project_id, projGulagi.id);
   console.log('✓ Scoped Brand DNA, Calendar, and Blog Admin APIs verified.');
 
-  console.log('\nALL TESTS PASSED SUCCESSFULLY! (6/6)');
+  // Test 7: Shared-host /<slug>/ routing + path-prefix isolation.
+  console.log('7. Verifying /<slug>/ routing and path-prefix isolation...');
+  const { resolveProjectByHost, resolveProjectBySlug, publicBaseFor } = await import('../functions/_lib/project_scope.js');
+  const { upsertProject } = await import('../functions/_lib/projects.js');
+
+  const usas = await upsertProject(env, {
+    slug: 'usasglobal', name: 'USaS Global',
+    website_url: 'https://usasglobal.edu.vn',
+    publishing_url: 'https://seo.gulagi.com/usasglobal',
+  });
+
+  // A shared host must serve the root project at / and the named project
+  // under its prefix — neither may shadow the other.
+  assert.equal((await resolveProjectByHost(env, 'seo.gulagi.com', '/blog'))?.slug, 'gulagi');
+  assert.equal((await resolveProjectByHost(env, 'seo.gulagi.com', '/usasglobal/blog'))?.slug, 'usasglobal');
+  assert.equal((await resolveProjectByHost(env, 'usasglobal.edu.vn', '/blog'))?.slug, 'usasglobal');
+  assert.equal(await resolveProjectBySlug(env, 'nope'), null);
+
+  // Public base must carry the path prefix, or IndexNow/GSC get a 404 URL.
+  assert.equal(
+    await publicBaseFor(env, usas.id, makeReq('https://seo.gulagi.com/api/admin/blog/publish')),
+    'https://seo.gulagi.com/usasglobal'
+  );
+  assert.equal(
+    await publicBaseFor(env, projGulagi.id, makeReq('https://gu-seo.pages.dev/api/admin/blog/publish')),
+    'https://docs.gulagi.com'
+  );
+
+  // Every [project] route must load and export a handler — catches the
+  // relative-import depth mistakes that otherwise only fail at deploy.
+  for (const route of [
+    '../functions/[project]/blog/index.js',
+    '../functions/[project]/blog/page/[page].js',
+    '../functions/[project]/blog/[slug].js',
+    '../functions/[project]/p/[slug].js',
+    '../functions/[project]/feed.xml.js',
+    '../functions/[project]/sitemap.xml.js',
+    '../functions/[project]/sitemap-pages.xml.js',
+  ]) {
+    const mod = await import(route);
+    assert.equal(typeof mod.onRequestGet, 'function', route + ' must export onRequestGet');
+  }
+  console.log('✓ Shared-host routing, isolation, and route wiring verified.');
+
+  console.log('\nALL TESTS PASSED SUCCESSFULLY! (7/7)');
 }
 
 runTests().catch(err => {
