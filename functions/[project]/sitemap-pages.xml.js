@@ -1,5 +1,5 @@
 // /<project>/sitemap-pages.xml — urlset for a named project on a shared host.
-import { pagesUrlset } from '../../sitemap.xml.js';
+import { pagesUrlset } from '../sitemap.xml.js';
 
 export const onRequestGet = (ctx) => pagesUrlset({
   env: ctx.env,

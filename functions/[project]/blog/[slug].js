@@ -1,5 +1,5 @@
 // /<project>/blog/<slug> — single post for a named project on a shared host.
-import { onRequestGet as renderPost } from '../../../blog/[slug].js';
+import { onRequestGet as renderPost } from '../../blog/[slug].js';
 
 export const onRequestGet = (ctx) => renderPost({
   env: ctx.env,
