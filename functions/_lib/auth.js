@@ -18,6 +18,11 @@ import { missingConfig, configError } from './config.js';
 import { SESSION_COOKIE, readCookie, verifySessionToken } from './passwords.js';
 import { getAdminToken } from './admin_token.js';
 
+// Non-existent project id used to fail closed when a project admin has
+// no assigned project: every `project_id = ?` filter then matches
+// nothing instead of accidentally matching everything.
+const DENIED_PROJECT_SENTINEL = '__denied_no_project__';
+
 // Constant-time string comparison. A plain === short-circuits on the
 // first differing byte, which leaks token prefixes through response
 // timing. The edge runtime adds jitter that makes exploitation hard,
@@ -144,12 +149,21 @@ export async function resolveTenantContext(env, request, auth) {
   }
 
   if (auth.role === 'project_admin') {
-    if (requestedProjectId && requestedProjectId !== auth.projectId) {
-      return null;
+    if (!auth.projectId) {
+      // Fail closed: a project admin with no assigned project must see
+      // nothing, not everything. The sentinel matches no row, so every
+      // `project_id = ?` filter returns an empty set.
+      return {
+        isSuperAdmin: false,
+        forbidden: true,
+        activeProjectId: DENIED_PROJECT_SENTINEL,
+        activeProjectSlug: null,
+        allowedProjectIds: [],
+      };
     }
 
     let activeProjectSlug = null;
-    if (auth.projectId && env?.DB) {
+    if (env?.DB) {
       const project = await env.DB.prepare(
         `SELECT id, slug FROM projects WHERE id = ? LIMIT 1`
       ).bind(auth.projectId).first().catch(() => null);
@@ -158,11 +172,14 @@ export async function resolveTenantContext(env, request, auth) {
       }
     }
 
+    // A project admin is always scoped to their own project, even when
+    // the request asks for a different one — never fall back to an
+    // unfiltered query.
     return {
       isSuperAdmin: false,
       activeProjectId: auth.projectId,
       activeProjectSlug,
-      allowedProjectIds: auth.projectId ? [auth.projectId] : [],
+      allowedProjectIds: [auth.projectId],
     };
   }
 
