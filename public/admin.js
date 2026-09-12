@@ -1936,7 +1936,7 @@
       setStatus('4/4 publishing…');
       const pub = await api('/api/admin/blog/publish', { method: 'POST', body: payload });
       if (pub.status !== 200) throw new Error(pub.body?.error || 'publish failed');
-      append(`published: /blog/${pub.body.slug}`);
+      append(`published: ${activeProjectBase()}/blog/${pub.body.slug}`);
 
       setStatus('Published.', 'good');
       loadPosts();
@@ -2079,7 +2079,7 @@
       const tr = document.createElement('tr');
       tr.appendChild(td(new Date((p.published_at || 0) * 1000).toLocaleDateString('en-GB')));
       const tdT = document.createElement('td'); tdT.className = 'cell-strong';
-      const a = document.createElement('a'); a.href = '/blog/' + p.slug; a.target = '_blank'; a.rel = 'noopener'; a.textContent = p.title;
+      const a = document.createElement('a'); a.href = activeProjectBase() + '/blog/' + p.slug; a.target = '_blank'; a.rel = 'noopener'; a.textContent = p.title;
       tdT.appendChild(a); tr.appendChild(tdT);
       tr.appendChild(td(p.slug));
       tr.appendChild(td(p.ai_provider || '—'));
@@ -2306,9 +2306,20 @@
     return 'https://' + location.host;
   }
 
+  // Projects served from a shared host live under /<slug>/… instead of a
+  // dedicated hostname, so every public URL is origin + /<slug>.
+  function activeProjectSlug() {
+    return window.__psActiveProject?.slug || '';
+  }
+
+  function activeProjectBase() {
+    const slug = activeProjectSlug();
+    return activeProjectOrigin() + (slug ? '/' + slug : '');
+  }
+
   function renderWidgetSnippet() {
     const sitemap = $('#sitemap-link');
-    if (sitemap) sitemap.href = activeProjectOrigin() + '/sitemap.xml';
+    if (sitemap) sitemap.href = activeProjectBase() + '/sitemap.xml';
 
     const snippetEl  = $('#widget-snippet');
     const previewEl  = $('#widget-preview-host');
@@ -2322,28 +2333,31 @@
     const optTheme   = $('#widget-opt-theme');
 
     function build() {
-      const origin = activeProjectOrigin();
+      const origin = activeProjectBase();
+      const slug   = activeProjectSlug();
       const id    = (optId?.value || 'ps-blog').trim().replace(/[^a-z0-9-]/gi, '') || 'ps-blog';
       const title = (optTitle?.value || '').trim();
       const count = Math.min(50, Math.max(1, parseInt(optCount?.value, 10) || 5));
       const theme = (optTheme?.value || 'auto');
       const titleAttr = title ? `\n  data-title="${title.replace(/"/g, '&quot;')}"` : '';
       const themeAttr = theme !== 'auto' ? `\n  data-theme="${theme}"` : '';
+      const projectAttr = slug ? `\n  data-project="${slug}"` : '';
 
       let s = '';
       if (_widgetFlavour === 'js') {
         s = `<div id="${id}"></div>\n` +
-            `<script src="${origin}/widget.js"\n` +
+            `<script src="${activeProjectOrigin()}/widget.js"\n` +
             `  data-target="#${id}"\n` +
-            `  data-count="${count}"${titleAttr}${themeAttr}\n` +
+            `  data-count="${count}"${titleAttr}${themeAttr}${projectAttr}\n` +
             `  defer><\/script>`;
       } else if (_widgetFlavour === 'iframe') {
         const qs = new URLSearchParams();
         qs.set('count', count);
         if (title) qs.set('title', title);
         if (theme !== 'auto') qs.set('theme', theme);
+        if (slug) qs.set('project', slug);
         s = `<iframe\n` +
-            `  src="${origin}/embed?${qs.toString()}"\n` +
+            `  src="${activeProjectOrigin()}/embed?${qs.toString()}"\n` +
             `  style="width:100%;border:0;min-height:480px"\n` +
             `  loading="lazy"\n` +
             `  title="${(title || 'Blog').replace(/"/g, '&quot;')}"\n` +
@@ -2378,12 +2392,13 @@
         // build, and the cache-buster forced a fresh fetch on every
         // keystroke. With the listener-binding fix below the build()
         // is rate-controlled anyway, so a normal cached load is fine.
-        sc.src = origin + '/widget.js';
+        sc.src = activeProjectOrigin() + '/widget.js';
         sc.defer = true;
         sc.dataset.target = '#' + id;
         sc.dataset.count  = String(count);
         if (title) sc.dataset.title = title;
         if (theme !== 'auto') sc.dataset.theme = theme;
+        if (slug) sc.dataset.project = slug;
         previewEl.appendChild(sc);
       }
     }

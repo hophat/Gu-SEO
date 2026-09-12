@@ -18,6 +18,7 @@
 // behaves like per_page=count.
 
 import { imageUrlFor } from '../_lib/widget_render.js';
+import { resolveProjectBySlug, resolveProjectForRequest } from '../_lib/project_scope.js';
 
 const MAX_PER_PAGE = 50;
 const MAX_Q_LENGTH = 100;
@@ -51,6 +52,32 @@ export const onRequestGet = async ({ env, request }) => {
 
   const where = ["status = 'published'"];
   const binds = [];
+
+  // Project scope. An explicit ?project=<slug> wins (that's what the
+  // embed snippet sends); an unknown slug fails closed rather than
+  // leaking every project's posts. Without the param we fall back to the
+  // request host so single-site installs keep working unchanged.
+  const requestedSlug = String(url.searchParams.get('project') || '').trim().toLowerCase();
+  if (requestedSlug) {
+    const project = await resolveProjectBySlug(env, requestedSlug);
+    if (!project) {
+      return new Response(JSON.stringify({ posts: [], total: 0, page: 1, per_page: perPage, total_pages: 1, q, tag }), {
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'cache-control': 'no-store',
+          'access-control-allow-origin': '*',
+        },
+      });
+    }
+    where.push('project_id = ?');
+    binds.push(project.id);
+  } else {
+    const project = await resolveProjectForRequest(env, request).catch(() => null);
+    if (project?.id) {
+      where.push('project_id = ?');
+      binds.push(project.id);
+    }
+  }
 
   if (q) {
     where.push("(title LIKE ? OR meta_description LIKE ? OR slug LIKE ?)");

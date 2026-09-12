@@ -1,13 +1,15 @@
 // /blog/<slug>
 import { renderContentPage } from '../_lib/page_render.js';
 import { loadSettings } from '../_lib/settings.js';
-import { resolveProjectForRequest } from '../_lib/project_scope.js';
+import { resolveProjectForRequest, resolveProjectBySlug } from '../_lib/project_scope.js';
 
 export const onRequestGet = async ({ env, request, params }) => {
   const slug = String(params.slug || '').toLowerCase();
   if (!/^[a-z0-9-]+$/.test(slug)) {
     return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   }
+  const projectSlug = String(params.project || '').toLowerCase() || null;
+  const basePath = projectSlug ? `/${projectSlug}` : '';
   // Honour slug renames: blog_post_redirects maps old_slug -> new_slug.
   // 301 transfers ranking to the new URL. Table is created on demand by
   // the admin rename endpoint; lookup degrades gracefully if missing.
@@ -16,11 +18,17 @@ export const onRequestGet = async ({ env, request, params }) => {
       `SELECT new_slug FROM blog_post_redirects WHERE old_slug = ? LIMIT 1`
     ).bind(slug).first();
     if (r?.new_slug) {
-      return Response.redirect(new URL(`/blog/${r.new_slug}`, request.url).toString(), 301);
+      return Response.redirect(new URL(`${basePath}/blog/${r.new_slug}`, request.url).toString(), 301);
     }
   } catch { /* table not yet created */ }
 
-  const project = await resolveProjectForRequest(env, request).catch(() => null);
+  let project = null;
+  if (projectSlug) {
+    project = await resolveProjectBySlug(env, projectSlug).catch(() => null);
+    if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
+  } else {
+    project = await resolveProjectForRequest(env, request).catch(() => null);
+  }
   const projectId = project?.id || null;
 
   const postSql = projectId
@@ -38,7 +46,7 @@ export const onRequestGet = async ({ env, request, params }) => {
   // 'review' posts are admin-only drafts — invisible to public visitors
   // but still listed in /admin. Treat as 404 to keep them off Google.
   if (post.status === 'review') return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
-  post.urlPath = '/blog/' + post.slug;
+  post.urlPath = `${basePath}/blog/` + post.slug;
 
   // "Read next" — three other recent posts the LLM didn't write into
   // the body. Ordered by recency for simplicity; cheaper than computing
@@ -86,7 +94,7 @@ export const onRequestGet = async ({ env, request, params }) => {
     }
   }
 
-  return new Response(renderContentPage({ env, request, post, kind: 'blog', related, settings }), {
+  return new Response(renderContentPage({ env, request, post, kind: 'blog', related, settings, basePath }), {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'public, max-age=600, s-maxage=3600',

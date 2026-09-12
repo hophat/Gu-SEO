@@ -10,20 +10,27 @@
 
 import { esc } from '../_lib/util.js';
 import { loadSettings } from '../_lib/settings.js';
-import { resolveProjectForRequest } from '../_lib/project_scope.js';
+import { resolveProjectForRequest, resolveProjectBySlug } from '../_lib/project_scope.js';
 
 // Page size for /blog and /blog/page/N. Matches the embed widget's
 // default so the SERP archive feels the same as the embed.
 // Sitemap.xml.js shares the constant via a re-import below.
 export const PAGE_SIZE = 10;
 
-export async function renderBlogIndex({ env, request, page = 1 }) {
+export async function renderBlogIndex({ env, request, page = 1, projectSlug = null, basePath = '' }) {
   const host = new URL(request.url).hostname;
   const baseUrl = `https://${host}`;
   page = Math.max(1, parseInt(page, 10) || 1);
 
-  const project = await resolveProjectForRequest(env, request).catch(() => null);
+  let project = null;
+  if (projectSlug) {
+    project = await resolveProjectBySlug(env, projectSlug).catch(() => null);
+    if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
+  } else {
+    project = await resolveProjectForRequest(env, request).catch(() => null);
+  }
   const projectId = project?.id || null;
+  const bp = basePath || (projectSlug ? `/${projectSlug}` : '');
 
   // Total + this-page rows in two queries. COUNT is cheap on D1
   // when filtered by an indexed column (status). Both queries share
@@ -86,7 +93,7 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
         ${img}
         <div class="blog-meta">
           <div class="blog-date">${esc(date)}</div>
-          <h2><a href="/blog/${esc(p.slug)}">${esc(p.title)}</a></h2>
+          <h2><a href="${bp}/blog/${esc(p.slug)}">${esc(p.title)}</a></h2>
           <p>${esc((p.meta_description || '').slice(0, 200))}</p>
         </div>
       </li>`;
@@ -94,13 +101,13 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
 
   // Canonical: page 1 is /blog (so Google merges /blog and any
   // /blog/page/1 link equity). Other pages are self-canonical.
-  const canonical = page === 1 ? `${baseUrl}/blog` : `${baseUrl}/blog/page/${page}`;
+  const canonical = page === 1 ? `${baseUrl}${bp}/blog` : `${baseUrl}${bp}/blog/page/${page}`;
 
   // rel=prev / rel=next — Google deprecated using these for indexing
   // in 2019 but still uses them as hints, and Bing + Yandex use them
   // actively. Cheap to emit, no downside.
-  const prevHref = page === 2 ? '/blog' : (page > 2 ? `/blog/page/${page - 1}` : null);
-  const nextHref = page < totalPages ? `/blog/page/${page + 1}` : null;
+  const prevHref = page === 2 ? `${bp}/blog` : (page > 2 ? `${bp}/blog/page/${page - 1}` : null);
+  const nextHref = page < totalPages ? `${bp}/blog/page/${page + 1}` : null;
   const relLinks = [
     prevHref ? `<link rel="prev" href="${prevHref}" />` : '',
     nextHref ? `<link rel="next" href="${nextHref}" />` : '',
@@ -114,7 +121,7 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
     pageNums.push(i);
   }
   const pagerLinks = pageNums.map((i) => {
-    const href = i === 1 ? '/blog' : `/blog/page/${i}`;
+    const href = i === 1 ? `${bp}/blog` : `${bp}/blog/page/${i}`;
     const aria = i === page ? ' aria-current="page"' : '';
     const cls = i === page ? 'pager-num pager-current' : 'pager-num';
     return `<a class="${cls}" href="${href}"${aria}>${i}</a>`;
@@ -153,7 +160,7 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
         url: baseUrl, name: siteName, description: siteDesc,
         potentialAction: {
           '@type': 'SearchAction',
-          target: { '@type': 'EntryPoint', urlTemplate: `${baseUrl}/blog?q={search_term_string}` },
+          target: { '@type': 'EntryPoint', urlTemplate: `${baseUrl}${bp}/blog?q={search_term_string}` },
           'query-input': 'required name=search_term_string',
         },
       },
@@ -167,7 +174,7 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
           itemListElement: posts.map((p, i) => ({
             '@type': 'ListItem',
             position: offset + i + 1,
-            url: `${baseUrl}/blog/${p.slug}`,
+            url: `${baseUrl}${bp}/blog/${p.slug}`,
             name: p.title,
           })),
         },
@@ -192,7 +199,7 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
 <link rel="canonical" href="${canonical}" />
 ${relLinks}
 ${verifyMetas}
-<link rel="alternate" type="application/rss+xml" title="${esc(siteName)} — RSS feed" href="${baseUrl}/feed.xml" />
+<link rel="alternate" type="application/rss+xml" title="${esc(siteName)} — RSS feed" href="${baseUrl}${bp}/feed.xml" />
 <meta name="robots" content="index,follow" />
 <meta property="og:title" content="${esc(titleStr)}" />
 <meta property="og:description" content="${esc(siteDesc)}" />
@@ -214,7 +221,7 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
     </a>
     <nav class="header-nav">
       <a href="https://gulagi.com">Trang chủ</a>
-      <a href="/blog" class="active">Blog</a>
+      <a href="${bp}/blog" class="active">Blog</a>
       <a href="https://gulagi.com" class="header-cta">Tạo website ngay</a>
     </nav>
   </div>
@@ -230,7 +237,7 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
          is consistent across surfaces. Falls back to the canonical
          /blog?q= URL if JavaScript is disabled — Google's
          SearchAction JSON-LD targets that URL too. -->
-    <form id="blog-search-form" role="search" action="/blog" method="GET" class="blog-search">
+    <form id="blog-search-form" role="search" action="${bp}/blog" method="GET" class="blog-search">
       <input id="blog-search-input"
              type="search" name="q"
              placeholder="${isVi ? 'Tìm kiếm bài viết…' : 'Search posts…'}"
@@ -256,6 +263,8 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
      even if the API ever returned tainted data. -->
 <script>
 (function () {
+  var PS_BP = ${JSON.stringify(bp)};
+  var PS_PROJECT = ${JSON.stringify(project?.slug || '')};
   var form  = document.getElementById('blog-search-form');
   var input = document.getElementById('blog-search-input');
   var list  = document.getElementById('blog-list');
@@ -311,7 +320,7 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
     meta.appendChild(date);
     var h2 = document.createElement('h2');
     var a  = document.createElement('a');
-    a.href = '/blog/' + encodeURIComponent(p.slug);
+    a.href = (PS_BP || '') + '/blog/' + encodeURIComponent(p.slug);
     a.textContent = p.title || '';
     h2.appendChild(a);
     meta.appendChild(h2);
@@ -333,7 +342,7 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
   function doSearch(q, hardSubmit) {
     setUrlQ(q);
     if (!q) {
-      if (hardSubmit) { location.href = '/blog'; return; }
+      if (hardSubmit) { location.href = (PS_BP || '') + '/blog'; return; }
       fetchPage('', 1);
       return;
     }
@@ -342,6 +351,7 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
 
   function fetchPage(q, page) {
     var url = '/api/widget?per_page=10&page=' + page + (q ? '&q=' + encodeURIComponent(q) : '');
+    if (PS_PROJECT) url += '&project=' + encodeURIComponent(PS_PROJECT);
     fetch(url, { credentials: 'omit' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (d) {
@@ -374,7 +384,7 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
     <div class="footer-links">
       <a href="https://gulagi.com">Trang chủ</a>
       <a href="https://gulagi.com">Tạo website</a>
-      <a href="/blog">Blog</a>
+      <a href="${bp}/blog">Blog</a>
       <a href="https://gulagi.com/faq">FAQ</a>
       <a href="mailto:gulagi.com@gmail.com">Liên hệ</a>
     </div>

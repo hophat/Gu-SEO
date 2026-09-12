@@ -12,7 +12,7 @@
 
 import { esc } from './_lib/util.js';
 import { PAGE_SIZE } from './blog/index.js';
-import { resolveProjectByHost, requestHost } from './_lib/project_scope.js';
+import { resolveProjectByHost, resolveProjectBySlug, requestHost } from './_lib/project_scope.js';
 
 const SITEMAP_NS = 'http://www.sitemaps.org/schemas/sitemap/0.9';
 const IMAGE_NS   = 'http://www.google.com/schemas/sitemap-image/1.1';
@@ -26,12 +26,12 @@ function isoDay(secOrZero) {
 // Sitemap index — points crawlers at the real urlset. We currently
 // only emit one urlset (pages); structured as an index so future
 // splits (one per N URLs) are a small change.
-function renderIndex(site, lastmod) {
+function renderIndex(site, lastmod, basePath = '') {
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<sitemapindex xmlns="${SITEMAP_NS}">`,
     '  <sitemap>',
-    `    <loc>${site}/sitemap-pages.xml</loc>`,
+    `    <loc>${site}${basePath}/sitemap-pages.xml</loc>`,
     `    <lastmod>${lastmod}</lastmod>`,
     '  </sitemap>',
     '</sitemapindex>',
@@ -61,9 +61,8 @@ ${imgs ? imgs + '\n' : ''}  </url>`;
   ].join('\n');
 }
 
-async function fetchEntries(env, host) {
+async function fetchEntries(env, host, project = null, basePath = '') {
   const site = `https://${host}`;
-  const project = await resolveProjectByHost(env, host).catch(() => null);
   const projectId = project?.id || null;
 
   const blogsSql = projectId
@@ -102,13 +101,17 @@ async function fetchEntries(env, host) {
   const totalPages = Math.max(1, Math.ceil((totalBlogsRow?.n || 0) / PAGE_SIZE));
 
   const today = isoDay(0);
-  const entries = [
-    { path: '/',     priority: '1.0', changefreq: 'weekly', lastmod: today },
-    { path: '/blog', priority: '0.9', changefreq: 'daily',  lastmod: today },
-  ];
+  // Project-scoped sitemaps list only /<slug>/blog and its posts; the
+  // landing page and /p/ routes exist on the root host only.
+  const entries = basePath
+    ? [{ path: `${basePath}/blog`, priority: '1.0', changefreq: 'daily', lastmod: today }]
+    : [
+        { path: '/',     priority: '1.0', changefreq: 'weekly', lastmod: today },
+        { path: '/blog', priority: '0.9', changefreq: 'daily',  lastmod: today },
+      ];
   // /blog/page/2, /3, … — Google indexes paginated archive pages.
   for (let i = 2; i <= totalPages; i++) {
-    entries.push({ path: `/blog/page/${i}`, priority: '0.5', changefreq: 'weekly', lastmod: today });
+    entries.push({ path: `${basePath}/blog/page/${i}`, priority: '0.5', changefreq: 'weekly', lastmod: today });
   }
 
   for (const p of (blogs.results || [])) {
@@ -118,32 +121,40 @@ async function fetchEntries(env, host) {
       caption: p.hero_image_alt || p.meta_description || '',
     }] : [];
     entries.push({
-      path: `/blog/${p.slug}`,
+      path: `${basePath}/blog/${p.slug}`,
       priority: '0.7', changefreq: 'monthly',
       lastmod: isoDay(p.published_at),
       images,
     });
   }
-  for (const p of (progs.results || [])) {
-    const images = p.hero_image_key ? [{
-      loc: `${site}/image/${p.hero_image_key}`,
-      title: p.title,
-      caption: p.hero_image_alt || p.meta_description || '',
-    }] : [];
-    entries.push({
-      path: `/p/${p.slug}`,
-      priority: '0.6', changefreq: 'monthly',
-      lastmod: isoDay(p.published_at),
-      images,
-    });
+  if (!basePath) {
+    for (const p of (progs.results || [])) {
+      const images = p.hero_image_key ? [{
+        loc: `${site}/image/${p.hero_image_key}`,
+        title: p.title,
+        caption: p.hero_image_alt || p.meta_description || '',
+      }] : [];
+      entries.push({
+        path: `/p/${p.slug}`,
+        priority: '0.6', changefreq: 'monthly',
+        lastmod: isoDay(p.published_at),
+        images,
+      });
+    }
   }
   return entries;
 }
 
-export const onRequestGet = async ({ env, request }) => {
+export const onRequestGet = async ({ env, request, params }) => {
   const host = requestHost(request);
   const site = `https://${host}`;
-  const body = renderIndex(site, isoDay(0));
+  const projectSlug = String(params?.project || '').toLowerCase() || null;
+  const basePath = projectSlug ? `/${projectSlug}` : '';
+  if (projectSlug) {
+    const project = await resolveProjectBySlug(env, projectSlug).catch(() => null);
+    if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
+  }
+  const body = renderIndex(site, isoDay(0), basePath);
   return new Response(body, {
     headers: {
       'content-type': 'application/xml; charset=utf-8',
@@ -153,10 +164,17 @@ export const onRequestGet = async ({ env, request }) => {
 };
 
 // Exported for /sitemap-pages.xml.js to reuse.
-export async function pagesUrlset({ env, request }) {
+export async function pagesUrlset({ env, request, projectSlug = null, basePath = '' }) {
   const host = requestHost(request);
   const site = `https://${host}`;
-  const entries = await fetchEntries(env, host);
+  let project = null;
+  if (projectSlug) {
+    project = await resolveProjectBySlug(env, projectSlug).catch(() => null);
+    if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
+  } else {
+    project = await resolveProjectByHost(env, host).catch(() => null);
+  }
+  const entries = await fetchEntries(env, host, project, basePath);
   const body = renderUrlset(site, entries);
   return new Response(body, {
     headers: {

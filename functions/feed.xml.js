@@ -27,13 +27,15 @@ function absUrl(request, path) {
   return u.origin + path;
 }
 
-export const onRequestGet = async ({ env, request }) => {
+export const onRequestGet = async ({ env, request, params }) => {
   const settings = await loadSettings(env).catch(() => ({}));
   const siteName = env.SITE_NAME || settings.site_name || 'pages-seo';
   const siteDesc = env.SITE_DESCRIPTION || settings.site_description ||
                    `Articles from ${siteName}.`;
-  const siteUrl = absUrl(request, '/');
-  const feedUrl = absUrl(request, '/feed.xml');
+  const projectSlug = String(params?.project || '').toLowerCase() || null;
+  const basePath = projectSlug ? `/${projectSlug}` : '';
+  const siteUrl = absUrl(request, `${basePath}/`);
+  const feedUrl = absUrl(request, `${basePath}/feed.xml`);
 
   const project = await resolveProjectForRequest(env, request).catch(() => null);
   const projectId = project?.id || null;
@@ -56,7 +58,7 @@ export const onRequestGet = async ({ env, request }) => {
   const lastBuild = posts.length ? rfc822(posts[0].published_at) : new Date().toUTCString();
 
   const items = posts.map((p) => {
-    const url = absUrl(request, '/blog/' + p.slug);
+    const url = absUrl(request, `${basePath}/blog/` + p.slug);
     return `    <item>
       <title>${esc(p.title || '')}</title>
       <link>${esc(url)}</link>

@@ -20,33 +20,57 @@ export function requestHost(request) {
   }
 }
 
-export async function resolveProjectByHost(env, host) {
+export async function resolveProjectByHost(env, host, pathname = '/') {
   if (!env?.DB) return null;
   const target = normalizeHost(host);
   if (!target) return null;
 
   const cached = env[CACHE_KEY];
-  if (cached && cached.host === target) return cached.project;
+  if (cached && cached.host === target && cached.path === pathname) return cached.project;
 
   const rows = await env.DB.prepare(
     `SELECT id, slug, name, website_url, publishing_url FROM projects WHERE status = 'active'`
   ).all().catch(() => ({ results: [] }));
 
-  let match = null;
+  // A project is addressed either by a dedicated host or by a path prefix
+  // on a shared host (seo.gulagi.com/<slug>). Longest matching path wins
+  // so the shared host's own root still resolves to the root project.
+  let match = null, matchLen = -1;
   for (const project of rows?.results || []) {
-    const hosts = [normalizeHost(project.website_url), normalizeHost(project.publishing_url)].filter(Boolean);
-    if (hosts.some((candidate) => candidate === target || target.endsWith('.' + candidate))) {
-      match = project;
-      break;
+    for (const raw of [project.website_url, project.publishing_url]) {
+      let h, p;
+      try {
+        const u = new URL(/^https?:\/\//i.test(raw || '') ? raw : `https://${raw}`);
+        h = normalizeHost(u.hostname);
+        p = u.pathname.replace(/\/+$/, '');
+      } catch { continue; }
+      if (!h) continue;
+      if (h !== target && !target.endsWith('.' + h)) continue;
+      if (p && pathname !== p && !pathname.startsWith(p + '/')) continue;
+      if (p.length > matchLen) { match = project; matchLen = p.length; }
     }
   }
 
-  try { env[CACHE_KEY] = { host: target, project: match }; } catch { /* env may be frozen */ }
+  try { env[CACHE_KEY] = { host: target, path: pathname, project: match }; } catch { /* env may be frozen */ }
   return match;
 }
 
 export async function resolveProjectForRequest(env, request) {
-  return resolveProjectByHost(env, requestHost(request));
+  // Explicit ?project=<slug> beats host sniffing so one host can serve many projects.
+  let url;
+  try { url = new URL(request.url); } catch { url = null; }
+  const qp = url?.searchParams.get('project') || '';
+  if (qp) return resolveProjectBySlug(env, qp);
+  return resolveProjectByHost(env, requestHost(request), url?.pathname || '/');
+}
+
+export async function resolveProjectBySlug(env, slug) {
+  const clean = String(slug || '').trim().toLowerCase();
+  if (!clean || !/^[a-z0-9][a-z0-9-]{0,60}$/.test(clean)) return null;
+  const row = await env?.DB?.prepare(
+    `SELECT id, slug, name, website_url, publishing_url FROM projects WHERE slug = ? LIMIT 1`
+  ).bind(clean).first().catch(() => null);
+  return row || null;
 }
 
 export { normalizeHost };

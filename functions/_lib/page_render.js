@@ -12,7 +12,7 @@ function brand(env) {
   };
 }
 
-function jsonLD({ site, post, host, kind, settings }) {
+function jsonLD({ site, post, host, kind, settings, basePath = '' }) {
   const isArticle = kind === 'blog';
   const baseUrl = `https://${host}`;
   const orgId   = `${baseUrl}/#org`;
@@ -44,7 +44,7 @@ function jsonLD({ site, post, host, kind, settings }) {
       publisher: { '@id': orgId },
       potentialAction: {
         '@type': 'SearchAction',
-        target: { '@type': 'EntryPoint', urlTemplate: `${baseUrl}/blog?q={search_term_string}` },
+        target: { '@type': 'EntryPoint', urlTemplate: `${baseUrl}${basePath}/blog?q={search_term_string}` },
         'query-input': 'required name=search_term_string',
       },
     },
@@ -67,7 +67,7 @@ function jsonLD({ site, post, host, kind, settings }) {
       '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Trang chủ', item: `${baseUrl}/` },
-        isArticle ? { '@type': 'ListItem', position: 2, name: 'Blog', item: `${baseUrl}/blog` } : null,
+        isArticle ? { '@type': 'ListItem', position: 2, name: 'Blog', item: `${baseUrl}${basePath}/blog` } : null,
         { '@type': 'ListItem', position: isArticle ? 3 : 2, name: post.title },
       ].filter(Boolean),
     },
@@ -106,7 +106,7 @@ function extractFAQ(post) {
   }] : [];
 }
 
-export function renderContentPage({ env, request, post, kind, related = [], settings = {} }) {
+export function renderContentPage({ env, request, post, kind, related = [], settings = {}, basePath = '' }) {
   const host = new URL(request.url).hostname;
   const site = brand(env);
   const urlPath = post.urlPath;
@@ -147,7 +147,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
       const rSrc = r.hero_image_key ? `/image/${esc(r.hero_image_key)}` : `/cover/${esc(r.slug)}.svg`;
       return `
       <li>
-        <a href="/blog/${esc(r.slug)}">
+        <a href="${basePath}/blog/${esc(r.slug)}">
           <img src="${rSrc}" alt="${esc(r.hero_image_alt || r.title)}" width="640" height="336" loading="lazy" decoding="async" />
           <div class="read-next-meta">
             <h3>${esc(r.title)}</h3>
@@ -169,7 +169,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   const preloadHero = `<link rel="preload" as="image" href="${heroSrc}" fetchpriority="high" />`;
 
   const faqSchema = extractFAQ(post);
-  const ldGraph = jsonLD({ site, post: { ...post, urlPath }, host, kind, settings });
+  const ldGraph = jsonLD({ site, post: { ...post, urlPath }, host, kind, settings, basePath });
   const ldExtra = faqSchema.length ? `,${faqSchema.map(f => JSON.stringify(f)).join(',')}` : '';
   const ldJson = ldGraph.replace('}', `${ldExtra}}`);
 
@@ -185,10 +185,10 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   if (document.visibilityState === 'visible') {
     viewFired = true;
     try {
-      fetch('/api/blog/views', {
+      fetch('/api/blog/views' + PS_Q, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blog_slug: blogSlug })
+        body: JSON.stringify({ blog_slug: blogSlug, project: PS_PROJECT })
       }).catch(function() {});
     } catch (e) {}
   }
@@ -198,12 +198,12 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
     hideFired = true;
     try {
       var readTimeMs = Math.round((window.performance && performance.now) ? performance.now() : 0);
-      var payload = JSON.stringify({ blog_slug: blogSlug, read_time_ms: readTimeMs });
+      var payload = JSON.stringify({ blog_slug: blogSlug, project: PS_PROJECT, read_time_ms: readTimeMs });
       if (navigator.sendBeacon) {
         var blob = new Blob([payload], { type: 'application/json' });
-        navigator.sendBeacon('/api/blog/views', blob);
+        navigator.sendBeacon('/api/blog/views' + PS_Q, blob);
       } else {
-        fetch('/api/blog/views', {
+        fetch('/api/blog/views' + PS_Q, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: payload,
@@ -223,7 +223,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
 ${post.keywords ? `<meta name="keywords" content="${esc(post.keywords)}" />` : ''}
 <link rel="canonical" href="https://${host}${urlPath}" />
 <meta name="robots" content="index,follow,max-image-preview:large" />
-<link rel="alternate" type="application/rss+xml" title="${esc(site.name)} — RSS feed" href="https://${host}/feed.xml" />
+<link rel="alternate" type="application/rss+xml" title="${esc(site.name)} — RSS feed" href="https://${host}${basePath}/feed.xml" />
 ${verifyMetas}
 <meta property="og:type" content="${kind === 'blog' ? 'article' : 'website'}" />
 <meta property="og:title" content="${esc(post.title)}" />
@@ -251,14 +251,14 @@ ${preloadHero}
     </a>
     <nav class="header-nav">
       <a href="https://gulagi.com">Trang chủ</a>
-      <a href="/blog" class="active">Blog</a>
+      <a href="${basePath}/blog" class="active">Blog</a>
       <a href="https://gulagi.com" class="header-cta">Tạo website ngay</a>
     </nav>
   </div>
 </header>
 
 <main class="post-shell">
-  <div class="crumb"><a href="https://gulagi.com">Trang chủ</a>${kind === 'blog' ? ' · <a href="/blog">Blog</a>' : ''} · <span>${esc(post.title.slice(0, 40))}…</span></div>
+  <div class="crumb"><a href="https://gulagi.com">Trang chủ</a>${kind === 'blog' ? ` · <a href="${basePath}/blog">Blog</a>` : ''} · <span>${esc(post.title.slice(0, 40))}…</span></div>
   <h1 class="post-title">${esc(post.title)}</h1>
   <div class="post-meta">
     <span class="post-date">${esc(dateStr)}</span>
@@ -333,7 +333,7 @@ ${preloadHero}
     <div class="footer-links">
       <a href="https://gulagi.com">Trang chủ</a>
       <a href="https://gulagi.com">Tạo website</a>
-      <a href="/blog">Blog</a>
+      <a href="${basePath}/blog">Blog</a>
       <a href="https://gulagi.com/faq">FAQ</a>
       <a href="mailto:gulagi.com@gmail.com">Liên hệ</a>
     </div>
@@ -348,6 +348,9 @@ window.addEventListener('scroll', function() {
 });
 (function() {
   var blogSlug = ${blogSlugEsc};
+  var PS_BP = ${JSON.stringify(basePath)};
+  var PS_PROJECT = PS_BP ? PS_BP.slice(1) : '';
+  var PS_Q = PS_PROJECT ? ('?project=' + encodeURIComponent(PS_PROJECT)) : '';
 ${beaconScript}
   // Feedback widget
   var fbBlock = document.getElementById('feedback-block');
@@ -366,7 +369,7 @@ ${beaconScript}
       if (fbMsg) fbMsg.textContent = '';
       var commentVal = commentInput ? commentInput.value.trim().slice(0, 500) : '';
 
-      fetch('/api/blog/feedback', {
+      fetch('/api/blog/feedback' + PS_Q, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -426,7 +429,7 @@ ${beaconScript}
 
       if (leadSubmit) leadSubmit.disabled = true;
 
-      fetch('/api/blog/leads', {
+      fetch('/api/blog/leads' + PS_Q, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

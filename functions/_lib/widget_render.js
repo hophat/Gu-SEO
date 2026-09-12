@@ -349,6 +349,26 @@ if (!container) {
   return;
 }
 
+// Optional per-project scoping. Read from the <script> tag at runtime so
+// one cached bundle serves every project and every host: the attribute
+// differs per install, the file doesn't.
+var PS_PROJECT = '';
+var PS_TARGET_SEL = '';
+try {
+  var psScript = document.currentScript || (function () {
+    var all = document.getElementsByTagName('script');
+    return all[all.length - 1];
+  })();
+  if (psScript && psScript.dataset) {
+    PS_PROJECT = String(psScript.dataset.project || '').trim();
+    PS_TARGET_SEL = String(psScript.dataset.target || '').trim();
+  }
+} catch (e) {}
+if (PS_TARGET_SEL) {
+  var psTarget = document.querySelector(PS_TARGET_SEL);
+  if (psTarget) container = psTarget;
+}
+
 // ── srcdoc detection ──
 // Some sandboxed iframes (Notion embeds, etc.) load us via srcdoc.
 // In that case popstate / history don't behave the way we expect,
@@ -637,6 +657,7 @@ function load() {
   state.loading = true;
   renderSkeleton();
   var url = PS_API + '/api/widget?' + paramsString();
+  if (PS_PROJECT) url += '&project=' + encodeURIComponent(PS_PROJECT);
   if (PS_EMBED_ID) url += '&embed=' + encodeURIComponent(PS_EMBED_ID);
   fetch(url, { credentials: 'omit' })
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
