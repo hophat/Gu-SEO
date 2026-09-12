@@ -176,6 +176,42 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   const shareUrl = `https://${host}${urlPath}`;
   const shareTitle = encodeURIComponent(post.title);
   const shareUrlEnc = encodeURIComponent(shareUrl);
+  const isPreview = post?.status === 'preview';
+  const blogSlug = post?.slug || '';
+  const blogSlugEsc = JSON.stringify(blogSlug).replace(/</g, '\\u003c');
+  const beaconScript = (!isPreview && blogSlug) ? `
+  // View beacon
+  var viewFired = false;
+  if (document.visibilityState === 'visible') {
+    viewFired = true;
+    try {
+      fetch('/api/blog/views', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blog_slug: blogSlug })
+      }).catch(function() {});
+    } catch (e) {}
+  }
+  var hideFired = false;
+  window.addEventListener('pagehide', function() {
+    if (hideFired) return;
+    hideFired = true;
+    try {
+      var readTimeMs = Math.round((window.performance && performance.now) ? performance.now() : 0);
+      var payload = JSON.stringify({ blog_slug: blogSlug, read_time_ms: readTimeMs });
+      if (navigator.sendBeacon) {
+        var blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/api/blog/views', blob);
+      } else {
+        fetch('/api/blog/views', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true
+        }).catch(function() {});
+      }
+    } catch (e) {}
+  });` : '';
 
   return `<!doctype html>
 <html lang="vi">
@@ -245,12 +281,36 @@ ${preloadHero}
         <a href="https://gulagi.com" class="cta-btn" style="margin-top:12px">Bắt đầu miễn phí →</a>
       </div>
     </div>
+    <div class="lead-form-box">
+      <h3>Tải cẩm nang tăng đơn</h3>
+      <p>Nhận ngay tài liệu hướng dẫn tối ưu Google Maps &amp; tăng doanh thu cho quán.</p>
+      <form id="lead-capture-form" class="lead-form">
+        <div class="lead-form-fields">
+          <input type="text" id="lead-name" name="name" placeholder="Họ và tên" class="lead-input" />
+          <input type="email" id="lead-email" name="email" placeholder="Email nhận tài liệu" class="lead-input" />
+          <input type="tel" id="lead-phone" name="phone" placeholder="Số điện thoại" class="lead-input" />
+        </div>
+        <button type="submit" id="lead-submit-btn" class="lead-submit-btn">Nhận cẩm nang miễn phí →</button>
+        <div id="lead-form-msg" class="lead-form-msg" role="status" aria-live="polite"></div>
+      </form>
+    </div>
   </article>
   <div class="share-bar">
     <span class="share-label">Chia sẻ bài viết:</span>
     <a href="https://www.facebook.com/sharer/sharer.php?u=${shareUrlEnc}" target="_blank" rel="noopener" class="share-btn share-fb">Facebook</a>
     <a href="https://zalo.me/oa/share?url=${shareUrlEnc}" target="_blank" rel="noopener" class="share-btn share-zalo">Zalo</a>
     <button class="share-btn share-copy" onclick="navigator.clipboard.writeText('${shareUrl}').then(()=>this.textContent='Đã copy!')">Sao chép link</button>
+  </div>
+  <div class="feedback-block" id="feedback-block">
+    <div class="feedback-title">Bài viết này có hữu ích?</div>
+    <div class="feedback-actions">
+      <button type="button" class="feedback-btn feedback-yes" id="feedback-btn-yes" data-rating="yes">Có</button>
+      <button type="button" class="feedback-btn feedback-no" id="feedback-btn-no" data-rating="no">Không</button>
+    </div>
+    <div class="feedback-comment-wrap">
+      <input type="text" class="feedback-comment-input" id="feedback-comment" placeholder="Ý kiến đóng góp thêm (không bắt buộc)..." maxlength="500" />
+    </div>
+    <div class="feedback-msg" id="feedback-msg" role="status" aria-live="polite"></div>
   </div>
   <div class="author-box">
     <div class="author-info">
@@ -286,6 +346,114 @@ window.addEventListener('scroll', function() {
   var btn = document.getElementById('sticky-cta');
   if (btn) btn.classList.toggle('visible', window.scrollY > 600);
 });
+(function() {
+  var blogSlug = ${blogSlugEsc};
+${beaconScript}
+  // Feedback widget
+  var fbBlock = document.getElementById('feedback-block');
+  if (fbBlock) {
+    var btnYes = document.getElementById('feedback-btn-yes');
+    var btnNo = document.getElementById('feedback-btn-no');
+    var commentInput = document.getElementById('feedback-comment');
+    var fbMsg = document.getElementById('feedback-msg');
+    var fbVoted = false;
+
+    function sendFeedback(rating) {
+      if (fbVoted) return;
+      fbVoted = true;
+      if (btnYes) btnYes.disabled = true;
+      if (btnNo) btnNo.disabled = true;
+      if (fbMsg) fbMsg.textContent = '';
+      var commentVal = commentInput ? commentInput.value.trim().slice(0, 500) : '';
+
+      fetch('/api/blog/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blog_slug: blogSlug,
+          rating: rating,
+          comment: commentVal
+        })
+      }).then(function(res) {
+        if (res.ok) {
+          fbBlock.textContent = '';
+          var thanksEl = document.createElement('div');
+          thanksEl.className = 'feedback-thanks';
+          thanksEl.textContent = 'Cảm ơn phản hồi của bạn!';
+          fbBlock.appendChild(thanksEl);
+        } else {
+          fbVoted = false;
+          if (btnYes) btnYes.disabled = false;
+          if (btnNo) btnNo.disabled = false;
+          if (fbMsg) fbMsg.textContent = 'Gửi thất bại, thử lại sau.';
+        }
+      }).catch(function() {
+        fbVoted = false;
+        if (btnYes) btnYes.disabled = false;
+        if (btnNo) btnNo.disabled = false;
+        if (fbMsg) fbMsg.textContent = 'Gửi thất bại, thử lại sau.';
+      });
+    }
+
+    if (btnYes) btnYes.addEventListener('click', function() { sendFeedback('yes'); });
+    if (btnNo) btnNo.addEventListener('click', function() { sendFeedback('no'); });
+  }
+
+  // Lead form
+  var leadForm = document.getElementById('lead-capture-form');
+  if (leadForm) {
+    var leadName = document.getElementById('lead-name');
+    var leadEmail = document.getElementById('lead-email');
+    var leadPhone = document.getElementById('lead-phone');
+    var leadSubmit = document.getElementById('lead-submit-btn');
+    var leadMsg = document.getElementById('lead-form-msg');
+
+    leadForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (!leadMsg) return;
+      leadMsg.textContent = '';
+      leadMsg.className = 'lead-form-msg';
+
+      var nameVal = leadName ? leadName.value.trim() : '';
+      var emailVal = leadEmail ? leadEmail.value.trim() : '';
+      var phoneVal = leadPhone ? leadPhone.value.trim() : '';
+
+      if (!emailVal && !phoneVal) {
+        leadMsg.className = 'lead-form-msg error';
+        leadMsg.textContent = 'Vui lòng nhập email hoặc số điện thoại.';
+        return;
+      }
+
+      if (leadSubmit) leadSubmit.disabled = true;
+
+      fetch('/api/blog/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: nameVal,
+          email: emailVal,
+          phone: phoneVal,
+          source: 'blog',
+          blog_slug: blogSlug
+        })
+      }).then(function(res) {
+        if (res.ok) {
+          leadMsg.className = 'lead-form-msg success';
+          leadMsg.textContent = 'Đã nhận thông tin!';
+          leadForm.reset();
+        } else {
+          leadMsg.className = 'lead-form-msg error';
+          leadMsg.textContent = 'Gửi thất bại, thử lại sau.';
+        }
+        if (leadSubmit) leadSubmit.disabled = false;
+      }).catch(function() {
+        leadMsg.className = 'lead-form-msg error';
+        leadMsg.textContent = 'Gửi thất bại, thử lại sau.';
+        if (leadSubmit) leadSubmit.disabled = false;
+      });
+    });
+  }
+})();
 </script>
 </body>
 </html>`;

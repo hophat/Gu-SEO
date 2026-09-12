@@ -159,6 +159,46 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .cta-btn:hover { background: var(--brand-dark); }
 
+.mini-builder { margin: 16px 0 8px; }
+.mini-builder form { display: flex; gap: 8px; max-width: 480px; margin: 0 auto; flex-wrap: wrap; }
+.mini-builder-input {
+  flex: 1; min-width: 200px; padding: 10px 14px; font-size: 0.9rem; font-family: inherit;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+  color: var(--ink); outline: none;
+}
+.mini-builder-btn {
+  background: var(--ink); color: #fff; border: 0; padding: 10px 18px;
+  border-radius: 6px; font-weight: 700; font-size: 0.88rem; cursor: pointer;
+  white-space: nowrap; transition: opacity .15s; font-family: inherit;
+}
+.mini-builder-btn:hover { opacity: 0.9; }
+
+.lead-form-box {
+  margin: 32px 0 48px; padding: 28px 24px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); text-align: center;
+}
+.lead-form-box h3 { font-size: 1.25rem; font-weight: 800; margin: 0 0 8px; color: var(--ink); }
+.lead-form-box p { color: var(--muted); margin: 0 0 20px; font-size: 0.9rem; }
+.lead-form { max-width: 520px; margin: 0 auto; }
+.lead-form-fields { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.lead-input {
+  width: 100%; padding: 10px 14px; font-size: 0.9rem; font-family: inherit;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--bg-2);
+  color: var(--ink); outline: none; transition: border-color .15s;
+}
+.lead-input:focus { border-color: var(--brand); background: var(--surface); }
+.lead-submit-btn {
+  width: 100%; display: inline-block; background: var(--brand); color: #fff;
+  border: 0; padding: 12px 24px; border-radius: 6px; font-weight: 700;
+  font-size: 0.95rem; cursor: pointer; transition: background .15s; font-family: inherit;
+}
+.lead-submit-btn:hover:not(:disabled) { background: var(--brand-dark); }
+.lead-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.lead-form-msg { font-size: 0.85rem; font-weight: 600; margin-top: 10px; }
+.lead-form-msg.error { color: #d32f2f; }
+.lead-form-msg.success { color: #2e7d32; }
+
 /* ── Sticky CTA ──────────────────────────────────────────────── */
 .sticky-cta {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 99;
@@ -191,6 +231,32 @@ img { max-width: 100%; height: auto; display: block; }
 .share-zalo:hover { background: #0068ff; color: #fff !important; }
 .share-copy { background: var(--bg-2); color: var(--ink); font-family: inherit; }
 .share-copy:hover { background: var(--line); }
+
+.feedback-block {
+  padding: 20px 24px; margin: 24px 0 36px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius); text-align: center;
+}
+.feedback-title { font-size: 0.95rem; font-weight: 700; color: var(--ink); margin-bottom: 12px; }
+.feedback-actions { display: flex; justify-content: center; gap: 12px; margin-bottom: 12px; }
+.feedback-btn {
+  padding: 8px 24px; border-radius: 6px; font-size: 0.88rem;
+  font-weight: 600; border: 1px solid var(--line); background: var(--surface);
+  color: var(--ink); cursor: pointer; transition: all .15s; font-family: inherit;
+}
+.feedback-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.feedback-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.feedback-yes:hover:not(:disabled) { background: var(--brand-light); }
+.feedback-no:hover:not(:disabled) { background: var(--bg-2); }
+.feedback-comment-wrap { max-width: 480px; margin: 0 auto; }
+.feedback-comment-input {
+  width: 100%; padding: 8px 12px; font-size: 0.85rem; font-family: inherit;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+  color: var(--ink); outline: none; transition: border-color .15s;
+}
+.feedback-comment-input:focus { border-color: var(--brand); }
+.feedback-msg { font-size: 0.85rem; font-weight: 600; margin-top: 10px; min-height: 20px; }
+.feedback-thanks { font-size: 0.95rem; font-weight: 700; color: var(--brand); padding: 8px 0; }
 
 /* ── Author box ──────────────────────────────────────────────── */
 .author-box {
