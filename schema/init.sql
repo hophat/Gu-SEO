@@ -537,5 +537,54 @@ CREATE TABLE IF NOT EXISTS trend_topics (
 );
 CREATE INDEX IF NOT EXISTS idx_trend_topics_created ON trend_topics(created_at DESC);
 
+-- ============================================================================
+-- PHASE 2 ADVANCED: competitor analysis, topical authority, content refresh
+-- Additive only. Columns use D1-supported ALTER TABLE ... ADD COLUMN.
+-- ============================================================================
+
+ALTER TABLE project_topics ADD COLUMN competition_score INTEGER DEFAULT 50;
+ALTER TABLE project_topics ADD COLUMN freshness_score INTEGER DEFAULT 50;
+ALTER TABLE project_topics ADD COLUMN search_intent TEXT DEFAULT '';
+
+ALTER TABLE blog_posts ADD COLUMN last_refresh_at INTEGER;
+ALTER TABLE blog_posts ADD COLUMN refresh_count INTEGER DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS competitor_snapshots (
+  id              TEXT PRIMARY KEY,
+  project_id      TEXT NOT NULL,
+  keyword         TEXT NOT NULL,
+  competitor_url  TEXT NOT NULL,
+  title           TEXT,
+  word_count      INTEGER NOT NULL DEFAULT 0,
+  h2_count        INTEGER NOT NULL DEFAULT 0,
+  link_count      INTEGER NOT NULL DEFAULT 0,
+  created_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_competitor_keyword_created
+  ON competitor_snapshots(project_id, keyword, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS content_clusters (
+  id              TEXT PRIMARY KEY,
+  project_id      TEXT NOT NULL,
+  pillar_key      TEXT NOT NULL,
+  cluster_key     TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'active',
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_clusters_project_pillar
+  ON content_clusters(project_id, pillar_key);
+
+CREATE TABLE IF NOT EXISTS refresh_jobs (
+  id              TEXT PRIMARY KEY,
+  post_id         TEXT NOT NULL,
+  reason          TEXT NOT NULL DEFAULT 'stale',
+  status          TEXT NOT NULL DEFAULT 'created',
+  error           TEXT,
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_refresh_post_created
+  ON refresh_jobs(post_id, created_at DESC);
 
 
