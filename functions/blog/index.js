@@ -194,9 +194,17 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
 <script type="application/ld+json">${ldJson}</script>
 </head>
 <body>
-<header class="nav">
-  <a class="brand" href="/">${esc(siteName)}</a>
-  <nav><a href="/blog" aria-current="page">Blog</a></nav>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="header-brand" href="https://gulagi.com">
+      <span class="header-logo">Gulagi</span>
+    </a>
+    <nav class="header-nav">
+      <a href="https://gulagi.com">Trang chủ</a>
+      <a href="/blog" class="active">Blog</a>
+      <a href="https://gulagi.com" class="header-cta">Tạo website ngay</a>
+    </nav>
+  </div>
 </header>
 <main class="blog-index">
   <header class="blog-index-head">
@@ -345,8 +353,20 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
   }
 })();
 </script>
-<footer class="foot">
-  <span>${esc(siteName)}</span> · <a href="/">Home</a> · <a href="/blog">Blog</a>
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <strong>Gulagi</strong> — Tạo website cho quán từ Google Maps
+    </div>
+    <div class="footer-links">
+      <a href="https://gulagi.com">Trang chủ</a>
+      <a href="https://gulagi.com">Tạo website</a>
+      <a href="/blog">Blog</a>
+      <a href="https://gulagi.com/faq">FAQ</a>
+      <a href="mailto:gulagi.com@gmail.com">Liên hệ</a>
+    </div>
+    <div class="footer-copy">© ${new Date().getFullYear()} Gulagi. Bảo lưu mọi quyền.</div>
+  </div>
 </footer>
 </body>
 </html>`;
