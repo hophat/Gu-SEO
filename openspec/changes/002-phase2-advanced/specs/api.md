@@ -6,7 +6,7 @@
 - Errors: `missing_project_id`, `missing_keyword`, `scan_failed` with provider detail truncated to 300 chars.
 
 ## GET /api/admin/competitors?project_id=&keyword=
-- Auth: `adminGate`. Returns latest snapshots per keyword, newest first, max 20.
+- Auth: `adminGate`. Without `project_id` returns latest 20 snapshots across projects; with it, filters by project (and keyword when given), newest first, max 20.
 
 ## POST /api/admin/topics/score
 - Auth: `adminGate`. Body: `{ project_id }`.

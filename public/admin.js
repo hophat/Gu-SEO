@@ -754,6 +754,83 @@
     }
     table.appendChild(tbody);
     listEl.appendChild(table);
+    await loadCompetitors();
+  }
+
+  async function loadCompetitors() {
+    const scanBtn = $('#comp-scan');
+    if (scanBtn && !scanBtn.dataset.wired) {
+      scanBtn.dataset.wired = '1';
+      scanBtn.addEventListener('click', async () => {
+        const statusEl = $('#comp-status');
+        const keyword = $('#comp-keyword')?.value.trim() || '';
+        const urls = $('#comp-urls')?.value.split('\n').map((s) => s.trim()).filter(Boolean) || [];
+        if (!keyword) { if (statusEl) statusEl.textContent = currentLang === 'vi' ? 'Nhập từ khóa trước.' : 'Enter a keyword first.'; return; }
+        if (!urls.length) { if (statusEl) statusEl.textContent = currentLang === 'vi' ? 'Nhập ít nhất 1 URL đối thủ.' : 'Enter at least 1 rival URL.'; return; }
+        scanBtn.disabled = true;
+        if (statusEl) statusEl.textContent = currentLang === 'vi' ? 'Đang đo đối thủ...' : 'Measuring rivals...';
+        try {
+          const { status, body } = await api('/api/admin/competitors/scan', { method: 'POST', body: JSON.stringify({ project_id: 'gulagi', keyword, urls }) });
+          if (status === 200 && body?.ok) {
+            const n = (body.snapshots || []).filter((s) => !s.error).length;
+            if (statusEl) statusEl.textContent = body.cached
+              ? (currentLang === 'vi' ? `Dùng lại snapshot 7 ngày (${n} URL).` : `Reused 7-day snapshot (${n} URLs).`)
+              : (currentLang === 'vi' ? `Đã đo ${n}/${urls.length} URL.` : `Measured ${n}/${urls.length} URLs.`);
+            await loadCompetitors();
+          } else {
+            if (statusEl) statusEl.textContent = `Error: ${body?.error || status}`;
+          }
+        } catch (err) {
+          if (statusEl) statusEl.textContent = `Network error: ${err.message}`;
+        } finally {
+          scanBtn.disabled = false;
+        }
+      });
+    }
+
+    const listEl = $('#comp-list');
+    if (!listEl) return;
+    const { status, body } = await api('/api/admin/competitors');
+    listEl.classList.remove('dim');
+    clearChildren(listEl);
+    if (status !== 200 || !body?.ok || !body.snapshots?.length) {
+      listEl.textContent = currentLang === 'vi' ? 'Chưa có snapshot nào. Nhập từ khóa + URL rồi bấm "So sánh đối thủ".' : 'No snapshots yet. Enter a keyword + URLs and scan.';
+      return;
+    }
+    const table = document.createElement('table');
+    table.className = 'table';
+    table.style.width = '100%';
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    const headers = currentLang === 'vi'
+      ? ['URL đối thủ', 'Số từ', 'Số H2', 'Số link']
+      : ['Rival URL', 'Words', 'H2s', 'Links'];
+    for (const h of headers) {
+      const th = document.createElement('th');
+      th.textContent = h;
+      th.style.textAlign = 'left';
+      th.style.padding = '8px';
+      trh.appendChild(th);
+    }
+    thead.appendChild(trh);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    for (const s of body.snapshots) {
+      const tr = document.createElement('tr');
+      const tdUrl = document.createElement('td');
+      tdUrl.textContent = s.error ? `${s.competitor_url} (${s.error})` : (s.title ? `${s.title} — ${s.competitor_url}` : s.competitor_url);
+      tdUrl.style.padding = '8px';
+      tdUrl.style.maxWidth = '420px';
+      tdUrl.style.overflow = 'hidden';
+      tdUrl.style.textOverflow = 'ellipsis';
+      const tdW = document.createElement('td'); tdW.textContent = s.word_count ?? '-'; tdW.style.padding = '8px';
+      const tdH = document.createElement('td'); tdH.textContent = s.h2_count ?? '-'; tdH.style.padding = '8px';
+      const tdL = document.createElement('td'); tdL.textContent = s.link_count ?? '-'; tdL.style.padding = '8px';
+      tr.appendChild(tdUrl); tr.appendChild(tdW); tr.appendChild(tdH); tr.appendChild(tdL);
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    listEl.appendChild(table);
   }
 
   // ── usage ──────────────────────────────────────────────────────

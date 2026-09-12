@@ -1003,6 +1003,7 @@
           <li>Đợi hệ thống cập nhật trạng thái hiển thị số lượng chủ đề đã tạo thành công.</li>
           <li>Đọc danh sách các chủ đề kèm điểm relevance và góc tiếp cận chi tiết.</li>
           <li>Sao chép chủ đề phù hợp sang Calendar hoặc Blog để tiến hành tạo bài viết mới.</li>
+          <li>Để so sánh đối thủ: nhập từ khóa + 1–5 URL đối thủ ở khung bên dưới rồi bấm “So sánh đối thủ”.</li>
         </ol>
       </div>
       <div class="card" style="margin-top:20px">
@@ -1011,6 +1012,24 @@
         <p>Nhấn nút để AI phân tích xu hướng thị trường và tạo danh sách chủ đề tiềm năng.</p>
         <button id="trend-generate" class="btn btn-primary" style="margin-top:12px">Khám phá xu hướng</button>
         <span id="trend-status" class="status" style="margin-left:12px"></span>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-eyebrow">Phân tích đối thủ</div>
+        <h2>So sánh đối thủ theo từ khóa</h2>
+        <p>Nhập từ khóa mục tiêu và tối đa 5 URL đối thủ. Hệ thống đo số từ, số H2, số link rồi lưu snapshot để chấm điểm topic sau này. Kết quả mới nhất trong 7 ngày được dùng lại.</p>
+        <div class="form-grid" style="margin-top:12px">
+          <label>
+            <span>Từ khóa</span>
+            <input id="comp-keyword" type="text" placeholder="vd: website cho quán cà phê" />
+          </label>
+          <label>
+            <span>URL đối thủ (mỗi dòng 1 URL, tối đa 5)</span>
+            <textarea id="comp-urls" rows="3" placeholder="https://doi-thu-1.vn/bai-viet&#10;https://doi-thu-2.vn/bai-viet"></textarea>
+          </label>
+        </div>
+        <button id="comp-scan" class="btn btn-primary" style="margin-top:12px">So sánh đối thủ</button>
+        <span id="comp-status" class="status" style="margin-left:12px"></span>
+        <div id="comp-list" class="dim" style="margin-top:12px">Chưa có snapshot nào.</div>
       </div>
       <div class="card" style="margin-top:20px">
         <div class="card-eyebrow">Chủ đề xu hướng</div>
