@@ -1,6 +1,7 @@
 // /blog/<slug>
 import { renderContentPage } from '../_lib/page_render.js';
 import { loadSettings } from '../_lib/settings.js';
+import { resolveProjectForRequest } from '../_lib/project_scope.js';
 
 export const onRequestGet = async ({ env, request, params }) => {
   const slug = String(params.slug || '').toLowerCase();
@@ -18,11 +19,20 @@ export const onRequestGet = async ({ env, request, params }) => {
       return Response.redirect(new URL(`/blog/${r.new_slug}`, request.url).toString(), 301);
     }
   } catch { /* table not yet created */ }
-  const post = await env.DB.prepare(
-    `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
-            keywords, status, published_at
-       FROM blog_posts WHERE slug = ? LIMIT 1`
-  ).bind(slug).first();
+
+  const project = await resolveProjectForRequest(env, request).catch(() => null);
+  const projectId = project?.id || null;
+
+  const postSql = projectId
+    ? `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
+              keywords, status, published_at
+         FROM blog_posts WHERE slug = ? AND project_id = ? LIMIT 1`
+    : `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
+              keywords, status, published_at
+         FROM blog_posts WHERE slug = ? LIMIT 1`;
+  const post = await (projectId
+    ? env.DB.prepare(postSql).bind(slug, projectId)
+    : env.DB.prepare(postSql).bind(slug)).first();
   if (!post) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   if (post.status === 'hidden') return new Response('Gone', { status: 410, headers: { 'content-type': 'text/plain' } });
   // 'review' posts are admin-only drafts — invisible to public visitors
@@ -33,12 +43,18 @@ export const onRequestGet = async ({ env, request, params }) => {
   // "Read next" — three other recent posts the LLM didn't write into
   // the body. Ordered by recency for simplicity; cheaper than computing
   // similarity scores and good enough for sites with a few dozen posts.
-  const relatedRows = await env.DB.prepare(
-    `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
-       FROM blog_posts
-      WHERE status='published' AND slug != ?
-      ORDER BY published_at DESC LIMIT 3`
-  ).bind(slug).all().catch(() => ({ results: [] }));
+  const relatedSql = projectId
+    ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+         FROM blog_posts
+        WHERE status='published' AND slug != ? AND project_id = ?
+        ORDER BY published_at DESC LIMIT 3`
+    : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+         FROM blog_posts
+        WHERE status='published' AND slug != ?
+        ORDER BY published_at DESC LIMIT 3`;
+  const relatedRows = await (projectId
+    ? env.DB.prepare(relatedSql).bind(slug, projectId)
+    : env.DB.prepare(relatedSql).bind(slug)).all().catch(() => ({ results: [] }));
   const related = relatedRows.results || [];
 
   // Settings — used by the renderer for verification metas and the

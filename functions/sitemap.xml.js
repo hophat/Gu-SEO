@@ -12,6 +12,7 @@
 
 import { esc } from './_lib/util.js';
 import { PAGE_SIZE } from './blog/index.js';
+import { resolveProjectByHost, requestHost } from './_lib/project_scope.js';
 
 const SITEMAP_NS = 'http://www.sitemaps.org/schemas/sitemap/0.9';
 const IMAGE_NS   = 'http://www.google.com/schemas/sitemap-image/1.1';
@@ -62,24 +63,42 @@ ${imgs ? imgs + '\n' : ''}  </url>`;
 
 async function fetchEntries(env, host) {
   const site = `https://${host}`;
+  const project = await resolveProjectByHost(env, host).catch(() => null);
+  const projectId = project?.id || null;
 
-  const blogs = await env.DB.prepare(
-    `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
-       FROM blog_posts WHERE status='published' ORDER BY published_at DESC LIMIT 5000`
-  ).all().catch(() => ({ results: [] }));
+  const blogsSql = projectId
+    ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+         FROM blog_posts WHERE status='published' AND project_id = ?
+         ORDER BY published_at DESC LIMIT 5000`
+    : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+         FROM blog_posts WHERE status='published'
+         ORDER BY published_at DESC LIMIT 5000`;
+  const blogs = await (projectId
+    ? env.DB.prepare(blogsSql).bind(projectId)
+    : env.DB.prepare(blogsSql)).all().catch(() => ({ results: [] }));
 
-  const progs = await env.DB.prepare(
-    `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
-       FROM prog_pages WHERE status='published' ORDER BY published_at DESC LIMIT 10000`
-  ).all().catch(() => ({ results: [] }));
+  const progsSql = projectId
+    ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+         FROM prog_pages WHERE status='published' AND project_id = ?
+         ORDER BY published_at DESC LIMIT 10000`
+    : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+         FROM prog_pages WHERE status='published'
+         ORDER BY published_at DESC LIMIT 10000`;
+  const progs = await (projectId
+    ? env.DB.prepare(progsSql).bind(projectId)
+    : env.DB.prepare(progsSql)).all().catch(() => ({ results: [] }));
 
   // Find out how many blog index pages exist (1 + total/PAGE_SIZE).
   // PAGE_SIZE is sourced from blog/index.js so we never drift out of
   // sync — sitemap pages have to match what /blog/page/N actually
-  // serves or crawlers hit empty/duplicate archives.
-  const totalBlogsRow = await env.DB.prepare(
-    `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published'`
-  ).first().catch(() => ({ n: 0 }));
+  // serves or crawlers hit empty/duplicate archives. The count uses the
+  // same project filter as the index page or the two disagree.
+  const totalBlogsSql = projectId
+    ? `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published' AND project_id = ?`
+    : `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published'`;
+  const totalBlogsRow = await (projectId
+    ? env.DB.prepare(totalBlogsSql).bind(projectId)
+    : env.DB.prepare(totalBlogsSql)).first().catch(() => ({ n: 0 }));
   const totalPages = Math.max(1, Math.ceil((totalBlogsRow?.n || 0) / PAGE_SIZE));
 
   const today = isoDay(0);
@@ -122,7 +141,7 @@ async function fetchEntries(env, host) {
 }
 
 export const onRequestGet = async ({ env, request }) => {
-  const host = new URL(request.url).hostname;
+  const host = requestHost(request);
   const site = `https://${host}`;
   const body = renderIndex(site, isoDay(0));
   return new Response(body, {
@@ -135,7 +154,7 @@ export const onRequestGet = async ({ env, request }) => {
 
 // Exported for /sitemap-pages.xml.js to reuse.
 export async function pagesUrlset({ env, request }) {
-  const host = new URL(request.url).hostname;
+  const host = requestHost(request);
   const site = `https://${host}`;
   const entries = await fetchEntries(env, host);
   const body = renderUrlset(site, entries);

@@ -134,7 +134,7 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
     const pillarRow = post.topic_seed ? await env.DB.prepare(
       `SELECT pillar_key FROM content_clusters WHERE cluster_key = ? AND status = 'active' LIMIT 1`
     ).bind(String(post.topic_seed).slice(0, 120)).first().catch(() => null) : null;
-    const targets = await loadLinkTargets(env, newSlug, { limit: 80, pillarKey: pillarRow?.pillar_key || null });
+    const targets = await loadLinkTargets(env, newSlug, { limit: 80, pillarKey: pillarRow?.pillar_key || null, projectId: post.project_id || null });
     if (targets.length) {
       const { body: linkedBody } = injectInternalLinks(out.body_markdown, newSlug, targets);
       out.body_markdown = linkedBody;

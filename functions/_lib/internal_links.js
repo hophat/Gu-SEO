@@ -136,20 +136,25 @@ export function injectInternalLinks(body, selfSlug, targets) {
 
 // Pull published posts for use as the link target pool. When pillarKey
 // is given, posts whose topic_seed belongs to that pillar sort first so
-// new posts link into their own cluster; recency breaks ties.
-export async function loadLinkTargets(env, selfSlug, { limit = TARGET_POOL_SIZE, pillarKey = null } = {}) {
-  const rows = pillarKey
-    ? await env.DB.prepare(
-        `SELECT slug, title, keywords FROM blog_posts
-          WHERE status='published' AND slug != ?
-          ORDER BY CASE WHEN topic_seed IN (
-            SELECT cluster_key FROM content_clusters WHERE pillar_key = ? AND status = 'active'
-          ) THEN 0 ELSE 1 END, published_at DESC LIMIT ?`
-      ).bind(selfSlug || '', pillarKey, limit).all().catch(() => ({ results: [] }))
-    : await env.DB.prepare(
-        `SELECT slug, title, keywords FROM blog_posts
-          WHERE status='published' AND slug != ?
-          ORDER BY published_at DESC LIMIT ?`
-      ).bind(selfSlug || '', limit).all().catch(() => ({ results: [] }));
+// new posts link into their own cluster; recency breaks ties. When
+// projectId is given, only that project's posts are candidates.
+export async function loadLinkTargets(env, selfSlug, { limit = TARGET_POOL_SIZE, pillarKey = null, projectId = null } = {}) {
+  const clauses = [`status='published'`, `slug != ?`];
+  const args = [selfSlug || ''];
+  if (projectId) { clauses.push(`project_id = ?`); args.push(projectId); }
+
+  const order = pillarKey
+    ? `CASE WHEN topic_seed IN (
+         SELECT cluster_key FROM content_clusters WHERE pillar_key = ? AND status = 'active'
+       ) THEN 0 ELSE 1 END, published_at DESC`
+    : `published_at DESC`;
+  if (pillarKey) args.push(pillarKey);
+  args.push(limit);
+
+  const rows = await env.DB.prepare(
+    `SELECT slug, title, keywords FROM blog_posts
+      WHERE ${clauses.join(' AND ')}
+      ORDER BY ${order} LIMIT ?`
+  ).bind(...args).all().catch(() => ({ results: [] }));
   return rows.results || [];
 }

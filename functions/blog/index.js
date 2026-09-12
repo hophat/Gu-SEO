@@ -10,6 +10,7 @@
 
 import { esc } from '../_lib/util.js';
 import { loadSettings } from '../_lib/settings.js';
+import { resolveProjectForRequest } from '../_lib/project_scope.js';
 
 // Page size for /blog and /blog/page/N. Matches the embed widget's
 // default so the SERP archive feels the same as the embed.
@@ -21,11 +22,18 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
   const baseUrl = `https://${host}`;
   page = Math.max(1, parseInt(page, 10) || 1);
 
+  const project = await resolveProjectForRequest(env, request).catch(() => null);
+  const projectId = project?.id || null;
+
   // Total + this-page rows in two queries. COUNT is cheap on D1
-  // when filtered by an indexed column (status).
-  const totalRow = await env.DB.prepare(
-    `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published'`
-  ).first().catch(() => ({ n: 0 }));
+  // when filtered by an indexed column (status). Both queries share
+  // the same project filter so pagination stays consistent.
+  const totalSql = projectId
+    ? `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published' AND project_id = ?`
+    : `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published'`;
+  const totalRow = await (projectId
+    ? env.DB.prepare(totalSql).bind(projectId)
+    : env.DB.prepare(totalSql)).first().catch(() => ({ n: 0 }));
   const total = totalRow?.n || 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -36,11 +44,16 @@ export async function renderBlogIndex({ env, request, page = 1 }) {
   }
 
   const offset = (page - 1) * PAGE_SIZE;
-  const r = await env.DB.prepare(
-    `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
-       FROM blog_posts WHERE status='published'
+  const pageSql = projectId
+    ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+       FROM blog_posts WHERE status='published' AND project_id = ?
        ORDER BY published_at DESC LIMIT ? OFFSET ?`
-  ).bind(PAGE_SIZE, offset).all();
+    : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+       FROM blog_posts WHERE status='published'
+       ORDER BY published_at DESC LIMIT ? OFFSET ?`;
+  const r = await (projectId
+    ? env.DB.prepare(pageSql).bind(projectId, PAGE_SIZE, offset)
+    : env.DB.prepare(pageSql).bind(PAGE_SIZE, offset)).all();
   const posts = r.results || [];
 
   const settings = await loadSettings(env).catch(() => ({}));

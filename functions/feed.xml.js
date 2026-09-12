@@ -11,6 +11,7 @@
 
 import { loadSettings } from './_lib/settings.js';
 import { esc } from './_lib/util.js';
+import { resolveProjectForRequest } from './_lib/project_scope.js';
 
 const ITEMS_LIMIT = 30;
 
@@ -34,12 +35,21 @@ export const onRequestGet = async ({ env, request }) => {
   const siteUrl = absUrl(request, '/');
   const feedUrl = absUrl(request, '/feed.xml');
 
-  const rows = await env.DB.prepare(
-    `SELECT slug, title, meta_description, published_at
-       FROM blog_posts
-      WHERE status = 'published'
-      ORDER BY published_at DESC LIMIT ?`
-  ).bind(ITEMS_LIMIT).all().catch(() => ({ results: [] }));
+  const project = await resolveProjectForRequest(env, request).catch(() => null);
+  const projectId = project?.id || null;
+
+  const postsSql = projectId
+    ? `SELECT slug, title, meta_description, published_at
+         FROM blog_posts
+        WHERE status = 'published' AND project_id = ?
+        ORDER BY published_at DESC LIMIT ?`
+    : `SELECT slug, title, meta_description, published_at
+         FROM blog_posts
+        WHERE status = 'published'
+        ORDER BY published_at DESC LIMIT ?`;
+  const rows = await (projectId
+    ? env.DB.prepare(postsSql).bind(projectId, ITEMS_LIMIT)
+    : env.DB.prepare(postsSql).bind(ITEMS_LIMIT)).all().catch(() => ({ results: [] }));
   const posts = rows.results || [];
 
   // Pubdate of the most recent post (or now if empty) for <lastBuildDate>.
