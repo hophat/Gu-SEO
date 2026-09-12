@@ -236,7 +236,13 @@ ${preloadHero}
       <div class="cta-box">
         <h3>Tạo website cho quán của bạn ngay</h3>
         <p>Chỉ cần dán link Google Maps, Gulagi sẽ tự động tạo website chuyên nghiệp cho quán.</p>
-        <a href="https://gulagi.com" class="cta-btn">Bắt đầu miễn phí →</a>
+        <div class="mini-builder">
+          <form id="mini-builder-form" onsubmit="event.preventDefault();var url=this.querySelector('input').value.trim();if(url){window.location.href='https://gulagi.com/?maps='+encodeURIComponent(url);}">
+            <input type="url" placeholder="Dán link Google Maps của quán..." required class="mini-builder-input" />
+            <button type="submit" class="mini-builder-btn">Tạo web ngay →</button>
+          </form>
+        </div>
+        <a href="https://gulagi.com" class="cta-btn" style="margin-top:12px">Bắt đầu miễn phí →</a>
       </div>
     </div>
   </article>
