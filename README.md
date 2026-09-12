@@ -129,10 +129,21 @@ You can drag-add, remove, swap, or rename any slot. The cron picks up "scheduled
 | Queue keywords from CSV | Admin → Programmatic → "Upload CSV" |
 | Force the next programmatic page | Admin → Programmatic → "Run next" |
 | Ping IndexNow for one URL | Admin → SEO → "Ping IndexNow" |
+| Score topic candidates | Admin → Trends → "Chấm điểm topics" |
+| Scan rival pages for a keyword | Admin → Trends → "So sánh đối thủ" |
+| Refresh stale posts | Admin → Daily blog → "Scan stale posts" |
 | Get the embed snippet | Admin → Embeds → pick or create |
 | Preview a sample post for your brand | Admin → Daily blog → "Preview sample" (dry-run; no D1 / R2 writes) |
 
-The cron Worker drives the blog chain at **08:00 UTC** and generates a programmatic page at **09:00 UTC**. Edit `cron-worker/wrangler.jsonc` to change the schedule.
+The cron Worker drives the blog chain at **08:00 UTC**, generates a programmatic page at **09:00 UTC**, and rewrites up to 2 stale posts every Monday at **07:00 UTC**. Edit `cron-worker/wrangler.jsonc` to change the schedule.
+
+## 🤖 Phase 2 — competitive content + auto-refresh
+
+- **Competitor scan** — Admin → Trends → "So sánh đối thủ": paste 1–5 rival URLs per keyword, the system measures word count / H2s / links and caches snapshots for 7 days.
+- **Topic scoring v2** — Admin → Trends → "Chấm điểm topics": ranks candidates by relevance, business value, freshness, competition (from snapshots) and search intent; scores under 60 auto-archive. The daily picker now takes the top-scored topic.
+- **Content clusters** — topics auto-assign to pillars derived from brand themes; new and refreshed posts link into their own cluster first.
+- **Auto-refresh** — Admin → Daily blog → "Scan stale posts": finds published posts older than 90 days, rewrites them in place (same URL, 301 on rename), re-pings IndexNow. Max 2 per week, enforced server-side.
+- **Vietnamese-aware internal links** — phrase matching folds diacritics so Vietnamese bodies actually get linked (previously near-zero matches).
 
 ## 🔌 Embed your blog anywhere
 

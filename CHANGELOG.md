@@ -7,6 +7,23 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.2.0 — 2026-09-12
+
+### Added
+- **Competitor scan.** Admin → Trends → "So sánh đối thủ" measures rival pages (word count, H2s, links) with SSRF validation and a 7-day snapshot cache.
+- **Topic scoring v2.** Five-factor ranking (relevance, business value, freshness, competition, intent fit) with auto-archive under 60; the daily picker takes the top score.
+- **Content clusters.** Topics auto-assign to brand-derived pillars; new and refreshed posts prefer same-cluster internal links.
+- **Auto-refresh.** Stale posts (>90 days) rewrite in place with slug preservation, 301 redirects on rename, and IndexNow/GSC re-pings. Capped at 2 per week.
+- **Vietnamese-aware internal linking.** Diacritic folding makes phrase matching work on Vietnamese bodies.
+- **Weekly refresh cron.** `0 7 * * 1` on the cron Worker plus a manual `/run/refresh` route.
+
+### Fixed
+- **Cron schedules actually attached.** No Worker had cron triggers, so scheduled posts never auto-generated; daily/prog/refresh schedules are now set on `gulagi-cron-worker`.
+- **Exported `sniffImageFormat`** from the blog image step so the test-image endpoint builds.
+
+### Changed
+- **Admin menus.** New Analytics tab and Trends section with usage guides; leads/views list endpoints now require admin auth.
+
 ## 1.1.0 — 2026-06-10
 
 ### Added
