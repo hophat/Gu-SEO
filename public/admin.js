@@ -2274,16 +2274,25 @@
   let _widgetWired = false;
   let _widgetFlavour = 'js';
 
+  // Public origin the embed widget and sitemap are served from for the
+  // project the operator is currently scoped to. Falls back to the
+  // admin host when no project is active (single-site installs).
+  function activeProjectOrigin() {
+    const project = window.__psActiveProject;
+    const raw = project?.publishing_url || project?.website_url || '';
+    try { if (raw) return new URL(raw).origin; } catch { /* malformed url */ }
+    return 'https://' + location.host;
+  }
+
   function renderWidgetSnippet() {
     const sitemap = $('#sitemap-link');
-    if (sitemap) sitemap.href = '/sitemap.xml';
+    if (sitemap) sitemap.href = activeProjectOrigin() + '/sitemap.xml';
 
     const snippetEl  = $('#widget-snippet');
     const previewEl  = $('#widget-preview-host');
     const copyBtn    = $('#widget-copy');
     if (!snippetEl || !previewEl || !copyBtn) return;
 
-    const origin = 'https://' + location.host;
     const tabs       = $$('.widget-tab');
     const optId      = $('#widget-opt-id');
     const optTitle   = $('#widget-opt-title');
@@ -2291,6 +2300,7 @@
     const optTheme   = $('#widget-opt-theme');
 
     function build() {
+      const origin = activeProjectOrigin();
       const id    = (optId?.value || 'ps-blog').trim().replace(/[^a-z0-9-]/gi, '') || 'ps-blog';
       const title = (optTitle?.value || '').trim();
       const count = Math.min(50, Math.max(1, parseInt(optCount?.value, 10) || 5));
@@ -2729,6 +2739,7 @@
         badge.textContent = `🏪 ${current.name}`;
       }
       window.__psActiveProjectId = projectId;
+      window.__psActiveProject = projects.find((p) => p.id === projectId) || null;
       return;
     }
 
@@ -2752,6 +2763,7 @@
       if (selectedId) {
         switcher.value = selectedId;
         window.__psActiveProjectId = selectedId;
+        window.__psActiveProject = projects.find((p) => p.id === selectedId) || null;
         localStorage.setItem('ps_active_project_id', selectedId);
       }
 
@@ -2759,6 +2771,7 @@
         const newId = switcher.value;
         localStorage.setItem('ps_active_project_id', newId);
         window.__psActiveProjectId = newId;
+        window.__psActiveProject = projects.find((p) => p.id === newId) || null;
         if (_activeTab) {
           const tabToReload = _activeTab;
           _activeTab = null;
