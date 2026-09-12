@@ -7,4 +7,4 @@
 - [x] 5. Refresh scan/run endpoints + redirect + IndexNow/GSC re-ping.
 - [x] 6. Internal-link automation for new + refreshed posts.
 - [x] 7. Weekly cron schedule + idempotency + retry limits.
-- [ ] 8. Docs (README + CHANGELOG), full verification, production deploy.
+- [x] 8. Docs (README + CHANGELOG), full verification, production deploy.
