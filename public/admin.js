@@ -758,6 +758,28 @@
   }
 
   async function loadCompetitors() {
+    const scoreBtn = $('#topic-score');
+    if (scoreBtn && !scoreBtn.dataset.wired) {
+      scoreBtn.dataset.wired = '1';
+      scoreBtn.addEventListener('click', async () => {
+        const statusEl = $('#topic-score-status');
+        scoreBtn.disabled = true;
+        if (statusEl) statusEl.textContent = currentLang === 'vi' ? 'Đang chấm điểm...' : 'Scoring...';
+        try {
+          const { status, body } = await api('/api/admin/topics/score', { method: 'POST', body: JSON.stringify({ project_id: 'gulagi' }) });
+          if (status === 200 && body?.ok) {
+            if (statusEl) statusEl.textContent = currentLang === 'vi' ? `Đã chấm ${body.count || 0} topics.` : `Scored ${body.count || 0} topics.`;
+            renderScoreList(body.topics || []);
+          } else {
+            if (statusEl) statusEl.textContent = `Error: ${body?.error || status}`;
+          }
+        } catch (err) {
+          if (statusEl) statusEl.textContent = `Network error: ${err.message}`;
+        } finally {
+          scoreBtn.disabled = false;
+        }
+      });
+    }
     const scanBtn = $('#comp-scan');
     if (scanBtn && !scanBtn.dataset.wired) {
       scanBtn.dataset.wired = '1';
@@ -827,6 +849,48 @@
       const tdH = document.createElement('td'); tdH.textContent = s.h2_count ?? '-'; tdH.style.padding = '8px';
       const tdL = document.createElement('td'); tdL.textContent = s.link_count ?? '-'; tdL.style.padding = '8px';
       tr.appendChild(tdUrl); tr.appendChild(tdW); tr.appendChild(tdH); tr.appendChild(tdL);
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    listEl.appendChild(table);
+  }
+
+  function renderScoreList(topics) {
+    const listEl = $('#topic-score-list');
+    if (!listEl) return;
+    listEl.classList.remove('dim');
+    clearChildren(listEl);
+    if (!topics.length) {
+      listEl.textContent = currentLang === 'vi' ? 'Không còn candidate nào (đã chọn, dùng hoặc lưu trữ hết).' : 'No candidates left.';
+      return;
+    }
+    const table = document.createElement('table');
+    table.className = 'table';
+    table.style.width = '100%';
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    const headers = currentLang === 'vi'
+      ? ['Chủ đề', 'Điểm cuối', 'Liên quan', 'Tươi mới', 'Cạnh tranh', 'Ý định']
+      : ['Topic', 'Final', 'Relevance', 'Freshness', 'Competition', 'Intent'];
+    for (const h of headers) {
+      const th = document.createElement('th');
+      th.textContent = h;
+      th.style.textAlign = 'left';
+      th.style.padding = '8px';
+      trh.appendChild(th);
+    }
+    thead.appendChild(trh);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    for (const t of topics) {
+      const tr = document.createElement('tr');
+      const cells = [t.key || '-', `${t.final ?? '-'}/100`, t.relevance ?? '-', t.freshness ?? '-', t.competition ?? '-', t.intent || '-'];
+      for (const c of cells) {
+        const td = document.createElement('td');
+        td.textContent = c;
+        td.style.padding = '8px';
+        tr.appendChild(td);
+      }
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);

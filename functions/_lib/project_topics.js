@@ -1,4 +1,4 @@
-import { newId, nowSec } from './util.js';
+import { newId, nowSec, slugify } from './util.js';
 import { generateContent } from './ai/provider.js';
 
 export async function listProjectTopics(env, projectId, { status = 'candidate', limit = 50 } = {}) {
@@ -46,6 +46,17 @@ export async function addProjectTopic(env, {
 export async function pickNextProjectTopic(env, project) {
   if (!env?.DB || !project?.id) return null;
   const t = nowSec();
+
+  try {
+    const ranked = await scoreProjectTopics(env, project);
+    const top = ranked[0];
+    if (top) {
+      await env.DB.prepare(
+        `UPDATE project_topics SET status = 'selected', times_used = times_used + 1, last_used_at = ?, updated_at = ? WHERE id = ?`
+      ).bind(t, t, top.id).run().catch(() => {});
+      return { id: top.id, key: top.key, angle: top.angle, category: top.category };
+    }
+  } catch {}
 
   const candidate = await env.DB.prepare(
     `SELECT * FROM project_topics
@@ -143,4 +154,114 @@ JSON Output:`;
   }
 
   return created;
+}
+
+const COMMERCIAL_CUES = [
+  'mua', 'giá', 'báo giá', 'bảng giá', 'dịch vụ', 'tốt nhất', 'top',
+  'review', 'đánh giá', 'hướng dẫn', 'cách', 'kinh nghiệm', 'so sánh',
+  'buy', 'price', 'pricing', 'best', 'review', 'how to', 'guide',
+];
+
+export function classifyIntent(key) {
+  const k = String(key || '').toLowerCase();
+  if (/(mua|giá|báo giá|bảng giá|thuê|đặt|buy|price|pricing|order|book)/.test(k)) return 'transactional';
+  if (/(tốt nhất|top|so sánh|review|đánh giá|vs\.?|best|compare)/.test(k)) return 'commercial';
+  return 'informational';
+}
+
+function intentFit(key) {
+  const k = String(key || '').toLowerCase();
+  return COMMERCIAL_CUES.some((c) => k.includes(c)) ? 90 : 70;
+}
+
+function freshnessFor(createdAt, now) {
+  const ageDays = Math.max(0, (now - (createdAt || now)) / 86400);
+  return Math.max(20, Math.round(100 - ageDays * 2));
+}
+
+function competitionFor(key, snapshots) {
+  const k = String(key || '').toLowerCase();
+  const words = k.split(/\s+/).filter((w) => w.length > 3);
+  const hits = (snapshots || []).filter((s) => {
+    const sk = String(s.keyword || '').toLowerCase();
+    return sk && (sk.includes(k.slice(0, 24)) || words.some((w) => sk.includes(w)));
+  });
+  if (!hits.length) return 50;
+  const avgWords = hits.reduce((a, s) => a + (s.avg_words || 0), 0) / hits.length;
+  return Math.min(95, Math.max(40, Math.round(50 + avgWords / 100)));
+}
+
+export function finalScore(topic, snapshots, now) {
+  const relevance = topic.relevance_score ?? 80;
+  const business = topic.business_value_score ?? 80;
+  const freshness = freshnessFor(topic.created_at, now);
+  const competition = competitionFor(topic.key, snapshots);
+  const intent = intentFit(topic.key);
+  const final = Math.round(
+    0.3 * relevance + 0.25 * business + 0.2 * freshness + 0.15 * (100 - competition) + 0.1 * intent
+  );
+  return { relevance, business, freshness, competition, intent, final };
+}
+
+export async function ensurePillars(env, project) {
+  const existing = await env.DB.prepare(
+    `SELECT pillar_key FROM content_clusters WHERE project_id = ? AND status = 'active' GROUP BY pillar_key`
+  ).bind(project.id).all().catch(() => ({ results: [] }));
+  if ((existing?.results || []).length >= 3) return existing.results.map((r) => r.pillar_key);
+
+  const themes = String(project.brand?.key_themes || '')
+    .split(/[\n,]+/).map((s) => s.trim()).filter(Boolean).slice(0, 3);
+  const pillars = themes.length ? themes.map((t) => slugify(t).slice(0, 60) || 'general') : ['general'];
+  const t = nowSec();
+  for (const p of [...new Set(pillars)]) {
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO content_clusters (id, project_id, pillar_key, cluster_key, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'active', ?, ?)`
+    ).bind(newId(), project.id, p, p, t, t).run().catch(() => {});
+  }
+  return [...new Set(pillars)];
+}
+
+export async function scoreProjectTopics(env, project) {
+  if (!env?.DB || !project?.id) return [];
+  const t = nowSec();
+  const pillars = await ensurePillars(env, project).catch(() => ['general']);
+
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM project_topics WHERE project_id = ? AND status = 'candidate' ORDER BY created_at ASC LIMIT 100`
+  ).bind(project.id).all().catch(() => ({ results: [] }));
+  const candidates = results || [];
+  if (!candidates.length) return [];
+
+  const snapRows = await env.DB.prepare(
+    `SELECT keyword, AVG(word_count) AS avg_words FROM competitor_snapshots
+      WHERE project_id = ? AND created_at > ? GROUP BY keyword`
+  ).bind(project.id, t - 7 * 86400).all().catch(() => ({ results: [] }));
+  const snapshots = snapRows?.results || [];
+
+  const ranked = [];
+  for (const c of candidates) {
+    const s = finalScore(c, snapshots, t);
+    const intent = classifyIntent(c.key);
+    if (s.final < 60) {
+      await env.DB.prepare(
+        `UPDATE project_topics SET status = 'archived', competition_score = ?, freshness_score = ?, search_intent = ?, updated_at = ? WHERE id = ?`
+      ).bind(s.competition, s.freshness, intent, t, c.id).run().catch(() => {});
+      continue;
+    }
+    await env.DB.prepare(
+      `UPDATE project_topics SET competition_score = ?, freshness_score = ?, search_intent = ?, updated_at = ? WHERE id = ?`
+    ).bind(s.competition, s.freshness, intent, t, c.id).run().catch(() => {});
+
+    const pillar = pillars.includes(slugify(c.category || '').slice(0, 60)) ? slugify(c.category).slice(0, 60) : pillars[0];
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO content_clusters (id, project_id, pillar_key, cluster_key, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'active', ?, ?)`
+    ).bind(newId(), project.id, pillar, c.key.slice(0, 120), t, t).run().catch(() => {});
+
+    ranked.push({ id: c.id, key: c.key, angle: c.angle, category: c.category, pillar, intent, ...s });
+  }
+
+  ranked.sort((a, b) => b.final - a.final);
+  return ranked;
 }
