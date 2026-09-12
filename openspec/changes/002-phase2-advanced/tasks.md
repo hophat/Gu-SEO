@@ -4,7 +4,7 @@
 - [x] 2. DB additive migration (columns + 3 tables), bundle schema, test local.
 - [x] 3. Competitor scan endpoint + snapshot list + Trends UI wiring.
 - [x] 4. Topic scoring v2 + cluster-aware planner.
-- [ ] 5. Refresh scan/run endpoints + redirect + IndexNow/GSC re-ping.
+- [x] 5. Refresh scan/run endpoints + redirect + IndexNow/GSC re-ping.
 - [ ] 6. Internal-link automation for new + refreshed posts.
 - [ ] 7. Weekly cron schedule + idempotency + retry limits.
 - [ ] 8. Docs (README + CHANGELOG), full verification, production deploy.

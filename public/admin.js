@@ -1907,6 +1907,62 @@
     }
   }
 
+  async function runRefreshScan() {
+    const btn = $('#refresh-scan');
+    const statusEl = $('#refresh-status');
+    const listEl = $('#refresh-list');
+    if (!btn) return;
+    btn.disabled = true;
+    if (statusEl) statusEl.textContent = currentLang === 'vi' ? 'Đang quét bài cũ...' : 'Scanning stale posts...';
+    try {
+      const { status, body } = await api('/api/admin/refresh/scan', { method: 'POST', body: JSON.stringify({ limit: 10 }) });
+      if (status !== 200 || !body?.ok) throw new Error(body?.error || 'scan failed');
+      if (statusEl) statusEl.textContent = currentLang === 'vi' ? `Tìm thấy ${body.count || 0} bài cần refresh.` : `Found ${body.count || 0} stale posts.`;
+      if (listEl) {
+        clearChildren(listEl);
+        listEl.classList.remove('dim');
+        if (!body.jobs?.length) {
+          listEl.textContent = currentLang === 'vi' ? 'Không có bài nào cần refresh.' : 'Nothing to refresh.';
+          return;
+        }
+        for (const j of body.jobs) {
+          const row = document.createElement('div');
+          row.className = 'row';
+          row.style.marginBottom = '8px';
+          const label = document.createElement('span');
+          label.textContent = j.title || j.slug;
+          label.style.flex = '1';
+          const go = document.createElement('button');
+          go.className = 'btn btn-ghost btn-sm';
+          go.textContent = currentLang === 'vi' ? 'Refresh bài này' : 'Refresh this post';
+          go.addEventListener('click', async () => {
+            go.disabled = true;
+            try {
+              const r = await api('/api/admin/refresh/run', { method: 'POST', body: JSON.stringify({ job_id: j.job_id }) });
+              if (r.status === 200 && r.body?.ok) {
+                label.textContent += currentLang === 'vi' ? ' — xong.' : ' — done.';
+                loadPosts();
+              } else {
+                label.textContent += ` — lỗi: ${r.body?.error || r.status}`;
+              }
+            } catch (err) {
+              label.textContent += ` — lỗi mạng: ${err.message}`;
+            } finally {
+              go.disabled = false;
+            }
+          });
+          row.appendChild(label);
+          row.appendChild(go);
+          listEl.appendChild(row);
+        }
+      }
+    } catch (err) {
+      if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   async function loadJobs() {
     const tbody = $('#jobs-table tbody');
     if (!tbody) return;
@@ -2662,6 +2718,7 @@
 
     // blog tab
     $('#blog-go').addEventListener('click', runBlogChain);
+    $('#refresh-scan').addEventListener('click', runRefreshScan);
     $('#jobs-refresh').addEventListener('click', loadJobs);
 
     // prog tab

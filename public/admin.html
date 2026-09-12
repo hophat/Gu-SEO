@@ -202,6 +202,17 @@
       </div>
 
       <div class="card">
+        <div class="card-eyebrow">Content refresh</div>
+        <h2>Refresh stale posts</h2>
+        <p>Finds published posts older than 90 days (max 2 refreshes per week), rewrites them in place keeping the same URL, then re-pings IndexNow.</p>
+        <div class="row">
+          <button id="refresh-scan" class="btn btn-primary">Scan stale posts</button>
+          <span id="refresh-status" class="status"></span>
+        </div>
+        <div id="refresh-list" class="dim" style="margin-top:12px">Chưa quét.</div>
+      </div>
+
+      <div class="card">
         <div class="card-eyebrow">Drafts &amp; failed</div>
         <h2>Resume incomplete jobs</h2>
         <p>Each step is idempotent, so retry resumes from whichever step failed.</p>
