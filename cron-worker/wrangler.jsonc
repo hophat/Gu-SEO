@@ -13,16 +13,23 @@
   //                manual click finishes where the prior run died.
   //   0 9 * * *  → programmatic-SEO batch (drains pending queue;
   //                each call generates one page).
+  //   0 7 * * 1  → weekly content refresh (scans stale posts, rewrites
+  //                max 2 in place, re-pings IndexNow). Phase 2.
   //
   // Secrets:
   //   BLOG_URL    — https://<host>/api/admin/blog (base path)
   //   PROG_URL    — https://<host>/api/admin/prog/generate-next
   //   ADMIN_TOKEN — shared bearer token
+  //
+  // NOTE: the refresh endpoints live under /api/admin/refresh/* and are
+  // derived from BLOG_URL by swapping the trailing /blog segment, so no
+  // extra secret is needed.
 
   "triggers": {
     "crons": [
       "0 8 * * *",
-      "0 9 * * *"
+      "0 9 * * *",
+      "0 7 * * 1"
     ]
   }
 }

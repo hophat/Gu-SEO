@@ -7,6 +7,7 @@
 //   - 0 8 * * *         daily blog start (or resume any draft first)
 //   - 0 10,14,18 * * *  retry-only windows for unfinished drafts
 //   - 0 9 * * *         programmatic-SEO batch (10 keywords per run)
+//   - 0 7 * * 1         weekly content refresh (Phase 2: max 2 rewrites)
 //
 // Secrets: BLOG_URL, PROG_URL, ADMIN_TOKEN.
 
@@ -19,6 +20,8 @@ export default {
       ctx.waitUntil(runBlogChain(env, 'retry', { resumeOnly: true }));
     } else if (cron === '0 9 * * *') {
       ctx.waitUntil(runProgrammaticBatch(env, 'daily_prog', { limit: 10 }));
+    } else if (cron === '0 7 * * 1') {
+      ctx.waitUntil(runRefreshBatch(env, 'weekly_refresh', { limit: 2 }));
     }
   },
 
@@ -36,6 +39,9 @@ export default {
     } else if (url.pathname === '/run/prog') {
       const limit = parseInt(url.searchParams.get('limit'), 10) || 5;
       result = await runProgrammaticBatch(env, 'manual', { limit });
+    } else if (url.pathname === '/run/refresh') {
+      const limit = parseInt(url.searchParams.get('limit'), 10) || 2;
+      result = await runRefreshBatch(env, 'manual', { limit });
     } else {
       return new Response('not found', { status: 404 });
     }
@@ -105,4 +111,26 @@ async function runProgrammaticBatch(env, source, { limit = 10 } = {}) {
     if (!r.ok) break; // stop on the first hard failure; cron can retry next window
   }
   return { ok: true, source, generated: results.length, results };
+}
+
+// Weekly content refresh (Phase 2). Idempotent: the scan endpoint
+// skips posts with open jobs, the run endpoint is idempotent on
+// published jobs, and the server enforces max 2 refreshes per week.
+// One attempt per job here — failures stay visible in admin + audit
+// for the next window instead of burning budget on blind retries.
+async function runRefreshBatch(env, source, { limit = 2 } = {}) {
+  const base = (env.BLOG_URL || '').replace(/\/+$/, '');
+  if (!base || !env.ADMIN_TOKEN) return { ok: false, error: 'missing_config', source };
+  const adminBase = base.replace(/\/blog$/, '') || base;
+  const scanR = await call(env, `${adminBase}/refresh/scan`, JSON.stringify({ limit }));
+  if (!scanR.ok) return { ok: false, step: 'scan', source, ...scanR };
+  const jobs = scanR.body?.jobs || [];
+  const results = [];
+  for (const j of jobs.slice(0, limit)) {
+    const r = await call(env, `${adminBase}/refresh/run`, JSON.stringify({ job_id: j.job_id }));
+    results.push({ job_id: j.job_id, slug: j.slug, status: r.status, body: r.body });
+    if (r.status === 429) break; // weekly cap reached — stop gracefully
+    if (!r.ok) break; // stop on first hard failure; next window retries
+  }
+  return { ok: true, source, scanned: jobs.length, refreshed: results.length, results };
 }
