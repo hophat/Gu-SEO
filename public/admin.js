@@ -361,6 +361,7 @@
       status: 'Trạng thái',
       updates: 'Cập nhật',
       usage: 'Chi phí & Token',
+      trends: 'Xu hướng',
     },
     en: {
       blog: 'Daily blog',
@@ -373,6 +374,7 @@
       status: 'Status',
       updates: 'Updates',
       usage: 'Usage',
+      trends: 'Trends',
     }
   };
 
@@ -383,8 +385,10 @@
       calendar: 'Lịch bài viết',
       brand: 'Thương hiệu',
       covers: 'Ảnh bìa',
+      analytics: 'Phân tích',
       seo: 'Phân phối',
       status: 'Hệ thống',
+      trends: 'Xu hướng',
       settings: 'Cài đặt',
     },
     en: {
@@ -393,8 +397,10 @@
       calendar: 'Calendar',
       brand: 'Brand',
       covers: 'Covers',
+      analytics: 'Analytics',
       seo: 'Distribution',
       status: 'System',
+      trends: 'Trends',
       settings: 'Settings',
     }
   };
@@ -407,9 +413,12 @@
 
     $$('.tab').forEach((t) => {
       const tabName = t.dataset.tab;
+      if (!tabName || !TAB_LABELS_MAP[lang]?.[tabName]) return;
       const textNode = Array.from(t.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
-      if (textNode && TAB_LABELS_MAP[lang]?.[tabName]) {
+      if (textNode) {
         textNode.textContent = TAB_LABELS_MAP[lang][tabName] + ' ';
+      } else {
+        t.prepend(document.createTextNode(TAB_LABELS_MAP[lang][tabName] + ' '));
       }
     });
 
@@ -520,6 +529,231 @@
     if (name === 'updates') { Updates.init(); }
     if (name === 'status')   { Status.init(); }
     if (name === 'settings') { loadSettings(); loadProviderGrid(); }
+    if (name === 'analytics') { loadAnalytics(); }
+    if (name === 'trends') { loadTrends(); }
+  }
+
+  async function loadAnalytics() {
+    const { status, body } = await api('/api/admin/analytics');
+    if (status !== 200 || !body?.ok) return;
+
+    setText($('#an-total-posts'), body.total_posts ?? 0);
+    setText($('#an-total-leads'), body.total_leads ?? 0);
+    setText($('#an-ai-cost'), '$' + (Number(body.ai_cost_30d) || 0).toFixed(2));
+
+    const fbEl = $('#an-feedback');
+    if (fbEl) {
+      fbEl.classList.remove('dim');
+      clearChildren(fbEl);
+      if (!body.feedback || !body.feedback.length) {
+        fbEl.textContent = currentLang === 'vi' ? 'Chưa có phản hồi từ độc giả.' : 'No feedback received yet.';
+      } else {
+        const wrap = document.createElement('div');
+        wrap.style.display = 'flex';
+        wrap.style.gap = '16px';
+        wrap.style.flexWrap = 'wrap';
+        for (const row of body.feedback) {
+          const card = document.createElement('div');
+          card.style.padding = '8px 16px';
+          card.style.border = '1px solid var(--border, #333)';
+          card.style.borderRadius = '6px';
+          const title = document.createElement('strong');
+          title.textContent = (row.rating === 'yes' ? '👍 Hữu ích: ' : (row.rating === 'no' ? '👎 Chưa hữu ích: ' : `${row.rating}: `));
+          const count = document.createElement('span');
+          count.textContent = String(row.n ?? 0);
+          card.appendChild(title);
+          card.appendChild(count);
+          wrap.appendChild(card);
+        }
+        fbEl.appendChild(wrap);
+      }
+    }
+
+    const viewsEl = $('#an-views');
+    if (viewsEl) {
+      viewsEl.classList.remove('dim');
+      clearChildren(viewsEl);
+      if (!body.top_views || !body.top_views.length) {
+        viewsEl.textContent = currentLang === 'vi' ? 'Chưa có dữ liệu lượt xem.' : 'No view data yet.';
+      } else {
+        const table = document.createElement('table');
+        table.className = 'table';
+        table.style.width = '100%';
+        const thead = document.createElement('thead');
+        const trh = document.createElement('tr');
+        const headers = currentLang === 'vi'
+          ? ['Bài viết', 'Lượt xem', 'Thời gian đọc TB']
+          : ['Post', 'Views', 'Avg Read Time'];
+        for (const h of headers) {
+          const th = document.createElement('th');
+          th.textContent = h;
+          th.style.textAlign = 'left';
+          th.style.padding = '8px';
+          trh.appendChild(th);
+        }
+        thead.appendChild(trh);
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+        for (const row of body.top_views) {
+          const tr = document.createElement('tr');
+          const tdSlug = document.createElement('td');
+          tdSlug.textContent = row.blog_slug || '-';
+          tdSlug.style.padding = '8px';
+          const tdViews = document.createElement('td');
+          tdViews.textContent = String(row.view_count ?? 0);
+          tdViews.style.padding = '8px';
+          const tdTime = document.createElement('td');
+          const avgMs = row.view_count ? Math.round((row.total_read_time_ms || 0) / row.view_count) : 0;
+          tdTime.textContent = avgMs >= 1000 ? `${(avgMs / 1000).toFixed(1)}s` : `${avgMs}ms`;
+          tdTime.style.padding = '8px';
+          tr.appendChild(tdSlug);
+          tr.appendChild(tdViews);
+          tr.appendChild(tdTime);
+          tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        viewsEl.appendChild(table);
+      }
+    }
+
+    const leadsEl = $('#an-leads');
+    if (leadsEl) {
+      leadsEl.classList.remove('dim');
+      clearChildren(leadsEl);
+      if (!body.latest_leads || !body.latest_leads.length) {
+        leadsEl.textContent = currentLang === 'vi' ? 'Chưa có leads nào được thu thập.' : 'No leads captured yet.';
+      } else {
+        const table = document.createElement('table');
+        table.className = 'table';
+        table.style.width = '100%';
+        const thead = document.createElement('thead');
+        const trh = document.createElement('tr');
+        const headers = currentLang === 'vi'
+          ? ['Tên', 'Liên hệ', 'Nguồn', 'Bài viết', 'Thời gian']
+          : ['Name', 'Contact', 'Source', 'Post', 'Date'];
+        for (const h of headers) {
+          const th = document.createElement('th');
+          th.textContent = h;
+          th.style.textAlign = 'left';
+          th.style.padding = '8px';
+          trh.appendChild(th);
+        }
+        thead.appendChild(trh);
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+        for (const row of body.latest_leads) {
+          const tr = document.createElement('tr');
+          const tdName = document.createElement('td');
+          tdName.textContent = row.name || '-';
+          tdName.style.padding = '8px';
+          const tdContact = document.createElement('td');
+          tdContact.textContent = [row.email, row.phone].filter(Boolean).join(' / ') || '-';
+          tdContact.style.padding = '8px';
+          const tdSource = document.createElement('td');
+          tdSource.textContent = row.source || '-';
+          tdSource.style.padding = '8px';
+          const tdSlug = document.createElement('td');
+          tdSlug.textContent = row.blog_slug || '-';
+          tdSlug.style.padding = '8px';
+          const tdTime = document.createElement('td');
+          tdTime.textContent = row.created_at ? new Date(row.created_at * 1000).toLocaleString() : '-';
+          tdTime.style.padding = '8px';
+          tr.appendChild(tdName);
+          tr.appendChild(tdContact);
+          tr.appendChild(tdSource);
+          tr.appendChild(tdSlug);
+          tr.appendChild(tdTime);
+          tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        leadsEl.appendChild(table);
+      }
+    }
+  }
+
+  async function loadTrends() {
+    const genBtn = $('#trend-generate');
+    if (genBtn && !genBtn.dataset.wired) {
+      genBtn.dataset.wired = '1';
+      genBtn.addEventListener('click', async () => {
+        genBtn.disabled = true;
+        const statusEl = $('#trend-status');
+        if (statusEl) statusEl.textContent = currentLang === 'vi' ? 'Đang phân tích xu hướng...' : 'Analyzing trends...';
+        try {
+          const { status, body } = await api('/api/admin/trend-discover', { method: 'POST', body: JSON.stringify({}) });
+          if (status === 200 && body?.ok) {
+            if (statusEl) statusEl.textContent = currentLang === 'vi' ? `Thành công! Đã tạo ${body.generated || 0} chủ đề.` : `Success! Generated ${body.generated || 0} topics.`;
+            await loadTrends();
+          } else {
+            if (statusEl) statusEl.textContent = `Error: ${body?.error || status}`;
+          }
+        } catch (err) {
+          if (statusEl) statusEl.textContent = `Network error: ${err.message}`;
+        } finally {
+          genBtn.disabled = false;
+        }
+      });
+    }
+
+    const listEl = $('#trend-list');
+    if (!listEl) return;
+    const { status, body } = await api('/api/admin/trend-discover');
+    listEl.classList.remove('dim');
+    clearChildren(listEl);
+    if (status !== 200 || !body?.ok) {
+      listEl.textContent = currentLang === 'vi' ? 'Lỗi tải danh sách xu hướng.' : 'Error loading trend topics.';
+      return;
+    }
+    if (!body.topics || !body.topics.length) {
+      listEl.textContent = currentLang === 'vi' ? 'Chưa có chủ đề xu hướng nào. Hãy nhấn "Khám phá xu hướng" ở trên.' : 'No trend topics found. Click "Discover trends" above.';
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'table';
+    table.style.width = '100%';
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    const headers = currentLang === 'vi'
+      ? ['Chủ đề', 'Điểm phù hợp', 'Nguồn', 'Trạng thái', 'Thời gian']
+      : ['Topic', 'Relevance Score', 'Source', 'Status', 'Date'];
+    for (const h of headers) {
+      const th = document.createElement('th');
+      th.textContent = h;
+      th.style.textAlign = 'left';
+      th.style.padding = '8px';
+      trh.appendChild(th);
+    }
+    thead.appendChild(trh);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    for (const topic of body.topics) {
+      const tr = document.createElement('tr');
+      const tdTopic = document.createElement('td');
+      tdTopic.textContent = topic.topic || '-';
+      tdTopic.style.padding = '8px';
+      tdTopic.style.fontWeight = '500';
+      const tdScore = document.createElement('td');
+      tdScore.textContent = `${topic.relevance_score ?? 80}/100`;
+      tdScore.style.padding = '8px';
+      const tdSource = document.createElement('td');
+      tdSource.textContent = topic.source || 'ai';
+      tdSource.style.padding = '8px';
+      const tdStatus = document.createElement('td');
+      tdStatus.textContent = topic.status || 'pending';
+      tdStatus.style.padding = '8px';
+      const tdTime = document.createElement('td');
+      tdTime.textContent = topic.created_at ? new Date(topic.created_at * 1000).toLocaleString() : '-';
+      tdTime.style.padding = '8px';
+      tr.appendChild(tdTopic);
+      tr.appendChild(tdScore);
+      tr.appendChild(tdSource);
+      tr.appendChild(tdStatus);
+      tr.appendChild(tdTime);
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    listEl.appendChild(table);
   }
 
   // ── usage ──────────────────────────────────────────────────────
@@ -2357,7 +2591,7 @@
     applyLanguage(currentLang);
 
     const initialTab = (location.hash || '').replace(/^#/, '').trim();
-    const validTabs = ['overview', 'blog', 'calendar', 'brand', 'prog', 'links', 'covers', 'seo', 'embeds', 'status', 'updates', 'usage', 'settings'];
+    const validTabs = ['overview', 'blog', 'calendar', 'brand', 'prog', 'links', 'covers', 'analytics', 'seo', 'embeds', 'status', 'updates', 'usage', 'trends', 'settings'];
     if (initialTab && validTabs.includes(initialTab)) {
       activateTab(initialTab);
     } else {

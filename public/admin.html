@@ -117,8 +117,9 @@
       <button class="tab" data-tab="calendar">Lịch bài viết</button>
       <button class="tab" data-tab="brand" data-children="brand,prog,links">Brand</button>
       <button class="tab" data-tab="covers">Covers</button>
+      <button class="tab" data-tab="analytics">Analytics</button>
       <button class="tab" data-tab="seo" data-children="seo,embeds">Distribution</button>
-      <button class="tab" data-tab="status" data-children="status,updates,usage">
+      <button class="tab" data-tab="status" data-children="status,updates,usage,trends">
         System
         <span id="status-badge" class="tab-badge" hidden></span>
         <span id="updates-badge" class="tab-badge" hidden></span>
@@ -940,6 +941,61 @@
           <button id="settings-save" class="btn btn-primary">Save settings</button>
           <span id="settings-status" class="status"></span>
         </div>
+      </div>
+    </section>
+
+    <!-- ============ ANALYTICS ============ -->
+    <section data-page="analytics" class="page" hidden>
+      <h1>Analytics Dashboard</h1>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-eyebrow">Bài viết</div>
+          <h2 id="an-total-posts" style="font-size:2rem;margin:0">...</h2>
+          <p class="dim">Tổng bài viết đã xuất bản</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Leads</div>
+          <h2 id="an-total-leads" style="font-size:2rem;margin:0">...</h2>
+          <p class="dim">Khách hàng tiềm năng đã thu thập</p>
+        </div>
+        <div class="card">
+          <div class="card-eyebrow">Chi phí AI (30 ngày)</div>
+          <h2 id="an-ai-cost" style="font-size:2rem;margin:0">...</h2>
+          <p class="dim">USD chi phí sử dụng AI tháng này</p>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-eyebrow">Phản hồi bài viết</div>
+        <h2>Đánh giá từ độc giả</h2>
+        <div id="an-feedback" class="dim">Đang tải...</div>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-eyebrow">Lượt xem</div>
+        <h2>Bài viết được xem nhiều nhất</h2>
+        <div id="an-views" class="dim">Đang tải...</div>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-eyebrow">Leads mới nhất</div>
+        <h2>Khách hàng tiềm năng</h2>
+        <div id="an-leads" class="dim">Đang tải...</div>
+      </div>
+    </section>
+
+    <!-- ============ TRENDS ============ -->
+    <section data-page="trends" class="page" hidden>
+      <h1>Khám phá xu hướng</h1>
+      <p>Sử dụng AI để phân tích xu hướng thị trường và tạo chủ đề bài viết mới.</p>
+      <div class="card" style="margin-top:20px">
+        <div class="card-eyebrow">AI Trend Discovery</div>
+        <h2>Tạo chủ đề từ xu hướng</h2>
+        <p>Nhấn nút để AI phân tích xu hướng thị trường và tạo danh sách chủ đề tiềm năng.</p>
+        <button id="trend-generate" class="btn btn-primary" style="margin-top:12px">Khám phá xu hướng</button>
+        <span id="trend-status" class="status" style="margin-left:12px"></span>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-eyebrow">Chủ đề xu hướng</div>
+        <h2>Các chủ đề đã phát hiện</h2>
+        <div id="trend-list" class="dim">Đang tải...</div>
       </div>
     </section>
 

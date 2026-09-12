@@ -32,15 +32,26 @@ Write ALL topic titles in Vietnamese. Score 0-100.`;
 
   let trendResult;
   try {
-    trendResult = await generateContent({ env, project, taskType: 'trend', prompt, temperature: 0.7 });
+    trendResult = await generateContent(env, {
+      kind: 'article',
+      seed: prompt,
+      brand: project?.brand,
+      source: 'admin-trend',
+    });
   } catch (err) {
     return json(500, { error: 'trend_generation_failed', detail: err.message });
   }
 
-  const text = trendResult?.text || '';
+  const text = trendResult?.body_markdown || trendResult?.text || '';
   const match = text.match(/\[[\s\S]*\]/);
   let items = [];
   try { items = JSON.parse(match?.[0] || '[]'); } catch { items = []; }
+
+  if (!items.length && (trendResult?.keywords || trendResult?.title)) {
+    const kwList = (trendResult.keywords || '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (trendResult.title) kwList.unshift(trendResult.title);
+    items = kwList.slice(0, 5).map((topic) => ({ topic, relevance_score: 80, source: 'ai' }));
+  }
 
   let saved = 0;
   for (const item of items) {

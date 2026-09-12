@@ -1,4 +1,5 @@
 import { json, newId, nowSec } from '../../_lib/util.js';
+import { adminGate } from '../../_lib/auth.js';
 
 export const onRequestPost = async ({ request, env }) => {
   if (!env?.DB) return json(500, { error: 'no_db' });
@@ -28,6 +29,7 @@ export const onRequestPost = async ({ request, env }) => {
 };
 
 export const onRequestGet = async ({ request, env }) => {
+  const gate = await adminGate(env, request); if (gate) return gate;
   if (!env?.DB) return json(500, { error: 'no_db' });
   const { results } = await env.DB.prepare(
     `SELECT blog_slug, view_count, total_read_time_ms, last_viewed FROM blog_views ORDER BY view_count DESC LIMIT 50`

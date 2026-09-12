@@ -498,3 +498,44 @@ CREATE TABLE IF NOT EXISTS ai_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_ai_runs_pid_created ON ai_runs(project_id, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS leads (
+  id              TEXT PRIMARY KEY,
+  name            TEXT,
+  email           TEXT,
+  phone           TEXT,
+  source          TEXT,
+  blog_slug       TEXT,
+  created_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS feedback (
+  id              TEXT PRIMARY KEY,
+  blog_slug       TEXT NOT NULL,
+  rating          TEXT NOT NULL,
+  comment         TEXT,
+  created_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS blog_views (
+  id                  TEXT PRIMARY KEY,
+  blog_slug           TEXT NOT NULL,
+  view_count          INTEGER NOT NULL DEFAULT 0,
+  last_viewed         INTEGER NOT NULL,
+  total_read_time_ms  INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_blog_views_slug ON blog_views(blog_slug);
+
+CREATE TABLE IF NOT EXISTS trend_topics (
+  id               TEXT PRIMARY KEY,
+  topic            TEXT NOT NULL,
+  source           TEXT NOT NULL,
+  relevance_score  INTEGER NOT NULL DEFAULT 0,
+  status           TEXT NOT NULL DEFAULT 'pending',
+  created_at       INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_trend_topics_created ON trend_topics(created_at DESC);
+
+
+
