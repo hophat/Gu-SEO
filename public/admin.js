@@ -389,6 +389,27 @@
     }
   };
 
+  // System-level surfaces a project-scoped operator must never reach:
+  // AI provider keys, budget, publishing targets, GSC credentials, and
+  // the install/update controls. Hidden from the nav and blocked in
+  // activateTab so deep links can't open them either.
+  const PROJECT_ADMIN_HIDDEN_TABS = ['settings', 'seo', 'status'];
+  const PROJECT_ADMIN_HIDDEN_PAGES = ['settings', 'seo', 'embeds', 'status', 'updates', 'usage'];
+
+  function applyRoleVisibility(role) {
+    const restricted = role !== 'super_admin';
+    for (const tab of $$('.tab')) {
+      if (PROJECT_ADMIN_HIDDEN_TABS.includes(tab.dataset.tab)) tab.hidden = restricted;
+    }
+    const wizardBtn = $('#open-wizard');
+    if (wizardBtn) wizardBtn.hidden = restricted;
+  }
+
+  function isTabBlocked(name) {
+    const role = window.__psRole;
+    return role && role !== 'super_admin' && PROJECT_ADMIN_HIDDEN_PAGES.includes(name);
+  }
+
   const TAB_LABELS_MAP = {
     vi: {
       overview: 'Tổng quan',
@@ -471,6 +492,7 @@
   let _activeTab = null;
   function activateTab(name) {
     if (!name) return;
+    if (isTabBlocked(name)) name = 'overview';
     // No-op when already on this page. Lets handlers be wired
     // permissively without worrying about double-fires.
     if (name === _activeTab) return;
@@ -2725,6 +2747,8 @@
     const projects = whoami?.projects || [];
     const projectId = whoami?.project_id || null;
     _allProjects = projects;
+    window.__psRole = role;
+    applyRoleVisibility(role);
 
     const switcher = $('#project-switcher');
     const badge = $('#project-badge');
@@ -2898,7 +2922,8 @@
     applyLanguage(currentLang);
 
     const initialTab = (location.hash || '').replace(/^#/, '').trim();
-    const validTabs = ['overview', 'blog', 'calendar', 'brand', 'prog', 'links', 'covers', 'analytics', 'seo', 'embeds', 'status', 'updates', 'usage', 'trends', 'settings'];
+    const validTabs = ['overview', 'blog', 'calendar', 'brand', 'prog', 'links', 'covers', 'analytics', 'seo', 'embeds', 'status', 'updates', 'usage', 'trends', 'settings']
+      .filter((t) => !isTabBlocked(t));
     if (initialTab && validTabs.includes(initialTab)) {
       activateTab(initialTab);
     } else {
@@ -3349,6 +3374,7 @@
     function close() { $('#wiz').hidden = true; }
 
     async function maybeAutoOpen() {
+      if (window.__psRole && window.__psRole !== 'super_admin') return;
       try {
         const { status, body } = await api('/api/admin/onboarding');
         if (status !== 200) return;

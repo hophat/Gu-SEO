@@ -4,7 +4,7 @@
 // Designed to be called repeatedly by the cron Worker (which iterates
 // across multiple short HTTP calls) or manually from the admin UI.
 import { json, newId, nowSec, slugify, audit } from '../../../_lib/util.js';
-import { adminGate } from '../../../_lib/auth.js';
+import { requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 import { generateContent, generateImage } from '../../../_lib/ai.js';
 import { pingIndexNow } from '../../../_lib/indexnow.js';
 import { onPublish as gscOnPublish } from '../../../_lib/google_indexing.js';
@@ -14,16 +14,23 @@ import { loadSettings } from '../../../_lib/settings.js';
 import { checkBudget } from '../../../_lib/usage.js';
 
 export const onRequestPost = async ({ request, env, waitUntil }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const pid = tenant?.activeProjectId || null;
 
   // Atomically claim the highest-priority pending keyword. Priority
   // defaults to score (so high-intent keywords go first); the admin can
   // override priority via the queue UI to pin specific keywords. Ties
   // resolve to oldest-created-first so a long backlog still drains in
   // a predictable order.
+  const claimSql = pid
+    ? `SELECT id, keyword FROM prog_keywords WHERE status='pending' AND project_id = ?
+       ORDER BY priority DESC, created_at ASC LIMIT 1`
+    : `SELECT id, keyword FROM prog_keywords WHERE status='pending'
+       ORDER BY priority DESC, created_at ASC LIMIT 1`;
   const claimed = await env.DB.batch([
-    env.DB.prepare(`SELECT id, keyword FROM prog_keywords WHERE status='pending'
-                    ORDER BY priority DESC, created_at ASC LIMIT 1`),
+    pid ? env.DB.prepare(claimSql).bind(pid) : env.DB.prepare(claimSql),
   ]);
   const next = claimed[0]?.results?.[0];
   if (!next) return json(200, { ok: true, drained: true });
@@ -164,11 +171,11 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
   const pageId = newId();
   const t = nowSec();
   await env.DB.prepare(
-    `INSERT INTO prog_pages (id, slug, keyword, title, meta_description, body_markdown,
+    `INSERT INTO prog_pages (id, project_id, slug, keyword, title, meta_description, body_markdown,
         hero_image_key, hero_image_alt, status, ai_provider, created_at, published_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
-    pageId, slug, next.keyword, content.title, content.meta_description, content.body_markdown,
+    pageId, pid, slug, next.keyword, content.title, content.meta_description, content.body_markdown,
     imageKey, content.hero_image_alt, publishStatus, content.ai_provider, t, t
   ).run();
   await env.DB.prepare(

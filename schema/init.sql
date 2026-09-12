@@ -587,4 +587,19 @@ CREATE TABLE IF NOT EXISTS refresh_jobs (
 CREATE INDEX IF NOT EXISTS idx_refresh_post_created
   ON refresh_jobs(post_id, created_at DESC);
 
+-- Per-project scoping for engagement, programmatic, and trend tables so
+-- each project's admin sees only its own numbers.
+ALTER TABLE leads ADD COLUMN project_id TEXT;
+ALTER TABLE feedback ADD COLUMN project_id TEXT;
+ALTER TABLE blog_views ADD COLUMN project_id TEXT;
+ALTER TABLE prog_pages ADD COLUMN project_id TEXT;
+ALTER TABLE trend_topics ADD COLUMN project_id TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_leads_project ON leads(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feedback_project ON feedback(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blog_views_project ON blog_views(project_id);
+CREATE INDEX IF NOT EXISTS idx_prog_pages_project ON prog_pages(project_id);
+CREATE INDEX IF NOT EXISTS idx_trend_topics_project ON trend_topics(project_id, created_at DESC);
+
+
 

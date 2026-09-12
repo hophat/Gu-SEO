@@ -2,11 +2,14 @@
 // or { csv: "kw1\nkw2\nkw3" }. Returns counts of inserted vs duplicate vs
 // dropped (junk). Each keyword is scored and dedupe'd by canonical form.
 import { json, newId, nowSec, audit } from '../../../_lib/util.js';
-import { adminGate } from '../../../_lib/auth.js';
+import { requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 import { scoreKeyword, canonicaliseKeyword } from '../../../_lib/keyword_score.js';
 
 export const onRequestPost = async ({ request, env }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const pid = tenant?.activeProjectId || null;
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
 
@@ -37,9 +40,9 @@ export const onRequestPost = async ({ request, env }) => {
   for (const k of byCanonical.values()) {
     try {
       const r = await env.DB.prepare(
-        `INSERT INTO prog_keywords (id, keyword, canonical, score, priority, intent, status, attempts, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?)`
-      ).bind(newId(), k.keyword, k.canonical, k.score, k.score, k.intent, t, t).run();
+        `INSERT INTO prog_keywords (id, project_id, keyword, canonical, score, priority, intent, status, attempts, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?)`
+      ).bind(newId(), pid, k.keyword, k.canonical, k.score, k.score, k.intent, t, t).run();
       if (r?.meta?.changes) inserted++; else duplicate++;
     } catch {
       duplicate++; // UNIQUE constraint

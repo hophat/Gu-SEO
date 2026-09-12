@@ -5,10 +5,14 @@
 //   { id, priority?, status? }
 //   Use this to pin/demote keywords or to retry failed ones.
 import { json, nowSec, audit } from '../../../_lib/util.js';
-import { adminGate } from '../../../_lib/auth.js';
+import { requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 
 export const onRequestGet = async ({ request, env }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const pid = tenant?.activeProjectId || null;
+
   const url = new URL(request.url);
   const status = url.searchParams.get('status') || 'pending';
   const limit = Math.min(500, parseInt(url.searchParams.get('limit'), 10) || 100);
@@ -26,20 +30,32 @@ export const onRequestGet = async ({ request, env }) => {
         : 'updated_at DESC';
   }
 
-  const r = await env.DB.prepare(
-    `SELECT id, keyword, canonical, score, priority, intent, status, attempts,
+  const projectClause = pid ? `project_id = ? AND` : ``;
+  const sql = `SELECT id, keyword, canonical, score, priority, intent, status, attempts,
             page_id, error, created_at, updated_at
-       FROM prog_keywords WHERE status=? ORDER BY ${orderBy} LIMIT ?`
-  ).bind(status, limit).all();
-  return json(200, { keywords: r.results || [] });
+       FROM prog_keywords WHERE ${projectClause} status=? ORDER BY ${orderBy} LIMIT ?`;
+  const stmt = pid
+    ? env.DB.prepare(sql).bind(pid, status, limit)
+    : env.DB.prepare(sql).bind(status, limit);
+  const r = await stmt.all();
+  return json(200, { keywords: r.results || [], project_id: pid });
 };
 
 export const onRequestPatch = async ({ request, env }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const pid = tenant?.activeProjectId || null;
+
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
   const id = String(body?.id || '').trim();
   if (!id) return json(400, { error: 'missing_id' });
+
+  const owned = pid
+    ? await env.DB.prepare(`SELECT id FROM prog_keywords WHERE id = ? AND project_id = ? LIMIT 1`).bind(id, pid).first().catch(() => null)
+    : await env.DB.prepare(`SELECT id FROM prog_keywords WHERE id = ? LIMIT 1`).bind(id).first().catch(() => null);
+  if (!owned) return json(404, { error: 'not_found' });
 
   const sets = [];
   const binds = [];
@@ -57,9 +73,10 @@ export const onRequestPatch = async ({ request, env }) => {
   if (!sets.length) return json(400, { error: 'no_updates' });
   sets.push('updated_at=?'); binds.push(nowSec());
   binds.push(id);
+  if (pid) binds.push(pid);
 
   const r = await env.DB.prepare(
-    `UPDATE prog_keywords SET ${sets.join(', ')} WHERE id=?`
+    `UPDATE prog_keywords SET ${sets.join(', ')} WHERE id=?${pid ? ' AND project_id=?' : ''}`
   ).bind(...binds).run();
   audit(env, 'admin', 'prog_queue_patch', id, body);
   return json(200, { ok: true, changed: r?.meta?.changes || 0 });
