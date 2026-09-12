@@ -382,7 +382,6 @@
     vi: {
       overview: 'Tổng quan',
       blog: 'Bài viết',
-      calendar: 'Lịch bài viết',
       brand: 'Thương hiệu',
       covers: 'Ảnh bìa',
       analytics: 'Phân tích',
@@ -394,7 +393,6 @@
     en: {
       overview: 'Overview',
       blog: 'Blog',
-      calendar: 'Calendar',
       brand: 'Brand',
       covers: 'Covers',
       analytics: 'Analytics',

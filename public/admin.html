@@ -106,20 +106,21 @@
 <div id="dash" class="dash" hidden>
   <header class="topbar">
     <div class="brand">Gulagi Blogs · Admin</div>
-    <!-- Top-level tabs. 13 sections were tab-cluttering the bar; they're
-         now grouped under 7 parents. The parent's data-children attr
-         lists the child page IDs in order — admin.js's activateTab()
-         maps a parent click to its first child and renders the sub-nav
-         strip below. -->
+    <!-- Top-level tabs. Pages are grouped under 7 parents by workflow:
+         overview | content (blog, calendar, trends) | brand assets
+         (brand, covers, prog, links) | analytics | distribution
+         (seo, embeds) | system (status, updates, usage) | settings.
+         The parent's data-children attr lists the child page IDs in
+         order — admin.js's activateTab() maps a parent click to its
+         first child and renders the sub-nav strip below. Every page
+         lives in exactly one place; no duplicate top-level buttons. -->
     <nav class="tabs">
       <button class="tab" data-tab="overview" aria-current="page">Overview</button>
-      <button class="tab" data-tab="blog" data-children="blog,calendar">Blog</button>
-      <button class="tab" data-tab="calendar">Lịch bài viết</button>
-      <button class="tab" data-tab="brand" data-children="brand,prog,links">Brand</button>
-      <button class="tab" data-tab="covers">Covers</button>
+      <button class="tab" data-tab="blog" data-children="blog,calendar,trends">Blog</button>
+      <button class="tab" data-tab="brand" data-children="brand,covers,prog,links">Brand</button>
       <button class="tab" data-tab="analytics">Analytics</button>
       <button class="tab" data-tab="seo" data-children="seo,embeds">Distribution</button>
-      <button class="tab" data-tab="status" data-children="status,updates,usage,trends">
+      <button class="tab" data-tab="status" data-children="status,updates,usage">
         System
         <span id="status-badge" class="tab-badge" hidden></span>
         <span id="updates-badge" class="tab-badge" hidden></span>
