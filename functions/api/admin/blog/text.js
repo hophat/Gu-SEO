@@ -59,6 +59,7 @@ export const onRequestPost = async ({ request, env }) => {
       seed: job.topic_angle,
       provider: body.provider || settings.default_ai_provider || undefined,
       source,
+      projectId: job.project_id || null,
       brand: {
         // settings.site_name resolves Pages secret first, then D1
         // — supports CLI + browser + 1-click Deploy installs.

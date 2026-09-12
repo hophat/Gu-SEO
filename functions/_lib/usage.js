@@ -49,6 +49,7 @@ export async function recordUsage(env, settings, row) {
     const { prices } = await loadPrices(env);
     const r = {
       id: newId(),
+      project_id: row.project_id || null,
       provider: row.provider || 'unknown',
       model: row.model || null,
       kind: row.kind || 'text',
@@ -67,12 +68,12 @@ export async function recordUsage(env, settings, row) {
       created_at: nowSec(),
     };
     await env.DB.prepare(
-      `INSERT INTO ai_usage (id, provider, model, kind, source, prompt_tokens,
+      `INSERT INTO ai_usage (id, project_id, provider, model, kind, source, prompt_tokens,
                               completion_tokens, total_tokens, estimated, cost_usd,
                               ok, error, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
-      r.id, r.provider, r.model, r.kind, r.source, r.prompt_tokens,
+      r.id, r.project_id, r.provider, r.model, r.kind, r.source, r.prompt_tokens,
       r.completion_tokens, r.total_tokens, r.estimated, r.cost_usd,
       r.ok, r.error, r.created_at
     ).run();

@@ -903,7 +903,7 @@ import { loadSettings } from './settings.js';
 // programmatic pages. `provider` is optional — when omitted we walk the
 // registry in default order (Workers AI first). `source` is logged to
 // ai_usage (e.g. 'cron-blog', 'admin-prog', 'preview').
-export async function generateContent(env, { kind, seed, provider, brand, source = 'admin' }) {
+export async function generateContent(env, { kind, seed, provider, brand, source = 'admin', projectId = null }) {
   const overlayed = await withVault(env);
   const settings = await loadSettings(env);
   // Pull length targets from settings so operators can tune via the
@@ -931,6 +931,7 @@ export async function generateContent(env, { kind, seed, provider, brand, source
           ...out.usage,
           kind: kind === 'programmatic' ? 'prog-text' : 'blog-text',
           source,
+          project_id: projectId,
         });
       }
       return shapeArticle(out.parsed, p.name);
@@ -944,11 +945,12 @@ export async function generateContent(env, { kind, seed, provider, brand, source
     provider: order[0]?.name || 'unknown',
     kind: kind === 'programmatic' ? 'prog-text' : 'blog-text',
     source, ok: false, error: errs.join(' | '),
+    project_id: projectId,
   });
   throw new Error('all_text_providers_failed — ' + errs.join(' | '));
 }
 
-export async function generateImage(env, { prompt, provider, source = 'admin' }) {
+export async function generateImage(env, { prompt, provider, source = 'admin', projectId = null }) {
   if (!prompt) throw new Error('image_prompt_empty');
   const overlayed = await withVault(env);
   const settings = await loadSettings(env);
@@ -960,7 +962,7 @@ export async function generateImage(env, { prompt, provider, source = 'admin' })
     try {
       const out = await p.call(overlayed, prompt);
       if (out?.usage) {
-        await recordUsage(env, settings, { ...out.usage, kind: 'image', source });
+        await recordUsage(env, settings, { ...out.usage, kind: 'image', source, project_id: projectId });
       }
       return { bytes: out.bytes, ai_provider: p.name };
     } catch (e) {
@@ -970,6 +972,7 @@ export async function generateImage(env, { prompt, provider, source = 'admin' })
   await recordUsage(env, settings, {
     provider: order[0]?.name || 'unknown', kind: 'image', source,
     ok: false, error: errs.join(' | '),
+    project_id: projectId,
   });
   throw new Error('all_image_providers_failed — ' + errs.join(' | '));
 }

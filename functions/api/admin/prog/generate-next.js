@@ -65,6 +65,7 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
       seed: next.keyword,
       provider: settings.default_ai_provider || undefined,
       source,
+      projectId: pid,
       brand: {
         // settings.site_name resolves Pages secret first, then D1
         // — supports CLI + browser + 1-click Deploy installs.
@@ -156,7 +157,7 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
 
   let imageKey = null;
   try {
-    const img = await generateImage(env, { prompt: content.hero_image_prompt, source });
+    const img = await generateImage(env, { prompt: content.hero_image_prompt, source, projectId: pid });
     imageKey = `${slug}-${Date.now()}.png`;
     if (env.IMAGES) {
       await env.IMAGES.put(imageKey, img.bytes, {

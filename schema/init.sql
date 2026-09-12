@@ -601,5 +601,8 @@ CREATE INDEX IF NOT EXISTS idx_blog_views_project ON blog_views(project_id);
 CREATE INDEX IF NOT EXISTS idx_prog_pages_project ON prog_pages(project_id);
 CREATE INDEX IF NOT EXISTS idx_trend_topics_project ON trend_topics(project_id, created_at DESC);
 
+ALTER TABLE ai_usage ADD COLUMN project_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_ai_usage_project ON ai_usage(project_id, created_at DESC);
+
 
 

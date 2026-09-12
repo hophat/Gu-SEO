@@ -83,6 +83,7 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
       seed: `Rewrite, expand and update this article for 2026. Keep the same topic and search intent, fix outdated facts, add concrete examples with numbers, keep Vietnamese natural and expert. Original title: "${post.title}". Primary keyword hint: "${post.topic_seed || post.slug}".\n\nOriginal body (rewrite from this, do not copy verbatim):\n${String(post.body_markdown || '').slice(0, 6000)}`,
       provider: body.provider || settings.default_ai_provider || undefined,
       source,
+      projectId: post.project_id || null,
       brand: {
         name: settings.site_name || 'this site',
         url: settings.site_url || '/',

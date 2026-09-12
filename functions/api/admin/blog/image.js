@@ -107,7 +107,7 @@ export const onRequestPost = async ({ request, env }) => {
   if (!didRenderViaCover) {
     try {
       const source = request.headers.get('X-Source-Cron') === '1' ? 'cron-blog' : 'admin-blog';
-      const r = await generateImage(env, { prompt: job.hero_image_prompt, provider: body.provider, source });
+      const r = await generateImage(env, { prompt: job.hero_image_prompt, provider: body.provider, source, projectId: job.project_id || null });
       imageProvider = r.ai_provider;
       // Sniff the actual byte format rather than assuming PNG — some
       // providers return JPEG or WebP, and serving them with the right
