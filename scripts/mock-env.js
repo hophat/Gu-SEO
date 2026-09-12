@@ -193,6 +193,7 @@ export function createMockEnv() {
     DB: mockDb,
     tables,
     SITE_NAME: 'AI Content Factory Platform',
+    SITE_URL: 'https://seo.gulagi.com',
     ADMIN_TOKEN: 'supersecretadmintoken12345678901234567890',
   };
 }

@@ -58,7 +58,7 @@ async function tick(env, task, { source = 'cron', limit = 0 } = {}) {
   const init = {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${env.ADMIN_TOKEN}`,
+      'Authorization': 'Bearer ' + env.ADMIN_TOKEN,
       'Content-Type': 'application/json',
       // Identifies this caller as the cron Worker so the admin API can
       // apply the cron budget hard-stop (admin clicks aren't gated).

@@ -213,7 +213,42 @@ async function runTests() {
   }
   console.log('✓ Shared-host routing, isolation, and route wiring verified.');
 
-  console.log('\nALL TESTS PASSED SUCCESSFULLY! (7/7)');
+  // Test 8: cron fan-out runs the pipeline once per active project.
+  console.log('8. Verifying cron fan-out across projects...');
+  const { onRequestPost: cronTick } = await import('../functions/api/admin/cron/tick.js');
+  const realFetch = globalThis.fetch;
+  const calls = [];
+  const jsonRes = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
+  globalThis.fetch = async (u, init) => {
+    const url = String(u);
+    const payload = init?.body ? JSON.parse(init.body) : {};
+    calls.push({ url, payload });
+    if (url.endsWith('/blog/start')) return jsonRes({ ok: true, job_id: 'job_' + payload.project_id });
+    return jsonRes({ ok: true, blog_post_id: 'post_' + (payload.job_id || '') });
+  };
+
+  let tickRes;
+  try {
+    tickRes = await cronTick({
+      request: wrapReq(makeReq('https://seo.gulagi.com/api/admin/cron/tick', { body: { task: 'blog' } })),
+      env,
+    });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  const tickBody = await tickRes.json();
+  assert.equal(tickRes.status, 200);
+  assert.equal(tickBody.task, 'blog');
+  assert.equal(tickBody.projects_processed, 3);
+
+  const starts = calls.filter((c) => c.url.endsWith('/blog/start'));
+  assert.equal(starts.length, 3, 'expected one blog start per active project');
+  const startedIds = starts.map((s) => s.payload.project_id).sort();
+  assert.deepEqual(startedIds, [GULAGI_PROJECT.id, GUROUTER_PROJECT.id, usas.id].sort());
+  assert.equal(calls.filter((c) => c.url.endsWith('/blog/publish')).length, 3);
+  console.log('✓ Cron fan-out runs once per project, each with its own project_id.');
+
+  console.log('\nALL TESTS PASSED SUCCESSFULLY! (8/8)');
 }
 
 runTests().catch(err => {
