@@ -15,7 +15,7 @@ export const onRequestGet = async ({ request, env }) => {
   const args = [];
 
   if (activeProjectId) {
-    query += ` AND (project_id = ? OR project_id IS NULL)`;
+    query += ` AND project_id = ?`;
     args.push(activeProjectId);
   }
 

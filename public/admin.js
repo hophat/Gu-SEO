@@ -2037,6 +2037,14 @@
     const tbody = $('#posts-table tbody');
     if (!tbody) return;
     clearChildren(tbody);
+
+    const card = $('#posts-table')?.closest('.card');
+    const eyebrow = card?.querySelector('.card-eyebrow');
+    const curProj = _allProjects.find((p) => p.id === window.__psActiveProjectId);
+    if (eyebrow) {
+      eyebrow.textContent = curProj ? `Published posts (${curProj.name})` : 'Published posts';
+    }
+
     const { body } = await api('/api/admin/blog/list');
     const posts = body?.posts || [];
     if (!posts.length) {

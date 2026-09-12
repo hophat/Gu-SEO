@@ -46,7 +46,7 @@ export const onRequestGet = async ({ env, request }) => {
   const to   = url.searchParams.get('to');
 
   let q, args;
-  const projectClause = activeProjectId ? `(project_id = ? OR project_id IS NULL)` : `1=1`;
+  const projectClause = activeProjectId ? `project_id = ?` : `1=1`;
 
   if (isValidDate(from) && isValidDate(to)) {
     q = `SELECT * FROM content_calendar WHERE scheduled_for >= ? AND scheduled_for <= ? AND ${projectClause} ORDER BY scheduled_for ASC, created_at ASC`;
