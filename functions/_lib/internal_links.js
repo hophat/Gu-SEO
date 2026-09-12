@@ -23,21 +23,37 @@ function stripFenced(md) {
   return md.replace(/```[\s\S]*?```/g, (m) => ' '.repeat(m.length));
 }
 
+// 1:1 Vietnamese folding (each char maps to exactly one ASCII char,
+// so string offsets stay aligned between folded and original text).
+// Without this, the normaliser below strips diacritics and phrase
+// offsets no longer match Vietnamese bodies at all.
+function foldVi(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a')
+    .replace(/[èéẹẻẽêềếệểễ]/g, 'e')
+    .replace(/[ìíịỉĩ]/g, 'i')
+    .replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o')
+    .replace(/[ùúụủũưừứựửữ]/g, 'u')
+    .replace(/[ỳýỵỷỹ]/g, 'y')
+    .replace(/đ/g, 'd');
+}
+
 // Build candidate phrases from a target post: title + first few keywords.
 // Returned phrases are lowercased + normalised to plain words.
 function buildPhrases(post) {
   const out = new Set();
-  const title = String(post.title || '');
+  const title = foldVi(post.title || '');
   // The title itself, if 3-6 words.
   const tWords = title.split(/\s+/).filter(Boolean);
   if (tWords.length >= MIN_PHRASE_WORDS && tWords.length <= MAX_PHRASE_WORDS) {
-    out.add(title.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim());
+    out.add(title.replace(/[^a-z0-9\s]/g, '').trim());
   }
   // Each keyword, if it's a multi-word phrase. The keywords field is
   // comma-separated.
   const kws = String(post.keywords || '').split(',');
   for (const kRaw of kws) {
-    const k = kRaw.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+    const k = foldVi(kRaw).replace(/[^a-z0-9\s]/g, '').trim();
     const w = k.split(/\s+/).filter(Boolean);
     if (w.length >= MIN_PHRASE_WORDS && w.length <= MAX_PHRASE_WORDS) {
       out.add(k);
@@ -79,8 +95,10 @@ function findUnlinkedMatch(body, phrase) {
 // `targets` is an array of { slug, title, keywords }.
 export function injectInternalLinks(body, selfSlug, targets) {
   if (!body || !Array.isArray(targets) || !targets.length) return { body, injected: [] };
-  // Strip code blocks for the scan but apply replacements to the real body.
-  const scan = stripFenced(body).toLowerCase();
+  // Folded (diacritic-free) copy for scanning. foldVi maps 1:1 per
+  // code point, so offsets in `scan` equal offsets in `result` and we
+  // can splice replacements into the original text at those offsets.
+  const scanOf = (text) => foldVi(stripFenced(text)).toLowerCase();
   const injected = [];
   const seenTargets = new Set();
   let result = body;
@@ -103,7 +121,7 @@ export function injectInternalLinks(body, selfSlug, targets) {
     if (injected.length >= MAX_LINKS_PER_POST) break;
     if (seenTargets.has(target.slug)) continue;
 
-    const hit = findUnlinkedMatch(result, phrase);
+    const hit = findUnlinkedMatch(scanOf(result), phrase);
     if (!hit) continue;
 
     // Use the ORIGINAL casing from the body, not the lowercased phrase.
@@ -116,12 +134,22 @@ export function injectInternalLinks(body, selfSlug, targets) {
   return { body: result, injected };
 }
 
-// Pull recent published posts for use as the link target pool.
-export async function loadLinkTargets(env, selfSlug, { limit = TARGET_POOL_SIZE } = {}) {
-  const rows = await env.DB.prepare(
-    `SELECT slug, title, keywords FROM blog_posts
-      WHERE status='published' AND slug != ?
-      ORDER BY published_at DESC LIMIT ?`
-  ).bind(selfSlug || '', limit).all().catch(() => ({ results: [] }));
+// Pull published posts for use as the link target pool. When pillarKey
+// is given, posts whose topic_seed belongs to that pillar sort first so
+// new posts link into their own cluster; recency breaks ties.
+export async function loadLinkTargets(env, selfSlug, { limit = TARGET_POOL_SIZE, pillarKey = null } = {}) {
+  const rows = pillarKey
+    ? await env.DB.prepare(
+        `SELECT slug, title, keywords FROM blog_posts
+          WHERE status='published' AND slug != ?
+          ORDER BY CASE WHEN topic_seed IN (
+            SELECT cluster_key FROM content_clusters WHERE pillar_key = ? AND status = 'active'
+          ) THEN 0 ELSE 1 END, published_at DESC LIMIT ?`
+      ).bind(selfSlug || '', pillarKey, limit).all().catch(() => ({ results: [] }))
+    : await env.DB.prepare(
+        `SELECT slug, title, keywords FROM blog_posts
+          WHERE status='published' AND slug != ?
+          ORDER BY published_at DESC LIMIT ?`
+      ).bind(selfSlug || '', limit).all().catch(() => ({ results: [] }));
   return rows.results || [];
 }

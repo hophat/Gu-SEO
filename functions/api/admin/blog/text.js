@@ -121,11 +121,14 @@ export const onRequestPost = async ({ request, env }) => {
   const slug = await uniqSlug(post.slug);
 
   // Internal-link injection: scan the body for phrases that match
-  // existing post titles/keywords, link them up to 3 times. Big SEO
-  // and retention win — turns every new post into a link upgrade
-  // for older ones. Best-effort: failure here is non-fatal.
+  // existing post titles/keywords, link them up to 3 times. Same-pillar
+  // posts sort first so links stay inside the topic cluster.
+  // Best-effort: failure here is non-fatal.
   try {
-    const targets = await loadLinkTargets(env, slug, { limit: 80 });
+    const pillarRow = job.topic_key ? await env.DB.prepare(
+      `SELECT pillar_key FROM content_clusters WHERE cluster_key = ? AND status = 'active' LIMIT 1`
+    ).bind(String(job.topic_key).slice(0, 120)).first().catch(() => null) : null;
+    const targets = await loadLinkTargets(env, slug, { limit: 80, pillarKey: pillarRow?.pillar_key || null });
     if (targets.length) {
       const { body: linkedBody, injected } = injectInternalLinks(post.body_markdown, slug, targets);
       post.body_markdown = linkedBody;
