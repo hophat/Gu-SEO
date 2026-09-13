@@ -272,7 +272,7 @@ ${themeStyle(site.themeColor)}
 </head>
 <body>
 
-<header class="site-header">
+<header class="site-header${site.themeColor ? ' is-themed' : ''}">
   <div class="header-inner">
     <a class="header-brand" href="${esc(site.homeUrl)}">
       ${site.logoUrl

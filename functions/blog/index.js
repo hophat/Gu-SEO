@@ -219,7 +219,7 @@ ${themeStyle(project?.theme_color)}
 <script type="application/ld+json">${ldJson}</script>
 </head>
 <body>
-<header class="site-header">
+<header class="site-header${project?.theme_color ? ' is-themed' : ''}">
   <div class="header-inner">
     <a class="header-brand" href="${esc(homeUrl)}">
       ${project?.logo_url

@@ -76,6 +76,22 @@ img { max-width: 100%; height: auto; display: block; }
   font-size: 0.88rem; transition: background .15s;
 }
 .header-cta:hover { background: var(--brand-dark); text-decoration: none !important; }
+.header-logo-img {
+  height: 28px; width: auto; max-width: 180px;
+  object-fit: contain;
+}
+
+/* A project that has its own accent paints the header bar with it. The
+   brand text, nav links and CTA flip to white-on-accent so the bar stays
+   readable; without the class the header keeps the plain surface look. */
+.site-header.is-themed { background: var(--brand); border-bottom-color: var(--brand-dark); }
+.site-header.is-themed .header-brand,
+.site-header.is-themed .header-brand:hover { color: #fff; }
+.site-header.is-themed .header-nav a { color: rgba(255, 255, 255, .82); }
+.site-header.is-themed .header-nav a:hover,
+.site-header.is-themed .header-nav a.active { color: #fff; }
+.site-header.is-themed .header-cta { background: #fff; color: var(--brand) !important; }
+.site-header.is-themed .header-cta:hover { background: rgba(255, 255, 255, .85); }
 
 /* ── Breadcrumb ──────────────────────────────────────────────── */
 .crumb {

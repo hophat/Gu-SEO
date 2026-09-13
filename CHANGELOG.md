@@ -7,6 +7,14 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.5 — 2026-09-13
+
+### Fixed
+- **Project logos rendered at full size.** The global `img { height: auto }` rule overrode the `height="28"` attribute on the blog header logo, so an uploaded logo stretched across the header. `.header-logo-img` now pins the height and caps the width.
+
+### Changed
+- **The header bar uses the project's theme colour.** It was painted `--surface` (white), so setting a theme colour only tinted links and buttons while the bar itself stayed white — the colour looked like it never applied. A project with a theme colour now paints the header with it and flips the brand, nav and CTA to white-on-accent. Gulagi has no theme colour and keeps the plain surface header.
+
 ## 1.3.4 — 2026-09-13
 
 ### Fixed
