@@ -1,10 +1,10 @@
 // /<project>/blog/page/<n> — paginated archive for a named project.
 import { renderBlogIndex } from '../../../blog/index.js';
-import { resolveProjectBySlug } from '../../../_lib/project_scope.js';
+import { resolveProjectBySlugPath } from '../../../_lib/project_scope.js';
 
 export const onRequestGet = async (ctx) => {
   const slug = String(ctx.params?.project || '').toLowerCase();
-  const project = await resolveProjectBySlug(ctx.env, slug).catch(() => null);
+  const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
   if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
 
   const page = parseInt(ctx.params?.page, 10);

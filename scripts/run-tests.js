@@ -171,7 +171,7 @@ async function runTests() {
 
   // Test 7: Shared-host /<slug>/ routing + path-prefix isolation.
   console.log('7. Verifying /<slug>/ routing and path-prefix isolation...');
-  const { resolveProjectByHost, resolveProjectBySlug, publicBaseFor } = await import('../functions/_lib/project_scope.js');
+  const { resolveProjectByHost, resolveProjectBySlug, resolveProjectBySlugPath, publicBaseFor } = await import('../functions/_lib/project_scope.js');
   const { upsertProject } = await import('../functions/_lib/projects.js');
 
   const usas = await upsertProject(env, {
@@ -186,6 +186,13 @@ async function runTests() {
   assert.equal((await resolveProjectByHost(env, 'seo.gulagi.com', '/usasglobal/blog'))?.slug, 'usasglobal');
   assert.equal((await resolveProjectByHost(env, 'usasglobal.edu.vn', '/blog'))?.slug, 'usasglobal');
   assert.equal(await resolveProjectBySlug(env, 'nope'), null);
+
+  // Only projects explicitly published under a path prefix answer there —
+  // otherwise every project would duplicate a page that already has a
+  // canonical URL on its own domain.
+  assert.ok(await resolveProjectBySlugPath(env, 'usasglobal'));
+  assert.equal(await resolveProjectBySlugPath(env, 'gulagi'), null);
+  assert.equal(await resolveProjectBySlugPath(env, 'gurouter'), null);
 
   // Public base must carry the path prefix, or IndexNow/GSC get a 404 URL.
   assert.equal(

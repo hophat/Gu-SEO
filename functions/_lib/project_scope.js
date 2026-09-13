@@ -73,6 +73,17 @@ export async function resolveProjectBySlug(env, slug) {
   return row || null;
 }
 
+// Strict form for /<slug>/ routes: only projects whose publishing_url
+// ends in that exact prefix answer there, so no page gets a duplicate URL.
+export async function resolveProjectBySlugPath(env, slug) {
+  const clean = String(slug || '').trim().toLowerCase();
+  const project = await resolveProjectBySlug(env, clean);
+  if (!project) return null;
+  let path = '';
+  try { path = new URL(project.publishing_url || '').pathname.replace(/\/+$/, ''); } catch { return null; }
+  return path === `/${clean}` ? project : null;
+}
+
 export { normalizeHost };
 
 // Canonical public base (origin + /<slug> prefix) for a project's pages,

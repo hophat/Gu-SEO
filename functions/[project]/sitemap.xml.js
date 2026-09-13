@@ -1,8 +1,10 @@
 // /<project>/sitemap.xml — sitemap index for a named project on a shared host.
 import { onRequestGet as renderSitemap } from '../sitemap.xml.js';
+import { resolveProjectBySlugPath } from '../_lib/project_scope.js';
 
-export const onRequestGet = (ctx) => renderSitemap({
-  env: ctx.env,
-  request: ctx.request,
-  params: { project: ctx.params?.project },
-});
+export const onRequestGet = async (ctx) => {
+  const slug = String(ctx.params?.project || '').toLowerCase();
+  const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
+  if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
+  return renderSitemap({ env: ctx.env, request: ctx.request, params: { project: slug } });
+};
