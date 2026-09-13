@@ -4,27 +4,23 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" />
-<title>Hệ sinh thái Gulagi</title>
-<meta name="description" content="Hệ sinh thái Gulagi — hệ thống nội dung và SEO tự động cho nhiều thương hiệu. Liên hệ 0989511431." />
+<title>Hệ sinh thái Gulagi — SEO tự động bằng AI</title>
+<meta name="description" content="Dịch vụ SEO tự động bằng AI: chọn chủ đề, viết bài, tạo ảnh bìa, xuất bản và phân phối nội dung cho từng thương hiệu. Liên hệ 0989 511 431." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" />
 <style>
   :root {
-    --blue: #1a73e8;
-    --blue-dark: #1557b0;
-    --blue-soft: #e8f0fe;
-    --ink: #202124;
-    --ink-2: #3c4043;
-    --grey: #5f6368;
-    --line: #dadce0;
+    --ink: #0d0d0d;
+    --ink-2: #353740;
+    --muted: #6e6e80;
+    --muted-2: #8e8ea0;
+    --line: #ececf1;
+    --line-2: #e3e3e8;
     --surface: #ffffff;
-    --surface-2: #f8f9fa;
-    --green: #188038;
-    --green-soft: #e6f4ea;
-    --radius-card: 16px;
-    --shadow-1: 0 1px 2px rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
-    --shadow-2: 0 1px 3px rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15);
+    --surface-2: #f7f7f8;
+    --radius: 14px;
+    --max: 1120px;
   }
   *, *::before, *::after { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -32,191 +28,280 @@
     margin: 0;
     background: var(--surface);
     color: var(--ink);
-    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     font-size: 16px;
     line-height: 1.6;
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
   }
-  a { color: var(--blue); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .wrap { width: min(1040px, 100%); margin: 0 auto; padding: 0 24px; }
+  a { color: inherit; }
+  .wrap { width: min(var(--max), 100%); margin: 0 auto; padding: 0 24px; }
 
-  /* ── Top bar ─────────────────────────────────────────────── */
-  .topbar {
+  /* ── Nav ─────────────────────────────────────────────────── */
+  .nav {
     position: sticky; top: 0; z-index: 10;
-    background: rgba(255,255,255,.92);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid transparent;
+    background: rgba(255,255,255,.85);
+    backdrop-filter: blur(10px);
   }
-  .topbar-inner {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 16px; height: 64px;
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; font-size: 16px; text-decoration: none; }
+  .brand-mark {
+    width: 24px; height: 24px; border-radius: 7px; flex: none;
+    background: var(--ink); color: #fff;
+    display: grid; place-items: center; font-size: 13px; font-weight: 600;
   }
-  .wordmark {
-    display: inline-flex; align-items: center; gap: 10px;
-    font-size: 18px; font-weight: 500; color: var(--ink);
-  }
-  .wordmark:hover { text-decoration: none; }
-  .mark {
-    width: 26px; height: 26px; border-radius: 50%;
-    background: var(--blue);
-    display: inline-grid; place-items: center;
-    color: #fff; font-size: 15px; font-weight: 700;
-    flex: none;
-  }
-  .signin {
+  .nav-links { display: flex; align-items: center; gap: 28px; }
+  .nav-links a { color: var(--muted); font-size: 14px; text-decoration: none; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta {
+    height: 38px; padding: 0 16px; border-radius: 8px;
+    border: 1px solid var(--line-2);
     display: inline-flex; align-items: center;
-    height: 36px; padding: 0 18px;
-    border: 1px solid var(--line); border-radius: 999px;
-    color: var(--blue); font-size: 14px; font-weight: 500;
+    font-size: 14px; font-weight: 500; color: var(--ink);
     transition: background .15s, border-color .15s;
   }
-  .signin:hover { background: var(--blue-soft); border-color: transparent; text-decoration: none; }
+  .nav-cta:hover { background: var(--surface-2); border-color: var(--ink); }
 
   /* ── Hero ────────────────────────────────────────────────── */
-  .hero { padding: 72px 0 40px; }
-  .eyebrow {
-    display: inline-block; margin-bottom: 16px;
-    padding: 6px 14px; border-radius: 999px;
-    background: var(--blue-soft); color: var(--blue-dark);
-    font-size: 13px; font-weight: 500;
+  .hero { padding: 96px 0 80px; text-align: center; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; margin-bottom: 28px;
+    border: 1px solid var(--line-2); border-radius: 999px;
+    font-size: 13px; color: var(--muted);
   }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink); flex: none; }
   h1 {
-    margin: 0 0 20px;
-    font-size: clamp(34px, 5.4vw, 56px);
-    line-height: 1.12; font-weight: 400; letter-spacing: -0.02em;
+    margin: 0 auto 24px; max-width: 860px;
+    font-size: clamp(36px, 6vw, 64px);
+    line-height: 1.06; font-weight: 600; letter-spacing: -0.035em;
   }
-  h1 strong { font-weight: 700; }
   .lede {
-    margin: 0; max-width: 620px;
-    font-size: clamp(16px, 1.7vw, 19px);
-    color: var(--grey); line-height: 1.65;
+    margin: 0 auto 36px; max-width: 620px;
+    font-size: clamp(16px, 1.8vw, 19px);
+    color: var(--muted); line-height: 1.65; letter-spacing: -0.005em;
   }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn {
+    height: 48px; padding: 0 24px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 500; text-decoration: none;
+    transition: background .15s, border-color .15s, opacity .15s;
+  }
+  .btn-dark { background: var(--ink); color: #fff; }
+  .btn-dark:hover { opacity: .85; }
+  .btn-line { background: var(--surface); color: var(--ink); border: 1px solid var(--line-2); }
+  .btn-line:hover { background: var(--surface-2); border-color: var(--ink); }
 
   /* ── Sections ────────────────────────────────────────────── */
-  section { padding: 40px 0; }
-  h2 {
-    margin: 0 0 8px;
-    font-size: clamp(22px, 3vw, 30px);
-    font-weight: 400; letter-spacing: -0.01em;
+  section { padding: 80px 0; }
+  .rule { height: 1px; background: var(--line); }
+  .sec-label {
+    font-size: 13px; color: var(--muted-2); margin: 0 0 14px;
+    text-transform: uppercase; letter-spacing: .08em; font-weight: 500;
   }
-  h2 strong { font-weight: 700; }
-  .sub { margin: 0 0 28px; color: var(--grey); max-width: 640px; }
+  h2 { margin: 0 0 16px; font-size: clamp(26px, 3.6vw, 40px); line-height: 1.15; font-weight: 600; letter-spacing: -0.03em; }
+  .sec-sub { margin: 0; max-width: 640px; color: var(--muted); font-size: 17px; }
+  .head { margin-bottom: 48px; }
 
-  /* ── Ecosystem cards ─────────────────────────────────────── */
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  /* ── Steps ───────────────────────────────────────────────── */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .step { background: var(--surface); padding: 28px 24px; }
+  .step-n { font-size: 13px; color: var(--muted-2); font-weight: 500; margin: 0 0 12px; }
+  .step h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+  .step p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+
+  /* ── Feature grid ────────────────────────────────────────── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
   .card {
-    display: block; padding: 28px;
-    border: 1px solid var(--line); border-radius: var(--radius-card);
-    background: var(--surface); color: inherit;
-    transition: box-shadow .18s, transform .18s, border-color .18s;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 26px;
+    transition: border-color .15s;
   }
-  .card:hover { text-decoration: none; box-shadow: var(--shadow-2); border-color: transparent; transform: translateY(-2px); }
-  .badge {
-    width: 44px; height: 44px; border-radius: 12px;
-    display: grid; place-items: center; margin-bottom: 18px;
-    font-size: 20px; font-weight: 700;
+  .card:hover { border-color: var(--line-2); }
+  .card h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+  .card p { margin: 0; color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+  .ico {
+    width: 34px; height: 34px; margin-bottom: 16px; border-radius: 9px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    display: grid; place-items: center; font-size: 15px;
   }
-  .badge-blue  { background: var(--blue-soft);  color: var(--blue); }
-  .badge-green { background: var(--green-soft); color: var(--green); }
-  .card h3 { margin: 0 0 6px; font-size: 20px; font-weight: 500; }
-  .card .domain { margin: 0 0 12px; font-size: 14px; color: var(--blue); font-weight: 500; }
-  .card p { margin: 0; color: var(--grey); font-size: 15px; }
-  .card .go { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; font-size: 14px; font-weight: 500; color: var(--blue); }
+
+  /* ── Ecosystem ───────────────────────────────────────────── */
+  .eco { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+  .eco-card {
+    display: block; padding: 26px; border: 1px solid var(--line);
+    border-radius: var(--radius); text-decoration: none;
+    transition: border-color .15s, background .15s;
+  }
+  .eco-card:hover { border-color: var(--line-2); background: var(--surface-2); }
+  .eco-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+  .eco-card h3 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+  .eco-card .domain { color: var(--muted-2); font-size: 13.5px; margin: 0 0 12px; }
+  .eco-card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  .arrow { color: var(--muted-2); font-size: 15px; }
 
   /* ── Contact ─────────────────────────────────────────────── */
   .contact {
-    border: 1px solid var(--line); border-radius: var(--radius-card);
-    background: var(--surface-2);
-    padding: 32px; display: flex; flex-wrap: wrap; gap: 24px;
-    align-items: center; justify-content: space-between;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 28px; padding: 36px;
+    background: var(--surface-2); border-radius: var(--radius);
   }
-  .contact-label { margin: 0 0 4px; font-size: 14px; color: var(--grey); }
-  .phone { margin: 0; font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.01em; }
-  .phone a { color: var(--ink); }
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    height: 48px; padding: 0 28px; border-radius: 999px;
-    background: var(--blue); color: #fff;
-    font-size: 15px; font-weight: 500;
-    box-shadow: var(--shadow-1);
-    transition: background .15s, box-shadow .15s;
-  }
-  .btn:hover { background: var(--blue-dark); box-shadow: var(--shadow-2); text-decoration: none; }
+  .contact h2 { margin: 0 0 6px; font-size: clamp(22px, 3vw, 28px); }
+  .contact p { margin: 0; color: var(--muted); font-size: 15px; }
 
   footer {
-    margin-top: 24px; padding: 28px 0 48px;
-    border-top: 1px solid var(--line);
-    color: var(--grey); font-size: 13px;
-    display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between;
+    padding: 40px 0 64px; border-top: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 10px 28px; justify-content: space-between;
+    color: var(--muted-2); font-size: 13.5px;
   }
-  footer a { color: var(--grey); }
+  footer a { color: var(--muted-2); text-decoration: none; }
+  footer a:hover { color: var(--ink); }
 
-  @media (max-width: 560px) {
-    .hero { padding: 48px 0 24px; }
-    .contact { padding: 24px; }
-    .btn { width: 100%; justify-content: center; }
+  @media (max-width: 640px) {
+    .hero { padding: 64px 0 56px; }
+    section { padding: 56px 0; }
+    .nav-links a:not(.nav-cta) { display: none; }
+    .contact { padding: 26px; }
   }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="wrap topbar-inner">
-    <a class="wordmark" href="/"><span class="mark" aria-hidden="true">G</span>Hệ sinh thái Gulagi</a>
-    <a class="signin" href="/admin">Đăng nhập</a>
-  </div>
-</div>
-
-<main>
-  <div class="wrap hero">
-    <span class="eyebrow">Hệ thống nội dung &amp; SEO tự động</span>
-    <h1>Một hệ thống, <strong>nhiều thương hiệu</strong>.</h1>
-    <p class="lede">
-      Hệ sinh thái Gulagi vận hành nội dung cho từng thương hiệu trong cùng một nền tảng:
-      chọn chủ đề theo ngành, viết bài, tạo ảnh bìa, xuất bản lên blog và trang programmatic,
-      rồi tự động phân phối nội dung ra các kênh của mỗi thương hiệu.
-    </p>
-  </div>
-
-  <section class="wrap" id="he-sinh-thai">
-    <h2>Các hệ thống trong <strong>hệ sinh thái</strong></h2>
-    <p class="sub">Mỗi hệ thống là một thương hiệu độc lập, có blog, sitemap và kênh phân phối riêng.</p>
-    <div class="cards">
-      <a class="card" href="https://gulagi.com" target="_blank" rel="noopener">
-        <div class="badge badge-blue" aria-hidden="true">G</div>
-        <h3>Gulagi</h3>
-        <p class="domain">gulagi.com</p>
-        <p>Tạo website cho quán từ Google Maps — chuyển đổi số cho quán cà phê, nhà hàng và cửa hàng bán lẻ.</p>
-        <span class="go">Mở gulagi.com ↗</span>
-      </a>
-      <a class="card" href="https://gurouter.com" target="_blank" rel="noopener">
-        <div class="badge badge-green" aria-hidden="true">R</div>
-        <h3>GuRouter</h3>
-        <p class="domain">gurouter.com</p>
-        <p>AI gateway và công cụ cho lập trình viên — định tuyến mô hình và hạ tầng AI trong một điểm kết nối.</p>
-        <span class="go">Mở gurouter.com ↗</span>
-      </a>
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">G</span>Hệ sinh thái Gulagi</a>
+    <div class="nav-links">
+      <a href="#quy-trinh">Quy trình</a>
+      <a href="#tinh-nang">Tính năng</a>
+      <a href="#he-sinh-thai">Hệ sinh thái</a>
+      <a href="#lien-he">Liên hệ</a>
+      <a class="nav-cta" href="/admin">Đăng nhập</a>
     </div>
-  </section>
+  </div>
+</nav>
 
-  <section class="wrap" id="lien-he">
-    <h2>Thông tin <strong>liên hệ</strong></h2>
-    <p class="sub">Cần tư vấn hoặc hợp tác, gọi trực tiếp trong giờ làm việc.</p>
-    <div class="contact">
-      <div>
-        <p class="contact-label">Điện thoại</p>
-        <p class="phone"><a href="tel:+84989511431">0989 511 431</a></p>
-      </div>
-      <a class="btn" href="tel:+84989511431">Gọi 0989 511 431</a>
+<header class="wrap hero">
+  <span class="pill"><span class="dot" aria-hidden="true"></span>SEO tự động bằng AI</span>
+  <h1>Nội dung lên trang mỗi ngày, không cần đội ngũ viết.</h1>
+  <p class="lede">
+    Hệ thống tự chọn chủ đề theo ngành của từng thương hiệu, viết bài, tạo ảnh bìa, xuất bản
+    lên blog và trang programmatic, rồi phân phối nội dung ra kênh của mỗi brand.
+  </p>
+  <div class="actions">
+    <a class="btn btn-dark" href="#lien-he">Nhận tư vấn</a>
+    <a class="btn btn-line" href="#quy-trinh">Xem quy trình</a>
+  </div>
+</header>
+
+<div class="wrap"><div class="rule"></div></div>
+
+<section class="wrap" id="quy-trinh">
+  <div class="head">
+    <p class="sec-label">Quy trình</p>
+    <h2>Bốn bước, chạy tự động</h2>
+    <p class="sec-sub">Mỗi bước đều có thể chạy theo lịch, hoặc kích hoạt ngay từ bảng điều khiển khi bạn cần lên bài sớm.</p>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <p class="step-n">01</p>
+      <h3>Chọn chủ đề</h3>
+      <p>Hệ thống đọc hồ sơ thương hiệu và chọn chủ đề theo ngành, tránh trùng lặp với bài đã viết.</p>
     </div>
-  </section>
-</main>
+    <div class="step">
+      <p class="step-n">02</p>
+      <h3>Viết bài</h3>
+      <p>AI viết bài 900–1.300 từ theo đúng giọng văn và độc giả mục tiêu của từng brand.</p>
+    </div>
+    <div class="step">
+      <p class="step-n">03</p>
+      <h3>Tạo ảnh bìa</h3>
+      <p>Ảnh bìa được tạo tự động và lưu trữ, sẵn sàng cho cả bài viết lẫn thẻ chia sẻ mạng xã hội.</p>
+    </div>
+    <div class="step">
+      <p class="step-n">04</p>
+      <h3>Xuất bản &amp; phân phối</h3>
+      <p>Đăng lên blog, gửi IndexNow để Google index nhanh, và đẩy sang kênh của khách nếu đã cấu hình.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="tinh-nang">
+  <div class="head">
+    <p class="sec-label">Tính năng</p>
+    <h2>Những gì hệ thống tự làm</h2>
+    <p class="sec-sub">Vận hành nội dung cho nhiều thương hiệu trên cùng một nền tảng, mỗi brand có blog, feed và sitemap riêng.</p>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <div class="ico" aria-hidden="true">◈</div>
+      <h3>Hồ sơ thương hiệu</h3>
+      <p>Mỗi brand có giọng văn, độc giả, chủ đề cốt lõi và danh sách chủ đề cần tránh. Bài viết bám theo đúng hồ sơ đó.</p>
+    </div>
+    <div class="card">
+      <div class="ico" aria-hidden="true">▤</div>
+      <h3>Lịch nội dung</h3>
+      <p>Kế hoạch bài viết theo ngày, xem trước trên lịch tháng và tạo ngay khi cần mà không phải chờ tới lượt.</p>
+    </div>
+    <div class="card">
+      <div class="ico" aria-hidden="true">⇄</div>
+      <h3>Liên kết nội bộ</h3>
+      <p>Bài mới tự trỏ về các bài liên quan trong cùng thương hiệu, giữ khách đọc tiếp và giúp bài cũ tiếp tục nhận link.</p>
+    </div>
+    <div class="card">
+      <div class="ico" aria-hidden="true">↻</div>
+      <h3>Làm mới bài cũ</h3>
+      <p>Bài đã xuất bản quá 90 ngày được quét, viết lại tại chỗ và giữ nguyên đường dẫn, sau đó gửi lại IndexNow.</p>
+    </div>
+    <div class="card">
+      <div class="ico" aria-hidden="true">▦</div>
+      <h3>Trang programmatic</h3>
+      <p>Sinh trang hàng loạt theo dữ liệu, phù hợp nhóm ngành có nhiều khu vực hoặc nhiều dịch vụ.</p>
+    </div>
+    <div class="card">
+      <div class="ico" aria-hidden="true">◎</div>
+      <h3>Đo lường &amp; chi phí</h3>
+      <p>Theo dõi bài đã đăng, lượt xem, phản hồi độc giả và chi phí AI theo từng thương hiệu.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="he-sinh-thai">
+  <div class="head">
+    <p class="sec-label">Hệ sinh thái</p>
+    <h2>Hai thương hiệu đang vận hành</h2>
+    <p class="sec-sub">Cùng một hệ thống, mỗi thương hiệu có nhận diện, màu sắc và kênh phân phối riêng.</p>
+  </div>
+  <div class="eco">
+    <a class="eco-card" href="https://gulagi.com" target="_blank" rel="noopener">
+      <div class="eco-top"><h3>Gulagi</h3><span class="arrow" aria-hidden="true">↗</span></div>
+      <p class="domain">gulagi.com</p>
+      <p>Tạo website cho quán từ Google Maps — chuyển đổi số cho quán cà phê, nhà hàng và cửa hàng bán lẻ.</p>
+    </a>
+    <a class="eco-card" href="https://gurouter.com" target="_blank" rel="noopener">
+      <div class="eco-top"><h3>GuRouter</h3><span class="arrow" aria-hidden="true">↗</span></div>
+      <p class="domain">gurouter.com</p>
+      <p>AI gateway và công cụ cho lập trình viên — định tuyến mô hình và hạ tầng AI trong một điểm kết nối.</p>
+    </a>
+  </div>
+</section>
+
+<div class="wrap"><div class="rule"></div></div>
+
+<section class="wrap" id="lien-he">
+  <div class="contact">
+    <div>
+      <h2>Tư vấn triển khai</h2>
+      <p>Cho một thương hiệu hoặc toàn bộ hệ sinh thái. Gọi trực tiếp trong giờ làm việc.</p>
+    </div>
+    <a class="btn btn-dark" href="tel:+84989511431">Gọi 0989 511 431</a>
+  </div>
+</section>
 
 <div class="wrap">
   <footer>
-    <span>© <span id="y">2026</span> Hệ sinh thái Gulagi</span>
-    <span>Hệ thống nội dung &amp; SEO tự động</span>
+    <span>© <span id="y">2026</span> Hệ sinh thái Gulagi · SEO tự động bằng AI</span>
+    <span><a href="tel:+84989511431">0989 511 431</a> · <a href="https://gulagi.com" target="_blank" rel="noopener">gulagi.com</a> · <a href="https://gurouter.com" target="_blank" rel="noopener">gurouter.com</a></span>
   </footer>
 </div>
 

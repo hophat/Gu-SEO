@@ -7,6 +7,11 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.9 — 2026-09-13
+
+### Changed
+- **The install root leads with the service.** The landing page was an ecosystem overview in a Google-style blue/white layout; it is now built around the product — what the automation does, the four steps it runs unattended, and what it handles without an editor — followed by the two brands and the contact number. Restyled to OpenAI's monochrome system: hairline borders, black CTAs, Inter throughout, no gradients. Still Vietnamese, still `noindex`.
+
 ## 1.3.8 — 2026-09-13
 
 ### Fixed
