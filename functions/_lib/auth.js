@@ -97,6 +97,19 @@ export async function adminGate(env, request) {
   return null;
 }
 
+// User management is the only privilege boundary that is NOT project
+// scoped: a tenant admin holding a valid session could otherwise mint
+// accounts for projects it was never granted. Bearer ADMIN_TOKEN is the
+// bootstrap/recovery credential and stays equivalent to super_admin.
+export async function requireSuperAdmin(env, request) {
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return { error: json(401, { error: 'unauthorized' }) };
+  if (auth.via !== 'bearer' && auth.role !== 'super_admin') {
+    return { error: json(403, { error: 'forbidden', hint: 'super_admin only' }) };
+  }
+  return { auth };
+}
+
 export async function resolveTenantContext(env, request, auth) {
   if (!auth) return null;
   const isSuperAdmin = auth.via === 'bearer' || auth.role === 'super_admin';

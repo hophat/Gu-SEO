@@ -395,8 +395,8 @@
   // activateTab so deep links can't open them either. Distribution
   // (seo + embeds) stays available — it is project-scoped and is how a
   // tenant hands their blog to their own site.
-  const PROJECT_ADMIN_HIDDEN_TABS = ['settings', 'status'];
-  const PROJECT_ADMIN_HIDDEN_PAGES = ['settings', 'status', 'updates', 'usage'];
+  const PROJECT_ADMIN_HIDDEN_TABS = ['settings', 'status', 'users'];
+  const PROJECT_ADMIN_HIDDEN_PAGES = ['settings', 'status', 'updates', 'usage', 'users'];
 
   function applyRoleVisibility(role) {
     const restricted = role !== 'super_admin';
@@ -423,6 +423,7 @@
       status: 'Hệ thống',
       trends: 'Xu hướng',
       settings: 'Cài đặt',
+      users: 'Người dùng',
     },
     en: {
       overview: 'Overview',
@@ -434,6 +435,7 @@
       status: 'System',
       trends: 'Trends',
       settings: 'Settings',
+      users: 'Users',
     }
   };
 
@@ -562,6 +564,7 @@
     if (name === 'updates') { Updates.init(); }
     if (name === 'status')   { Status.init(); }
     if (name === 'settings') { loadSettings(); loadProviderGrid(); }
+    if (name === 'users') { Users.init(); }
     if (name === 'analytics') { loadAnalytics(); }
     if (name === 'trends') { loadTrends(); }
   }
@@ -2554,6 +2557,237 @@
     return { init };
   })();
 
+
+  // ── Users tab (super_admin only) ─────────────────────────────────
+  // Creates tenant accounts and binds each one to a project. Every other
+  // admin page is project-scoped; this one is the privilege boundary
+  // itself, so it stays hidden from project_admin and the API refuses
+  // anything below super_admin.
+  const Users = (() => {
+    const ROLE_OPTIONS = [['project_admin', 'Quản trị dự án'], ['super_admin', 'Quản trị hệ thống']];
+    const ERROR_TEXT = {
+      invalid_email: 'Email không hợp lệ.',
+      password_length: 'Mật khẩu phải có từ 8 đến 256 ký tự.',
+      email_already_exists: 'Email này đã có tài khoản.',
+      invalid_role: 'Vai trò không hợp lệ.',
+      project_required: 'Phải chọn dự án cho vai trò Quản trị dự án.',
+      unknown_project: 'Dự án không tồn tại.',
+      user_not_found: 'Không tìm thấy tài khoản.',
+      no_fields: 'Không có thay đổi nào để lưu.',
+      cannot_delete_self: 'Không thể xoá tài khoản đang đăng nhập.',
+      cannot_delete_last_user: 'Không thể xoá tài khoản cuối cùng.',
+      cannot_delete_last_super_admin: 'Không thể xoá quản trị hệ thống cuối cùng.',
+      forbidden: 'Chỉ quản trị hệ thống mới xem được trang này.',
+    };
+    let mounted = false;
+
+    function errText(body) {
+      return ERROR_TEXT[body?.error] || body?.error || 'Lỗi không xác định.';
+    }
+
+    function setMsg(el, text, cls) {
+      if (!el) return;
+      el.textContent = text || '';
+      el.className = cls ? 'status ' + cls : 'status';
+    }
+
+    function td() {
+      const el = document.createElement('td');
+      el.style.padding = '8px';
+      return el;
+    }
+
+    function tdText(text) {
+      const el = td();
+      el.textContent = text;
+      return el;
+    }
+
+    function tdNode(node) {
+      const el = td();
+      el.appendChild(node);
+      return el;
+    }
+
+    function dateCell(sec) {
+      return tdText(sec
+        ? new Date(sec * 1000).toLocaleDateString(currentLang === 'vi' ? 'vi-VN' : 'en-GB')
+        : '—');
+    }
+
+    function makeSelect(value, options, blankLabel) {
+      const sel = document.createElement('select');
+      if (blankLabel) {
+        const blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = blankLabel;
+        sel.appendChild(blank);
+      }
+      for (const [v, label] of options) {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = label;
+        if (v === value) opt.selected = true;
+        sel.appendChild(opt);
+      }
+      return sel;
+    }
+
+    function projectOptions() {
+      return _allProjects.map((p) => [p.id, p.name || p.slug || p.id]);
+    }
+
+    function actionButton(label) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn';
+      btn.textContent = label;
+      btn.style.marginRight = '6px';
+      return btn;
+    }
+
+    function report(text, cls) {
+      const list = $('#user-list');
+      if (!list) return;
+      list.textContent = text;
+      list.className = cls ? 'status ' + cls : 'dim';
+    }
+
+    async function saveRow(user, roleSel, projSel, btn) {
+      btn.disabled = true;
+      const { status, body } = await api(
+        '/api/admin/users?id=' + encodeURIComponent(user.id),
+        { method: 'PUT', body: JSON.stringify({ role: roleSel.value, project_id: projSel.value || null }) }
+      );
+      btn.disabled = false;
+      if (status !== 200 || !body?.ok) { report(errText(body), 'bad'); return; }
+      report('Đã lưu ' + user.email + '.', 'good');
+      load();
+    }
+
+    async function resetPassword(user) {
+      const pw = window.prompt('Mật khẩu mới cho ' + user.email + ' (tối thiểu 8 ký tự):');
+      if (pw === null) return;
+      if (pw.length < 8) { report(ERROR_TEXT.password_length, 'bad'); return; }
+      const { status, body } = await api(
+        '/api/admin/users?id=' + encodeURIComponent(user.id),
+        { method: 'PUT', body: JSON.stringify({ password: pw }) }
+      );
+      if (status !== 200 || !body?.ok) { report(errText(body), 'bad'); return; }
+      report('Đã đổi mật khẩu cho ' + user.email + '.', 'good');
+    }
+
+    async function removeUser(user) {
+      if (!window.confirm('Xoá tài khoản ' + user.email + '? Thao tác này không thể hoàn tác.')) return;
+      const { status, body } = await api(
+        '/api/admin/users?id=' + encodeURIComponent(user.id),
+        { method: 'DELETE' }
+      );
+      if (status !== 200 || !body?.ok) { report(errText(body), 'bad'); return; }
+      report('Đã xoá ' + user.email + '.', 'good');
+      load();
+    }
+
+    function renderRow(user) {
+      const tr = document.createElement('tr');
+      tr.appendChild(tdText(user.email));
+
+      const roleSel = makeSelect(user.role || 'project_admin', ROLE_OPTIONS, null);
+      tr.appendChild(tdNode(roleSel));
+
+      const projSel = makeSelect(user.project_id || '', projectOptions(), '— không gán —');
+      tr.appendChild(tdNode(projSel));
+
+      tr.appendChild(dateCell(user.created_at));
+      tr.appendChild(dateCell(user.last_login_at));
+
+      const save = actionButton('Lưu');
+      save.addEventListener('click', () => saveRow(user, roleSel, projSel, save));
+      const reset = actionButton('Đổi mật khẩu');
+      reset.addEventListener('click', () => resetPassword(user));
+      const del = actionButton('Xoá');
+      del.addEventListener('click', () => removeUser(user));
+      const actions = tdNode(save);
+      actions.append(reset, del);
+      tr.appendChild(actions);
+
+      return tr;
+    }
+
+    async function load() {
+      const rows = $('#user-rows');
+      if (!rows) return;
+      const { status, body } = await api('/api/admin/users');
+      if (status !== 200 || !body?.ok) {
+        clearChildren(rows);
+        report(errText(body), 'bad');
+        return;
+      }
+      const users = body.users || [];
+      clearChildren(rows);
+      for (const u of users) rows.appendChild(renderRow(u));
+      report(users.length + ' tài khoản.', null);
+    }
+
+    async function create() {
+      const msg = $('#user-new-msg');
+      const email = ($('#user-new-email')?.value || '').trim();
+      const password = $('#user-new-password')?.value || '';
+      const role = $('#user-new-role')?.value || 'project_admin';
+      const projectId = $('#user-new-project')?.value || '';
+      if (!email) { setMsg(msg, 'Nhập email.', 'bad'); return; }
+      if (password.length < 8) { setMsg(msg, ERROR_TEXT.password_length, 'bad'); return; }
+      if (role === 'project_admin' && !projectId) { setMsg(msg, ERROR_TEXT.project_required, 'bad'); return; }
+      const btn = $('#user-new-go');
+      btn.disabled = true;
+      const { status, body } = await api('/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, role, project_id: projectId || null }),
+      });
+      btn.disabled = false;
+      if (status !== 200 || !body?.ok) { setMsg(msg, errText(body), 'bad'); return; }
+      setMsg(msg, 'Đã tạo ' + email + '.', 'good');
+      const emailEl = $('#user-new-email'); if (emailEl) emailEl.value = '';
+      const pwEl = $('#user-new-password'); if (pwEl) pwEl.value = '';
+      load();
+    }
+
+    function fillProjects() {
+      const sel = $('#user-new-project');
+      if (!sel) return;
+      const keep = sel.value;
+      clearChildren(sel);
+      for (const [v, label] of projectOptions()) {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = label;
+        sel.appendChild(opt);
+      }
+      if (keep) sel.value = keep;
+    }
+
+    function syncProjectEnabled() {
+      const sel = $('#user-new-project');
+      if (sel) sel.disabled = ($('#user-new-role')?.value) === 'super_admin';
+    }
+
+    async function init() {
+      if (!_allProjects.length) {
+        const { body } = await api('/api/admin/whoami');
+        if (Array.isArray(body?.projects)) _allProjects = body.projects;
+      }
+      if (!mounted) {
+        mounted = true;
+        $('#user-new-role')?.addEventListener('change', syncProjectEnabled);
+        $('#user-new-go')?.addEventListener('click', create);
+      }
+      fillProjects();
+      syncProjectEnabled();
+      load();
+    }
+
+    return { init, load };
+  })();
 
   // ── Status tab ─────────────────────────────────────────────────
   // Three cards: health checks (D1, R2, AI, content, failures,

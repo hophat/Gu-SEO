@@ -7,6 +7,19 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.2 — 2026-09-13
+
+### Added
+- **User management.** A new **Người dùng** tab (super-admin only) creates tenant accounts with a role and a project binding, and can change a user's role/project, reset their password, or delete the account.
+- **Widget title follows the project.** The embed widget takes its heading from the project's `site_name` and its interface copy from the project's `language`, instead of a fixed label.
+
+### Fixed
+- **Other brands' blogs no longer credit Gulagi.** Every post rendered a hardcoded author box (`Đội ngũ Gulagi` plus a retail-shop bio) whichever project owned it, and the blog-list description fell back to a hardcoded "…từ Gulagi." Tenants now use their own `site_name` / `site_description`; Gulagi keeps its existing copy.
+- **Tenant blog creation ignored the tenant.** `POST /api/admin/blog/start` fell back to the install-wide SEO topic pool, so a study-abroad brand got topics like internal linking, and the article prompt used the install's brand voice instead of the project's. A named project now picks from its own `project_topics` (falling back to AI-generated on-brand topics) and writes with that project's `project_brands` DNA.
+
+### Security
+- **`/api/admin/users` now requires super_admin.** The endpoint only called `adminGate`, which does not inspect roles, so any project admin with a session could create accounts. Bearer `ADMIN_TOKEN` still works as the bootstrap/recovery credential, and deleting the last super-admin — or the account you are signed in as — is refused.
+
 ## 1.3.1 — 2026-09-13
 
 ### Fixed

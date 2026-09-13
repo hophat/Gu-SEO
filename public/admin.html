@@ -126,6 +126,7 @@
         <span id="updates-badge" class="tab-badge" hidden></span>
       </button>
       <button class="tab" data-tab="settings">Cài đặt</button>
+      <button class="tab" data-tab="users" type="button">Người dùng</button>
     </nav>
     <!-- Sub-nav strip. Populated dynamically by admin.js when a tab
          with data-children is active. Hidden otherwise. -->
@@ -798,6 +799,60 @@
             <th style="text-align:left">Chi tiết</th>
           </tr></thead>
           <tbody id="audit-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ USERS ============ -->
+    <section data-page="users" class="page" hidden>
+      <div class="card">
+        <div class="card-eyebrow">Tài khoản khách</div>
+        <h2>Tạo tài khoản mới</h2>
+        <p>Tạo tài khoản đăng nhập cho khách và gán vào một dự án. Khách chỉ thấy dữ liệu của dự án được gán.</p>
+        <div class="form-grid">
+          <label>
+            <span>Email</span>
+            <input id="user-new-email" type="email" placeholder="khach@tenmien.com" autocomplete="off" />
+          </label>
+          <label>
+            <span>Mật khẩu</span>
+            <input id="user-new-password" type="password" placeholder="tối thiểu 8 ký tự" autocomplete="new-password" />
+          </label>
+          <label>
+            <span>Vai trò</span>
+            <select id="user-new-role">
+              <option value="project_admin">Quản trị dự án</option>
+              <option value="super_admin">Quản trị hệ thống</option>
+            </select>
+          </label>
+          <label>
+            <span>Dự án</span>
+            <select id="user-new-project"></select>
+            <small>Bắt buộc với vai trò Quản trị dự án.</small>
+          </label>
+        </div>
+        <div class="row">
+          <button id="user-new-go" class="btn btn-primary" type="button">Tạo tài khoản</button>
+          <span id="user-new-msg" class="status"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">Danh sách</div>
+        <h2>Tài khoản hiện có</h2>
+        <p id="user-list" class="dim">Chưa tải.</p>
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left">Email</th>
+              <th style="text-align:left">Vai trò</th>
+              <th style="text-align:left">Dự án</th>
+              <th style="text-align:left">Tạo lúc</th>
+              <th style="text-align:left">Đăng nhập gần nhất</th>
+              <th style="text-align:left">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="user-rows"></tbody>
         </table>
       </div>
     </section>
