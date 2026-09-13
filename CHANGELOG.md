@@ -10,7 +10,7 @@ The format is loosely Keep-a-Changelog, dates in ISO order.
 ## 1.3.8 — 2026-09-13
 
 ### Fixed
-- **Admin UI changes took up to four hours to appear.** `/admin.html` is served `no-store`, but `/admin.js`, `/admin.css` and the cover-editor bundle had no rule and fell back to a 4-hour `max-age`. A project admin therefore kept seeing the System, Settings and Users tabs long after they were hidden for that role — the deployed code was correct, the browser was running a stale bundle. Those four files are now `no-cache`, which still answers 304 from the ETag when nothing changed.
+- **Admin UI changes took up to four hours to appear.** `/admin.html` is served `no-store`, but `/admin.js`, `/admin.css` and the cover-editor bundle had no rule at all. This zone sets `browser_cache_ttl=14400`, so Cloudflare rewrote their origin `max-age` to 4 hours and a project admin kept seeing the System, Settings and Users tabs long after those were hidden for that role — the deployed code was correct, the browser was running a stale bundle. Those four files are now `no-store`; `no-cache` is not enough here, because the same zone setting strips it and substitutes the 4-hour TTL.
 
 ## 1.3.7 — 2026-09-13
 
