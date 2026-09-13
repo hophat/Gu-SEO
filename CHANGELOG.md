@@ -7,6 +7,14 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.14 — 2026-09-13
+
+### Added
+- **Hỗ trợ song ngữ Tiếng Việt & Tiếng Anh trên Trang chủ (i18n):**
+  - Tích hợp nút chuyển đổi ngôn ngữ tối giản `🌐 VI / EN` trên thanh Navigation bar (chuẩn phong cách X.com).
+  - Tự động ghi nhớ lựa chọn ngôn ngữ qua `localStorage['ps_home_lang']`, mặc định Tiếng Việt cho người dùng Việt Nam.
+  - Chuyển đổi toàn diện 100% nội dung (Title, Meta description, Navigation, Hero, Big Wordmark, 4-Step Workflow, 6 Tính năng công nghệ, Hệ sinh thái, Liên hệ & Footer) không cần tải lại trang.
+
 ## 1.3.13 — 2026-09-13
 
 ### Added
