@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" />
+<link rel="icon" type="image/png" href="/favicon.png" sizes="64x64" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
 <title>GU SEO — Programmatic SEO Infrastructure</title>
 <meta name="description" content="The autonomous content engine that scales brands across every surface of search." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -660,8 +662,12 @@
     border-color: #fff;
   }
   .lang-icon {
-    font-size: 0.85rem;
-    opacity: 0.8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .flag-icon {
+    box-shadow: 0 0 1px rgba(0,0,0,0.5);
   }
 
 </style>
@@ -678,12 +684,7 @@
 <header class="nav">
   <div class="nav-inner">
     <a class="brand" href="/">
-      <div class="brand-mark">
-        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="5" x2="19" y2="19" stroke-width="2.8"/>
-          <line x1="19" y1="5" x2="5" y2="19" stroke-width="2.8"/>
-        </svg>
-      </div>
+      <img src="/logo-guseo-sm.png" alt="GU SEO Logo" class="brand-mark" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" />
       GU SEO
     </a>
     <ul class="nav-menu">
@@ -695,7 +696,7 @@
     </ul>
     <div class="nav-actions">
       <button id="lang-switcher" class="lang-toggle-btn" type="button" aria-label="Toggle language">
-        <span class="lang-icon">🌐</span>
+        <span id="lang-flag" class="lang-icon"><svg class="flag-icon" width="16" height="12" viewBox="0 0 30 20" style="border-radius:2px;display:inline-block;vertical-align:middle;"><rect width="30" height="20" fill="#da251d"/><polygon points="15,4 17.5,11.5 10,7 20,7 12.5,11.5" fill="#ff0"/></svg></span>
         <span id="lang-current">VI</span>
       </button>
       <a class="btn-ghost" href="/admin" data-i18n="nav_signin">Sign in</a>
@@ -1044,12 +1045,7 @@
   <div class="footer-grid">
     <div class="footer-col">
       <a class="brand" href="/" style="margin-bottom: 12px;">
-        <div class="footer-brand-mark">
-          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="5" y1="5" x2="19" y2="19" stroke-width="2.8"/>
-            <line x1="19" y1="5" x2="5" y2="19" stroke-width="2.8"/>
-          </svg>
-        </div>
+        <img src="/logo-guseo-sm.png" alt="GU SEO Logo" class="footer-brand-mark" style="width:24px;height:24px;border-radius:50%;object-fit:cover;" />
         GU SEO
       </a>
       <p style="color: var(--text-secondary); font-size: 0.94rem; line-height: 1.5; margin-top: 8px;" data-i18n-html="footer_sub">
@@ -1233,6 +1229,10 @@
 
     const btnLabel = document.getElementById('lang-current');
     if (btnLabel) btnLabel.textContent = lang.toUpperCase();
+    const flagSpan = document.getElementById('lang-flag');
+    if (flagSpan) {
+      flagSpan.innerHTML = lang === 'vi' ? '<svg class="flag-icon" width="16" height="12" viewBox="0 0 30 20" style="border-radius:2px;display:inline-block;vertical-align:middle;"><rect width="30" height="20" fill="#da251d"/><polygon points="15,4 17.5,11.5 10,7 20,7 12.5,11.5" fill="#ff0"/></svg>' : '<svg class="flag-icon" width="16" height="12" viewBox="0 0 60 30" style="border-radius:2px;display:inline-block;vertical-align:middle;"><clipPath id="s"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="t"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#s)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#t)" stroke="#c8102e" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#c8102e" stroke-width="6"/></g></svg>';
+    }
 
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');

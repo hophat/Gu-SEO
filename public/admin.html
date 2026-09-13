@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" />
+<link rel="icon" type="image/png" href="/favicon.png" sizes="64x64" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
 <title>GU SEO Console · Quản trị</title>
 <link rel="preload" href="/_fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="preload" href="/_fonts/inter-500.woff2" as="font" type="font/woff2" crossorigin />
@@ -28,7 +30,7 @@
      POSTs to /api/admin/login which sets an HttpOnly cookie. -->
 <div id="gate" class="gate" hidden>
   <div class="gate-card">
-    <h1>GU SEO Console</h1>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><img src="/logo-guseo-sm.png" alt="GU SEO" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" /><h1 style="margin:0;">GU SEO Console</h1></div>
     <p id="gate-sub">Đăng nhập hoặc tạo tài khoản miễn phí để trải nghiệm nền tảng.</p>
     
     <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--line);padding-bottom:12px;">
@@ -92,8 +94,8 @@
 <div id="setup" class="wiz" hidden>
   <div class="wiz-shell">
     <header class="wiz-head">
-      <div class="wiz-brand-mark">
-        <span class="wiz-dot"></span>
+      <div class="wiz-brand-mark" style="display:flex;align-items:center;gap:8px;">
+        <img src="/logo-guseo-sm.png" alt="GU SEO" style="width:20px;height:20px;border-radius:50%;object-fit:cover;" />
         <span class="wiz-brand-text">GU SEO</span>
       </div>
       <ol class="wiz-steps" aria-label="Tiến trình thiết lập">
@@ -145,10 +147,7 @@
 <div id="dash" class="dash" hidden>
   <header class="topbar">
     <div class="brand" style="display:flex;align-items:center;gap:8px;">
-      <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="flex:none;">
-        <line x1="5" y1="5" x2="19" y2="19"/>
-        <line x1="19" y1="5" x2="5" y2="19"/>
-      </svg>
+      <img src="/logo-guseo-sm.png" alt="GU SEO Logo" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex:none;" />
       <span>GU SEO</span>
     </div>
     <!-- Top-level tabs. Pages are grouped under 7 parents by workflow:
@@ -197,7 +196,7 @@
         <span class="theme-icon theme-icon-dark" aria-hidden="true">☾</span>
         <span class="theme-icon theme-icon-light" aria-hidden="true">☀</span>
       </button>
-      <button id="lang-toggle" class="btn btn-ghost btn-sm" type="button" title="Chuyển ngôn ngữ / Switch language">VI</button>
+      <button id="lang-toggle" class="btn btn-ghost btn-sm" type="button" title="Chuyển ngôn ngữ / Switch language" style="display:inline-flex;align-items:center;gap:6px;"><span id="admin-flag-icon"><svg class="flag-icon" width="16" height="12" viewBox="0 0 30 20" style="border-radius:2px;display:inline-block;vertical-align:middle;"><rect width="30" height="20" fill="#da251d"/><polygon points="15,4 17.5,11.5 10,7 20,7 12.5,11.5" fill="#ff0"/></svg></span><span id="admin-lang-text">VI</span></button>
       <button id="open-wizard" class="btn btn-ghost btn-sm" title="Chạy lại trình hướng dẫn thiết lập">Trình thiết lập</button>
       <button id="lock" class="btn btn-ghost btn-sm">Đăng xuất</button>
     </div>
@@ -1299,8 +1298,8 @@
   <div class="wiz-shell">
 
     <header class="wiz-head">
-      <div class="wiz-brand-mark">
-        <span class="wiz-dot"></span>
+      <div class="wiz-brand-mark" style="display:flex;align-items:center;gap:8px;">
+        <img src="/logo-guseo-sm.png" alt="GU SEO" style="width:20px;height:20px;border-radius:50%;object-fit:cover;" />
         <span class="wiz-brand-text">GU SEO</span>
       </div>
       <ol class="wiz-steps" aria-label="Tiến trình làm quen hệ thống">

@@ -7,6 +7,16 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.8.1 — 2026-09-13
+
+### Changed
+- **Cập nhật Logo nhận diện chính thức & Favicon đồng bộ từ `@public/logo-guseo.png`:**
+  - Tích hợp ảnh logo gốc chất lượng cao cho biểu tượng nhận diện GU SEO.
+  - Tối ưu tự động các kích thước:
+    - `/favicon.png` (64×64px) & `/apple-touch-icon.png` (180×180px) hiển thị favicon sắc nét trên tab trình duyệt và bookmark điện thoại.
+    - `/logo-guseo-sm.png` (128×128px, chỉ ~18KB) tải siêu tốc cho thanh Header và Footer của cả Trang chủ và Admin Console.
+  - Thay thế icon cờ SVG quốc gia (Việt Nam `🇻🇳` / Anh `🇬🇧`) thay cho emoji cũ ở bộ chọn ngôn ngữ Header.
+
 ## 1.8.0 — 2026-09-13
 
 ### Added
