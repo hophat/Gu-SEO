@@ -207,11 +207,34 @@
 
     <!-- ============ OVERVIEW ============ -->
     <section data-page="overview" class="page">
+      <!-- Quota Banner for Free & Paid Tiers -->
+      <div id="overview-quota-card" class="card" style="margin-bottom:18px;border-left:4px solid var(--accent);background:var(--bg-card);padding:18px 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+          <div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em;">Hạn mức gói tài khoản</div>
+            <div style="display:flex;align-items:baseline;gap:10px;margin-top:2px;">
+              <span id="quota-plan-name" style="font-size:18px;font-weight:700;color:var(--ink);">Gói Cơ Bản (Free)</span>
+              <span id="quota-badge-status" class="status good" style="font-size:11px;">Đang hoạt động</span>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div id="quota-posts-display" style="font-family:var(--mono);font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-0.03em;">
+              <span id="quota-used">0</span> / <span id="quota-limit">100</span> bài
+            </div>
+            <div id="quota-remaining-sub" style="font-size:12px;color:var(--ink-dim);margin-top:2px;">Còn lại 100 bài viết SEO miễn phí</div>
+          </div>
+        </div>
+        <!-- Visual Progress Bar -->
+        <div style="width:100%;height:8px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden;position:relative;">
+          <div id="quota-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg, #10b981, #06b6d4);border-radius:999px;transition:width 0.4s ease;"></div>
+        </div>
+      </div>
+
       <div class="grid-3">
         <div class="card">
           <div class="card-eyebrow">Bài viết</div>
           <div class="card-stat" id="stat-blog-count">—</div>
-          <div class="card-sub">Bài viết blog đã xuất bản</div>
+          <div class="card-sub" id="stat-blog-sub">Bài viết blog đã xuất bản</div>
         </div>
         <div class="card">
           <div class="card-eyebrow">Programmatic</div>

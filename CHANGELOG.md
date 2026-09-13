@@ -7,6 +7,17 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.7.0 — 2026-09-13
+
+### Added
+- **Hiển thị trực quan Hạn mức & Số lượng bài viết của gói Free trên Dashboard:**
+  - Bổ sung **Thẻ Quota Banner** ngay đầu trang Tổng quan (Overview):
+    - Tên gói tài khoản: `Gói Cơ Bản (Free)` hoặc `Gói Doanh Nghiệp (Super Admin)`.
+    - Số lượng bài viết đã tạo / Giới hạn: ví dụ `0 / 100 bài`.
+    - Thông báo số bài viết còn lại chính xác: `Còn lại 100 bài viết SEO miễn phí`.
+    - Thanh tiến trình trực quan (Visual Progress Bar) chuyển màu từ Xanh lá (an toàn) sang Đỏ cảnh báo khi chạm mốc 100%.
+  - Cập nhật số liệu tức thì đồng bộ theo dự án và tài khoản đang đăng nhập.
+
 ## 1.6.0 — 2026-09-13
 
 ### Added

@@ -2133,7 +2133,51 @@
   // ── overview ────────────────────────────────────────────────────
   async function loadOverview() {
     const posts = await api('/api/admin/blog/list');
-    setText($('#stat-blog-count'), (posts.body?.posts || []).filter(p => p.status === 'published').length);
+    const publishedPosts = (posts.body?.posts || []).filter(p => p.status === 'published');
+    const publishedCount = publishedPosts.length;
+    setText($('#stat-blog-count'), publishedCount);
+
+    // Update Quota Card
+    const who = await whoamiStatus();
+    const whoamiData = who?.info || {};
+    const planTier = whoamiData.plan_tier || window.__psPlanTier || 'free';
+    const isSuper = (whoamiData.role || window.__psRole) === 'super_admin';
+    const postLimit = whoamiData.post_limit || 100;
+    const usedCount = publishedCount;
+
+    const planNameEl = $('#quota-plan-name');
+    const usedEl = $('#quota-used');
+    const limitEl = $('#quota-limit');
+    const subEl = $('#quota-remaining-sub');
+    const barEl = $('#quota-progress-bar');
+    const cardEl = $('#overview-quota-card');
+    const statBlogSub = $('#stat-blog-sub');
+
+    if (isSuper) {
+      if (planNameEl) planNameEl.textContent = 'Gói Doanh Nghiệp (Super Admin)';
+      if (usedEl) usedEl.textContent = String(usedCount);
+      if (limitEl) limitEl.textContent = 'Không giới hạn';
+      if (subEl) subEl.textContent = 'Toàn quyền tạo & quản lý mọi dự án';
+      if (barEl) { barEl.style.width = '100%'; barEl.style.background = 'linear-gradient(90deg, #3b82f6, #06b6d4)'; }
+      if (statBlogSub) statBlogSub.textContent = 'Bài viết blog đã xuất bản';
+    } else {
+      const remaining = Math.max(0, postLimit - usedCount);
+      const pct = Math.min(100, Math.round((usedCount / postLimit) * 100));
+      
+      if (planNameEl) planNameEl.textContent = 'Gói Cơ Bản (Free)';
+      if (usedEl) usedEl.textContent = String(usedCount);
+      if (limitEl) limitEl.textContent = String(postLimit);
+      if (subEl) subEl.textContent = remaining > 0 
+        ? `Còn lại ${remaining} bài viết SEO miễn phí` 
+        : 'Đã hết hạn ngạch 100 bài miễn phí (Vui lòng liên hệ nâng cấp)';
+      if (barEl) {
+        barEl.style.width = `${pct}%`;
+        barEl.style.background = pct >= 100 
+          ? 'linear-gradient(90deg, #ef4444, #f87171)' 
+          : 'linear-gradient(90deg, #10b981, #06b6d4)';
+      }
+      if (statBlogSub) statBlogSub.textContent = `Đã dùng ${usedCount}/${postLimit} bài gói Free`;
+    }
     const prog = await api('/api/admin/prog/queue?status=done&limit=500');
     setText($('#stat-prog-count'), (prog.body?.keywords || []).length);
     const queue = await api('/api/admin/prog/queue?status=pending&limit=500');
