@@ -47,3 +47,21 @@
 /sign-in.html
   X-Frame-Options: DENY
   Cache-Control: no-store
+
+# The admin bundle. These four files change on almost every admin deploy,
+# and a stale copy silently shows the wrong UI — a project admin kept
+# seeing System/Settings/Users tabs long after they were hidden, because
+# admin.js was served with a 4-hour max-age. no-cache keeps the ETag, so
+# an unchanged file still answers 304 while a changed one is picked up on
+# the very next page load.
+/admin.js
+  Cache-Control: no-cache
+
+/admin.css
+  Cache-Control: no-cache
+
+/cover-editor.js
+  Cache-Control: no-cache
+
+/cover-editor.css
+  Cache-Control: no-cache

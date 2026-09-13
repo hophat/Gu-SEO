@@ -7,10 +7,16 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.8 — 2026-09-13
+
+### Fixed
+- **Admin UI changes took up to four hours to appear.** `/admin.html` is served `no-store`, but `/admin.js`, `/admin.css` and the cover-editor bundle had no rule and fell back to a 4-hour `max-age`. A project admin therefore kept seeing the System, Settings and Users tabs long after they were hidden for that role — the deployed code was correct, the browser was running a stale bundle. Those four files are now `no-cache`, which still answers 304 from the ETag when nothing changed.
+
 ## 1.3.7 — 2026-09-13
 
 ### Fixed
 - **Posts shipped with no internal links.** The injector only turns a phrase into a link when that phrase already appears in the body, which in practice almost never happens: 17 of the 18 published posts had zero internal links. A post that matches nothing now ends with a **Bài viết liên quan** list of its project's freshest posts, so every post links onward and older posts keep earning links. Existing bodies were backfilled the same way — 14 posts, one section each, same-project links only.
+- **Two blocks were headed "Bài viết liên quan".** Adding the in-body list above meant every post showed that heading twice; the read-next aside (which keeps its thumbnails) is now headed **Đọc tiếp**, matching the `read-next` class it always had.
 
 ## 1.3.6 — 2026-09-13
 
