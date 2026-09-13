@@ -1,92 +1,225 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" />
-<title>Sign in</title>
+<title>Hệ sinh thái Gulagi</title>
+<meta name="description" content="Hệ sinh thái Gulagi — hệ thống nội dung và SEO tự động cho nhiều thương hiệu. Liên hệ 0989511431." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
 <style>
   :root {
-    --bg: #06080d;
-    --bg-card: #0f1520;
-    --ink: #e8edf2;
-    --ink-dim: #a3aec0;
-    --ink-faint: #6a7484;
-    --accent: #7afff0;
-    --accent-soft: rgba(122,255,240,0.10);
-    --line-2: rgba(255,255,255,0.18);
+    --blue: #1a73e8;
+    --blue-dark: #1557b0;
+    --blue-soft: #e8f0fe;
+    --ink: #202124;
+    --ink-2: #3c4043;
+    --grey: #5f6368;
+    --line: #dadce0;
+    --surface: #ffffff;
+    --surface-2: #f8f9fa;
+    --green: #188038;
+    --green-soft: #e6f4ea;
+    --radius-card: 16px;
+    --shadow-1: 0 1px 2px rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+    --shadow-2: 0 1px 3px rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15);
   }
   *, *::before, *::after { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0;
-    background:
-      radial-gradient(1000px 500px at 50% -10%, var(--accent-soft), transparent 60%)
-      var(--bg);
-    color: var(--ink); font-family: 'Inter', system-ui, sans-serif;
-    min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    padding: 32px 20px;
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
   }
-  .card {
-    width: min(420px, 100%);
-    background: var(--bg-card);
-    border: 1px solid var(--line-2);
-    border-radius: 16px;
-    padding: 36px 32px 28px;
-    text-align: center;
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { width: min(1040px, 100%); margin: 0 auto; padding: 0 24px; }
+
+  /* ── Top bar ─────────────────────────────────────────────── */
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid transparent;
   }
-  .dot {
-    display: inline-block;
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 0 5px rgba(122,255,240,0.15);
-    margin-bottom: 18px;
+  .topbar-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; height: 64px;
+  }
+  .wordmark {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 18px; font-weight: 500; color: var(--ink);
+  }
+  .wordmark:hover { text-decoration: none; }
+  .mark {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--blue);
+    display: inline-grid; place-items: center;
+    color: #fff; font-size: 15px; font-weight: 700;
+    flex: none;
+  }
+  .signin {
+    display: inline-flex; align-items: center;
+    height: 36px; padding: 0 18px;
+    border: 1px solid var(--line); border-radius: 999px;
+    color: var(--blue); font-size: 14px; font-weight: 500;
+    transition: background .15s, border-color .15s;
+  }
+  .signin:hover { background: var(--blue-soft); border-color: transparent; text-decoration: none; }
+
+  /* ── Hero ────────────────────────────────────────────────── */
+  .hero { padding: 72px 0 40px; }
+  .eyebrow {
+    display: inline-block; margin-bottom: 16px;
+    padding: 6px 14px; border-radius: 999px;
+    background: var(--blue-soft); color: var(--blue-dark);
+    font-size: 13px; font-weight: 500;
   }
   h1 {
+    margin: 0 0 20px;
+    font-size: clamp(34px, 5.4vw, 56px);
+    line-height: 1.12; font-weight: 400; letter-spacing: -0.02em;
+  }
+  h1 strong { font-weight: 700; }
+  .lede {
+    margin: 0; max-width: 620px;
+    font-size: clamp(16px, 1.7vw, 19px);
+    color: var(--grey); line-height: 1.65;
+  }
+
+  /* ── Sections ────────────────────────────────────────────── */
+  section { padding: 40px 0; }
+  h2 {
     margin: 0 0 8px;
-    font-family: 'Instrument Serif', Georgia, serif;
-    font-weight: 400;
-    font-size: 28px;
-    letter-spacing: -0.01em;
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 400; letter-spacing: -0.01em;
   }
-  h1 em { font-style: italic; color: var(--accent); }
-  p {
-    margin: 0 0 24px;
-    color: var(--ink-dim);
-    font-size: 14px;
-    line-height: 1.55;
+  h2 strong { font-weight: 700; }
+  .sub { margin: 0 0 28px; color: var(--grey); max-width: 640px; }
+
+  /* ── Ecosystem cards ─────────────────────────────────────── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .card {
+    display: block; padding: 28px;
+    border: 1px solid var(--line); border-radius: var(--radius-card);
+    background: var(--surface); color: inherit;
+    transition: box-shadow .18s, transform .18s, border-color .18s;
   }
+  .card:hover { text-decoration: none; box-shadow: var(--shadow-2); border-color: transparent; transform: translateY(-2px); }
+  .badge {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: grid; place-items: center; margin-bottom: 18px;
+    font-size: 20px; font-weight: 700;
+  }
+  .badge-blue  { background: var(--blue-soft);  color: var(--blue); }
+  .badge-green { background: var(--green-soft); color: var(--green); }
+  .card h3 { margin: 0 0 6px; font-size: 20px; font-weight: 500; }
+  .card .domain { margin: 0 0 12px; font-size: 14px; color: var(--blue); font-weight: 500; }
+  .card p { margin: 0; color: var(--grey); font-size: 15px; }
+  .card .go { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; font-size: 14px; font-weight: 500; color: var(--blue); }
+
+  /* ── Contact ─────────────────────────────────────────────── */
+  .contact {
+    border: 1px solid var(--line); border-radius: var(--radius-card);
+    background: var(--surface-2);
+    padding: 32px; display: flex; flex-wrap: wrap; gap: 24px;
+    align-items: center; justify-content: space-between;
+  }
+  .contact-label { margin: 0 0 4px; font-size: 14px; color: var(--grey); }
+  .phone { margin: 0; font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.01em; }
+  .phone a { color: var(--ink); }
   .btn {
-    display: inline-block;
-    padding: 12px 24px;
-    border-radius: 10px;
-    background: var(--accent);
-    color: #06080d;
-    font-weight: 600;
-    font-size: 14px;
-    text-decoration: none;
-    transition: transform .12s;
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 48px; padding: 0 28px; border-radius: 999px;
+    background: var(--blue); color: #fff;
+    font-size: 15px; font-weight: 500;
+    box-shadow: var(--shadow-1);
+    transition: background .15s, box-shadow .15s;
   }
-  .btn:hover { transform: translateY(-1px); }
+  .btn:hover { background: var(--blue-dark); box-shadow: var(--shadow-2); text-decoration: none; }
+
   footer {
-    margin-top: 22px;
-    font-size: 11px;
-    color: var(--ink-faint);
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    font-family: ui-monospace, monospace;
+    margin-top: 24px; padding: 28px 0 48px;
+    border-top: 1px solid var(--line);
+    color: var(--grey); font-size: 13px;
+    display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between;
+  }
+  footer a { color: var(--grey); }
+
+  @media (max-width: 560px) {
+    .hero { padding: 48px 0 24px; }
+    .contact { padding: 24px; }
+    .btn { width: 100%; justify-content: center; }
   }
 </style>
 </head>
 <body>
-  <div class="card">
-    <span class="dot" aria-hidden="true"></span>
-    <h1><em>Welcome.</em></h1>
-    <p>This site is managed by its admin. If that's you, sign in to make changes.</p>
-    <a class="btn" href="/admin">Sign in</a>
-    <footer>Powered by pages-seo</footer>
+
+<div class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="wordmark" href="/"><span class="mark" aria-hidden="true">G</span>Hệ sinh thái Gulagi</a>
+    <a class="signin" href="/admin">Đăng nhập</a>
   </div>
+</div>
+
+<main>
+  <div class="wrap hero">
+    <span class="eyebrow">Hệ thống nội dung &amp; SEO tự động</span>
+    <h1>Một hệ thống, <strong>nhiều thương hiệu</strong>.</h1>
+    <p class="lede">
+      Hệ sinh thái Gulagi vận hành nội dung cho từng thương hiệu trong cùng một nền tảng:
+      chọn chủ đề theo ngành, viết bài, tạo ảnh bìa, xuất bản lên blog và trang programmatic,
+      rồi tự động phân phối nội dung ra các kênh của mỗi thương hiệu.
+    </p>
+  </div>
+
+  <section class="wrap" id="he-sinh-thai">
+    <h2>Các hệ thống trong <strong>hệ sinh thái</strong></h2>
+    <p class="sub">Mỗi hệ thống là một thương hiệu độc lập, có blog, sitemap và kênh phân phối riêng.</p>
+    <div class="cards">
+      <a class="card" href="https://gulagi.com" target="_blank" rel="noopener">
+        <div class="badge badge-blue" aria-hidden="true">G</div>
+        <h3>Gulagi</h3>
+        <p class="domain">gulagi.com</p>
+        <p>Tạo website cho quán từ Google Maps — chuyển đổi số cho quán cà phê, nhà hàng và cửa hàng bán lẻ.</p>
+        <span class="go">Mở gulagi.com ↗</span>
+      </a>
+      <a class="card" href="https://gurouter.com" target="_blank" rel="noopener">
+        <div class="badge badge-green" aria-hidden="true">R</div>
+        <h3>GuRouter</h3>
+        <p class="domain">gurouter.com</p>
+        <p>AI gateway và công cụ cho lập trình viên — định tuyến mô hình và hạ tầng AI trong một điểm kết nối.</p>
+        <span class="go">Mở gurouter.com ↗</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="wrap" id="lien-he">
+    <h2>Thông tin <strong>liên hệ</strong></h2>
+    <p class="sub">Cần tư vấn hoặc hợp tác, gọi trực tiếp trong giờ làm việc.</p>
+    <div class="contact">
+      <div>
+        <p class="contact-label">Điện thoại</p>
+        <p class="phone"><a href="tel:+84989511431">0989 511 431</a></p>
+      </div>
+      <a class="btn" href="tel:+84989511431">Gọi 0989 511 431</a>
+    </div>
+  </section>
+</main>
+
+<div class="wrap">
+  <footer>
+    <span>© <span id="y">2026</span> Hệ sinh thái Gulagi</span>
+    <span>Hệ thống nội dung &amp; SEO tự động</span>
+  </footer>
+</div>
+
+<script>document.getElementById('y').textContent = new Date().getFullYear();</script>
 </body>
 </html>
