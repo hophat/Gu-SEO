@@ -476,8 +476,8 @@
   // activateTab so deep links can't open them either. Distribution
   // (seo + embeds) stays available — it is project-scoped and is how a
   // tenant hands their blog to their own site.
-  const PROJECT_ADMIN_HIDDEN_TABS = ['settings', 'status', 'users'];
-  const PROJECT_ADMIN_HIDDEN_PAGES = ['settings', 'status', 'updates', 'usage', 'users'];
+  const PROJECT_ADMIN_HIDDEN_TABS = ['settings', 'status', 'users', 'projects'];
+  const PROJECT_ADMIN_HIDDEN_PAGES = ['settings', 'status', 'updates', 'usage', 'users', 'projects'];
 
   function applyRoleVisibility(role) {
     const restricted = role !== 'super_admin';
@@ -505,6 +505,7 @@
       trends: 'Xu hướng',
       settings: 'Cài đặt',
       users: 'Người dùng',
+      projects: 'Dự án',
     },
     en: {
       overview: 'Overview',
@@ -517,6 +518,7 @@
       trends: 'Trends',
       settings: 'Settings',
       users: 'Users',
+      projects: 'Projects',
     }
   };
 
@@ -646,6 +648,7 @@
     if (name === 'status')   { Status.init(); }
     if (name === 'settings') { loadSettings(); loadProviderGrid(); }
     if (name === 'users') { Users.init(); }
+    if (name === 'projects') { Projects.init(); }
     if (name === 'analytics') { loadAnalytics(); }
     if (name === 'trends') { loadTrends(); }
   }
@@ -2732,6 +2735,212 @@
     return { init };
   })();
 
+
+
+  // ── Projects tab (super_admin only) ──────────────────────────────
+  const Projects = (() => {
+    let mounted = false;
+
+    function report(text, cls) {
+      const list = $('#proj-list');
+      if (!list) return;
+      list.textContent = text;
+      list.className = cls ? 'status ' + cls : 'dim';
+    }
+
+    function cell(text, bold) {
+      const td = document.createElement('td');
+      td.style.padding = '10px 8px';
+      if (bold) td.style.fontWeight = '600';
+      td.textContent = text || '—';
+      return td;
+    }
+
+    async function removeProject(proj) {
+      if (['gulagi', 'gurouter'].includes(proj.slug)) {
+        alert('Dự án cốt lõi (' + proj.slug + ') được bảo vệ, không thể xóa.');
+        return;
+      }
+      if (!confirm('Xóa hoàn toàn dự án "' + proj.name + '" (' + proj.slug + ')?\nMọi Brand DNA, lịch bài và cấu hình liên quan sẽ bị xóa.')) return;
+      
+      const { status, body } = await api('/api/admin/projects/' + encodeURIComponent(proj.id), {
+        method: 'DELETE'
+      });
+      if (status !== 200 || !body?.ok) {
+        alert(body?.detail || body?.error || 'Lỗi khi xóa dự án');
+        return;
+      }
+      report('Đã xóa dự án ' + proj.name, 'good');
+      load();
+    }
+
+    function renderRow(p) {
+      const tr = document.createElement('tr');
+      tr.appendChild(cell(p.name, true));
+      
+      const tdSlug = document.createElement('td');
+      tdSlug.style.padding = '10px 8px';
+      tdSlug.innerHTML = `<span style="font-family:var(--mono);font-size:12px;">${p.slug}</span><br/><a href="${p.publishing_url || ('/' + p.slug)}" target="_blank" style="font-size:11px;color:var(--text-muted);">${p.publishing_url || ('/' + p.slug)}</a>`;
+      tr.appendChild(tdSlug);
+
+      const tdWeb = document.createElement('td');
+      tdWeb.style.padding = '10px 8px';
+      tdWeb.innerHTML = p.website_url ? `<a href="${p.website_url}" target="_blank" style="color:var(--ink);">${p.website_url}</a>` : '—';
+      tr.appendChild(tdWeb);
+
+      tr.appendChild(cell(p.language === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'));
+      
+      const tdStatus = document.createElement('td');
+      tdStatus.style.padding = '10px 8px';
+      tdStatus.innerHTML = `<span class="status good" style="font-size:11px;">${p.status || 'active'}</span>`;
+      tr.appendChild(tdStatus);
+
+      const tdActions = document.createElement('td');
+      tdActions.style.padding = '10px 8px';
+      
+      const switchBtn = document.createElement('button');
+      switchBtn.type = 'button';
+      switchBtn.className = 'btn btn-sm';
+      switchBtn.style.marginRight = '6px';
+      switchBtn.textContent = 'Chọn';
+      switchBtn.onclick = () => {
+        window.__psActiveProjectId = p.id;
+        window.__psActiveProject = p;
+        localStorage.setItem('ps_active_project_id', p.id);
+        const switcher = $('#project-switcher');
+        if (switcher) switcher.value = p.id;
+        activateTab('overview');
+      };
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn btn-sm btn-danger';
+      delBtn.textContent = 'Xóa';
+      if (['gulagi', 'gurouter'].includes(p.slug)) {
+        delBtn.disabled = true;
+        delBtn.title = 'Dự án cốt lõi được bảo vệ';
+      } else {
+        delBtn.onclick = () => removeProject(p);
+      }
+
+      tdActions.append(switchBtn, delBtn);
+      tr.appendChild(tdActions);
+
+      return tr;
+    }
+
+    async function load() {
+      const rows = $('#proj-rows');
+      if (!rows) return;
+      const { status, body } = await api('/api/admin/projects');
+      if (status !== 200 || !body?.ok) {
+        report('Lỗi khi tải danh sách dự án: ' + (body?.error || status), 'bad');
+        clearChildren(rows);
+        return;
+      }
+      const list = body.projects || [];
+      clearChildren(rows);
+      for (const p of list) rows.appendChild(renderRow(p));
+      report(`${list.length} dự án trong hệ thống.`, null);
+    }
+
+    async function create() {
+      const msg = $('#proj-new-msg');
+      const name = ($('#proj-new-name')?.value || '').trim();
+      const slugInput = ($('#proj-new-slug')?.value || '').trim().toLowerCase();
+      const website_url = ($('#proj-new-web')?.value || '').trim();
+      const language = $('#proj-new-lang')?.value || 'vi';
+      const btn = $('#proj-new-go');
+
+      if (!name || !slugInput) {
+        if (msg) { msg.textContent = 'Vui lòng nhập tên dự án và slug.'; msg.className = 'status bad'; }
+        return;
+      }
+
+      if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(slugInput)) {
+        if (msg) { msg.textContent = 'Slug chỉ gồm chữ thường, số, dấu gạch ngang (2-40 ký tự).'; msg.className = 'status bad'; }
+        return;
+      }
+
+      if (btn) { btn.disabled = true; btn.textContent = 'Đang khởi tạo dự án…'; }
+      if (msg) { msg.textContent = ''; msg.className = 'status'; }
+
+      try {
+        const payload = {
+          name,
+          slug: slugInput,
+          website_url,
+          publishing_url: `${window.location.origin}/${slugInput}`,
+          site_name: name,
+          site_description: `Chuyên trang thông tin & giải pháp từ ${name}`,
+          language,
+          timezone: 'Asia/Ho_Chi_Minh',
+          status: 'active',
+          approval_mode: 'auto',
+          brand: {
+            business_type: `${name} cung cấp các sản phẩm và dịch vụ chuyên nghiệp.`,
+            tone: 'Chuyên gia, tin cậy, hữu ích.',
+            audience: 'Khách hàng quan tâm đến lĩnh vực hoạt động của doanh nghiệp.',
+            key_themes: name,
+            service_area: 'Toàn quốc'
+          },
+          ai_config: {
+            default_text_provider: 'workers-ai',
+            default_image_provider: 'workers-ai',
+            text_model: '@cf/meta/llama-3.3-70b-instruct',
+            image_model: '@cf/black-forest-labs/flux-1-schnell',
+            min_words: 1200,
+            max_words: 2500,
+            temperature: 0.7
+          },
+          publishing_config: {
+            publisher_type: 'internal_d1'
+          },
+          schedule: {
+            frequency: 'daily',
+            cron_expression: '0 1 * * *',
+            preferred_time_utc: '01:00',
+            is_active: 1
+          }
+        };
+
+        const { status, body } = await api('/api/admin/projects', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        if (status !== 200 || !body?.ok) {
+          if (msg) { msg.textContent = body?.detail || body?.error || 'Không thể tạo dự án'; msg.className = 'status bad'; }
+          return;
+        }
+
+        if (msg) { msg.textContent = 'Đã tạo thành công dự án ' + name + '!'; msg.className = 'status good'; }
+        if ($('#proj-new-name')) $('#proj-new-name').value = '';
+        if ($('#proj-new-slug')) $('#proj-new-slug').value = '';
+        if ($('#proj-new-web')) $('#proj-new-web').value = '';
+
+        // Reload project list & switcher
+        load();
+        const who = await api('/api/admin/whoami');
+        if (who?.status === 200 && who?.body) initProjectScope(who.body);
+
+      } catch (e) {
+        if (msg) { msg.textContent = 'Lỗi kết nối: ' + e.message; msg.className = 'status bad'; }
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Tạo dự án mới'; }
+      }
+    }
+
+    function init() {
+      if (!mounted) {
+        mounted = true;
+        $('#proj-new-go')?.addEventListener('click', create);
+      }
+      load();
+    }
+
+    return { init, load };
+  })();
 
   // ── Users tab (super_admin only) ─────────────────────────────────
   // Creates tenant accounts and binds each one to a project. Every other

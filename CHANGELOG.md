@@ -7,6 +7,17 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.5.0 — 2026-09-13
+
+### Added
+- **Tính năng Quản lý & Tạo Project dành cho Super Admin:**
+  - Tab điều hướng **Dự án** (Projects) riêng biệt dành riêng cho `super_admin` (ẩn hoàn toàn với các tài khoản tenant `project_admin`).
+  - Form tạo Project mới trực quan: Tự động khởi tạo cấu hình slug URL, website, publishing URL, Brand DNA mặc định, AI config (Workers AI) và lịch chạy cron tự động hàng ngày lúc 08:00 VN.
+  - Bảng quản trị danh sách dự án trong hệ sinh thái: Tên, slug, đường dẫn public, ngôn ngữ, trạng thái.
+  - Chức năng chuyển đổi nhanh dự án làm việc ngay trong bảng (`Chọn`) và bảo vệ an toàn cho các dự án cốt lõi (`gulagi`, `gurouter` không thể bị xóa nhầm).
+  - Endpoint `DELETE /api/admin/projects/:id` hỗ trợ dọn dẹp sạch toàn bộ dữ liệu phụ thuộc (Brand DNA, AI configs, Publishing configs, Schedules, Topics, Embeds, Calendar) khi xóa dự án.
+  - Bảo mật tuyệt đối: Khóa quyền truy cập API `/api/admin/projects` bằng `requireSuperAdmin` (chỉ super_admin mới có quyền xem, tạo và xóa dự án).
+
 ## 1.4.0 — 2026-09-13
 
 ### Added

@@ -1,9 +1,9 @@
 import { json } from '../../_lib/util.js';
-import { adminGate } from '../../_lib/auth.js';
+import { requireSuperAdmin } from '../../_lib/auth.js';
 import { listProjects, upsertProject } from '../../_lib/projects.js';
 
 export const onRequestGet = async ({ request, env }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const gate = await requireSuperAdmin(env, request); if (gate.error) return gate.error;
   const url = new URL(request.url);
   const status = url.searchParams.get('status') || 'all';
 
@@ -12,7 +12,7 @@ export const onRequestGet = async ({ request, env }) => {
 };
 
 export const onRequestPost = async ({ request, env }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const gate = await requireSuperAdmin(env, request); if (gate.error) return gate.error;
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
 

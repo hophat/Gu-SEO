@@ -165,6 +165,7 @@
       </button>
       <button class="tab" data-tab="settings">Cài đặt</button>
       <button class="tab" data-tab="users" type="button">Người dùng</button>
+      <button class="tab" data-tab="projects" type="button">Dự án</button>
     </nav>
     <!-- Sub-nav strip. Populated dynamically by admin.js when a tab
          with data-children is active. Hidden otherwise. -->
@@ -864,6 +865,61 @@
           </tr></thead>
           <tbody id="audit-rows"></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- ============ PROJECTS ============ -->
+    <section data-page="projects" class="page" hidden>
+      <div class="card">
+        <div class="card-eyebrow">Quản trị cấp cao</div>
+        <h2>Tạo dự án mới</h2>
+        <p>Thêm dự án / thương hiệu mới vào hệ sinh thái. Dự án sẽ có slug, tên miền, cấu hình AI và lịch bài viết độc lập.</p>
+        <div class="form-grid">
+          <label>
+            <span>Tên thương hiệu / Dự án</span>
+            <input id="proj-new-name" type="text" placeholder="Ví dụ: My Brand, VinFast SEO..." required maxlength="80" />
+          </label>
+          <label>
+            <span>Slug URL (duy nhất)</span>
+            <input id="proj-new-slug" type="text" placeholder="mybrand (chỉ chữ thường, số và gạch ngang)" required maxlength="40" />
+          </label>
+          <label>
+            <span>Website chính</span>
+            <input id="proj-new-web" type="url" placeholder="https://example.com" />
+          </label>
+          <label>
+            <span>Ngôn ngữ bài viết</span>
+            <select id="proj-new-lang">
+              <option value="vi">Tiếng Việt (vi)</option>
+              <option value="en">Tiếng Anh (en)</option>
+            </select>
+          </label>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button id="proj-new-go" class="btn btn-primary" type="button">Tạo dự án mới</button>
+          <span id="proj-new-msg" class="status"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">Hệ thống</div>
+        <h2>Danh sách dự án trong hệ sinh thái</h2>
+        <p id="proj-list" class="dim">Đang tải danh sách…</p>
+        <div style="overflow-x:auto;">
+          <table class="data" style="margin-top:14px;">
+            <thead>
+              <tr>
+                <th style="text-align:left">Tên dự án</th>
+                <th style="text-align:left">Slug & Đường dẫn</th>
+                <th style="text-align:left">Website</th>
+                <th style="text-align:left">Ngôn ngữ</th>
+                <th style="text-align:left">Trạng thái</th>
+                <th style="text-align:left">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="proj-rows"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
