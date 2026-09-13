@@ -142,7 +142,9 @@ export function looseJsonParse(text) {
   const first = s.indexOf('{');
   const last = s.lastIndexOf('}');
   if (first >= 0 && last > first) s = s.slice(first, last + 1);
-  try { return JSON.parse(s); } catch { /* try cleanup */ }
+  try { return JSON.parse(s); } catch { /* repair below */ }
+
+  // Raw control chars inside string literals (model habit).
   let out = '', inStr = false, escaped = false;
   for (let i = 0; i < s.length; i++) {
     const ch = s[i]; const code = ch.charCodeAt(0);
@@ -156,5 +158,53 @@ export function looseJsonParse(text) {
     }
     out += ch;
   }
-  return JSON.parse(out);
+  try { return JSON.parse(out); } catch { /* repair below */ }
+
+  // Unescaped double quotes inside a value — the usual cause of
+  // "Expected ',' or '}' after property value". A quote only closes the
+  // string when the next non-space char is a JSON delimiter; otherwise the
+  // model wrote a raw quote in prose and it must be escaped.
+  let fixed = '', inS = false, esc = false;
+  for (let i = 0; i < out.length; i++) {
+    const ch = out[i];
+    if (!inS) { fixed += ch; if (ch === '"') inS = true; continue; }
+    if (esc) { fixed += ch; esc = false; continue; }
+    if (ch === '\\') { fixed += ch; esc = true; continue; }
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < out.length && /\s/.test(out[j])) j++;
+      const next = out[j];
+      if (next === ',' || next === '}' || next === ']' || next === ':') { fixed += ch; inS = false; }
+      else fixed += '\\"';
+      continue;
+    }
+    fixed += ch;
+  }
+  try { return JSON.parse(fixed); } catch { /* repair below */ }
+
+  // Cut off mid-object (token limit): close the open string and containers
+  // so the partial payload is still usable instead of losing the article.
+  return JSON.parse(closeTruncated(fixed));
+}
+
+function closeTruncated(s) {
+  let inS = false, esc = false;
+  const stack = [];
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inS) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inS = false;
+      continue;
+    }
+    if (ch === '"') { inS = true; continue; }
+    if (ch === '{') stack.push('}');
+    else if (ch === '[') stack.push(']');
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+  let out = esc ? s.slice(0, -1) : s;
+  if (inS) out += '"';
+  while (stack.length) out += stack.pop();
+  return out.replace(/,\s*([}\]])/g, '$1');
 }

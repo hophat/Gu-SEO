@@ -8,9 +8,10 @@
   // Cloudflare's free / Workers Paid base plan). Every schedule makes a
   // single call to /api/admin/cron/tick, which fans the task out across
   // all active projects:
-  //   0 8 * * *  → daily blog post per project (skips projects that
-  //                already produced one today). Approval-mode projects
-  //                stop at the draft stage for a human click.
+  //   0 1 * * *  → daily blog post per project at 08:00 Vietnam time
+  //                (UTC+7). Skips projects that already produced one
+  //                today; approval-mode projects stop at the draft stage
+  //                for a human click.
   //   0 9 * * *  → programmatic-SEO batch (up to 10 pages per project).
   //   0 7 * * 1  → weekly content refresh (up to 2 rewrites per project).
   //
@@ -21,7 +22,7 @@
 
   "triggers": {
     "crons": [
-      "0 8 * * *",
+      "0 1 * * *",
       "0 9 * * *",
       "0 7 * * 1"
     ]

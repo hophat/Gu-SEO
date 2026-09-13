@@ -1,5 +1,6 @@
 // AI provider router.
 import { renderTemplate } from './template.js';
+import { looseJsonParse } from './raw_llm.js';
 //
 // Supports a pluggable registry of providers. Workers AI is the default —
 // it runs at the edge, free tier covers ~10k tokens/day, and is bound via
@@ -357,57 +358,6 @@ function shapeArticle(parsed, providerLabel) {
     keywords,
     ai_provider: providerLabel,
   };
-}
-
-// Escape raw control characters (newlines, tabs, etc.) that appear
-// *inside* JSON string literals. Llama-class models routinely return
-// JSON-looking output with raw \n bytes inside the body_markdown field,
-// which violates strict JSON. We walk the string with a tiny state
-// machine and replace unescaped control chars with their \uXXXX form
-// only while we're inside a string literal.
-function escapeControlsInStrings(s) {
-  let out = '';
-  let inStr = false;
-  let escaped = false;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
-    const code = ch.charCodeAt(0);
-    if (!inStr) {
-      out += ch;
-      if (ch === '"') inStr = true;
-      continue;
-    }
-    if (escaped) {
-      out += ch;
-      escaped = false;
-      continue;
-    }
-    if (ch === '\\') { out += ch; escaped = true; continue; }
-    if (ch === '"') { out += ch; inStr = false; continue; }
-    if (code < 0x20) {
-      // \n → \\n, \r → \\r, \t → \\t, others → \\uXXXX.
-      if (code === 0x0a) out += '\\n';
-      else if (code === 0x0d) out += '\\r';
-      else if (code === 0x09) out += '\\t';
-      else out += '\\u' + code.toString(16).padStart(4, '0');
-      continue;
-    }
-    out += ch;
-  }
-  return out;
-}
-
-// Strip code fences / leading prose if the model wraps its JSON. Also
-// tolerates raw control chars inside string values (Llama habit).
-function looseJsonParse(text) {
-  let s = String(text || '').trim();
-  s = s.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
-  const first = s.indexOf('{');
-  const last = s.lastIndexOf('}');
-  if (first >= 0 && last > first) s = s.slice(first, last + 1);
-  try { return JSON.parse(s); } catch {}
-  // Retry with control chars inside string literals escaped.
-  return JSON.parse(escapeControlsInStrings(s));
 }
 
 const SYSTEM_JSON_ONLY = 'You return strict JSON only. No prose outside the JSON.';
@@ -823,7 +773,7 @@ async function cerebrasText(env, prompt) {
 async function gurouterText(env, prompt) {
   if (!env?.GUROUTER_API_KEY) throw new Error('gurouter_not_configured');
   const baseUrl = (env?.GUROUTER_BASE_URL || 'https://gurouter.com/v1').replace(/\/+$/, '');
-  const model = env?.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-v4-flash';
+  const model = env?.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-chat';
   return chatCompletion({
     provider: 'gurouter',
     url: `${baseUrl}/chat/completions`,

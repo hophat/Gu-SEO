@@ -5,21 +5,28 @@
 // the 30s subrequest budget.
 //
 // Cron schedules:
-//   - 0 8 * * *         daily blog post for every active project
+//   - 0 1 * * *         daily blog post for every active project
+//                       (01:00 UTC = 08:00 Vietnam time)
 //   - 0 9 * * *         programmatic-SEO batch (one page per project)
 //   - 0 7 * * 1         weekly content refresh (per project)
 //
 // Secrets: ADMIN_TOKEN, and either TICK_URL or BLOG_URL
 // (BLOG_URL = https://<host>/api/admin/blog — TICK_URL is derived from it).
 
+// Cron expressions are overridable via secrets (BLOG_CRON / PROG_CRON /
+// REFRESH_CRON) so a schedule change does not need a code redeploy.
+const BLOG_CRON = (env) => env.BLOG_CRON || '0 1 * * *';
+const PROG_CRON = (env) => env.PROG_CRON || '0 9 * * *';
+const REFRESH_CRON = (env) => env.REFRESH_CRON || '0 7 * * 1';
+
 export default {
   async scheduled(event, env, ctx) {
     const cron = event.cron || '';
-    if (cron === '0 8 * * *') {
+    if (cron === BLOG_CRON(env)) {
       ctx.waitUntil(tick(env, 'blog', { source: 'daily' }));
-    } else if (cron === '0 9 * * *') {
+    } else if (cron === PROG_CRON(env)) {
       ctx.waitUntil(tick(env, 'prog', { source: 'daily_prog', limit: 10 }));
-    } else if (cron === '0 7 * * 1') {
+    } else if (cron === REFRESH_CRON(env)) {
       ctx.waitUntil(tick(env, 'refresh', { source: 'weekly_refresh', limit: 2 }));
     }
   },
