@@ -58,8 +58,10 @@ export const onRequestGet = async ({ env, request }) => {
   // leaking every project's posts. Without the param we fall back to the
   // request host so single-site installs keep working unchanged.
   const requestedSlug = String(url.searchParams.get('project') || '').trim().toLowerCase();
+  let scopedProject = null;
   if (requestedSlug) {
     const project = await resolveProjectBySlug(env, requestedSlug);
+    scopedProject = project;
     if (!project) {
       return new Response(JSON.stringify({ posts: [], total: 0, page: 1, per_page: perPage, total_pages: 1, q, tag }), {
         headers: {
@@ -73,6 +75,7 @@ export const onRequestGet = async ({ env, request }) => {
     binds.push(project.id);
   } else {
     const project = await resolveProjectForRequest(env, request).catch(() => null);
+    scopedProject = project;
     if (project?.id) {
       where.push('project_id = ?');
       binds.push(project.id);
@@ -126,6 +129,8 @@ export const onRequestGet = async ({ env, request }) => {
     total_pages: totalPages,
     q,
     tag,
+    site_name: scopedProject?.site_name || null,
+    language: scopedProject?.language || 'vi',
   }), {
     headers: {
       'content-type': 'application/json; charset=utf-8',

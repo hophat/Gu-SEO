@@ -96,6 +96,13 @@ export function widgetBody({
   // from the embed row so the widget shows that project's posts on any
   // host; a data-project attribute on the script tag overrides it.
   project = '',
+  // Copy language. Baked from the project's `language` column and
+  // re-applied at runtime from the /api/widget response, so one cached
+  // bundle serves a Vietnamese project and an English one.
+  lang = 'vi',
+  // True when the title is just a fallback. The bundle then prefers the
+  // project's site_name from the API instead of the global site name.
+  titleAuto = false,
   // theme: 'auto' | 'light' | 'dark' — controls prefers-color-scheme
   // override. The bundle still honours system preference when 'auto'.
   theme = 'auto',
@@ -333,19 +340,38 @@ var PS_TITLE = ${jsString(title)};
 var PS_API = ${jsString(apiBase)};
 var PS_EMBED_ID = ${jsString(embedId)};
 var PS_PER_PAGE = ${Number.isFinite(perPage) ? perPage : 10};
-var PS_T = {
-  loading_post: 'Loading article…',
-  failed: 'Could not load this article. Try refreshing the page.',
-  back: '← Back to all posts',
-  empty_site: 'No posts yet.',
-  empty_search: 'No posts match your search.',
-  no_more: 'You\\'ve reached the end.',
-  search_placeholder: 'Search posts…',
-  share: 'Share',
-  copied: 'Link copied',
-  view_site: 'View full site →',
-  page_of: 'Page',
+var PS_TITLE_AUTO = ${titleAuto ? 'true' : 'false'};
+var PS_LANG = ${jsString(lang)};
+var PS_T_MAP = {
+  vi: {
+    loading_post: 'Đang tải bài viết…',
+    failed: 'Không tải được bài viết. Hãy tải lại trang.',
+    back: '← Xem tất cả bài',
+    empty_site: 'Chưa có bài viết nào.',
+    empty_search: 'Không có bài viết nào khớp từ khoá.',
+    no_more: 'Bạn đã xem hết bài.',
+    search_placeholder: 'Tìm bài viết…',
+    share: 'Chia sẻ',
+    copied: 'Đã sao chép liên kết',
+    view_site: 'Xem toàn bộ website →',
+    page_of: 'Trang',
+  },
+  en: {
+    loading_post: 'Loading article…',
+    failed: 'Could not load this article. Try refreshing the page.',
+    back: '← Back to all posts',
+    empty_site: 'No posts yet.',
+    empty_search: 'No posts match your search.',
+    no_more: 'You\\'ve reached the end.',
+    search_placeholder: 'Search posts…',
+    share: 'Share',
+    copied: 'Link copied',
+    view_site: 'View full site →',
+    page_of: 'Page',
+  }
 };
+if (!PS_T_MAP[PS_LANG]) PS_LANG = 'vi';
+var PS_T = PS_T_MAP[PS_LANG];
 
 var container = document.getElementById('ps-blog');
 if (!container) {
@@ -667,6 +693,16 @@ function load() {
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
     .then(function (data) {
       state.loading = false;
+      if (data.language && PS_T_MAP[data.language] && data.language !== PS_LANG) {
+        PS_LANG = data.language;
+        PS_T = PS_T_MAP[PS_LANG];
+        search.placeholder = PS_T.search_placeholder;
+        search.setAttribute('aria-label', PS_T.search_placeholder);
+        back.textContent = PS_T.back;
+      }
+      if (PS_TITLE_AUTO && data.site_name) {
+        h2.textContent = data.site_name + ' · Blog';
+      }
       state.posts = data.posts || [];
       state.total = data.total || 0;
       state.totalPages = data.total_pages || 1;

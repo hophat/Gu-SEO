@@ -22,7 +22,7 @@ export const onRequestGet = async ({ env, request }) => {
   // Deploy installs get a proper title without needing a secret.
   const id = await getSiteIdentity(env);
   const title = id.name ? `${id.name} · Blog` : 'Blog';
-  const js = widgetBody({ title, apiBase, perPage: 10 });
+  const js = widgetBody({ title, apiBase, perPage: 10, titleAuto: true });
   return new Response(js, {
     headers: {
       'content-type': 'application/javascript; charset=utf-8',

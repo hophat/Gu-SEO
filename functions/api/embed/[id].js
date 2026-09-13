@@ -29,7 +29,7 @@ export const onRequestGet = async ({ env, params, request }) => {
   }
 
   const embed = await env.DB.prepare(
-    `SELECT e.id, e.name, e.settings_json, p.slug AS project_slug
+    `SELECT e.id, e.name, e.settings_json, p.slug AS project_slug, p.language AS project_language
        FROM blog_embeds e LEFT JOIN projects p ON p.id = e.project_id
       WHERE e.id = ? LIMIT 1`
   ).bind(id).first().catch(() => null);
@@ -67,6 +67,10 @@ export const onRequestGet = async ({ env, params, request }) => {
   const js = widgetBody({
     title, accent, apiBase, embedId: id, perPage, theme, palette,
     project: String(embed?.project_slug || ''),
+    lang: String(embed?.project_language || 'vi'),
+    // An operator-named embed keeps its title; anything else falls back
+    // to the project's site_name from the API.
+    titleAuto: !settings.title,
   });
 
   return new Response(js, {
