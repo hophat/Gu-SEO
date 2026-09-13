@@ -1102,6 +1102,16 @@ em.optional{font-style:normal;color:var(--ink-faint);font-size:11px;letter-spaci
   padding:4px 10px;font-size:12px;font-weight:600;
   font-family:var(--mono);letter-spacing:0.02em;white-space:nowrap;
 }
+/* Which role the signed-in account has. Menu visibility is decided by
+   this value, so showing it ends the "why do I see different menus"
+   ambiguity without opening a second nav surface. */
+.role-badge{
+  display:inline-flex;align-items:center;
+  background:var(--bg-soft);color:var(--ink-dim);
+  border:1px solid var(--border,rgba(255,255,255,.12));border-radius:6px;
+  padding:4px 10px;font-size:12px;font-weight:600;
+  font-family:var(--mono);letter-spacing:0.02em;white-space:nowrap;
+}
 @media (min-width:1001px){
   .topbar .project-scope{width:100%;margin-bottom:4px}
   .topbar .project-switcher{width:100%;max-width:100%}

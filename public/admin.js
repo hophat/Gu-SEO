@@ -3154,6 +3154,12 @@
     window.__psRole = role;
     applyRoleVisibility(role);
 
+    const roleBadge = $('#role-badge');
+    if (roleBadge) {
+      roleBadge.hidden = false;
+      roleBadge.textContent = role === 'super_admin' ? 'Quản trị hệ thống' : 'Quản trị dự án';
+    }
+
     const switcher = $('#project-switcher');
     const badge = $('#project-badge');
     const scope = $('#project-scope');
