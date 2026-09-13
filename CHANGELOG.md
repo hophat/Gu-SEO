@@ -7,6 +7,13 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.12 — 2026-09-13
+
+### Changed
+- **Đổi định danh hệ thống thành GU SEO (thay cho Gulagi):**
+  - Trang chủ hiện định nghĩa tên nền tảng chính thức là **GU SEO** (thay vì gọi chung là Gulagi).
+  - Tích hợp icon/logo thực tế từ `gulagi.com` (biểu tượng G xanh lá) và `gurouter.com` (biểu tượng vòng xoáy đa sắc AI) vào cả Trust Bar và 2 thẻ Ecosystem card, tối ưu nhẹ (128×128px) tải cực nhanh.
+
 ## 1.3.11 — 2026-09-13
 
 ### Changed
