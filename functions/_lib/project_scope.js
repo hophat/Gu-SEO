@@ -107,3 +107,13 @@ export async function publicBaseFor(env, projectId, request) {
     return u.origin + u.pathname.replace(/\/+$/, '');
   } catch { return fallback; }
 }
+
+// Path component of publicBaseFor — '' for a project published at the
+// origin root (gulagi.com), '/usasglobal' for one on a shared host.
+// Content written for a project must link under this prefix, otherwise
+// its internal links resolve against the root project's blog.
+export async function publicPathFor(env, projectId, request) {
+  if (!projectId) return '';
+  const base = await publicBaseFor(env, projectId, request);
+  try { return new URL(base).pathname.replace(/\/+$/, ''); } catch { return ''; }
+}

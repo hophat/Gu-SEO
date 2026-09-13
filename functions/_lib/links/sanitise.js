@@ -45,8 +45,22 @@ function isUrlSafe(url, allowedPrefixes) {
   return SAFE_PROTOCOLS.test(url);
 }
 
+// A project published under a path prefix (seo.gulagi.com/usasglobal) must
+// have its blog and programmatic links written under that prefix. The bare
+// /blog/<slug> form is only valid for a project published at the origin
+// root, so a tenant's link would resolve against the root project's blog.
+function scopeInternal(url, basePath) {
+  if (!basePath) return url;
+  if (url === '/blog' || url.startsWith('/blog/') || url.startsWith('/p/')) return basePath + url;
+  return url;
+}
+
 export function sanitiseMarkdownLinks(md, opts = {}) {
-  const allowedPrefixes = opts.allowedInternalPrefixes || DEFAULT_INTERNAL_PREFIXES;
+  const basePath = String(opts.basePath || '').replace(/\/+$/, '');
+  const allowedPrefixes = opts.allowedInternalPrefixes
+    || (basePath
+      ? [...DEFAULT_INTERNAL_PREFIXES, `${basePath}/blog/`, `${basePath}/p/`]
+      : DEFAULT_INTERNAL_PREFIXES);
   // Accept both flat ({name:url}) and rich ({name:{url,description}}) shapes.
   const rawAliases = opts.aliases || {};
   const aliases = {};
@@ -61,6 +75,7 @@ export function sanitiseMarkdownLinks(md, opts = {}) {
     let target = url.trim();
     // Resolve aliases like (signup) → /signup if the alias map defines it.
     if (aliases[target.toLowerCase()]) target = aliases[target.toLowerCase()];
+    target = scopeInternal(target, basePath);
     if (isUrlSafe(target, allowedPrefixes)) {
       return `[${text}](${target})`;
     }

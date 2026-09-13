@@ -7,6 +7,12 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.4 — 2026-09-13
+
+### Fixed
+- **Internal links 404'd on tenant blogs.** `injectInternalLinks` hardcoded a root-relative `/blog/<slug>`, so a project published under a path prefix (like `/usasglobal`) pointed its own links at the root project's blog, which holds none of that project's posts. Links are now written under the project's public path prefix, and the alias-expansion path in `sanitiseMarkdownLinks` applies the same prefix — the prefix is also added to the internal-link whitelist, otherwise the sanitiser would strip the now-correct link. Gulagi is unaffected: published at the origin root, its prefix is empty.
+- **Already-published tenant posts healed.** Bodies written before the fix are rewritten at render time (`/blog/`, `/p/` → `/<slug>/blog/`, `/<slug>/p/`), and the four affected USaS posts were also repaired in D1 so copies sent out by Webhook / Custom API / publisher carry working links.
+
 ## 1.3.3 — 2026-09-13
 
 ### Added

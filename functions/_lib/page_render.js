@@ -145,7 +145,11 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   <img class="hero" src="${heroSrc}" alt="${heroAlt}" width="${HERO_W}" height="${HERO_H}" decoding="async" fetchpriority="high" onload="this.classList.add('is-loaded')" onerror="this.classList.add('is-loaded')" />
 </div>`;
 
-  const bodyHTML = renderMarkdown(post.body_markdown);
+  // Posts written before a project had a public path prefix carry bare
+  // /blog/ links that resolve against the root project. Rewriting here
+  // heals them at render time, without a content migration.
+  const bodyHTML = renderMarkdown(post.body_markdown)
+    .replace(/(href=")\/(blog|p)\//g, `$1${basePath}/$2/`);
 
   const excerpt = (s, n) => {
     const t = String(s || '');

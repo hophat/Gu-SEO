@@ -7,6 +7,7 @@ import { sanitiseMarkdownLinks } from '../../../_lib/links/sanitise.js';
 import { buildAliasMap } from '../../../_lib/links/aliases.js';
 import { loadSettings } from '../../../_lib/settings.js';
 import { getProject } from '../../../_lib/projects.js';
+import { publicPathFor } from '../../../_lib/project_scope.js';
 import { checkBudget } from '../../../_lib/usage.js';
 import { injectInternalLinks, loadLinkTargets } from '../../../_lib/internal_links.js';
 
@@ -41,6 +42,10 @@ export const onRequestPost = async ({ request, env }) => {
   // every link is on the whitelist before the row hits the DB.
   const aliases = await buildAliasMap(env);
   const settings = await loadSettings(env);
+  // The project's public path prefix. Content written for a tenant must
+  // link under it, otherwise every internal link resolves against the
+  // root project's blog and 404s.
+  const basePath = await publicPathFor(env, job.project_id || null, request).catch(() => '');
 
   // Identify caller: cron Worker sends X-Source-Cron, otherwise treat
   // as ad-hoc admin click. Cron gets hard-stopped at budget; admin can
@@ -94,7 +99,7 @@ export const onRequestPost = async ({ request, env }) => {
   // Scrub the body markdown: drop unsafe URLs, expand alias names like
   // (signup) → /signup, auto-link bare URLs. Done before the row is
   // persisted so no broken link ever reaches /blog/<slug>.
-  post.body_markdown = sanitiseMarkdownLinks(post.body_markdown, { aliases });
+  post.body_markdown = sanitiseMarkdownLinks(post.body_markdown, { aliases, basePath });
 
   // The AI sometimes prepends "Blog" to its title/slug fields, producing
   // URLs like /blog/blogoptimize-... or /blog/blogai-content-... — the
@@ -135,7 +140,7 @@ export const onRequestPost = async ({ request, env }) => {
     ).bind(String(job.topic_key).slice(0, 120)).first().catch(() => null) : null;
     const targets = await loadLinkTargets(env, slug, { limit: 80, pillarKey: pillarRow?.pillar_key || null, projectId: job.project_id || null });
     if (targets.length) {
-      const { body: linkedBody, injected } = injectInternalLinks(post.body_markdown, slug, targets);
+      const { body: linkedBody, injected } = injectInternalLinks(post.body_markdown, slug, targets, basePath);
       post.body_markdown = linkedBody;
       post._internal_links_injected = injected.length;
     }

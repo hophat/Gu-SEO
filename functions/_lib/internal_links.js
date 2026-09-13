@@ -93,7 +93,9 @@ function findUnlinkedMatch(body, phrase) {
 // Inject up to MAX_LINKS_PER_POST internal links into `body`.
 // `selfSlug` excludes the current post from its own link pool.
 // `targets` is an array of { slug, title, keywords }.
-export function injectInternalLinks(body, selfSlug, targets) {
+// `basePath` is the project's public path prefix ('/usasglobal'); without
+// it the link points at the root project's blog and 404s.
+export function injectInternalLinks(body, selfSlug, targets, basePath = '') {
   if (!body || !Array.isArray(targets) || !targets.length) return { body, injected: [] };
   // Folded (diacritic-free) copy for scanning. foldVi maps 1:1 per
   // code point, so offsets in `scan` equal offsets in `result` and we
@@ -126,7 +128,7 @@ export function injectInternalLinks(body, selfSlug, targets) {
 
     // Use the ORIGINAL casing from the body, not the lowercased phrase.
     const orig = result.slice(hit.start, hit.end);
-    const replacement = `[${orig}](/blog/${target.slug})`;
+    const replacement = `[${orig}](${basePath}/blog/${target.slug})`;
     result = result.slice(0, hit.start) + replacement + result.slice(hit.end);
     seenTargets.add(target.slug);
     injected.push({ slug: target.slug, phrase, original: orig });
