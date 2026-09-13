@@ -7,6 +7,16 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.10 — 2026-09-13
+
+### Changed
+- **Trang chủ Welcome được R&D thiết kế lại toàn diện theo phong cách OpenAI / Linear:**
+  - **Motion & Ambient Video/Canvas:** Nền video mô phỏng mạng lưới thần kinh (Neural Network WebM) kết hợp canvas hạt tương tác thời gian thực và lưới toạ độ ánh sáng tinh tế.
+  - **Tận dụng icon & biểu tượng thay cho chữ dài:** 24+ biểu tượng SVG chuyên dụng phân bổ trực quan cho từng công đoạn pipeline (01 Khám phá, 02 Multi-Agent, 03 Hero Cover, 04 Publish/IndexNow).
+  - **Terminal Execution Box:** Mô phỏng luồng chạy thực tế của engine trên Cloudflare Edge với log màu sinh động.
+  - **Hệ sinh thái:** Card tương tác trực quan cho `gulagi.com` và `gurouter.com` kèm tag tính năng.
+  - **Liên hệ:** Banner nổi bật với số điện thoại `0989 511 431` và liên kết gọi trực tiếp.
+
 ## 1.3.9 — 2026-09-13
 
 ### Changed
