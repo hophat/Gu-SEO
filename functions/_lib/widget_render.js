@@ -92,6 +92,10 @@ export function widgetBody({
   apiBase,
   embedId = '',
   perPage = 10,
+  // Project slug this bundle is scoped to. Baked in by /api/embed/<id>
+  // from the embed row so the widget shows that project's posts on any
+  // host; a data-project attribute on the script tag overrides it.
+  project = '',
   // theme: 'auto' | 'light' | 'dark' — controls prefers-color-scheme
   // override. The bundle still honours system preference when 'auto'.
   theme = 'auto',
@@ -352,7 +356,7 @@ if (!container) {
 // Optional per-project scoping. Read from the <script> tag at runtime so
 // one cached bundle serves every project and every host: the attribute
 // differs per install, the file doesn't.
-var PS_PROJECT = '';
+var PS_PROJECT = ${jsString(project)};
 var PS_TARGET_SEL = '';
 try {
   var psScript = document.currentScript || (function () {
@@ -360,7 +364,7 @@ try {
     return all[all.length - 1];
   })();
   if (psScript && psScript.dataset) {
-    PS_PROJECT = String(psScript.dataset.project || '').trim();
+    PS_PROJECT = String(psScript.dataset.project || '').trim() || PS_PROJECT;
     PS_TARGET_SEL = String(psScript.dataset.target || '').trim();
   }
 } catch (e) {}

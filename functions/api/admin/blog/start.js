@@ -4,12 +4,13 @@
 //   1. body.calendar_slot_id  → claim that specific slot
 //   2. body.from_calendar:true → claim the oldest due scheduled slot
 //   3. body.topic_key + body.angle → ad-hoc topic
-//   4. fallback: pickNextTopic() (legacy random walk)
+//   4. fallback: pickNextTopic() (legacy random walk) — never for a
+//      named project, which would publish off-brand content
 //
 // "Claim" = flip the slot to status='generating' and link job_id.
 
 import { json, newId, nowSec, audit } from '../../../_lib/util.js';
-import { adminGate } from '../../../_lib/auth.js';
+import { requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 import { pickNextTopic } from '../../../_lib/topics.js';
 import { planSingleForToday } from '../../../_lib/calendar_planner.js';
 import { checkDuplicate, pickNonDuplicate } from '../../../_lib/dedup.js';
@@ -38,13 +39,18 @@ async function nextDueSlot(env, projectId) {
 }
 
 export const onRequestPost = async ({ request, env }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+
+  // The tenant context is authoritative. The admin UI puts project_id on
+  // the QUERY STRING (it is appended centrally by the api() helper) while
+  // cron puts it in the BODY, and a project_admin is locked to their own
+  // project no matter which of the two arrives.
+  const tenant = await resolveTenantContext(env, request, auth);
   let body = {};
   try { body = await request.json(); } catch { /* empty body ok */ }
 
-  // A cron run names the project explicitly; an admin click may rely on
-  // the slot it claims. Either way the job must land in a project bucket.
-  let projectId = String(body.project_id || '').trim() || null;
+  let projectId = tenant?.activeProjectId || String(body.project_id || '').trim() || null;
   let topic = null;
   let slot  = null;
 
@@ -67,7 +73,12 @@ export const onRequestPost = async ({ request, env }) => {
     topic = { key: String(body.topic_key), angle: String(body.angle) };
   }
 
-  if (!projectId && slot?.project_id) projectId = slot.project_id;
+  if (slot?.project_id) {
+    if (projectId && slot.project_id !== projectId) {
+      return json(409, { error: 'slot_other_project' });
+    }
+    projectId = slot.project_id;
+  }
 
   if (slot) {
     topic = {

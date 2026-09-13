@@ -29,7 +29,9 @@ export const onRequestGet = async ({ env, params, request }) => {
   }
 
   const embed = await env.DB.prepare(
-    `SELECT id, name, settings_json FROM blog_embeds WHERE id = ? LIMIT 1`
+    `SELECT e.id, e.name, e.settings_json, p.slug AS project_slug
+       FROM blog_embeds e LEFT JOIN projects p ON p.id = e.project_id
+      WHERE e.id = ? LIMIT 1`
   ).bind(id).first().catch(() => null);
 
   let settings = {};
@@ -59,7 +61,13 @@ export const onRequestGet = async ({ env, params, request }) => {
 
   const url = new URL(request.url);
   const apiBase = `${url.protocol}//${url.host}`;
-  const js = widgetBody({ title, accent, apiBase, embedId: id, perPage, theme, palette });
+  // The embed is scoped to its own project, not to the host it is
+  // pasted on — that host is the customer's site and resolves to no
+  // project at all.
+  const js = widgetBody({
+    title, accent, apiBase, embedId: id, perPage, theme, palette,
+    project: String(embed?.project_slug || ''),
+  });
 
   return new Response(js, {
     headers: {

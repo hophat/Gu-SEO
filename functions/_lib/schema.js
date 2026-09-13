@@ -616,6 +616,11 @@ ALTER TABLE projects ADD COLUMN site_name TEXT;
 ALTER TABLE projects ADD COLUMN site_description TEXT;
 ALTER TABLE projects ADD COLUMN logo_url TEXT;
 
+-- Embeds belong to a project: the snippet is scoped to that project's
+-- posts, not to whatever host the embed happens to be pasted on.
+ALTER TABLE blog_embeds ADD COLUMN project_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_embeds_project ON blog_embeds(project_id, updated_at DESC);
+
 
 
 `;

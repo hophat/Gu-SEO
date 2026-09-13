@@ -7,6 +7,19 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.1 — 2026-09-13
+
+### Fixed
+- **Project admins could not reach Distribution.** The tab (and the embeds page) was hidden for `project_admin`, so a tenant like USaS Global had no way to grab their embed snippet or submit their sitemap. Distribution is project-scoped, so it is now visible; Settings, System, Updates and Usage stay super-admin only.
+- **Embeds rendered the wrong tenant's posts.** `blog_embeds` had no `project_id`, so the embed bundle resolved posts from the host it was pasted on — the customer's own site — and fell back to an unfiltered query. Embeds are now created against the active project, listed/updated/deleted inside that project only, and the widget bundle bakes the embed's project in, so a USaS snippet shows USaS posts anywhere it is pasted.
+- **IndexNow pinged Gulagi for every project.** `/api/admin/indexnow-ping` hardcoded `https://gulagi.com/sitemap-pages.xml` and pings with host `gulagi.com`. It now reads the active project's own sitemap and pings with that project's host.
+
+### Added
+- **Distribution overview.** The Distribution page opens with the project's channels — public blog, RSS feed, sitemap, embed widget — each with a copy-ready absolute URL, plus the publish target currently configured (platform blog / Webhook / Custom API / WordPress).
+
+### Changed
+- **Admin UI is fully Vietnamese.** All remaining English copy in `admin.html` and `admin.js` is translated, using the glossary already present in `public/i18n.js` for shared terms.
+
 ## 1.3.0 — 2026-09-12
 
 ### Added

@@ -42,12 +42,18 @@ export const onRequestGet = async ({ request, env }) => {
     try {
       if (role === 'super_admin') {
         const res = await env.DB.prepare(
-          `SELECT id, slug, name, website_url, publishing_url FROM projects ORDER BY created_at ASC`
+          `SELECT p.id, p.slug, p.name, p.website_url, p.publishing_url, p.site_name, p.site_description, p.logo_url,
+                 c.publisher_type, c.endpoint_url FROM projects p
+             LEFT JOIN project_publishing_configs c ON c.project_id = p.id
+           ORDER BY p.created_at ASC`
         ).all();
         projects = res?.results || [];
       } else if (role === 'project_admin' && projectId) {
         const res = await env.DB.prepare(
-          `SELECT id, slug, name, website_url, publishing_url FROM projects WHERE id = ? LIMIT 1`
+          `SELECT p.id, p.slug, p.name, p.website_url, p.publishing_url, p.site_name, p.site_description, p.logo_url,
+                 c.publisher_type, c.endpoint_url FROM projects p
+             LEFT JOIN project_publishing_configs c ON c.project_id = p.id
+            WHERE p.id = ? LIMIT 1`
         ).bind(projectId).all();
         projects = res?.results || [];
       }

@@ -1432,3 +1432,30 @@ em.optional{font-style:normal;color:var(--ink-faint);font-size:11px;letter-spaci
 }
 .gsc-warn b { color: var(--accent); }
 .gsc-warn em { font-style: italic; }
+
+/* ── Distribution channels ──────────────────────────────────────── */
+.dist-list{
+  display:flex;flex-direction:column;
+  border-top:1px solid var(--line);margin-top:4px;
+}
+.dist-item{
+  display:grid;grid-template-columns:1fr auto;gap:2px 16px;
+  padding:14px 0;border-bottom:1px solid var(--line);
+}
+.dist-name{
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink);
+}
+.dist-desc{
+  grid-column:1 / -1;color:var(--ink-dim);font-size:13px;
+}
+.dist-url{
+  grid-row:1 / span 2;align-self:center;
+  font-family:var(--mono);font-size:12px;color:var(--accent);
+  text-decoration:none;word-break:break-all;text-align:right;
+}
+a.dist-url:hover{color:var(--ink)}
+@media (max-width:700px){
+  .dist-item{grid-template-columns:1fr}
+  .dist-url{grid-row:auto;text-align:left}
+}

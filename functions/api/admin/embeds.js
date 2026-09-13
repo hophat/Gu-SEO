@@ -7,7 +7,7 @@
 // 32-char url-safe random string (not a UUID) so it's terse but still
 // unguessable.
 import { json, newId, nowSec, audit } from '../../_lib/util.js';
-import { adminGate } from '../../_lib/auth.js';
+import { requireAdminAsync, resolveTenantContext } from '../../_lib/auth.js';
 
 const SETTINGS_MAX_BYTES = 8 * 1024;
 
@@ -34,11 +34,15 @@ function safeSettings(settings) {
 }
 
 export const onRequestGet = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const pid = tenant?.activeProjectId || null;
   const r = await env.DB.prepare(
     `SELECT id, name, settings_json, created_at, updated_at
-       FROM blog_embeds ORDER BY updated_at DESC LIMIT 100`
-  ).all();
+       FROM blog_embeds WHERE (project_id = ? OR project_id IS NULL)
+       ORDER BY updated_at DESC LIMIT 100`
+  ).bind(pid).all();
   const url = new URL(request.url);
   const origin = `${url.protocol}//${url.host}`;
   const embeds = (r?.results || []).map((e) => {
@@ -55,7 +59,10 @@ export const onRequestGet = async ({ env, request }) => {
 };
 
 export const onRequestPost = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const pid = tenant?.activeProjectId || null;
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
   const name = String(body?.name || '').trim().slice(0, 120);
@@ -66,15 +73,18 @@ export const onRequestPost = async ({ env, request }) => {
   const id = newEmbedId();
   const t = nowSec();
   await env.DB.prepare(
-    `INSERT INTO blog_embeds (id, name, settings_json, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?)`
-  ).bind(id, name, settings_json, t, t).run();
-  audit(env, 'admin', 'embed_create', id, { name });
+    `INSERT INTO blog_embeds (id, name, settings_json, project_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(id, name, settings_json, pid, t, t).run();
+  audit(env, 'admin', 'embed_create', id, { name, project_id: pid });
   return json(200, { ok: true, id });
 };
 
 export const onRequestPut = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const pid = tenant?.activeProjectId || null;
   const url = new URL(request.url);
   const id = String(url.searchParams.get('id') || '').trim();
   if (!id) return json(400, { error: 'missing_id' });
@@ -93,20 +103,26 @@ export const onRequestPut = async ({ env, request }) => {
   }
   if (!sets.length) return json(400, { error: 'no_updates' });
   sets.push('updated_at=?'); binds.push(nowSec());
-  binds.push(id);
+  binds.push(id, pid);
   const r = await env.DB.prepare(
-    `UPDATE blog_embeds SET ${sets.join(', ')} WHERE id = ?`
+    `UPDATE blog_embeds SET ${sets.join(', ')}
+      WHERE id = ? AND (project_id = ? OR project_id IS NULL)`
   ).bind(...binds).run();
   audit(env, 'admin', 'embed_update', id, {});
   return json(200, { ok: true, changed: r?.meta?.changes || 0 });
 };
 
 export const onRequestDelete = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const pid = tenant?.activeProjectId || null;
   const url = new URL(request.url);
   const id = String(url.searchParams.get('id') || '').trim();
   if (!id) return json(400, { error: 'missing_id' });
-  await env.DB.prepare('DELETE FROM blog_embeds WHERE id = ?').bind(id).run();
+  await env.DB.prepare(
+    'DELETE FROM blog_embeds WHERE id = ? AND (project_id = ? OR project_id IS NULL)'
+  ).bind(id, pid).run();
   audit(env, 'admin', 'embed_delete', id, {});
   return json(200, { ok: true });
 };
