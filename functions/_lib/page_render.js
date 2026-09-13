@@ -220,6 +220,14 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
     } catch (e) {}
   });` : '';
 
+  // Gulagi keeps its own showcase bio. Every other brand falls back to
+  // its own site_name/site_description so no tenant blog renders Gulagi
+  // identity in the author box.
+  const authorName = site.isGulagi ? 'Đội ngũ Gulagi' : site.name;
+  const authorBio  = site.isGulagi
+    ? 'Chuyên gia giải pháp số giúp quán cà phê, nhà hàng, cửa hàng bán lẻ chuyển đổi số hiệu quả.'
+    : (site.description || `Bài viết từ ${site.name}.`);
+
   return `<!doctype html>
 <html lang="vi">
 <head>
@@ -324,8 +332,8 @@ ${preloadHero}
   </div>
   <div class="author-box">
     <div class="author-info">
-      <strong>Đội ngũ Gulagi</strong>
-      <p>Chuyên gia giải pháp số giúp quán cà phê, nhà hàng, cửa hàng bán lẻ chuyển đổi số hiệu quả.</p>
+      <strong>${esc(authorName)}</strong>
+      <p>${esc(authorBio)}</p>
     </div>
   </div>
   ${relatedHTML}

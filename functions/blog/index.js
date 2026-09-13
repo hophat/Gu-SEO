@@ -70,7 +70,7 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
   const homeUrl = project?.website_url || 'https://gulagi.com';
   const siteName = project?.site_name || env.SITE_NAME || settings.site_name || 'Gulagi';
   const siteDesc = project?.site_description || env.SITE_DESCRIPTION || settings.site_description ||
-                   (isVi ? 'Bài viết và giải pháp phát triển kinh doanh từ Gulagi.' : `Articles from ${siteName}.`);
+                   (isVi ? `Bài viết và giải pháp phát triển kinh doanh từ ${siteName}.` : `Articles from ${siteName}.`);
 
   const items = posts.map((p, i) => {
     const date = isVi
