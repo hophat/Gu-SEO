@@ -773,7 +773,8 @@ async function cerebrasText(env, prompt) {
 async function gurouterText(env, prompt) {
   if (!env?.GUROUTER_API_KEY) throw new Error('gurouter_not_configured');
   const baseUrl = (env?.GUROUTER_BASE_URL || 'https://gurouter.com/v1').replace(/\/+$/, '');
-  const model = env?.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-chat';
+  // Prefer setting or env, fallback to deepseek-v4-flash which is active on GuRouter
+  const model = env?.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-v4-flash';
   return chatCompletion({
     provider: 'gurouter',
     url: `${baseUrl}/chat/completions`,
@@ -830,7 +831,14 @@ const PROVIDER_SECRET_NAMES = [
 // can keep reading `env.X` synchronously. Pages secrets always win over
 // vault values.
 async function withVault(env) {
-  return envWithVault(env, PROVIDER_SECRET_NAMES);
+  const overlay = await envWithVault(env, PROVIDER_SECRET_NAMES);
+  try {
+    const s = await loadSettings(env);
+    if (s.gurouter_text_model && String(s.gurouter_text_model).trim()) {
+      overlay.GUROUTER_TEXT_MODEL = String(s.gurouter_text_model).trim();
+    }
+  } catch {}
+  return overlay;
 }
 
 // List provider names currently usable. Async because we may consult
