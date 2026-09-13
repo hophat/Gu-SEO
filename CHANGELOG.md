@@ -7,6 +7,14 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.9.0 — 2026-09-13
+
+### Changed
+- **Đăng ký xong vào ngay Trình thiết lập Brand (thay vì popup dán link):**
+  - Sau khi xác thực OTP và khởi tạo tài khoản thành công, hệ thống đặt cờ `ps_open_wizard_after_mount` rồi mount thẳng vào **Trình thiết lập** (Xin chào → Thương hiệu → Nhà cung cấp → Lịch bài).
+  - Popup "Khởi tạo bài viết SEO đầu tiên" (nhập link website) được **bỏ qua hoàn toàn** cho tài khoản vừa đăng ký, tránh trùng lặp với bước nhập URL trong wizard.
+  - Trình thiết lập giờ hiển thị cho **mọi role** (không chỉ super_admin) vì đây là luồng cấu hình Brand DNA theo từng dự án — tài khoản tenant cần dùng để thiết lập thương hiệu của chính họ.
+
 ## 1.8.2 — 2026-09-13
 
 ### Changed

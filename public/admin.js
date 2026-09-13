@@ -428,8 +428,15 @@
           });
           const data = await res.json().catch(() => ({}));
           if (res.ok && data.ok) {
-            // Auto login succeeded, reload/mount
-            mount();
+            // Auto login succeeded. Mark onboarding as seen so the
+            // quickstart popup does not fire, then mount and send the
+            // new operator straight into the Brand setup wizard.
+            try {
+              const pid = data.project_id || 'default';
+              localStorage.setItem('ps_onboarding_seen_' + pid, 'true');
+              localStorage.setItem('ps_open_wizard_after_mount', '1');
+            } catch {}
+            await mount();
             return;
           }
           if (err) err.textContent = data.detail || data.error || 'Đăng ký không thành công. Vui lòng thử lại.';
@@ -543,19 +550,24 @@
   // activateTab so deep links can't open them either. Distribution
   // (seo + embeds) stays available — it is project-scoped and is how a
   // tenant hands their blog to their own site.
-  // Admin navigation policy: Hide System, Settings, Users, Projects from navigation
-  const HIDDEN_NAV_TABS = ['settings', 'status', 'users', 'projects'];
+  // Role-based navigation policy:
+  // 4 system tabs (Dự án, Người dùng, Cài đặt, Hệ thống) are exclusive to super_admin.
+  // Regular users / tenants (project_admin) only see the 5 business tabs.
+  const SUPER_ADMIN_ONLY_TABS = ['settings', 'status', 'users', 'projects'];
   const PROJECT_ADMIN_HIDDEN_PAGES = ['settings', 'status', 'updates', 'usage', 'users', 'projects'];
 
   function applyRoleVisibility(role) {
-    // Hide Dự án, Người dùng, Cài đặt, Hệ thống from left navigation
+    const isSuper = (role === 'super_admin');
     for (const tab of $$('.tab')) {
-      if (HIDDEN_NAV_TABS.includes(tab.dataset.tab)) {
-        tab.hidden = true;
+      if (SUPER_ADMIN_ONLY_TABS.includes(tab.dataset.tab)) {
+        tab.hidden = !isSuper;
       }
     }
+    // The setup wizard is project-scoped (Brand DNA -> providers ->
+    // calendar), so every operator keeps it — a newly registered tenant
+    // needs it to configure their own brand.
     const wizardBtn = $('#open-wizard');
-    if (wizardBtn) wizardBtn.hidden = (role !== 'super_admin');
+    if (wizardBtn) wizardBtn.hidden = false;
   }
 
   function isTabBlocked(name) {
@@ -610,11 +622,14 @@
     $$('.tab').forEach((t) => {
       const tabName = t.dataset.tab;
       if (!tabName || !TAB_LABELS_MAP[lang]?.[tabName]) return;
-      const textNode = Array.from(t.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
-      if (textNode) {
-        textNode.textContent = TAB_LABELS_MAP[lang][tabName] + ' ';
+      const labelEl = t.querySelector('.tab-label');
+      if (labelEl) {
+        labelEl.textContent = TAB_LABELS_MAP[lang][tabName];
       } else {
-        t.prepend(document.createTextNode(TAB_LABELS_MAP[lang][tabName] + ' '));
+        const textNode = Array.from(t.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+        if (textNode) {
+          textNode.textContent = TAB_LABELS_MAP[lang][tabName] + ' ';
+        }
       }
     });
 
@@ -3860,10 +3875,13 @@
       $('#ob-back-1')?.addEventListener('click', () => showStep(1));
       $('#ob-generate-btn')?.addEventListener('click', generateFirstPost);
 
-      // Auto trigger if user hasn't seen it and has 0 posts
+      // Auto trigger if user hasn't seen it and has 0 posts.
+      // Skipped entirely when we just came from registration — that flow
+      // opens the Brand setup wizard instead.
       setTimeout(async () => {
         const pid = window.__psActiveProjectId;
         if (!pid) return;
+        try { if (localStorage.getItem('ps_open_wizard_after_mount') === '1') return; } catch {}
         const key = 'ps_onboarding_seen_' + pid;
         if (localStorage.getItem(key)) return;
 
@@ -3886,6 +3904,16 @@
   async function mount() {
     $('#gate').hidden = true;
     $('#dash').hidden = false;
+
+    // A fresh registration should land in the Brand setup wizard, not on
+    // an empty dashboard with a quickstart popup.
+    let openWizardAfterMount = false;
+    try {
+      if (localStorage.getItem('ps_open_wizard_after_mount') === '1') {
+        localStorage.removeItem('ps_open_wizard_after_mount');
+        openWizardAfterMount = true;
+      }
+    } catch {}
 
     try {
       const { status, body } = await api('/api/admin/whoami');
@@ -4016,8 +4044,13 @@
       if (h && validTabs.includes(h)) activateTab(h);
     });
     // First-login auto-launch — check onboarding state and offer the
-    // wizard if it hasn't been completed yet.
-    Wizard.maybeAutoOpen();
+    // wizard if it hasn't been completed yet. A brand-new registration
+    // goes straight into the wizard instead of the generic prompt.
+    if (openWizardAfterMount) {
+      Wizard.open();
+    } else {
+      Wizard.maybeAutoOpen();
+    }
     // Background update check — paints the "N" badge on the Updates
     // tab if upstream has new commits. Doesn't block first paint.
     setTimeout(() => Updates.quietCheck(), 800);
