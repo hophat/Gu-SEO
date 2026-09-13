@@ -7,6 +7,12 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.6 — 2026-09-13
+
+### Added
+- **"Tạo ngay" from the content calendar.** Opening a scheduled or draft slot in the calendar now offers a button that runs the whole blog pipeline for that slot — claim the slot, write, cover, publish — instead of waiting for the daily cron. It uses the same `/api/admin/blog/start` slot path the cron uses, so the slot is claimed and linked to the job exactly as a scheduled run would be; the button only appears for slots the pipeline can still claim.
+- **The install root is an ecosystem landing page.** The root of a non-maintainer install served a bare "Welcome." card. It is now a Vietnamese landing page describing the system, the two brands it runs (gulagi.com, gurouter.com) as product cards, and the contact number — Google-style white/blue layout, sign-in kept small in the corner. Blurbs come from each project's own `site_description`.
+
 ## 1.3.5 — 2026-09-13
 
 ### Fixed

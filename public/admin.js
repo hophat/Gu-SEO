@@ -1990,7 +1990,7 @@
   }
 
   // ── blog chain ──────────────────────────────────────────────────
-  async function runBlogChain() {
+  async function runBlogChain(opts = {}) {
     const btn = $('#blog-go');
     const status = $('#blog-status');
     const log = $('#blog-log');
@@ -2004,7 +2004,10 @@
 
     try {
       setStatus('1/4 chọn chủ đề…');
-      const start = await api('/api/admin/blog/start', { method: 'POST', body: '{}' });
+      const start = await api('/api/admin/blog/start', {
+        method: 'POST',
+        body: JSON.stringify(opts.calendarSlotId ? { calendar_slot_id: opts.calendarSlotId } : {}),
+      });
       const jobId = start.body?.job_id;
       if (!jobId) throw new Error(start.body?.error || 'start failed');
       append(`job_id: ${jobId}`);
@@ -4352,6 +4355,12 @@
       $('#cal-mod-angle').value = slot.angle || '';
       const del = $('#cal-mod-delete');
       del.hidden = !editingId || slot.status === 'published';
+      const gen = $('#cal-mod-generate');
+      if (gen) {
+        // Only a slot that the pipeline can still claim is runnable —
+        // blog/start accepts 'scheduled' and 'draft' and nothing else.
+        gen.hidden = !editingId || !['scheduled', 'draft'].includes(slot.status);
+      }
       const save = $('#cal-mod-save');
       const isPub = slot.status === 'published';
       save.textContent = isPub ? 'OK' : 'Lưu';
@@ -4439,6 +4448,13 @@
       if (bindModalOnce.done) return;
       bindModalOnce.done = true;
       $('#cal-mod-save').addEventListener('click', save);
+      $('#cal-mod-generate').addEventListener('click', () => {
+        const slotId = editingId;
+        if (!slotId) return;
+        closeModal();
+        activateTab('blog');
+        runBlogChain({ calendarSlotId: slotId });
+      });
       $('#cal-mod-delete').addEventListener('click', del);
       $('#cal-mod-cancel').addEventListener('click', closeModal);
       $('#cal-modal').addEventListener('click', (e) => { if (e.target.id === 'cal-modal') closeModal(); });
