@@ -12,6 +12,8 @@
 import { json, newId, nowSec, audit } from '../../../_lib/util.js';
 import { requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 import { pickNextTopic } from '../../../_lib/topics.js';
+import { getProject } from '../../../_lib/projects.js';
+import { pickNextProjectTopic } from '../../../_lib/project_topics.js';
 import { planSingleForToday } from '../../../_lib/calendar_planner.js';
 import { checkDuplicate, pickNonDuplicate } from '../../../_lib/dedup.js';
 
@@ -99,7 +101,14 @@ export const onRequestPost = async ({ request, env }) => {
   // Set body.skip_dedup:true to bypass entirely (useful for tests).
   let dupInfo = null;
   if (!body.skip_dedup && !topic && !slot) {
-    const pick = await pickNonDuplicate(env, () => pickNextTopic(env), { maxTries: 5, projectId });
+    // A named project must draw from its own topic pool. The legacy
+    // TOPICS list is the single-tenant bootstrap pool and is off-brand
+    // for every tenant, so only an install without a project uses it.
+    const project = projectId ? await getProject(env, projectId) : null;
+    const pickTopic = project
+      ? () => pickNextProjectTopic(env, project)
+      : () => pickNextTopic(env);
+    const pick = await pickNonDuplicate(env, pickTopic, { maxTries: 5, projectId });
     if (pick.topic) {
       topic = pick.topic;
       dupInfo = { similarity: pick.dup?.similarity, fallback: pick.fallback, tries: pick.tries, against: pick.dup?.against };

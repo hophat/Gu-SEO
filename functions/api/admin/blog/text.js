@@ -6,6 +6,7 @@ import { generateContent } from '../../../_lib/ai.js';
 import { sanitiseMarkdownLinks } from '../../../_lib/links/sanitise.js';
 import { buildAliasMap } from '../../../_lib/links/aliases.js';
 import { loadSettings } from '../../../_lib/settings.js';
+import { getProject } from '../../../_lib/projects.js';
 import { checkBudget } from '../../../_lib/usage.js';
 import { injectInternalLinks, loadLinkTargets } from '../../../_lib/internal_links.js';
 
@@ -54,6 +55,8 @@ export const onRequestPost = async ({ request, env }) => {
 
   let post;
   try {
+    const project = job.project_id ? await getProject(env, job.project_id) : null;
+    const pb = project?.brand || {};
     post = await generateContent(env, {
       kind: 'article',
       seed: job.topic_angle,
@@ -61,17 +64,18 @@ export const onRequestPost = async ({ request, env }) => {
       source,
       projectId: job.project_id || null,
       brand: {
-        // settings.site_name resolves Pages secret first, then D1
-        // — supports CLI + browser + 1-click Deploy installs.
-        name: settings.site_name || 'this site',
-        url: settings.site_url || '/',
-        cta: settings.site_cta,
-        tone: settings.brand_voice_tone || settings.site_tone || undefined,
-        audience: settings.brand_target_audience || settings.site_audience || undefined,
-        business_type:    settings.brand_business_type    || undefined,
-        key_themes:       settings.brand_key_themes       || undefined,
-        topics_to_avoid:  settings.brand_topics_to_avoid  || undefined,
-        service_area:     settings.brand_service_area     || undefined,
+        // A tenant must be written in the tenant's own voice — project
+        // brand DNA wins over the install-wide settings, which belong to
+        // whichever brand the install was bootstrapped for.
+        name: project?.site_name || settings.site_name || 'this site',
+        url: project?.website_url || settings.site_url || '/',
+        cta: pb.cta || settings.site_cta,
+        tone: pb.tone || settings.brand_voice_tone || settings.site_tone || undefined,
+        audience: pb.audience || settings.brand_target_audience || settings.site_audience || undefined,
+        business_type:    pb.business_type    || settings.brand_business_type    || undefined,
+        key_themes:       pb.key_themes       || settings.brand_key_themes       || undefined,
+        topics_to_avoid:  pb.topics_to_avoid  || settings.brand_topics_to_avoid  || undefined,
+        service_area:     pb.service_area     || settings.brand_service_area     || undefined,
         aliases,
       },
     });
