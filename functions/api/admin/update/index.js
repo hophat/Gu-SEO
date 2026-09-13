@@ -30,7 +30,7 @@
 
 import { json } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
-import { loadSettings } from '../../../_lib/settings.js';
+import { loadSettings, setSetting } from '../../../_lib/settings.js';
 
 const UPSTREAM_OWNER = 'hophat';
 const UPSTREAM_REPO  = 'Gu-SEO';
@@ -106,15 +106,66 @@ export const onRequestGet = async ({ env, request }) => {
   }
 };
 
+// The dashboard mounts this check on every page load, and the GitHub
+// REST API allows only 60 unauthenticated requests per hour for the
+// whole egress IP — a shared Pages colo burns that in minutes, after
+// which subrequests start failing. Cache the answer in settings so we
+// touch GitHub at most once per TTL no matter how many admins load the
+// console, and serve the stale copy if a refresh fails.
+const UPSTREAM_TTL_SEC = 600;
+
+function readCachedLatest(raw) {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.sha ? parsed : null;
+  } catch { return null; }
+}
+
+async function loadLatestCached(env, s) {
+  const now = Math.floor(Date.now() / 1000);
+  const checkedAt = Number(s.upstream_check_at || 0);
+  const cached = readCachedLatest(s.upstream_check_json);
+  if (cached && now - checkedAt < UPSTREAM_TTL_SEC) {
+    return { latest: cached, cached: true, stale: false };
+  }
+  try {
+    const fresh = await fetchLatest(env);
+    await setSetting(env, 'upstream_check_json', JSON.stringify(fresh)).catch(() => {});
+    await setSetting(env, 'upstream_check_at', String(now)).catch(() => {});
+    return { latest: fresh, cached: false, stale: false };
+  } catch (e) {
+    if (cached) return { latest: cached, cached: true, stale: true };
+    return { latest: null, cached: false, stale: false, error: String(e?.message || e) };
+  }
+}
+
 async function buildUpdateReport(env) {
   const s = await loadSettings(env);
   const installedSha = String(s.installed_sha || '').trim();
   const installMethod = String(s.install_method || '').trim();
 
-  let latest;
-  try { latest = await fetchLatest(env); }
-  catch (e) { return json(502, { ok: false, error: 'github_unreachable', detail: String(e?.message || e) }); }
-
+  const fetched = await loadLatestCached(env, s);
+  if (!fetched.latest) {
+    return json(200, {
+      ok: false,
+      error: 'github_unreachable',
+      detail: fetched.error || 'upstream check failed',
+      install_method: installMethod,
+      current: null,
+      latest: null,
+      ahead: 0,
+      up_to_date: false,
+      can_apply: false,
+      can_apply_reason: 'check_failed',
+      repo: { owner: UPSTREAM_OWNER, name: UPSTREAM_REPO },
+      commits: [],
+      files_changed: 0,
+      additions: 0,
+      deletions: 0,
+    });
+  }
+  const latest = fetched.latest;
   const latestSha = latest.sha;
 
   // Build the current-version block — null if we don't know what was
