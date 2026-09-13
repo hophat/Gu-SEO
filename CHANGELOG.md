@@ -7,6 +7,11 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.7 — 2026-09-13
+
+### Fixed
+- **Posts shipped with no internal links.** The injector only turns a phrase into a link when that phrase already appears in the body, which in practice almost never happens: 17 of the 18 published posts had zero internal links. A post that matches nothing now ends with a **Bài viết liên quan** list of its project's freshest posts, so every post links onward and older posts keep earning links. Existing bodies were backfilled the same way — 14 posts, one section each, same-project links only.
+
 ## 1.3.6 — 2026-09-13
 
 ### Added

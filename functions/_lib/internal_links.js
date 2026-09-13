@@ -14,6 +14,7 @@
 // gives readers a path to keep reading on the site.
 
 const MAX_LINKS_PER_POST = 3;
+const MAX_RELATED_LINKS  = 3;
 const MIN_PHRASE_WORDS   = 3;
 const MAX_PHRASE_WORDS   = 6;
 const TARGET_POOL_SIZE   = 100;
@@ -133,6 +134,24 @@ export function injectInternalLinks(body, selfSlug, targets, basePath = '') {
     seenTargets.add(target.slug);
     injected.push({ slug: target.slug, phrase, original: orig });
   }
+
+  // Phrase matching is deliberately strict, so plenty of posts legitimately
+  // match nothing and would ship with zero internal links. When that
+  // happens, append the freshest targets as a related-posts list instead:
+  // every post gets a path to read on, and older posts get the link.
+  if (!injected.length) {
+    const picks = targets
+      .filter((t) => t && t.slug && t.slug !== selfSlug)
+      .slice(0, MAX_RELATED_LINKS);
+    if (picks.length) {
+      const list = picks
+        .map((t) => `- [${t.title || t.slug}](${basePath}/blog/${t.slug})`)
+        .join('\n');
+      result = `${result.replace(/\s+$/, '')}\n\n## Bài viết liên quan\n\n${list}\n`;
+      for (const t of picks) injected.push({ slug: t.slug, phrase: null, related: true });
+    }
+  }
+
   return { body: result, injected };
 }
 
