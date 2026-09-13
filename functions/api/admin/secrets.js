@@ -20,12 +20,17 @@ const ALLOWED = [
   'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY',
   'GROQ_API_KEY', 'DEEPSEEK_API_KEY', 'MISTRAL_API_KEY',
   'TOGETHER_API_KEY', 'CEREBRAS_API_KEY',
+  // Model overrides for providers
+  'WORKERS_AI_TEXT_MODEL', 'ANTHROPIC_TEXT_MODEL', 'OPENAI_TEXT_MODEL',
+  'GEMINI_TEXT_MODEL', 'GUROUTER_TEXT_MODEL', 'GROQ_TEXT_MODEL',
+  'DEEPSEEK_TEXT_MODEL', 'MISTRAL_TEXT_MODEL', 'TOGETHER_TEXT_MODEL',
+  'CEREBRAS_TEXT_MODEL',
 ];
 
 // Per-provider minimal length sanity check. Doesn't validate against
 // the provider — just catches obvious paste mistakes. The actual key
 // gets validated the first time it's used.
-const MIN_LEN = 16;
+const MIN_LEN = 2;
 const MAX_LEN = 512;
 
 export const onRequestGet = async ({ env, request }) => {

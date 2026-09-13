@@ -1664,13 +1664,12 @@
       name: 'gurouter', label: 'GuRouter', envKey: 'GUROUTER_API_KEY',
       text: true, image: false, optional: true,
       modelEnvKey: 'GUROUTER_TEXT_MODEL',
-      modelDefault: 'deepseek/deepseek-chat',
+      modelDefault: 'deepseek/deepseek-v4-flash',
       models: [
-        { id: 'deepseek/deepseek-chat',     label: 'DeepSeek V3 (qua GuRouter)' },
-        { id: 'deepseek/deepseek-reasoner', label: 'DeepSeek R1 (Reasoning)' },
-        { id: 'openai/gpt-4o',              label: 'GPT-4o (qua GuRouter)' },
-        { id: 'openai/gpt-4o-mini',         label: 'GPT-4o Mini (nhanh)' },
-        { id: 'anthropic/claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
+        { id: 'deepseek/deepseek-v4-flash',             label: 'DeepSeek V4 Flash (Đang hoạt động)' },
+        { id: 'zai-org/glm-5.3-flash',                 label: 'GLM 5.3 Flash (Zai Org)' },
+        { id: 'meituan/LongCat-2.0:free',              label: 'LongCat 2.0 (Meituan Free)' },
+        { id: 'inclusionai/ling-3.0-flash-sante:free', label: 'Ling 3.0 Flash Sante (Free)' },
       ],
     },
     {
