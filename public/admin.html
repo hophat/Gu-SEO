@@ -403,6 +403,31 @@
     <!-- ============ BRAND DNA ============ -->
     <section data-page="brand" class="page" hidden>
       <div class="card">
+        <div class="card-eyebrow">Nhận diện</div>
+        <h2>Logo &amp; màu chủ đề</h2>
+        <p>Logo hiển thị ở đầu blog công khai; màu chủ đề áp cho blog và widget nhúng. Để trống màu nếu muốn dùng mặc định.</p>
+        <div class="form-grid form-grid-cols">
+          <label>
+            <span>Logo</span>
+            <input id="brand-logo-file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+            <small>PNG, JPG, WebP hoặc SVG. Tối đa 2 MB.</small>
+          </label>
+          <label>
+            <span>Màu chủ đề</span>
+            <div class="row">
+              <input id="brand-theme-color" type="color" />
+              <input id="brand-theme-hex" type="text" maxlength="7" placeholder="#e05a2b" />
+            </div>
+            <small>Mã hex, ví dụ #1f6feb.</small>
+          </label>
+        </div>
+        <div class="row">
+          <img id="brand-logo-preview" alt="Logo" height="40" hidden />
+          <button id="brand-logo-remove" class="btn btn-ghost" type="button" hidden>Xoá logo</button>
+          <span id="brand-logo-status" class="status"></span>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-eyebrow">Bước 1 · Thu thập dữ liệu</div>
         <h2>Tạo Brand DNA từ website của bạn</h2>
         <p>Nhập URL của trang web mà hệ thống nội dung này đại diện. Chúng tôi sẽ tải trang chủ, trích xuất nội dung ý nghĩa và gửi tới nhà cung cấp AI ưa thích của bạn để tạo hồ sơ thương hiệu có cấu trúc. Hãy luôn kiểm tra lại kết quả trước khi lưu — AI xử lý nhanh nhưng không phải lúc nào cũng hoàn hảo.</p>

@@ -703,6 +703,9 @@ function load() {
       if (PS_TITLE_AUTO && data.site_name) {
         h2.textContent = data.site_name + ' · Blog';
       }
+      if (data.theme_color) {
+        container.style.setProperty('--ps-accent', data.theme_color);
+      }
       state.posts = data.posts || [];
       state.total = data.total || 0;
       state.totalPages = data.total_pages || 1;

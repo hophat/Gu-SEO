@@ -29,7 +29,8 @@ export const onRequestGet = async ({ env, params, request }) => {
   }
 
   const embed = await env.DB.prepare(
-    `SELECT e.id, e.name, e.settings_json, p.slug AS project_slug, p.language AS project_language
+    `SELECT e.id, e.name, e.settings_json, p.slug AS project_slug, p.language AS project_language,
+            p.theme_color AS project_theme_color
        FROM blog_embeds e LEFT JOIN projects p ON p.id = e.project_id
       WHERE e.id = ? LIMIT 1`
   ).bind(id).first().catch(() => null);
@@ -44,7 +45,9 @@ export const onRequestGet = async ({ env, params, request }) => {
   const perPage = Math.min(50, Math.max(1,
     parseInt(settings.per_page, 10) || parseInt(settings.limit, 10) || 10));
   const title  = String(settings.title || embed?.name || 'Blog').slice(0, 100);
-  const accent = String(settings.accent || '#0a0a0a').slice(0, 24);
+  // An explicit embed accent wins; otherwise the embedding project's
+  // theme colour is the accent, so a tenant's widget matches their blog.
+  const accent = String(settings.accent || embed?.project_theme_color || '#0a0a0a').slice(0, 24);
   const theme  = ['auto', 'light', 'dark'].includes(settings.theme) ? settings.theme : 'auto';
 
   // Sanitise the palette: only known keys with short hex/rgba/css-name

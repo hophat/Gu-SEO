@@ -7,6 +7,15 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.3 — 2026-09-13
+
+### Added
+- **Per-project theme colour.** The Brand tab takes a single hex value and stores it on the new `projects.theme_color` column (additive). The public blog paints it as `--brand` and the embed widget as `--ps-accent`; the light and dark tints are derived in CSS with `color-mix()`, so there is only ever one value to maintain. Empty means the stylesheet default.
+- **Per-project logo upload.** The Brand tab uploads a PNG/JPG/WebP/SVG (≤ 2 MB) to R2 and points `projects.logo_url` at it, and can clear it again. Scoped to the caller's active project, so a project admin can only replace their own logo.
+
+### Changed
+- **The blog index header renders the project logo.** `/<slug>/blog` showed a plain wordmark even when the project had a logo; it now uses the same logo-or-wordmark markup as single posts, and picks up the project's theme colour too.
+
 ## 1.3.2 — 2026-09-13
 
 ### Added

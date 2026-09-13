@@ -1100,6 +1100,7 @@
     const { status, body } = await api('/api/admin/brand-dna');
     if (status !== 200) return;
     fillBrand(body?.brand || {});
+    fillBrandIdentity(body?.brand || {});
     // Pre-seed the URL input with the saved source_url if any.
     const urlIn = $('#brand-url');
     if (urlIn && !urlIn.value) urlIn.value = body?.brand?.source_url || '';
@@ -1208,6 +1209,7 @@
     $$('[data-brand]').forEach((el) => {
       payload[el.dataset.brand] = (el.value || '').toString();
     });
+    payload.theme_color = brandThemeHex();
     const { status: code, body } = await api('/api/admin/brand-dna', {
       method: 'PUT',
       body: JSON.stringify(payload),
@@ -1224,6 +1226,88 @@
       status.textContent = `Đã lưu · ${body.saved} trường. Tất cả bài viết mới sẽ áp dụng thông tin này.`;
     }
     setTimeout(() => { status.textContent = ''; status.className = 'status'; }, 6000);
+  }
+
+  // ── brand identity (logo + theme colour) ──────────────────────
+  const BRAND_HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+  function setBrandLogoPreview(url) {
+    const img = $('#brand-logo-preview');
+    const rm = $('#brand-logo-remove');
+    if (img) {
+      img.hidden = !url;
+      if (url) img.src = url; else img.removeAttribute('src');
+    }
+    if (rm) rm.hidden = !url;
+  }
+
+  function fillBrandIdentity(brand) {
+    const hex = String(brand.theme_color || '').toLowerCase();
+    const colorIn = $('#brand-theme-color');
+    const hexIn = $('#brand-theme-hex');
+    if (hexIn) hexIn.value = hex;
+    if (colorIn) colorIn.value = BRAND_HEX_RE.test(hex) ? hex : '#e05a2b';
+    setBrandLogoPreview(brand.logo_url || '');
+  }
+
+  function syncBrandColor(from) {
+    const colorIn = $('#brand-theme-color');
+    const hexIn = $('#brand-theme-hex');
+    if (!colorIn || !hexIn) return;
+    if (from === 'hex') {
+      const typed = hexIn.value.trim();
+      if (BRAND_HEX_RE.test(typed)) colorIn.value = typed.toLowerCase();
+    } else {
+      hexIn.value = colorIn.value;
+    }
+  }
+
+  // Empty means "use the stylesheet default", which the API stores as NULL.
+  function brandThemeHex() {
+    const typed = ($('#brand-theme-hex')?.value || '').trim();
+    if (typed === '') return '';
+    if (BRAND_HEX_RE.test(typed)) return typed.toLowerCase();
+    return $('#brand-theme-color')?.value || '';
+  }
+
+  async function uploadBrandLogo(file) {
+    const status = $('#brand-logo-status');
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      status.className = 'status bad'; status.textContent = 'Ảnh quá lớn (tối đa 2 MB).'; return;
+    }
+    status.className = 'status'; status.textContent = 'Đang tải logo…';
+    const dataUrl = await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = () => resolve('');
+      fr.readAsDataURL(file);
+    });
+    if (!dataUrl) {
+      status.className = 'status bad'; status.textContent = 'Không đọc được tệp.'; return;
+    }
+    const { status: code, body } = await api('/api/admin/projects/logo', {
+      method: 'POST',
+      body: JSON.stringify({ filename: file.name, content_type: file.type, base64: dataUrl }),
+    });
+    if (code !== 200 || !body?.ok) {
+      status.className = 'status bad'; status.textContent = body?.error || code; return;
+    }
+    setBrandLogoPreview(body.logo_url);
+    status.className = 'status good'; status.textContent = 'Đã cập nhật logo.';
+  }
+
+  async function removeBrandLogo() {
+    const status = $('#brand-logo-status');
+    const { status: code, body } = await api('/api/admin/brand-dna', {
+      method: 'PUT',
+      body: JSON.stringify({ logo_url: null }),
+    });
+    if (code !== 200 || !body?.ok) {
+      status.className = 'status bad'; status.textContent = body?.error || code; return;
+    }
+    setBrandLogoPreview('');
+    status.className = 'status good'; status.textContent = 'Đã xoá logo.';
   }
 
   // ── embeds ────────────────────────────────────────────────────
@@ -3216,6 +3300,16 @@
     if (bClear)      bClear.addEventListener('click', clearBrandFields);
     if (bFilterDry)  bFilterDry.addEventListener('click', () => runBrandFilter(true));
     if (bFilterGo)   bFilterGo.addEventListener('click', () => runBrandFilter(false));
+
+    // brand identity (logo + theme colour)
+    const logoFile = $('#brand-logo-file');
+    const logoRemove = $('#brand-logo-remove');
+    const colorPick = $('#brand-theme-color');
+    const hexInput = $('#brand-theme-hex');
+    if (logoFile)   logoFile.addEventListener('change', () => uploadBrandLogo(logoFile.files?.[0]));
+    if (logoRemove) logoRemove.addEventListener('click', removeBrandLogo);
+    if (colorPick)  colorPick.addEventListener('input', () => syncBrandColor('picker'));
+    if (hexInput)   hexInput.addEventListener('input', () => syncBrandColor('hex'));
 
     // embeds tab
     const eCreate = $('#embed-create-go');

@@ -263,6 +263,18 @@ export const onRequestGet = async ({ env, request }) => {
     ).bind(tenant.activeProjectId).first().catch(() => null);
   }
 
+  // Identity lives on `projects`, not `project_brands`, so it is read
+  // separately and merged into both response shapes below.
+  const projectRow = env?.DB?.prepare
+    ? await env.DB.prepare(
+        `SELECT logo_url, theme_color FROM projects WHERE id = ? LIMIT 1`
+      ).bind(tenant.activeProjectId).first().catch(() => null)
+    : null;
+  const identity = {
+    logo_url: projectRow?.logo_url || '',
+    theme_color: projectRow?.theme_color || '',
+  };
+
   if (brandRow) {
     return json(200, {
       ok: true,
@@ -274,6 +286,7 @@ export const onRequestGet = async ({ env, request }) => {
         topics_to_avoid: brandRow.topics_to_avoid || '',
         service_area:    brandRow.service_area || '',
         cta:             brandRow.cta || '',
+        ...identity,
       },
       project_id: tenant.activeProjectId,
       project_slug: tenant.activeProjectSlug,
@@ -293,6 +306,7 @@ export const onRequestGet = async ({ env, request }) => {
       cta:              s.brand_cta || '',
       source_url:       s.brand_source_url || '',
       generated_at:     s.brand_generated_at || '',
+      ...identity,
     },
     project_id: tenant.activeProjectId,
     project_slug: tenant.activeProjectSlug,
@@ -413,6 +427,35 @@ export const onRequestPut = async ({ env, request, waitUntil }) => {
       t,
       t
     ).run();
+  }
+
+  // Identity columns live on `projects`, not `project_brands`, so they are
+  // patched separately and only when the key is present — an unrelated
+  // brand save must never clear the logo or the theme colour.
+  const hasLogo = Object.prototype.hasOwnProperty.call(body, 'logo_url');
+  const hasColor = Object.prototype.hasOwnProperty.call(body, 'theme_color');
+  // The only accepted logo_url is an empty one (clear). A real logo always
+  // comes from /api/admin/projects/logo after the bytes are in R2, so this
+  // endpoint is never a way to point the <img src> at an arbitrary URL.
+  if (hasLogo && body.logo_url) return json(400, { error: 'logo_url_is_server_assigned' });
+  let themeColor = null;
+  if (hasColor) {
+    const raw = String(body.theme_color || '').trim().toLowerCase();
+    if (raw !== '') {
+      if (!/^#[0-9a-f]{6}$/.test(raw)) return json(400, { error: 'invalid_theme_color' });
+      themeColor = raw;
+    }
+  }
+  if (env?.DB?.prepare && (hasLogo || hasColor)) {
+    const sets = [];
+    const binds = [];
+    if (hasLogo) { sets.push('logo_url = ?'); binds.push(null); }
+    if (hasColor) { sets.push('theme_color = ?'); binds.push(themeColor); }
+    sets.push('updated_at = ?');
+    binds.push(t, tenant.activeProjectId);
+    await env.DB.prepare(
+      `UPDATE projects SET ${sets.join(', ')} WHERE id = ?`
+    ).bind(...binds).run();
   }
 
   const fields = {

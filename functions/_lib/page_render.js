@@ -13,10 +13,18 @@ function brand(env, project = null) {
     name: project?.site_name || env?.SITE_NAME || 'Gulagi',
     description: project?.site_description || env?.SITE_DESCRIPTION || 'Tạo website cho quán từ Google Maps',
     logoUrl: project?.logo_url || env?.SITE_LOGO_URL || null,
+    themeColor: project?.theme_color || null,
     homeUrl: project?.website_url || env?.SITE_SIGNUP_URL || 'https://gulagi.com',
     ctaSignupUrl: env?.SITE_SIGNUP_URL || 'https://gulagi.com',
     isGulagi,
   };
+}
+
+// Per-project accent. Light and dark brand tints are derived in CSS with
+// color-mix so the admin only ever stores one hex value.
+export function themeStyle(hex) {
+  if (!hex) return '';
+  return `<style>:root{--brand:${hex};--brand-light:color-mix(in srgb,${hex} 12%,#fff);--brand-dark:color-mix(in srgb,${hex} 82%,#000);--link:${hex}}</style>`;
 }
 
 function jsonLD({ site, post, host, kind, settings, basePath = '' }) {
@@ -255,6 +263,7 @@ ${verifyMetas}
 <meta name="twitter:image" content="https://${host}${heroSrc}" />
 ${preloadHero}
 <link rel="stylesheet" href="/style.css" />
+${themeStyle(site.themeColor)}
 <script type="application/ld+json">${ldJson}</script>
 </head>
 <body>

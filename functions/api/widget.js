@@ -131,6 +131,7 @@ export const onRequestGet = async ({ env, request }) => {
     tag,
     site_name: scopedProject?.site_name || null,
     language: scopedProject?.language || 'vi',
+    theme_color: scopedProject?.theme_color || null,
   }), {
     headers: {
       'content-type': 'application/json; charset=utf-8',

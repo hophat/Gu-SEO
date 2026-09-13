@@ -10,6 +10,7 @@
 
 import { esc } from '../_lib/util.js';
 import { loadSettings } from '../_lib/settings.js';
+import { themeStyle } from '../_lib/page_render.js';
 import { resolveProjectForRequest, resolveProjectBySlug } from '../_lib/project_scope.js';
 
 // Page size for /blog and /blog/page/N. Matches the embed widget's
@@ -214,13 +215,16 @@ ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `
 <link rel="preload" href="/_fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="preload" href="/_fonts/instrument-serif-400.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/style.css" />
+${themeStyle(project?.theme_color)}
 <script type="application/ld+json">${ldJson}</script>
 </head>
 <body>
 <header class="site-header">
   <div class="header-inner">
     <a class="header-brand" href="${esc(homeUrl)}">
-      <span class="header-logo">${esc(siteName)}</span>
+      ${project?.logo_url
+        ? `<img class="header-logo-img" src="${esc(project.logo_url)}" alt="${esc(siteName)}" height="28" />`
+        : `<span class="header-logo">${esc(siteName)}</span>`}
     </a>
     <nav class="header-nav">
       <a href="${esc(homeUrl)}">Trang chủ</a>

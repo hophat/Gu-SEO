@@ -29,7 +29,7 @@ export async function resolveProjectByHost(env, host, pathname = '/') {
   if (cached && cached.host === target && cached.path === pathname) return cached.project;
 
   const rows = await env.DB.prepare(
-    `SELECT id, slug, name, website_url, publishing_url, site_name, site_description, logo_url FROM projects WHERE status = 'active'`
+    `SELECT id, slug, name, website_url, publishing_url, site_name, site_description, logo_url, theme_color FROM projects WHERE status = 'active'`
   ).all().catch(() => ({ results: [] }));
 
   // A project is addressed either by a dedicated host or by a path prefix
@@ -68,7 +68,7 @@ export async function resolveProjectBySlug(env, slug) {
   const clean = String(slug || '').trim().toLowerCase();
   if (!clean || !/^[a-z0-9][a-z0-9-]{0,60}$/.test(clean)) return null;
   const row = await env?.DB?.prepare(
-    `SELECT id, slug, name, website_url, publishing_url, site_name, site_description, logo_url FROM projects WHERE slug = ? LIMIT 1`
+    `SELECT id, slug, name, website_url, publishing_url, site_name, site_description, logo_url, theme_color FROM projects WHERE slug = ? LIMIT 1`
   ).bind(clean).first().catch(() => null);
   return row || null;
 }
