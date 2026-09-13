@@ -32,6 +32,16 @@ export const onRequestPost = async ({ request, env }) => {
     return json(200, { ok: true, status: 'published' });
   }
   if (action === 'delete') {
+    // Check if current user is on Free Tier: Free tier accounts cannot delete published posts
+    const user = auth.userId ? await env.DB.prepare('SELECT plan_tier, role FROM users WHERE id=?').bind(auth.userId).first().catch(() => null) : null;
+    const isFree = (user?.plan_tier || auth.plan_tier) === 'free' && auth.role !== 'super_admin';
+    if (isFree) {
+      return json(403, {
+        error: 'free_tier_delete_disabled',
+        detail: 'Tài khoản gói Free không có quyền xóa bài viết blog. Vui lòng nâng cấp gói để quản lý nâng cao.'
+      });
+    }
+
     if (post.hero_image_key && env.IMAGES) await env.IMAGES.delete(post.hero_image_key).catch(() => {});
     await env.DB.prepare('DELETE FROM blog_posts WHERE id=?').bind(id).run();
     return json(200, { ok: true, deleted: true });

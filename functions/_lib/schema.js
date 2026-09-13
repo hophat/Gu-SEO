@@ -627,4 +627,9 @@ ALTER TABLE projects ADD COLUMN theme_color TEXT;
 
 
 
+
+-- Free tier & quotas: plan_tier ('free' | 'pro' | 'enterprise'),
+-- default plan is 'free', post_limit 100 posts for free tier.
+ALTER TABLE users ADD COLUMN plan_tier TEXT DEFAULT 'free';
+ALTER TABLE users ADD COLUMN post_limit INTEGER DEFAULT 100;
 `;

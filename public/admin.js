@@ -294,6 +294,87 @@
   // native form submission (browser navigated to /admin? with empty
   // query string). preventDefault is called synchronously before any
   // await.
+  function checkRegisterHash() {
+    if (window.location.hash === "#register") {
+      const tabReg = document.getElementById("tab-btn-register");
+      if (tabReg) tabReg.click();
+    }
+  }
+
+  function bindRegisterTabs() {
+    const tabLogin = document.getElementById('tab-btn-login');
+    const tabReg = document.getElementById('tab-btn-register');
+    const loginForm = document.getElementById('login-form');
+    const regForm = document.getElementById('register-form');
+    const err = document.getElementById('gate-err');
+
+    if (tabLogin && tabReg) {
+      tabLogin.addEventListener('click', () => {
+        tabLogin.className = 'btn btn-sm btn-primary';
+        tabReg.className = 'btn btn-sm btn-ghost';
+        if (loginForm) loginForm.hidden = false;
+        if (regForm) regForm.hidden = true;
+        if (err) err.textContent = '';
+      });
+
+      tabReg.addEventListener('click', () => {
+        tabReg.className = 'btn btn-sm btn-primary';
+        tabLogin.className = 'btn btn-sm btn-ghost';
+        if (loginForm) loginForm.hidden = true;
+        if (regForm) regForm.hidden = false;
+        if (err) err.textContent = '';
+      });
+    }
+
+    if (regForm) {
+      regForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const brand = document.getElementById('reg-brand')?.value.trim();
+        const website = document.getElementById('reg-website')?.value.trim();
+        const email = document.getElementById('reg-email')?.value.trim().toLowerCase();
+        const password = document.getElementById('reg-password')?.value;
+        const btn = document.getElementById('reg-go');
+
+        if (!brand || !email || !password) {
+          if (err) err.textContent = 'Vui lòng điền đầy đủ tên thương hiệu, email và mật khẩu.';
+          return;
+        }
+        if (password.length < 8) {
+          if (err) err.textContent = 'Mật khẩu phải có từ 8 ký tự trở lên.';
+          return;
+        }
+
+        if (err) err.textContent = '';
+        if (btn) { btn.disabled = true; btn.textContent = 'Đang tạo Project & Tài khoản Free…'; }
+
+        try {
+          const res = await fetch('/api/public/register', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              brand_name: brand,
+              website_url: website,
+              email,
+              password
+            }),
+            credentials: 'same-origin'
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.ok) {
+            // Auto login succeeded, reload/mount
+            mount();
+            return;
+          }
+          if (err) err.textContent = data.detail || data.error || 'Đăng ký không thành công. Vui lòng thử lại.';
+        } catch (error) {
+          if (err) err.textContent = 'Lỗi kết nối máy chủ: ' + error.message;
+        } finally {
+          if (btn) { btn.disabled = false; btn.textContent = 'Tạo tài khoản Free & Vào Console →'; }
+        }
+      });
+    }
+  }
+
   function bindLoginForm() {
     const form = document.getElementById('login-form');
     if (!form) return;
@@ -2187,12 +2268,19 @@
         await api('/api/admin/blog/post', { method: 'POST', body: JSON.stringify({ id: p.id, action: p.status === 'hidden' ? 'show' : 'hide' }) });
         loadPosts();
       });
-      const del = mkBtn('Xóa', 'btn-sm btn-danger', async () => {
-        if (!confirm('Xóa bài ' + p.slug + '?')) return;
-        await api('/api/admin/blog/post', { method: 'POST', body: JSON.stringify({ id: p.id, action: 'delete' }) });
-        loadPosts();
-      });
-      tdAct.append(toggle, del); tr.appendChild(tdAct);
+      const isFreeTier = (window.__psPlanTier === 'free') && (window.__psRole !== 'super_admin');
+      if (!isFreeTier) {
+        const del = mkBtn('Xóa', 'btn-sm btn-danger', async () => {
+          if (!confirm('Xóa bài ' + p.slug + '?')) return;
+          const { status, body } = await api('/api/admin/blog/post', { method: 'POST', body: JSON.stringify({ id: p.id, action: 'delete' }) });
+          if (status !== 200) { alert(body?.detail || body?.error || 'Không thể xóa bài'); }
+          loadPosts();
+        });
+        tdAct.append(toggle, del);
+      } else {
+        tdAct.append(toggle);
+      }
+      tr.appendChild(tdAct);
       tbody.appendChild(tr);
     }
   }
@@ -3154,10 +3242,21 @@
     window.__psRole = role;
     applyRoleVisibility(role);
 
+    window.__psPlanTier = whoami?.plan_tier || 'free';
+    const isFree = window.__psPlanTier === 'free' && role !== 'super_admin';
     const roleBadge = $('#role-badge');
     if (roleBadge) {
       roleBadge.hidden = false;
-      roleBadge.textContent = role === 'super_admin' ? 'Quản trị hệ thống' : 'Quản trị dự án';
+      if (role === 'super_admin') {
+        roleBadge.textContent = 'Quản trị hệ thống';
+      } else if (isFree) {
+        const pCount = whoami?.post_count || 0;
+        const pLimit = whoami?.post_limit || 100;
+        roleBadge.textContent = `Gói Free · ${pCount}/${pLimit} bài`;
+        roleBadge.title = `Tài khoản miễn phí được tạo tối đa ${pLimit} bài SEO. Không hỗ trợ xóa bài.`;
+      } else {
+        roleBadge.textContent = 'Quản trị dự án';
+      }
     }
 
     const switcher = $('#project-switcher');
@@ -4484,7 +4583,7 @@
   // and preventDefault'd. Earlier we attached it lazily inside
   // showGate() — which left a small window where a fast Enter press
   // would do a native form submission.
-  bindLoginForm();
+  bindLoginForm(); bindRegisterTabs(); checkRegisterHash();
 
   // When env.DB is missing, both whoami and setup return 503 — the
   // whole site is unreachable until the Cloudflare project's bindings

@@ -53,6 +53,23 @@ export const onRequestPost = async ({ request, env }) => {
   try { body = await request.json(); } catch { /* empty body ok */ }
 
   let projectId = tenant?.activeProjectId || String(body.project_id || '').trim() || null;
+
+  // Free Tier Quota Check: 100 posts limit per project
+  if (projectId) {
+    const userRow = auth.userId ? await env.DB.prepare('SELECT plan_tier, post_limit, role FROM users WHERE id = ?').bind(auth.userId).first().catch(() => null) : null;
+    const isFree = (userRow?.plan_tier || auth.plan_tier) === 'free' && auth.role !== 'super_admin';
+    if (isFree) {
+      const limit = userRow?.post_limit || 100;
+      const countRow = await env.DB.prepare('SELECT COUNT(*) AS total FROM blog_posts WHERE project_id = ?').bind(projectId).first().catch(() => ({ total: 0 }));
+      const currentTotal = countRow?.total || 0;
+      if (currentTotal >= limit) {
+        return json(403, {
+          error: 'post_quota_exceeded',
+          detail: `Tài khoản gói Free đã đạt giới hạn ${limit} bài viết SEO miễn phí (${currentTotal}/${limit}). Vui lòng liên hệ để nâng cấp.`
+        });
+      }
+    }
+  }
   let topic = null;
   let slot  = null;
 

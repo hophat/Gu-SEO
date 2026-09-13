@@ -37,6 +37,23 @@ export const onRequestGet = async ({ request, env }) => {
   const role = auth.role || 'super_admin';
   const projectId = auth.projectId || null;
   let projects = [];
+  let planTier = auth.planTier || 'pro';
+  let postLimit = 100;
+  let postCount = 0;
+
+  if (env?.DB && auth.userId) {
+    try {
+      const u = await env.DB.prepare('SELECT plan_tier, post_limit FROM users WHERE id = ?').bind(auth.userId).first();
+      if (u) {
+        planTier = u.plan_tier || 'free';
+        postLimit = u.post_limit || 100;
+      }
+      if (projectId) {
+        const c = await env.DB.prepare('SELECT COUNT(*) AS total FROM blog_posts WHERE project_id = ?').bind(projectId).first();
+        postCount = c?.total || 0;
+      }
+    } catch {}
+  }
 
   if (env?.DB) {
     try {
@@ -65,6 +82,9 @@ export const onRequestGet = async ({ request, env }) => {
     email: auth.email || null,
     via: auth.via,
     role,
+    plan_tier: planTier,
+    post_limit: postLimit,
+    post_count: postCount,
     project_id: projectId,
     projects,
     site_name: identity.name,

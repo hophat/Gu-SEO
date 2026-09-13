@@ -7,6 +7,23 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.4.0 — 2026-09-13
+
+### Added
+- **Tính năng Đăng Ký Tài Khoản Gói Free (Tự phục vụ - Self-serve):**
+  - Endpoint đăng ký công khai `POST /api/public/register`.
+  - Tự động tạo Project riêng, định hình Brand DNA mặc định, tạo Lịch xuất bản tự động (Daily 08:00 VN) và cấu hình xuất bản cho thương hiệu mới.
+  - Cấp quyền `project_admin`, gán `plan_tier = 'free'` và hạn ngạch **100 bài viết SEO tự động miễn phí**.
+  - Tự động đăng nhập và chuyển hướng ngay vào Console sau khi đăng ký thành công.
+  - Tích hợp tab Chuyển đổi "Đăng nhập" / "Đăng ký (Free 100 bài)" tại màn hình Gate của Admin.
+  - Nút "Đăng Ký Free" trên thanh Navigation trang chủ liên kết trực tiếp vào `/admin#register`.
+
+### Security & Quota Controls
+- **Bảo vệ toàn vẹn dữ liệu gói Free:**
+  - **Khóa tính năng xóa bài viết:** Tài khoản gói Free không có quyền xóa bài viết blog (ẩn nút Xóa trong giao diện và trả mã lỗi `403 Forbidden` ở backend `/api/admin/blog/post`).
+  - **Kiểm soát hạn mức 100 bài:** Kiểm tra số lượng bài viết đã tạo trước khi khởi chạy pipeline viết bài mới tại `/api/admin/blog/start`, chặn khi đạt mốc 100 bài kèm thông báo nâng cấp.
+  - Hiển thị hạn ngạch minh bạch trên topbar: `Gói Free · X/100 bài`.
+
 ## 1.3.15 — 2026-09-13
 
 ### Changed
