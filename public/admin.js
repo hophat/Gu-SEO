@@ -125,7 +125,7 @@
       // Couldn't reach the canonical version endpoint. Still show
       // the installed version if we have one, so the user knows
       // SOMETHING. No dot, since we can't compare.
-      lbl.textContent = installedSha ? 'v' + installedSha.slice(0, 7) : 'pages-seo';
+      lbl.textContent = installedSha ? 'v' + installedSha.slice(0, 7) : 'GU SEO';
       dot.hidden = true;
       btn.title = 'Không thể kiểm tra bản cập nhật';
       return;
@@ -543,16 +543,19 @@
   // activateTab so deep links can't open them either. Distribution
   // (seo + embeds) stays available — it is project-scoped and is how a
   // tenant hands their blog to their own site.
-  const PROJECT_ADMIN_HIDDEN_TABS = ['settings', 'status', 'users', 'projects'];
+  // Admin navigation policy: Hide System, Settings, Users, Projects from navigation
+  const HIDDEN_NAV_TABS = ['settings', 'status', 'users', 'projects'];
   const PROJECT_ADMIN_HIDDEN_PAGES = ['settings', 'status', 'updates', 'usage', 'users', 'projects'];
 
   function applyRoleVisibility(role) {
-    const restricted = role !== 'super_admin';
+    // Hide Dự án, Người dùng, Cài đặt, Hệ thống from left navigation
     for (const tab of $$('.tab')) {
-      if (PROJECT_ADMIN_HIDDEN_TABS.includes(tab.dataset.tab)) tab.hidden = restricted;
+      if (HIDDEN_NAV_TABS.includes(tab.dataset.tab)) {
+        tab.hidden = true;
+      }
     }
     const wizardBtn = $('#open-wizard');
-    if (wizardBtn) wizardBtn.hidden = restricted;
+    if (wizardBtn) wizardBtn.hidden = (role !== 'super_admin');
   }
 
   function isTabBlocked(name) {
@@ -4707,7 +4710,7 @@
     ];
     const TOKEN_LINK = 'https://dash.cloudflare.com/?to=/:account/api-tokens' +
       '&permissionGroupKeys=' + encodeURIComponent(JSON.stringify(PERMS)) +
-      '&name=' + encodeURIComponent('pages-seo update');
+      '&name=' + encodeURIComponent('GU SEO update');
 
     let lastState = null;
 

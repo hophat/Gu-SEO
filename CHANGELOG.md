@@ -7,6 +7,14 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.8.2 — 2026-09-13
+
+### Changed
+- **Làm gọn Menu trái Admin & Loại bỏ triệt để định danh pages-seo:**
+  - Ẩn hoàn toàn 4 mục quản trị hệ thống trên thanh menu trái: **Dự án**, **Người dùng**, **Cài đặt**, **Hệ thống**. Menu chỉ giữ lại 5 tab nghiệp vụ trọng tâm: `Tổng quan`, `Bài viết`, `Thương hiệu`, `Phân tích`, `Phân phối`.
+  - Khắc phục rule CSS `.topbar .tab` ghi đè thuộc tính `hidden` trên màn hình desktop bằng `.tab[hidden] { display: none !important; }`.
+  - Loại bỏ hoàn toàn mọi tàn dư văn bản `pages-seo` trong giao diện, đồng bộ định danh duy nhất **GU SEO**.
+
 ## 1.8.1 — 2026-09-13
 
 ### Changed

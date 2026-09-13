@@ -1,3 +1,4 @@
+.tab[hidden], .tab.is-hidden { display: none !important; }
 /* pages-seo · admin dashboard.
  * Standalone styling — doesn't share the public site's CSS so it can
  * evolve independently. Grok-inspired operator UI: cold near-black

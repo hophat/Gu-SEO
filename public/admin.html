@@ -164,14 +164,15 @@
       <button class="tab" data-tab="brand" data-children="brand,covers,prog,links">Thương hiệu</button>
       <button class="tab" data-tab="analytics">Phân tích</button>
       <button class="tab" data-tab="seo" data-children="seo,embeds">Phân phối</button>
-      <button class="tab" data-tab="status" data-children="status,updates,usage">
+      <!-- Hidden admin system tabs (Hệ thống, Cài đặt, Người dùng, Dự án) -->
+      <button class="tab" data-tab="status" data-children="status,updates,usage" hidden>
         Hệ thống
         <span id="status-badge" class="tab-badge" hidden></span>
         <span id="updates-badge" class="tab-badge" hidden></span>
       </button>
-      <button class="tab" data-tab="settings">Cài đặt</button>
-      <button class="tab" data-tab="users" type="button">Người dùng</button>
-      <button class="tab" data-tab="projects" type="button">Dự án</button>
+      <button class="tab" data-tab="settings" hidden>Cài đặt</button>
+      <button class="tab" data-tab="users" type="button" hidden>Người dùng</button>
+      <button class="tab" data-tab="projects" type="button" hidden>Dự án</button>
     </nav>
     <!-- Sub-nav strip. Populated dynamically by admin.js when a tab
          with data-children is active. Hidden otherwise. -->
@@ -1123,7 +1124,7 @@
         <details class="gsc-howto">
           <summary>Cách lấy JSON tài khoản dịch vụ (3 phút)</summary>
           <ol class="gsc-steps">
-            <li>Mở <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud → Tạo dự án</a>. Đặt tên tùy ý (vd: "pages-seo-indexing").</li>
+            <li>Mở <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud → Tạo dự án</a>. Đặt tên tùy ý (vd: "guseo-indexing").</li>
             <li>Trong dự án đó, mở <a href="https://console.cloud.google.com/apis/library/searchconsole.googleapis.com" target="_blank" rel="noopener">Search Console API</a> và bấm <b>Bật</b>. Đồng thời bật <a href="https://console.cloud.google.com/apis/library/indexing.googleapis.com" target="_blank" rel="noopener">Indexing API</a> nếu bạn muốn gửi tín hiệu từng URL.</li>
             <li>Chuyển tới <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener">Service accounts → Tạo tài khoản dịch vụ</a>. Bỏ qua các bước vai trò và người dùng.</li>
             <li>Bấm vào tài khoản → tab <b>Keys</b> → <b>Add Key → JSON</b>. Lưu tệp về máy.</li>
