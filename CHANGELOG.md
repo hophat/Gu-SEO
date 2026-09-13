@@ -7,6 +7,17 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.11 — 2026-09-13
+
+### Changed
+- **Trang chủ redesign theo phong cách X.com (Twitter):**
+  - **Aesthetic thuần X:** Pure black (#000000), monochrome trắng/xám, không gradient/glow/màu cyan.
+  - **Logo mark đúng chuẩn X:** Hai đường chéo đơn giản, không bo khung.
+  - **Typography:** Plus Jakarta Sans 800-weight, line-height 0.95, letter-spacing -0.045em cho display.
+  - **Sections theo style X:** Logo Wall strip (brand trust), Big Type Wordmark (centered hero type), Stats Strip (proof metrics), Feature Grid (hairline borders), Ecosystem Cards (transparent + 1px border), Contact CTA (X-style minimal).
+  - **Ambient video:** WebM mô phỏng particle dynamics, opacity 18% + grayscale để tích hợp subtle không phá minimalist aesthetic.
+  - **Copy toàn cầu:** Số điện thoại format quốc tế `+84 989 511 431`, terminology enterprise.
+
 ## 1.3.10 — 2026-09-13
 
 ### Changed
