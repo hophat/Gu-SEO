@@ -7,6 +7,15 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.13 — 2026-09-13
+
+### Added
+- **Thêm Section quy trình Step-by-Step chuẩn phong cách X.com:**
+  - `STEP 01 — Thiết Kế DNA Brand Tự Động`: Dán URL domain, tự động trích xuất mô hình kinh doanh, tone giọng, độc giả & chủ đề cốt lõi.
+  - `STEP 02 — Chọn Lọc & Chấm Điểm`: Topic Scoring v2 lọc intent, đo độ khó đối thủ và phân bổ vào cụm Topic Clusters (Pillars).
+  - `STEP 03 — Lên Lịch Nội Dung`: Lưới lịch 28 ngày thông minh, xem trước hoặc kích hoạt tạo ngay khi cần.
+  - `STEP 04 — Đăng Bài Hàng Ngày`: Tự động kích hoạt lúc 08:00 sáng mỗi ngày, viết bài 900-1.300 từ, sinh ảnh bìa, chèn link nội bộ & ping IndexNow.
+
 ## 1.3.12 — 2026-09-13
 
 ### Changed
