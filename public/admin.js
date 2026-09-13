@@ -723,10 +723,15 @@
             sub.appendChild(btn);
           }
           sub.hidden = false;
+          if (parent.parentTab) {
+            parent.parentTab.insertAdjacentElement('afterend', sub);
+          }
         } else {
           sub.hidden = true;
         }
         sub.dataset.parent = newParentId;
+      } else if (parent && parent.parentTab && sub.previousElementSibling !== parent.parentTab) {
+        parent.parentTab.insertAdjacentElement('afterend', sub);
       }
       // Update the is-active class without rebuilding the buttons.
       for (const btn of sub.querySelectorAll('.subtab')) {

@@ -26,43 +26,43 @@
 @font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("/_fonts/inter-700.woff2") format("woff2"); }
 
 :root{
-  --bg: #000000;
-  --bg-soft: #0a0a0a;
-  --bg-card: #0d0d0d;
-  --bg-card-hover: #121212;
-  --ink: #ffffff;
-  --ink-dim: #8b98a5;
-  --ink-faint: #536471;
-  --accent: #ffffff;               /* X.com monochrome accent */
-  --accent-rgb: 255,255,255;
-  --accent-ink: #000000;
-  --accent-soft: rgba(255,255,255,0.08);
-  --accent-hover: #d7d7d7;
-  --line: rgba(255,255,255,0.085);
-  --line-2: rgba(255,255,255,0.16);
-  --good: #00ba7c;
-  --warn: #e3b341;
-  --bad: #f4212e;
-  --good-rgb: 0,186,124;
-  --warn-rgb: 227,179,65;
-  --bad-rgb: 244,33,46;
-  --display: 'Inter', system-ui, -apple-system, sans-serif;
-  --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Ant Design Pro v6 Dark Palette */
+  --bg: #141414;
+  --bg-soft: #1f1f1f;
+  --bg-card: #1f1f1f;
+  --bg-card-hover: #262626;
+  --ink: rgba(255, 255, 255, 0.85);
+  --ink-dim: rgba(255, 255, 255, 0.65);
+  --ink-faint: rgba(255, 255, 255, 0.45);
+  --accent: #1677ff;               /* Ant Design Pro v6 Tech Blue */
+  --accent-rgb: 22,119,255;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(22, 119, 255, 0.15);
+  --accent-hover: #4096ff;
+  --line: #303030;
+  --line-2: #424242;
+  --good: #52c41a;
+  --warn: #faad14;
+  --bad: #ff4d4f;
+  --good-rgb: 82,196,26;
+  --warn-rgb: 250,173,20;
+  --bad-rgb: 255,77,79;
+  --display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Ant Design Admin sizing — deliberately sharp corners (X-like),
-     so the radius scale tops out at 4px. */
+  /* Ant Design v5/v6 Sizing & Radius Tokens */
   --radius-xs: 2px;
-  --radius-sm: 3px;
-  --radius-md: 4px;
-  --radius-lg: 4px;
-  --radius-xl: 6px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
   --radius-full: 9999px;
-  --sidebar-w: 232px;
+  --sidebar-w: 236px;
   --header-h: 56px;
-  --shadow-sm: none;
-  --shadow-card: none;
-  --shadow-card-hover: none;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 /* Light theme — opt-in via data-theme="light" on <html>. Triggered
@@ -70,26 +70,29 @@
    the marketing site's cream + black-CTA palette; status colours stay
    put so muscle memory transfers between modes. */
 :root[data-theme="light"]{
-  --bg: #ffffff;
-  --bg-soft: #f7f9f9;
+  /* Ant Design Pro v6 Light Palette */
+  --bg: #f5f5f5;
+  --bg-soft: #fafafa;
   --bg-card: #ffffff;
-  --bg-card-hover: #f7f9f9;
-  --ink: #0f1419;
-  --ink-dim: #536471;
-  --ink-faint: #8b98a5;
-  --accent: #0f1419;               /* X light mode: near-black accent */
-  --accent-rgb: 15,20,25;
+  --bg-card-hover: #fafafa;
+  --ink: rgba(0, 0, 0, 0.88);
+  --ink-dim: rgba(0, 0, 0, 0.65);
+  --ink-faint: rgba(0, 0, 0, 0.45);
+  --accent: #1677ff;               /* Ant Design Pro Tech Blue */
+  --accent-rgb: 22,119,255;
   --accent-ink: #ffffff;
-  --accent-soft: rgba(15,20,25,0.06);
-  --accent-hover: #272c30;
-  --line: #eff3f4;
-  --line-2: #cfd9de;
-  --good: #00ba7c;
-  --warn: #b8860b;
-  --bad: #f4212e;
-  --good-rgb: 0,186,124;
-  --warn-rgb: 184,134,11;
-  --bad-rgb: 244,33,46;
+  --accent-soft: #e6f4ff;
+  --accent-hover: #4096ff;
+  --line: #f0f0f0;
+  --line-2: #d9d9d9;
+  --good: #52c41a;
+  --warn: #faad14;
+  --bad: #ff4d4f;
+  --good-rgb: 82,196,26;
+  --warn-rgb: 250,173,20;
+  --bad-rgb: 255,77,79;
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 @media (prefers-reduced-motion: no-preference) {
   html { transition: background-color .15s, color .15s; }
@@ -262,74 +265,79 @@ a:hover{text-decoration:underline}
 @media (min-width:1001px){
   .topbar{
     position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);
-    flex-direction:column;align-items:stretch;gap:2px;
+    height:100vh;
+    flex-direction:column;align-items:stretch;gap:0;
     padding:0;
     background:var(--bg);
     border-bottom:none;border-right:1px solid var(--line);
-    overflow-y:auto;
+    overflow-y:auto;overflow-x:hidden;
     box-shadow:none;
   }
   .topbar .brand{
-    font-size:15px;font-weight:700;height:var(--header-h);
+    font-size:16px;font-weight:600;height:var(--header-h);
     padding:0 16px;margin:0;
-    border-bottom:1px solid var(--line);letter-spacing:-0.02em;
+    border-bottom:1px solid var(--line);
     display:flex;align-items:center;gap:10px;flex:none;
   }
   .topbar .brand::after{
-    content:"CONSOLE";font-style:normal;font-family:var(--mono);font-size:9px;font-weight:700;
-    color:var(--ink-faint);letter-spacing:.08em;margin-left:auto;padding:2px 5px;border-radius:var(--radius-xs);
-    border:1px solid var(--line);background:transparent;
+    content:"PRO v6";font-style:normal;font-family:var(--mono);font-size:10px;font-weight:600;
+    color:var(--accent);margin-left:auto;padding:1px 6px;border-radius:var(--radius-sm);
+    border:1px solid rgba(var(--accent-rgb),0.3);background:var(--accent-soft);
   }
   .topbar .tabs{
-    flex-direction:column;gap:0;margin:8px 0 0;flex:0 0 auto;overflow:visible;
+    flex-direction:column;gap:4px;margin:12px 0 0;flex:0 0 auto;overflow:visible;
     padding:0 8px;
   }
   .topbar .tab{
     display:flex;align-items:center;width:100%;
     text-align:left;padding:0 12px;height:40px;
-    border-radius:var(--radius-md);font-size:13.5px;font-weight:500;
+    border-radius:var(--radius-md);font-size:14px;font-weight:400;
     color:var(--ink-dim);border:0;background:transparent;
     position:relative;
-    transition:background .12s ease,color .12s ease;
+    transition:background .15s ease,color .15s ease;
   }
   .topbar .tab::before{display:none;}
   .topbar .tab[aria-current="page"]{
-    background:var(--accent-soft);color:var(--ink);font-weight:600;border:0;
+    background:var(--accent-soft);color:var(--accent);font-weight:600;border:0;
   }
   .topbar .tab[aria-current="page"]::after{
-    content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;
-    background:var(--accent);border-radius:0;
+    content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;
+    background:var(--accent);border-radius:0 2px 2px 0;
   }
-  .topbar .tab:hover{background:rgba(255,255,255,0.04);color:var(--ink)}
-  :root[data-theme="light"] .topbar .tab:hover{background:rgba(15,20,25,0.04);}
-  .topbar .tab[aria-current="page"] .tab-icon{color:var(--ink);opacity:1;}
+  .topbar .tab:hover{background:rgba(255,255,255,0.06);color:var(--ink)}
+  :root[data-theme="light"] .topbar .tab:hover{background:rgba(0,0,0,0.04);color:var(--ink);}
+  .topbar .tab[aria-current="page"] .tab-icon{color:var(--accent);opacity:1;}
 
-  /* Sub-nav: Ant Design inline menu children, left rule, no dashes */
+  /* Sub-nav: Ant Design Pro inline menu accordion children */
   .topbar .subtabs{
-    flex-direction:column;gap:0;
-    background:transparent;border-bottom:none;border-left:1px solid var(--line);
-    padding:2px 0;overflow:visible;margin:0 0 0 22px;
+    display:flex;flex-direction:column;gap:2px;
+    background:rgba(0,0,0,0.15);border-radius:var(--radius-md);
+    padding:4px 0 4px 12px;overflow:visible;margin:2px 0 4px 12px;
+    border-left:2px solid rgba(var(--accent-rgb),0.25);
+  }
+  :root[data-theme="light"] .topbar .subtabs{
+    background:rgba(0,0,0,0.02);
   }
   .topbar .subtab{
-    text-align:left;padding:0 12px;height:34px;
+    text-align:left;padding:0 12px;height:36px;
     display:flex;align-items:center;
-    font-size:12.5px;border-radius:0;
-    color:var(--ink-dim);background:transparent;transition:color .12s ease,background .12s ease;
+    font-size:13px;border-radius:var(--radius-sm);
+    color:var(--ink-dim);background:transparent;border:none;cursor:pointer;
+    transition:color .15s ease,background .15s ease;
   }
-  .topbar .subtab:hover{color:var(--ink);background:rgba(255,255,255,0.03);}
-  .topbar .subtab.is-active{color:var(--ink);font-weight:600;background:transparent;}
-  .topbar .subtab.is-active::before{
-    content:'';position:absolute;left:-1px;width:1px;top:6px;bottom:6px;background:var(--accent);
-  }
+  .topbar .subtab:hover{color:var(--ink);background:rgba(255,255,255,0.04);}
+  :root[data-theme="light"] .topbar .subtab:hover{color:var(--ink);background:rgba(0,0,0,0.03);}
+  .topbar .subtab.is-active{color:var(--accent);font-weight:600;background:var(--accent-soft);}
+  .topbar .subtab.is-active::before{display:none;}
   .topbar .subtab{position:relative;}
 
   .topbar .topbar-tools{
-    margin-top:auto;flex-direction:column;align-items:stretch;gap:6px;
-    padding:12px 12px 14px;border-top:1px solid var(--line);
+    margin-top:auto;flex-direction:column;align-items:stretch;gap:8px;
+    padding:14px 12px;border-top:1px solid var(--line);background:var(--bg);
   }
-  .topbar .topbar-tools .btn{justify-content:flex-start;font-size:12.5px;padding:7px 12px;border-radius:var(--radius-md);}
+  .topbar .topbar-tools .btn{justify-content:flex-start;font-size:13px;padding:7px 12px;border-radius:var(--radius-md);}
   .topbar .version-badge{justify-content:center;margin-right:0;border-radius:var(--radius-md);}
-  .pages{margin-left:var(--sidebar-w);padding:28px 32px 96px;max-width:1400px}
+  .pages{margin-left:var(--sidebar-w);padding:24px 28px 96px;max-width:1440px}
 }
 
 .grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:18px}
@@ -407,7 +415,7 @@ textarea{display:block;width:100%;min-height:140px;font-family:var(--mono);font-
 .btn:hover{border-color:var(--ink);background:var(--accent-soft)}
 .btn:active{background:var(--accent-soft)}
 .btn:disabled{opacity:.4;cursor:not-allowed;}
-.btn-primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn-primary{background:var(--accent);color:#ffffff;border-color:var(--accent);font-weight:500;box-shadow:0 2px 0 rgba(5,145,255,0.1);}
 .btn-primary:hover{background:var(--accent-hover);color:var(--accent-ink);border-color:var(--accent-hover)}
 .btn-primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover);box-shadow:0 2px 6px rgba(var(--accent-rgb),0.35)}
