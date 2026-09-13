@@ -7,6 +7,17 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.9.1 — 2026-09-13
+
+### Changed
+- **Admin chuyển sang layout Ant Design Admin nhưng dùng hệ màu X.com (bỏ SaaS blue):**
+  - **Bỏ màu xanh SaaS:** accent trở về đơn sắc — trắng `#ffffff` (dark mode) và gần-đen `#0f1419` (light mode). Kiểm tra computed style: **0 phần tử còn ánh xanh**.
+  - **Giảm mạnh bo cong:** thang radius hạ còn `2–4px` (card, button, input đều 4px). Chỉ còn 3 chỗ bo tròn hợp lý: logo tròn, chấm status, thanh progress bar.
+  - **Phẳng hoá bề mặt:** bỏ toàn bộ `box-shadow` trên card/nút; phân tầng bằng viền hairline 1px theo đúng cách X.com làm.
+  - **Sidebar Ant Design Admin:** cao 232px, header 56px, mục menu cao 40px vuông vắn, tab active là khối nền mờ + vạch accent 2px bên trái (bỏ pill bo tròn). Sub-menu dạng cây với đường kẻ dọc 1px, mục con active có vạch định vị.
+  - **Mật độ hiển thị:** nút/ô nhập cao 32px chuẩn Ant Design, bảng dữ liệu header 11px uppercase + padding 11/12px, card padding 20/22px, vùng nội dung max-width 1400px.
+  - **Icon Ant Design** cho cả 9 tab, label tách riêng nên chuyển VI/EN vẫn hoạt động.
+
 ## 1.9.0 — 2026-09-13
 
 ### Changed
