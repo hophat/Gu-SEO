@@ -57,7 +57,7 @@
       a.href = 'https://seo.benjaminb.xyz/docs#err-' + opts.errorCode;
       a.target = '_blank';
       a.rel = 'noopener';
-      a.textContent = 'docs →';
+      a.textContent = 'tài liệu →';
       card.appendChild(a);
     }
     if (opts.action) {
@@ -69,7 +69,7 @@
     }
     const close = document.createElement('button');
     close.className = 'toast-close';
-    close.setAttribute('aria-label', 'Dismiss');
+    close.setAttribute('aria-label', 'Đóng');
     close.textContent = '×';
     card.appendChild(close);
     root.appendChild(card);
@@ -127,7 +127,7 @@
       // SOMETHING. No dot, since we can't compare.
       lbl.textContent = installedSha ? 'v' + installedSha.slice(0, 7) : 'pages-seo';
       dot.hidden = true;
-      btn.title = 'Couldn\'t check for updates';
+      btn.title = 'Không thể kiểm tra bản cập nhật';
       return;
     }
 
@@ -142,15 +142,15 @@
       // the SHA. Show upstream's label but no comparison.
       lbl.textContent = label;
       dot.hidden = true;
-      btn.title = 'Upstream is at ' + label + '. (Your installed version isn\'t recorded.)';
+      btn.title = 'Bản upstream hiện là ' + label + '. (Chưa ghi nhận phiên bản cài đặt của bạn.)';
     } else if (ahead) {
       lbl.textContent = 'v' + installedSha.slice(0, 7) + ' → ' + label;
       dot.hidden = false;
-      btn.title = `Update available: upstream is at ${label}. Click to open the Updates tab.`;
+      btn.title = `Có bản cập nhật mới: upstream hiện là ${label}. Nhấn để mở tab Cập nhật.`;
     } else {
       lbl.textContent = label;
       dot.hidden = true;
-      btn.title = 'You\'re running ' + label + ' — up to date with upstream.';
+      btn.title = 'Bạn đang chạy phiên bản ' + label + ' — đã đồng bộ với upstream.';
     }
   }
   window.psPopulateVersionBadge = populateVersionBadge;
@@ -269,8 +269,8 @@
     const form = $('#login-form');
     if (form) form.style.display = 'none';
     err.textContent =
-      'Setup is not complete. Missing: ' + (missing.join(', ') || 'unknown') +
-      '. Run setup.sh / setup.py / setup.js, or push the missing secrets with `wrangler pages secret put <NAME>`, then redeploy.';
+      'Chưa hoàn tất cài đặt. Thiếu: ' + (missing.join(', ') || 'không rõ') +
+      '. Hãy chạy setup.sh / setup.py / setup.js, hoặc đẩy secret còn thiếu bằng `wrangler pages secret put <TÊN>`, sau đó deploy lại.';
   }
 
   async function showGate(initial) {
@@ -303,7 +303,7 @@
       e.preventDefault();
       runLogin().catch((err) => {
         const errEl = document.getElementById('gate-err');
-        if (errEl) errEl.textContent = 'Network error: ' + (err?.message || err);
+        if (errEl) errEl.textContent = 'Lỗi mạng: ' + (err?.message || err);
       });
       return false;
     });
@@ -316,8 +316,8 @@
     const go = document.getElementById('gate-go');
     const e2 = String(email.value || '').trim().toLowerCase();
     const p2 = String(password.value || '');
-    if (!e2 || !p2) { err.textContent = 'Email and password required.'; return; }
-    err.textContent = ''; go.disabled = true; go.textContent = 'Signing in…';
+    if (!e2 || !p2) { err.textContent = 'Vui lòng nhập email và mật khẩu.'; return; }
+    err.textContent = ''; go.disabled = true; go.textContent = 'Đang đăng nhập…';
     try {
       const { status, body } = await api('/api/admin/login', {
         method: 'POST',
@@ -329,21 +329,21 @@
       }
       if (status === 429) {
         const wait = body?.retry_after_sec ? Math.ceil(body.retry_after_sec / 60) : 60;
-        err.textContent = `Too many failed attempts. Try again in ~${wait} min.`;
+        err.textContent = `Quá nhiều lần thử thất bại. Vui lòng thử lại sau ~${wait} phút.`;
         return;
       }
       err.textContent = body?.error === 'invalid_credentials'
-        ? 'Email or password is incorrect.'
-        : (body?.error || `Sign-in failed (HTTP ${status}).`);
+        ? 'Email hoặc mật khẩu không chính xác.'
+        : (body?.error || `Đăng nhập thất bại (HTTP ${status}).`);
     } finally {
-      go.disabled = false; go.textContent = 'Sign in';
+      go.disabled = false; go.textContent = 'Đăng nhập';
     }
   }
 
   async function doLogout() {
     try { await api('/api/admin/logout', { method: 'POST' }); }
     catch { /* swallow */ }
-    showGate({ note: 'Signed out.' });
+    showGate({ note: 'Đã đăng xuất.' });
   }
 
   // Theme toggle: swap data-theme on <html>, persist choice.
@@ -390,11 +390,13 @@
   };
 
   // System-level surfaces a project-scoped operator must never reach:
-  // AI provider keys, budget, publishing targets, GSC credentials, and
-  // the install/update controls. Hidden from the nav and blocked in
-  // activateTab so deep links can't open them either.
-  const PROJECT_ADMIN_HIDDEN_TABS = ['settings', 'seo', 'status'];
-  const PROJECT_ADMIN_HIDDEN_PAGES = ['settings', 'seo', 'embeds', 'status', 'updates', 'usage'];
+  // AI provider keys and budget, global SEO settings, GSC credentials,
+  // and the install/update controls. Hidden from the nav and blocked in
+  // activateTab so deep links can't open them either. Distribution
+  // (seo + embeds) stays available — it is project-scoped and is how a
+  // tenant hands their blog to their own site.
+  const PROJECT_ADMIN_HIDDEN_TABS = ['settings', 'status'];
+  const PROJECT_ADMIN_HIDDEN_PAGES = ['settings', 'status', 'updates', 'usage'];
 
   function applyRoleVisibility(role) {
     const restricted = role !== 'super_admin';
@@ -550,7 +552,7 @@
     if (name === 'overview') loadOverview();
     if (name === 'blog') { loadJobs(); loadPosts(); }
     if (name === 'prog') { loadQueue(); }
-    if (name === 'seo') { renderWidgetSnippet(); }
+    if (name === 'seo') { renderDistribution(); }
     if (name === 'brand') { loadBrand(); }
     if (name === 'links') { Links.init(); }
     if (name === 'calendar') { Calendar.init(); }
@@ -614,7 +616,7 @@
         const trh = document.createElement('tr');
         const headers = currentLang === 'vi'
           ? ['Bài viết', 'Lượt xem', 'Thời gian đọc TB']
-          : ['Post', 'Views', 'Avg Read Time'];
+          : ['Bài viết', 'Lượt xem', 'Thời gian đọc TB'];
         for (const h of headers) {
           const th = document.createElement('th');
           th.textContent = h;
@@ -949,7 +951,7 @@
 
     // Headline numbers
     setText($('#usage-spent'),  fmtUSD(body.total.cost_usd));
-    setText($('#usage-budget'), body.budget.monthly_usd > 0 ? fmtUSD(body.budget.monthly_usd) : 'none');
+    setText($('#usage-budget'), body.budget.monthly_usd > 0 ? fmtUSD(body.budget.monthly_usd) : 'không có');
     setText($('#usage-pct'),    body.budget.monthly_usd > 0 ? body.budget.pct + '%' : '—');
     setText($('#usage-calls'),  fmtInt(body.total.calls));
     setText($('#usage-tokens'), fmtInt(body.total.total_tokens));
@@ -974,11 +976,11 @@
     if (body.budget.over_budget) {
       bCard.hidden = false;
       banner.className = 'usage-banner bad';
-      banner.innerHTML = '<strong>Budget exceeded.</strong> The cron Worker is now blocked. Admin generations still work (with a confirmation prompt). Increase the budget in Settings or wait for the next month.';
+      banner.innerHTML = '<strong>Đã vượt hạn mức ngân sách.</strong> Cron Worker tạm thời bị chặn. Việc tạo bài từ admin vẫn hoạt động (kèm hộp thoại xác nhận). Hãy tăng hạn mức trong Cài đặt hoặc chờ sang tháng sau.';
     } else if (body.budget.over_warn) {
       bCard.hidden = false;
       banner.className = 'usage-banner warn';
-      banner.innerHTML = `<strong>${body.budget.pct}% of monthly budget used.</strong> Consider tuning provider mix or pausing the cron until the new month.`;
+      banner.innerHTML = `<strong>Đã sử dụng ${body.budget.pct}% ngân sách hàng tháng.</strong> Hãy cân nhắc điều chỉnh các nhà cung cấp AI hoặc tạm dừng cron cho đến tháng mới.`;
     } else {
       bCard.hidden = true;
     }
@@ -988,7 +990,7 @@
     clearChildren(tbP);
     if (!body.by_provider.length) {
       const tr = document.createElement('tr'); const td_ = document.createElement('td');
-      td_.colSpan = 4; td_.className = 'dim'; td_.textContent = 'No usage yet for this window.';
+      td_.colSpan = 4; td_.className = 'dim'; td_.textContent = 'Chưa có dữ liệu sử dụng trong khoảng thời gian này.';
       tr.appendChild(td_); tbP.appendChild(tr);
     } else {
       for (const p of body.by_provider) {
@@ -1006,7 +1008,7 @@
     clearChildren(tbK);
     if (!body.by_kind.length) {
       const tr = document.createElement('tr'); const td_ = document.createElement('td');
-      td_.colSpan = 4; td_.className = 'dim'; td_.textContent = 'No usage yet.';
+      td_.colSpan = 4; td_.className = 'dim'; td_.textContent = 'Chưa có dữ liệu sử dụng.';
       tr.appendChild(td_); tbK.appendChild(tr);
     } else {
       for (const k of body.by_kind) {
@@ -1023,7 +1025,7 @@
     const daily = $('#usage-daily');
     clearChildren(daily);
     if (!body.daily.length) {
-      daily.textContent = 'No usage yet.';
+      daily.textContent = 'Chưa có dữ liệu sử dụng.';
       daily.className = 'usage-daily dim';
     } else {
       daily.className = 'usage-daily';
@@ -1035,7 +1037,7 @@
         const bar = document.createElement('div'); bar.className = 'usage-day-fill';
         bar.style.width = Math.max(2, (d.cost / max) * 100) + '%';
         barWrap.appendChild(bar);
-        const val = document.createElement('div'); val.className = 'usage-day-val'; val.textContent = `${fmtUSD(d.cost)} · ${d.calls} calls`;
+        const val = document.createElement('div'); val.className = 'usage-day-val'; val.textContent = `${fmtUSD(d.cost)} · ${d.calls} lượt gọi`;
         row.append(lbl, barWrap, val);
         daily.appendChild(row);
       }
@@ -1046,7 +1048,7 @@
     clearChildren(tbR);
     if (!body.recent.length) {
       const tr = document.createElement('tr'); const td_ = document.createElement('td');
-      td_.colSpan = 7; td_.className = 'dim'; td_.textContent = 'No calls yet.';
+      td_.colSpan = 7; td_.className = 'dim'; td_.textContent = 'Chưa có lượt gọi nào.';
       tr.appendChild(td_); tbR.appendChild(tr);
     } else {
       for (const r of body.recent) {
@@ -1114,10 +1116,10 @@
   async function generateBrand() {
     const url = $('#brand-url').value.trim();
     const status = $('#brand-gen-status');
-    if (!url) { status.className = 'status bad'; status.textContent = 'Enter a URL first.'; return; }
+    if (!url) { status.className = 'status bad'; status.textContent = 'Vui lòng nhập URL trước.'; return; }
     const btn = $('#brand-generate');
     btn.disabled = true;
-    status.className = 'status'; status.textContent = 'Scraping + analysing… ~10-30s';
+    status.className = 'status'; status.textContent = 'Đang cào & phân tích… ~10-30s';
     const { status: code, body } = await api('/api/admin/brand-dna', {
       method: 'POST',
       body: JSON.stringify({
@@ -1140,16 +1142,16 @@
     const su = $('[data-brand="source_url"]');
     if (su) su.value = body.brand.source_url || '';
     status.className = 'status good';
-    status.textContent = `Generated · provider=${body.brand.provider}. Review then click Save.`;
+    status.textContent = `Đã tạo · nhà cung cấp=${body.brand.provider}. Hãy xem lại rồi nhấn Lưu.`;
   }
 
   function clearBrandFields() {
-    if (!confirm('Clear all brand DNA fields locally? (Click Save afterwards to persist the empty state.)')) return;
+    if (!confirm('Xóa trắng các trường Brand DNA ở giao diện hiện tại? (Nhấn Lưu sau đó để lưu trạng thái rỗng.)')) return;
     $$('[data-brand]').forEach((el) => { el.value = ''; });
     const ga = $('#brand-generated-at'); if (ga) ga.value = '';
     const su = $('#brand-url'); if (su) su.value = '';
     const status = $('#brand-save-status');
-    status.className = 'status'; status.textContent = 'Fields cleared. Click Save to persist.';
+    status.className = 'status'; status.textContent = 'Đã xóa các trường. Nhấn Lưu để lưu thay đổi.';
   }
 
   async function runBrandFilter(dryRun) {
@@ -1159,7 +1161,7 @@
     const goBtn = $('#brand-filter-go');
     dryBtn.disabled = true; goBtn.disabled = true;
     status.className = 'status';
-    status.textContent = dryRun ? 'Dry-running…' : 'Filtering (this writes failures back to D1)…';
+    status.textContent = dryRun ? 'Đang chạy thử…' : 'Đang lọc (kết quả bị loại sẽ được ghi vào D1)…';
     const { status: code, body } = await api('/api/admin/brand-filter-queue', {
       method: 'POST',
       body: JSON.stringify({ dry_run: !!dryRun }),
@@ -1172,13 +1174,13 @@
       return;
     }
     status.className = 'status good';
-    status.textContent = `${dryRun ? '[dry]' : '[applied]'} ${body.evaluated} evaluated · ${body.kept} kept · ${body.dropped} dropped · provider=${body.provider}`;
+    status.textContent = `${dryRun ? '[thử nghiệm]' : '[áp dụng]'} đã đánh giá ${body.evaluated} · giữ lại ${body.kept} · loại bỏ ${body.dropped} · nhà cung cấp=${body.provider}`;
     if (!dryRun) loadQueue();
     // Render the dropped sample
     out.hidden = false;
     clearChildren(out);
     if (body.dropped_sample?.length) {
-      const h = document.createElement('h4'); h.textContent = 'Dropped (first ' + body.dropped_sample.length + ')';
+      const h = document.createElement('h4'); h.textContent = 'Bị loại (' + body.dropped_sample.length + ' mục đầu tiên)';
       out.appendChild(h);
       const ul = document.createElement('ul');
       for (const d of body.dropped_sample) {
@@ -1191,14 +1193,14 @@
       out.appendChild(ul);
     } else {
       const p = document.createElement('p'); p.className = 'dim';
-      p.textContent = 'Nothing was off-brand.';
+      p.textContent = 'Không có từ khóa nào sai lệch định hướng thương hiệu.';
       out.appendChild(p);
     }
   }
 
   async function saveBrand() {
     const status = $('#brand-save-status');
-    status.className = 'status'; status.textContent = 'Saving…';
+    status.className = 'status'; status.textContent = 'Đang lưu…';
     const payload = {};
     $$('[data-brand]').forEach((el) => {
       payload[el.dataset.brand] = (el.value || '').toString();
@@ -1212,11 +1214,11 @@
     }
     status.className = 'status good';
     if (body.planning) {
-      status.innerHTML = `Saved · ${body.saved} field(s). Planning your <a href="#" data-jump-cal>Content Calendar</a> in the background…`;
+      status.innerHTML = `Đã lưu · ${body.saved} trường. Đang lên kế hoạch cho <a href="#" data-jump-cal>Lịch bài viết</a> ở chế độ nền…`;
       const link = status.querySelector('[data-jump-cal]');
       if (link) link.addEventListener('click', (e) => { e.preventDefault(); activateTab('calendar'); });
     } else {
-      status.textContent = `Saved · ${body.saved} field(s). Every new post will use this.`;
+      status.textContent = `Đã lưu · ${body.saved} trường. Tất cả bài viết mới sẽ áp dụng thông tin này.`;
     }
     setTimeout(() => { status.textContent = ''; status.className = 'status'; }, 6000);
   }
@@ -1231,14 +1233,14 @@
     if (!list) return;
     const { status, body } = await api('/api/admin/embeds');
     if (status !== 200) {
-      list.textContent = 'Failed to load: ' + (body?.error || status);
+      list.textContent = 'Lỗi tải danh sách widget: ' + (body?.error || status);
       list.className = 'dim'; return;
     }
     clearChildren(list);
     list.className = '';
     if (!body.embeds?.length) {
       const d = document.createElement('div'); d.className = 'dim';
-      d.textContent = 'No embeds yet. Create one above.';
+      d.textContent = 'Chưa có widget nào. Hãy tạo widget ở trên.';
       list.appendChild(d); return;
     }
     for (const e of body.embeds) {
@@ -1248,10 +1250,10 @@
       const name = document.createElement('div'); name.className = 'embed-name'; name.textContent = e.name;
       const meta = document.createElement('div'); meta.className = 'embed-meta';
       const settingsBits = [];
-      if (e.settings?.title)  settingsBits.push('title: ' + e.settings.title);
-      if (e.settings?.accent) settingsBits.push('accent: ' + e.settings.accent);
-      if (e.settings?.limit)  settingsBits.push('limit: ' + e.settings.limit);
-      meta.textContent = settingsBits.join(' · ') || 'defaults';
+      if (e.settings?.title)  settingsBits.push('tiêu đề: ' + e.settings.title);
+      if (e.settings?.accent) settingsBits.push('màu: ' + e.settings.accent);
+      if (e.settings?.limit)  settingsBits.push('giới hạn: ' + e.settings.limit);
+      meta.textContent = settingsBits.join(' · ') || 'mặc định';
       head.append(name, meta);
       row.appendChild(head);
 
@@ -1261,19 +1263,19 @@
 
       const actions = document.createElement('div'); actions.className = 'embed-actions';
       const copy = document.createElement('button'); copy.className = 'btn btn-sm';
-      copy.textContent = 'Copy snippet';
+      copy.textContent = 'Sao chép mã';
       copy.onclick = async () => {
         try {
           await navigator.clipboard.writeText(e.snippet);
-          copy.textContent = 'Copied!';
-          setTimeout(() => (copy.textContent = 'Copy snippet'), 1500);
-        } catch { copy.textContent = 'Select + copy manually'; }
+          copy.textContent = 'Đã sao chép!';
+          setTimeout(() => (copy.textContent = 'Sao chép mã'), 1500);
+        } catch { copy.textContent = 'Bôi đen & chép thủ công'; }
       };
       const preview = document.createElement('button'); preview.className = 'btn btn-sm';
-      preview.textContent = 'Preview';
+      preview.textContent = 'Xem trước';
       const previewBox = document.createElement('div'); previewBox.className = 'embed-preview'; previewBox.hidden = true;
       preview.onclick = () => {
-        if (!previewBox.hidden) { previewBox.hidden = true; preview.textContent = 'Preview'; return; }
+        if (!previewBox.hidden) { previewBox.hidden = true; preview.textContent = 'Xem trước'; return; }
         clearChildren(previewBox);
         // Build an iframe so the host CSS doesn't leak in.
         const iframe = document.createElement('iframe');
@@ -1281,15 +1283,15 @@
         iframe.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>preview</title></head><body><div id="ps-blog"></div><script src="${e.embed_url}" defer></script></body></html>`;
         previewBox.appendChild(iframe);
         previewBox.hidden = false;
-        preview.textContent = 'Hide preview';
+        preview.textContent = 'Ẩn xem trước';
       };
       const open = document.createElement('a'); open.className = 'btn btn-sm';
-      open.textContent = 'Open URL';
+      open.textContent = 'Mở URL';
       open.href = e.embed_url; open.target = '_blank'; open.rel = 'noopener';
       const del = document.createElement('button'); del.className = 'btn btn-sm embed-del';
-      del.textContent = 'Delete';
+      del.textContent = 'Xóa';
       del.onclick = async () => {
-        if (!confirm('Delete the embed "' + e.name + '"? Anyone using the snippet on a live site will see an empty widget.')) return;
+        if (!confirm('Xóa widget "' + e.name + '"? Bất kỳ ai đang dùng đoạn mã này trên trang web sẽ thấy khung trống.')) return;
         await api('/api/admin/embeds?id=' + encodeURIComponent(e.id), { method: 'DELETE' });
         loadEmbeds();
       };
@@ -1303,7 +1305,7 @@
   async function createEmbed() {
     const status = $('#embed-create-status');
     const name = $('#embed-create-name').value.trim();
-    if (!name) { status.className = 'status bad'; status.textContent = 'Name required.'; return; }
+    if (!name) { status.className = 'status bad'; status.textContent = 'Tên không được để trống.'; return; }
     const settings = {};
     const title  = $('#embed-create-title').value.trim();
     const accent = $('#embed-create-accent').value;
@@ -1311,18 +1313,18 @@
     if (title)  settings.title = title;
     if (accent) settings.accent = accent;
     if (Number.isFinite(limit) && limit > 0) settings.limit = limit;
-    status.className = 'status'; status.textContent = 'Creating…';
+    status.className = 'status'; status.textContent = 'Đang tạo…';
     const { status: code, body } = await api('/api/admin/embeds', {
       method: 'POST',
       body: JSON.stringify({ name, settings }),
     });
     if (code !== 200 || !body?.ok) {
       status.className = 'status bad';
-      status.textContent = 'Failed: ' + (body?.error || code);
+      status.textContent = 'Thất bại: ' + (body?.error || code);
       return;
     }
     status.className = 'status good';
-    status.textContent = 'Created.';
+    status.textContent = 'Đã tạo thành công.';
     $('#embed-create-name').value = '';
     $('#embed-create-title').value = '';
     $('#embed-create-limit').value = '';
@@ -1339,7 +1341,7 @@
       modelEnvKey: 'WORKERS_AI_TEXT_MODEL',
       modelDefault: '@cf/qwen/qwen3-30b-a3b-fp8',
       models: [
-        { id: '@cf/qwen/qwen3-30b-a3b-fp8',                label: 'Qwen3 30B A3B FP8 (recommended)' },
+        { id: '@cf/qwen/qwen3-30b-a3b-fp8',                label: 'Qwen3 30B A3B FP8 (khuyến nghị)' },
         { id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',  label: 'Llama 3.3 70B FP8 Fast' },
         { id: '@cf/meta/llama-3.1-70b-instruct',           label: 'Llama 3.1 70B' },
         { id: '@cf/mistral/mistral-7b-instruct-v0.2',      label: 'Mistral 7B v0.2' },
@@ -1351,10 +1353,10 @@
       modelEnvKey: 'ANTHROPIC_TEXT_MODEL',
       modelDefault: 'claude-fable-5',
       models: [
-        { id: 'claude-fable-5',       label: 'Claude Fable 5 (most powerful)' },
+        { id: 'claude-fable-5',       label: 'Claude Fable 5 (mạnh nhất)' },
         { id: 'claude-opus-4-8',      label: 'Claude Opus 4.8' },
         { id: 'claude-sonnet-4-6',    label: 'Claude Sonnet 4.6' },
-        { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fastest)' },
+        { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (nhanh nhất)' },
       ],
     },
     {
@@ -1363,10 +1365,10 @@
       modelEnvKey: 'OPENAI_TEXT_MODEL',
       modelDefault: 'gpt-5',
       models: [
-        { id: 'gpt-5',         label: 'GPT-5 (most powerful)' },
+        { id: 'gpt-5',         label: 'GPT-5 (mạnh nhất)' },
         { id: 'gpt-4.1',       label: 'GPT-4.1' },
         { id: 'gpt-4.1-mini',  label: 'GPT-4.1 Mini' },
-        { id: 'o3',            label: 'o3 (reasoning)' },
+        { id: 'o3',            label: 'o3 (suy luận)' },
         { id: 'o4-mini',       label: 'o4-mini (reasoning, fast)' },
       ],
     },
@@ -1376,7 +1378,7 @@
       modelEnvKey: 'GEMINI_TEXT_MODEL',
       modelDefault: 'gemini-2.5-pro',
       models: [
-        { id: 'gemini-2.5-pro',        label: 'Gemini 2.5 Pro (most powerful)' },
+        { id: 'gemini-2.5-pro',        label: 'Gemini 2.5 Pro (mạnh nhất)' },
         { id: 'gemini-2.5-flash',      label: 'Gemini 2.5 Flash' },
         { id: 'gemini-2.0-flash',      label: 'Gemini 2.0 Flash' },
         { id: 'gemini-1.5-pro',        label: 'Gemini 1.5 Pro' },
@@ -1388,10 +1390,10 @@
       modelEnvKey: 'GUROUTER_TEXT_MODEL',
       modelDefault: 'deepseek/deepseek-chat',
       models: [
-        { id: 'deepseek/deepseek-chat',     label: 'DeepSeek V3 (via GuRouter)' },
+        { id: 'deepseek/deepseek-chat',     label: 'DeepSeek V3 (qua GuRouter)' },
         { id: 'deepseek/deepseek-reasoner', label: 'DeepSeek R1 (Reasoning)' },
-        { id: 'openai/gpt-4o',              label: 'GPT-4o (via GuRouter)' },
-        { id: 'openai/gpt-4o-mini',         label: 'GPT-4o Mini (Fast)' },
+        { id: 'openai/gpt-4o',              label: 'GPT-4o (qua GuRouter)' },
+        { id: 'openai/gpt-4o-mini',         label: 'GPT-4o Mini (nhanh)' },
         { id: 'anthropic/claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
       ],
     },
@@ -1404,7 +1406,7 @@
         { id: 'llama-3.3-70b-versatile',  label: 'Llama 3.3 70B Versatile' },
         { id: 'llama-3.1-70b-versatile',  label: 'Llama 3.1 70B Versatile' },
         { id: 'mixtral-8x7b-32768',       label: 'Mixtral 8x7B' },
-        { id: 'gemma2-9b-it',             label: 'Gemma 2 9B (fastest)' },
+        { id: 'gemma2-9b-it',             label: 'Gemma 2 9B (nhanh nhất)' },
       ],
     },
     {
@@ -1413,8 +1415,8 @@
       modelEnvKey: 'DEEPSEEK_TEXT_MODEL',
       modelDefault: 'deepseek-chat',
       models: [
-        { id: 'deepseek-chat',     label: 'DeepSeek V3 (most powerful)' },
-        { id: 'deepseek-reasoner', label: 'DeepSeek R1 (reasoning)' },
+        { id: 'deepseek-chat',     label: 'DeepSeek V3 (mạnh nhất)' },
+        { id: 'deepseek-reasoner', label: 'DeepSeek R1 (suy luận)' },
       ],
     },
     {
@@ -1423,9 +1425,9 @@
       modelEnvKey: 'MISTRAL_TEXT_MODEL',
       modelDefault: 'mistral-large-latest',
       models: [
-        { id: 'mistral-large-latest',   label: 'Mistral Large (most powerful)' },
+        { id: 'mistral-large-latest',   label: 'Mistral Large (mạnh nhất)' },
         { id: 'mistral-medium-latest',  label: 'Mistral Medium' },
-        { id: 'mistral-small-latest',   label: 'Mistral Small (fastest)' },
+        { id: 'mistral-small-latest',   label: 'Mistral Small (nhanh nhất)' },
         { id: 'codestral-latest',       label: 'Codestral (code-focused)' },
       ],
     },
@@ -1435,10 +1437,10 @@
       modelEnvKey: 'TOGETHER_TEXT_MODEL',
       modelDefault: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
       models: [
-        { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',   label: 'Llama 3.3 70B Turbo (most powerful)' },
+        { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',   label: 'Llama 3.3 70B Turbo (mạnh nhất)' },
         { id: 'meta-llama/Llama-3.1-405B-Instruct-Turbo',  label: 'Llama 3.1 405B Turbo' },
         { id: 'Qwen/Qwen2.5-72B-Instruct-Turbo',           label: 'Qwen2.5 72B Turbo' },
-        { id: 'mistralai/Mixtral-8x22B-Instruct-v0.1',     label: 'Mixtral 8x22B (fastest)' },
+        { id: 'mistralai/Mixtral-8x22B-Instruct-v0.1',     label: 'Mixtral 8x22B (nhanh nhất)' },
       ],
     },
     {
@@ -1447,9 +1449,9 @@
       modelEnvKey: 'CEREBRAS_TEXT_MODEL',
       modelDefault: 'llama-3.3-70b',
       models: [
-        { id: 'llama-3.3-70b',    label: 'Llama 3.3 70B (most powerful)' },
+        { id: 'llama-3.3-70b',    label: 'Llama 3.3 70B (mạnh nhất)' },
         { id: 'llama-3.1-70b',    label: 'Llama 3.1 70B' },
-        { id: 'llama-3.1-8b',     label: 'Llama 3.1 8B (fastest)' },
+        { id: 'llama-3.1-8b',     label: 'Llama 3.1 8B (nhanh nhất)' },
       ],
     },
   ];
@@ -1488,14 +1490,14 @@
         'binding':       'binding',
         'pages-secret':  'pages secret',
         'vault':         'vault',
-        'unset':         p.optional ? 'not set' : 'missing',
+        'unset':         p.optional ? 'chưa thiết lập' : 'còn thiếu',
       }[source];
       head.append(dot, label, badge);
 
       const sub = document.createElement('div'); sub.className = 'provider-sub';
       const caps = [];
-      if (p.text)  caps.push('text');
-      if (p.image) caps.push('image');
+      if (p.text)  caps.push('văn bản');
+      if (p.image) caps.push('hình ảnh');
       sub.textContent = `${p.envKey} · ${caps.join(' + ')}`;
       card.append(head, sub);
 
@@ -1503,7 +1505,7 @@
         // No API key edit — it's a binding. But model is still selectable.
         const note = document.createElement('div'); note.className = 'provider-sub';
         note.style.color = 'var(--ink-faint)';
-        note.textContent = 'Configured via the [ai] binding in wrangler.toml.';
+        note.textContent = 'Được cấu hình thông qua binding [ai] trong wrangler.toml.';
         card.append(note);
         if (p.models?.length) card.append(buildModelRow(p, sources));
         grid.appendChild(card);
@@ -1515,27 +1517,27 @@
       const input = document.createElement('input');
       input.type = 'password';
       input.placeholder = configured
-        ? `${source} value set — paste a new key to replace`
-        : `Paste ${p.envKey} (stored encrypted)`;
+        ? `Đã có giá trị ${source} — dán key mới để thay thế`
+        : `Dán ${p.envKey} (lưu trữ mã hóa)`;
       input.autocomplete = 'off';
       const save = document.createElement('button');
       save.className = 'btn btn-primary btn-sm';
-      save.textContent = 'Save';
+      save.textContent = 'Lưu';
       save.onclick = async () => {
         const val = input.value.trim();
         if (!val) { input.focus(); return; }
-        save.disabled = true; save.textContent = 'Saving…';
+        save.disabled = true; save.textContent = 'Đang lưu…';
         const { status, body } = await api('/api/admin/secrets', {
           method: 'POST',
           body: JSON.stringify({ name: p.envKey, value: val }),
         });
-        save.disabled = false; save.textContent = 'Save';
+        save.disabled = false; save.textContent = 'Lưu';
         if (status === 200 && body?.ok) {
           input.value = '';
           loadProviderGrid(); // refresh
         } else {
           save.textContent = body?.error || ('http ' + status);
-          setTimeout(() => (save.textContent = 'Save'), 2500);
+          setTimeout(() => (save.textContent = 'Lưu'), 2500);
         }
       };
       editRow.append(input, save);
@@ -1548,9 +1550,9 @@
       if (source === 'vault') {
         const actions = document.createElement('div'); actions.className = 'provider-actions';
         const del = document.createElement('button'); del.className = 'btn btn-ghost btn-sm provider-del';
-        del.textContent = 'Remove from vault';
+        del.textContent = 'Xóa khỏi vault';
         del.onclick = async () => {
-          if (!confirm(`Remove ${p.envKey} from the encrypted vault?`)) return;
+          if (!confirm(`Xóa ${p.envKey} khỏi vault đã mã hóa?`)) return;
           await api('/api/admin/secrets?name=' + encodeURIComponent(p.envKey), { method: 'DELETE' });
           loadProviderGrid();
         };
@@ -1561,14 +1563,14 @@
         const cmd = `wrangler pages secret put ${p.envKey} --project-name=${projectName}`;
         const code = document.createElement('code'); code.textContent = cmd;
         const copy = document.createElement('button'); copy.className = 'btn btn-ghost btn-sm';
-        copy.textContent = 'Copy CLI cmd';
+        copy.textContent = 'Sao chép lệnh CLI';
         copy.onclick = async () => {
           try {
             await navigator.clipboard.writeText(cmd);
-            copy.textContent = 'Copied';
-            setTimeout(() => (copy.textContent = 'Copy CLI cmd'), 1500);
+            copy.textContent = 'Đã sao chép';
+            setTimeout(() => (copy.textContent = 'Sao chép lệnh CLI'), 1500);
           } catch {
-            copy.textContent = 'Select+copy';
+            copy.textContent = 'Bôi đen & chép';
           }
         };
         cmdRow.append(code, copy);
@@ -1582,7 +1584,7 @@
     function buildModelRow(p, sources) {
       const wrap = document.createElement('div'); wrap.className = 'provider-model-row';
       const lbl = document.createElement('span'); lbl.className = 'provider-model-label';
-      lbl.textContent = 'Model';
+      lbl.textContent = 'Mô hình';
       const sel = document.createElement('select'); sel.className = 'provider-model-select';
       // Current value: the stored secret for this env key, else the default.
       const curVal = sources[p.modelEnvKey] || p.modelDefault;
@@ -1597,15 +1599,15 @@
       const knownIds = new Set(p.models.map((m) => m.id));
       if (!knownIds.has(curVal)) {
         const o = document.createElement('option');
-        o.value = curVal; o.textContent = curVal + ' (custom)'; o.selected = true;
+        o.value = curVal; o.textContent = curVal + ' (tùy chỉnh)'; o.selected = true;
         sel.insertBefore(o, sel.firstChild);
       }
       const saveBtn = document.createElement('button');
       saveBtn.className = 'btn btn-ghost btn-sm';
-      saveBtn.textContent = 'Apply';
+      saveBtn.textContent = 'Áp dụng';
       saveBtn.onclick = async () => {
         const val = sel.value;
-        saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+        saveBtn.disabled = true; saveBtn.textContent = 'Đang lưu…';
         // If the selected model is the hard-coded default, remove the override
         // so the binary default takes effect (cleaner state).
         let r;
@@ -1618,19 +1620,19 @@
           });
         }
         saveBtn.disabled = false;
-        saveBtn.textContent = (r.status === 200) ? '✓ Applied' : 'Error';
-        setTimeout(() => (saveBtn.textContent = 'Apply'), 1800);
+        saveBtn.textContent = (r.status === 200) ? '✓ Đã áp dụng' : 'Lỗi';
+        setTimeout(() => (saveBtn.textContent = 'Áp dụng'), 1800);
       };
       wrap.append(lbl, sel, saveBtn);
 
       if (p.name === 'gurouter') {
         const fetchBtn = document.createElement('button');
         fetchBtn.className = 'btn btn-ghost btn-sm';
-        fetchBtn.textContent = '🔄 Fetch models';
-        fetchBtn.title = 'Fetch available models live from GuRouter API';
+        fetchBtn.textContent = '🔄 Lấy danh sách mô hình';
+        fetchBtn.title = 'Lấy danh sách mô hình trực tiếp từ GuRouter API';
         fetchBtn.onclick = async () => {
           fetchBtn.disabled = true;
-          fetchBtn.textContent = 'Fetching…';
+          fetchBtn.textContent = 'Đang lấy…';
           try {
             const resp = await api('/api/admin/providers/gurouter-models');
             if (resp.status === 200 && resp.body?.ok && Array.isArray(resp.body.models)) {
@@ -1644,17 +1646,17 @@
                 if (m.id === cur) opt.selected = true;
                 sel.appendChild(opt);
               }
-              fetchBtn.textContent = `✓ ${fetched.length} models`;
-              setTimeout(() => (fetchBtn.textContent = '🔄 Fetch models'), 2500);
+              fetchBtn.textContent = `✓ ${fetched.length} mô hình`;
+              setTimeout(() => (fetchBtn.textContent = '🔄 Lấy danh sách mô hình'), 2500);
             } else {
-              alert(resp.body?.hint || resp.body?.error || 'Failed to fetch models from GuRouter. Make sure GUROUTER_API_KEY is saved.');
-              fetchBtn.textContent = 'Failed';
-              setTimeout(() => (fetchBtn.textContent = '🔄 Fetch models'), 2000);
+              alert(resp.body?.hint || resp.body?.error || 'Không thể lấy mô hình từ GuRouter. Hãy đảm bảo đã lưu GUROUTER_API_KEY.');
+              fetchBtn.textContent = 'Thất bại';
+              setTimeout(() => (fetchBtn.textContent = '🔄 Lấy danh sách mô hình'), 2000);
             }
           } catch (err) {
-            alert('Fetch error: ' + err.message);
-            fetchBtn.textContent = 'Error';
-            setTimeout(() => (fetchBtn.textContent = '🔄 Fetch models'), 2000);
+            alert('Lỗi lấy dữ liệu: ' + err.message);
+            fetchBtn.textContent = 'Lỗi';
+            setTimeout(() => (fetchBtn.textContent = '🔄 Lấy danh sách mô hình'), 2000);
           } finally {
             fetchBtn.disabled = false;
           }
@@ -1722,7 +1724,7 @@
     const ta     = $('#gsc-sa-json');
     const propEl = $('#gsc-property');
     const apiEl  = $('#gsc-use-indexing-api');
-    setText(status, 'saving…');
+    setText(status, 'đang lưu…');
     const payload = {};
     if (ta && ta.value.trim()) payload.sa_json = ta.value.trim();
     if (propEl) payload.property = propEl.value.trim();
@@ -1730,12 +1732,12 @@
     const r = await api('/api/admin/google-search-console', { method: 'POST', body: JSON.stringify(payload) });
     if (r.status !== 200) {
       status.className = 'status bad';
-      status.textContent = r.body?.detail || r.body?.error || `failed (${r.status})`;
+      status.textContent = r.body?.detail || r.body?.error || `thất bại (${r.status})`;
       return;
     }
     if (ta) ta.value = ''; // clear textarea so it doesn't sit around
     status.className = 'status good';
-    status.textContent = '✓ Saved.';
+    status.textContent = '✓ Đã lưu.';
     setTimeout(() => { status.textContent = ''; status.className = 'status'; }, 4000);
     loadGsc();
   }
@@ -1746,36 +1748,36 @@
     const status = $('#gsc-status');
     const btn = $('#gsc-test');
     btn.disabled = true;
-    setText(status, 'testing…');
+    setText(status, 'đang kiểm tra…');
     const r = await api('/api/admin/google-search-console/test', { method: 'POST' });
     btn.disabled = false;
     if (r.status !== 200) {
       status.className = 'status bad';
-      status.textContent = r.body?.detail || r.body?.error || `failed (${r.status})`;
+      status.textContent = r.body?.detail || r.body?.error || `thất bại (${r.status})`;
       return;
     }
     const sm = r.body?.result?.sitemap;
     if (sm?.ok) {
       status.className = 'status good';
-      status.textContent = `✓ Sitemap submitted to ${sm.property}.`;
+      status.textContent = `✓ Đã gửi sitemap tới ${sm.property}.`;
     } else {
       status.className = 'status bad';
-      status.textContent = `Sitemap failed: ${sm?.detail || sm?.error || 'unknown'}`;
+      status.textContent = `Gửi sitemap thất bại: ${sm?.detail || sm?.error || 'không rõ'}`;
     }
   }
 
   async function clearGsc() {
-    if (!confirm('Clear Google Search Console credentials? Auto-indexing on publish will stop.')) return;
+    if (!confirm('Xóa thông tin xác thực Google Search Console? Quá trình tự động index khi xuất bản sẽ dừng lại.')) return;
     const status = $('#gsc-status');
-    setText(status, 'clearing…');
+    setText(status, 'đang xóa…');
     const r = await api('/api/admin/google-search-console', { method: 'DELETE' });
     if (r.status !== 200) {
       status.className = 'status bad';
-      status.textContent = r.body?.detail || 'failed';
+      status.textContent = r.body?.detail || 'thất bại';
       return;
     }
     status.className = 'status';
-    status.textContent = 'Cleared.';
+    status.textContent = 'Đã xóa.';
     loadGsc();
   }
 
@@ -1792,11 +1794,11 @@
     if (b.configured) {
       const props = b.property ? ` · property ${b.property}` : '';
       if (status) {
-        status.textContent = `✓ Configured — ${b.client_email}${props}`;
+        status.textContent = `✓ Đã cấu hình — ${b.client_email}${props}`;
         status.className = 'dim good';
       }
     } else if (status) {
-      status.textContent = 'Not configured. Paste a service-account JSON above to enable.';
+      status.textContent = 'Chưa cấu hình. Dán nội dung JSON service-account ở trên để kích hoạt.';
       status.className = 'dim';
     }
     if (propEl) propEl.value = b.explicit_property || '';
@@ -1805,7 +1807,7 @@
 
   async function saveSettings() {
     const status = $('#settings-status');
-    setText(status, 'saving…');
+    setText(status, 'đang lưu…');
     const payload = {};
     // Collect by key. For radios there are multiple elements with the
     // same data-setting — only the checked one wins.
@@ -1827,13 +1829,13 @@
       body: JSON.stringify(payload),
     });
     if (r.status === 200) {
-      setText(status, `saved ${r.body?.updated?.length || 0} field(s)`);
+      setText(status, `đã lưu ${r.body?.updated?.length || 0} trường`);
       setTimeout(() => setText(status, ''), 2500);
       // Re-apply the freeze state after save in case the user just
       // flipped the toggle.
       applyHeroImageMode(payload.hero_image_mode || 'ai');
     } else {
-      setText(status, `error: ${r.body?.error || r.status}`);
+      setText(status, `lỗi: ${r.body?.error || r.status}`);
     }
   }
 
@@ -1851,11 +1853,11 @@
     const root = $('#pricing-current');
     if (!root) return;
     const { status, body } = await api('/api/admin/pricing');
-    if (status !== 200) { root.textContent = 'Failed to load pricing.'; return; }
+    if (status !== 200) { root.textContent = 'Không thể tải bảng giá.'; return; }
     clearChildren(root);
     const tbl = document.createElement('table');
     const thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>Provider</th><th>Input / 1M</th><th>Output / 1M</th><th>Image</th></tr>';
+    thead.innerHTML = '<tr><th>Nhà cung cấp</th><th>Đầu vào / 1M</th><th>Đầu ra / 1M</th><th>Ảnh</th></tr>';
     tbl.appendChild(thead);
     const tbody = document.createElement('tbody');
     for (const [name, p] of Object.entries(body.prices || {})) {
@@ -1864,28 +1866,28 @@
       tr.appendChild(cell(name));
       tr.appendChild(cell(p.in === 0 ? '—' : `$${Number(p.in).toFixed(2)}`, 'cost'));
       tr.appendChild(cell(p.out === 0 ? '—' : `$${Number(p.out).toFixed(2)}`, 'cost'));
-      tr.appendChild(cell(p.image == null ? '—' : `$${Number(p.image).toFixed(3)}/img`, 'cost'));
+      tr.appendChild(cell(p.image == null ? '—' : `$${Number(p.image).toFixed(3)}/ảnh`, 'cost'));
       tbody.appendChild(tr);
     }
     tbl.appendChild(tbody);
     root.appendChild(tbl);
     const meta = document.createElement('span'); meta.className = 'pricing-meta';
-    const when = body.fetched_at ? new Date(body.fetched_at * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : 'never';
-    meta.textContent = `Source: ${body.source}${body.stale ? ' (stale)' : ''} · last refreshed: ${when}`;
+    const when = body.fetched_at ? new Date(body.fetched_at * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : 'chưa bao giờ';
+    meta.textContent = `Nguồn: ${body.source}${body.stale ? ' (cũ)' : ''} · làm mới lần cuối: ${when}`;
     root.appendChild(meta);
   }
 
   async function refreshPricing() {
     const status = $('#pricing-status');
-    setText(status, 'fetching from models.dev…');
+    setText(status, 'đang lấy dữ liệu từ models.dev…');
     const { status: code, body } = await api('/api/admin/pricing', { method: 'POST', body: '{}' });
     if (code !== 200 || !body?.ok) {
       status.className = 'status bad';
-      status.textContent = 'Refresh failed: ' + (body?.error || body?.detail || code);
+      status.textContent = 'Làm mới thất bại: ' + (body?.error || body?.detail || code);
       return;
     }
     status.className = 'status good';
-    status.textContent = `Updated ${body.count_updated} providers from ${body.source}.`;
+    status.textContent = `Đã cập nhật ${body.count_updated} nhà cung cấp từ ${body.source}.`;
     setTimeout(() => { status.textContent = ''; status.className = 'status'; }, 4000);
     loadPricingSnapshot();
   }
@@ -1914,36 +1916,36 @@
     log.hidden = true; log.textContent = '';
 
     try {
-      setStatus('1/4 picking topic…');
+      setStatus('1/4 chọn chủ đề…');
       const start = await api('/api/admin/blog/start', { method: 'POST', body: '{}' });
       const jobId = start.body?.job_id;
       if (!jobId) throw new Error(start.body?.error || 'start failed');
       append(`job_id: ${jobId}`);
 
       const payload = JSON.stringify({ job_id: jobId });
-      setStatus('2/4 writing article…');
+      setStatus('2/4 viết bài…');
       const text = await api('/api/admin/blog/text', { method: 'POST', body: payload });
       if (text.status !== 200) throw new Error(text.body?.detail || text.body?.error || 'text failed');
-      append(`title: ${text.body.title}`);
-      append(`slug:  ${text.body.slug}`);
-      append(`ai:    ${text.body.ai_provider}`);
+      append(`tiêu đề: ${text.body.title}`);
+      append(`slug:    ${text.body.slug}`);
+      append(`ai:      ${text.body.ai_provider}`);
 
-      setStatus('3/4 generating image…');
+      setStatus('3/4 tạo hình ảnh…');
       const img = await api('/api/admin/blog/image', { method: 'POST', body: payload });
       if (img.status !== 200) throw new Error(img.body?.detail || img.body?.error || 'image failed');
-      append(`image: ${img.body.image_uploaded ? 'ok' : '(skipped)'}`);
+      append(`hình ảnh: ${img.body.image_uploaded ? 'ok' : '(bỏ qua)'}`);
 
-      setStatus('4/4 publishing…');
+      setStatus('4/4 xuất bản…');
       const pub = await api('/api/admin/blog/publish', { method: 'POST', body: payload });
       if (pub.status !== 200) throw new Error(pub.body?.error || 'publish failed');
-      append(`published: ${activeProjectBase()}/blog/${pub.body.slug}`);
+      append(`đã xuất bản: ${activeProjectBase()}/blog/${pub.body.slug}`);
 
-      setStatus('Published.', 'good');
+      setStatus('Đã xuất bản.', 'good');
       loadPosts();
       loadJobs();
     } catch (e) {
-      setStatus('Failed: ' + e.message, 'bad');
-      append('error: ' + e.message);
+      setStatus('Thất bại: ' + e.message, 'bad');
+      append('lỗi: ' + e.message);
     } finally {
       btn.disabled = false;
     }
@@ -2013,23 +2015,30 @@
     if (status !== 200 || !body?.jobs?.length) {
       const tr = document.createElement('tr');
       const tdE = document.createElement('td'); tdE.colSpan = 6; tdE.style.color = 'var(--ink-faint)';
-      tdE.textContent = status === 200 ? 'No drafts or failed jobs.' : 'Failed to load.';
+      tdE.textContent = status === 200 ? 'Không có bản nháp hoặc tác vụ thất bại.' : 'Lỗi tải danh sách.';
       tr.appendChild(tdE); tbody.appendChild(tr); return;
     }
     for (const j of body.jobs) {
       const tr = document.createElement('tr');
-      tr.appendChild(td(new Date((j.updated_at || 0) * 1000).toLocaleString('en-GB')));
+      tr.appendChild(td(new Date((j.updated_at || 0) * 1000).toLocaleString('vi-VN')));
       tr.appendChild(td(j.topic_key || '—'));
       tr.appendChild(td(j.slug || '—'));
       const pill = document.createElement('span');
       pill.className = 'pill ' + (j.status === 'failed' ? 'bad' : j.status === 'image_done' ? 'good' : 'warn');
-      pill.textContent = j.status;
+      const statusLabels = {
+        failed: 'Thất bại',
+        image_done: 'Đã tạo ảnh',
+        text_done: 'Đã tạo văn bản',
+        generating: 'Đang tạo',
+        pending: 'Đang chờ',
+      };
+      pill.textContent = statusLabels[j.status] || j.status;
       const tdStatus = document.createElement('td'); tdStatus.appendChild(pill); tr.appendChild(tdStatus);
       tr.appendChild(td(j.error ? j.error.slice(0, 80) : '—'));
       const tdAct = document.createElement('td');
-      const retry = mkBtn('Resume', 'btn-sm', () => resumeJob(j.id, retry));
-      const del = mkBtn('Delete', 'btn-sm btn-danger', async () => {
-        if (!confirm('Delete this draft?')) return;
+      const retry = mkBtn('Tiếp tục', 'btn-sm', () => resumeJob(j.id, retry));
+      const del = mkBtn('Xóa', 'btn-sm btn-danger', async () => {
+        if (!confirm('Xóa bản nháp này?')) return;
         await api('/api/admin/blog/delete-job', { method: 'POST', body: JSON.stringify({ id: j.id }) });
         loadJobs();
       });
@@ -2038,7 +2047,7 @@
     }
   }
   async function resumeJob(id, btn) {
-    btn.disabled = true; btn.textContent = 'Resuming…';
+    btn.disabled = true; btn.textContent = 'Đang tiếp tục…';
     try {
       await api('/api/admin/blog/retry-job', { method: 'POST', body: JSON.stringify({ id }) });
       const payload = JSON.stringify({ job_id: id });
@@ -2050,8 +2059,8 @@
       if (r.status !== 200) throw new Error(r.body?.error || 'publish');
       loadJobs(); loadPosts();
     } catch (e) {
-      btn.disabled = false; btn.textContent = 'Resume';
-      toast('Resume failed: ' + e.message, 'bad');
+      btn.disabled = false; btn.textContent = 'Tiếp tục';
+      toast('Tiếp tục tác vụ thất bại: ' + e.message, 'bad');
     }
   }
 
@@ -2064,7 +2073,7 @@
     const eyebrow = card?.querySelector('.card-eyebrow');
     const curProj = _allProjects.find((p) => p.id === window.__psActiveProjectId);
     if (eyebrow) {
-      eyebrow.textContent = curProj ? `Published posts (${curProj.name})` : 'Published posts';
+      eyebrow.textContent = curProj ? `Bài viết đã xuất bản (${curProj.name})` : 'Bài viết đã xuất bản';
     }
 
     const { body } = await api('/api/admin/blog/list');
@@ -2072,24 +2081,24 @@
     if (!posts.length) {
       const tr = document.createElement('tr');
       const tdE = document.createElement('td'); tdE.colSpan = 5; tdE.style.color = 'var(--ink-faint)';
-      tdE.textContent = 'No posts yet.';
+      tdE.textContent = 'Chưa có bài viết nào.';
       tr.appendChild(tdE); tbody.appendChild(tr); return;
     }
     for (const p of posts) {
       const tr = document.createElement('tr');
-      tr.appendChild(td(new Date((p.published_at || 0) * 1000).toLocaleDateString('en-GB')));
+      tr.appendChild(td(new Date((p.published_at || 0) * 1000).toLocaleDateString('vi-VN')));
       const tdT = document.createElement('td'); tdT.className = 'cell-strong';
       const a = document.createElement('a'); a.href = activeProjectBase() + '/blog/' + p.slug; a.target = '_blank'; a.rel = 'noopener'; a.textContent = p.title;
       tdT.appendChild(a); tr.appendChild(tdT);
       tr.appendChild(td(p.slug));
       tr.appendChild(td(p.ai_provider || '—'));
       const tdAct = document.createElement('td');
-      const toggle = mkBtn(p.status === 'hidden' ? 'Show' : 'Hide', 'btn-sm', async () => {
+      const toggle = mkBtn(p.status === 'hidden' ? 'Hiện' : 'Ẩn', 'btn-sm', async () => {
         await api('/api/admin/blog/post', { method: 'POST', body: JSON.stringify({ id: p.id, action: p.status === 'hidden' ? 'show' : 'hide' }) });
         loadPosts();
       });
-      const del = mkBtn('Delete', 'btn-sm btn-danger', async () => {
-        if (!confirm('Delete ' + p.slug + '?')) return;
+      const del = mkBtn('Xóa', 'btn-sm btn-danger', async () => {
+        if (!confirm('Xóa bài ' + p.slug + '?')) return;
         await api('/api/admin/blog/post', { method: 'POST', body: JSON.stringify({ id: p.id, action: 'delete' }) });
         loadPosts();
       });
@@ -2103,14 +2112,14 @@
     const seed = $('#pull-seed').value.trim();
     const limit = parseInt($('#pull-limit').value, 10) || 50;
     const out = $('#pull-out');
-    if (!seed) { showLog(out, 'Enter a seed phrase.'); return; }
-    showLog(out, `Pulling autocomplete suggestions for "${seed}"…`);
+    if (!seed) { showLog(out, 'Vui lòng nhập cụm từ khóa mầm.'); return; }
+    showLog(out, `Đang lấy gợi ý tự động hoàn thành cho "${seed}"…`);
     const { status, body } = await api('/api/admin/prog/pull-keywords', {
       method: 'POST', body: JSON.stringify({ seed, limit, queue }),
     });
-    if (status !== 200) { showLog(out, 'Error: ' + (body?.error || status)); return; }
-    const head = `Pulled ${body.pulled} keywords (deduped, junk dropped)` +
-      (queue ? ` · inserted ${body.inserted} · duplicate ${body.duplicate}` : ' (preview only)');
+    if (status !== 200) { showLog(out, 'Lỗi: ' + (body?.error || status)); return; }
+    const head = `Đã lấy ${body.pulled} từ khóa (đã lọc trùng và loại bỏ rác)` +
+      (queue ? ` · đã thêm ${body.inserted} · trùng lặp ${body.duplicate}` : ' (chỉ xem trước)');
     // Hide the log block and render a structured list instead.
     if (out) { out.hidden = true; }
     const host = out?.parentNode;
@@ -2127,14 +2136,14 @@
     const items = (body.keywords || []);
     if (!items.length) {
       const li = document.createElement('li');
-      li.innerHTML = '<span class="kw">No keywords passed the junk/dedupe filters.</span>';
+      li.innerHTML = '<span class="kw">Không có từ khóa nào vượt qua bộ lọc rác/trùng lặp.</span>';
       ul.appendChild(li);
     } else {
       for (const k of items) {
         const li = document.createElement('li');
         const kw = document.createElement('span'); kw.className = 'kw'; kw.textContent = k.keyword;
         const meta = document.createElement('span'); meta.className = 'meta';
-        meta.textContent = `${k.intent.padEnd(13)} · score ${String(k.score).padStart(2)}`;
+        meta.textContent = `${k.intent.padEnd(13)} · điểm ${String(k.score).padStart(2)}`;
         li.append(kw, meta);
         ul.appendChild(li);
       }
@@ -2148,12 +2157,12 @@
   async function uploadCsv() {
     const csv = $('#upload-csv').value;
     const status = $('#upload-status');
-    if (!csv.trim()) { status.textContent = 'Paste at least one keyword.'; status.className = 'status bad'; return; }
+    if (!csv.trim()) { status.textContent = 'Dán ít nhất một từ khóa.'; status.className = 'status bad'; return; }
     const { status: code, body } = await api('/api/admin/prog/upload', {
       method: 'POST', body: JSON.stringify({ csv }),
     });
-    if (code !== 200) { status.textContent = 'Error: ' + (body?.error || code); status.className = 'status bad'; return; }
-    status.textContent = `Inserted ${body.inserted}, skipped ${body.duplicate} duplicates.`;
+    if (code !== 200) { status.textContent = 'Lỗi: ' + (body?.error || code); status.className = 'status bad'; return; }
+    status.textContent = `Đã thêm ${body.inserted}, bỏ qua ${body.duplicate} từ khóa trùng lặp.`;
     status.className = 'status good';
     $('#upload-csv').value = '';
     loadQueue();
@@ -2184,7 +2193,12 @@
     if (!rows.length) {
       const tr = document.createElement('tr');
       const tdE = document.createElement('td'); tdE.colSpan = 6; tdE.style.color = 'var(--ink-faint)';
-      tdE.textContent = `No ${statusFilter} keywords.`;
+      const filterLabels = {
+        pending: 'đang chờ',
+        done: 'đã hoàn thành',
+        failed: 'thất bại',
+      };
+      tdE.textContent = `Không có từ khóa ${filterLabels[statusFilter] || statusFilter}.`;
       tr.appendChild(tdE); tbody.appendChild(tr); return;
     }
     for (const k of rows) {
@@ -2195,7 +2209,14 @@
       const intentPill = document.createElement('span');
       const intentClass = INTENT_PILL[k.intent] || '';
       intentPill.className = 'pill' + (intentClass ? ' ' + intentClass : '');
-      intentPill.textContent = k.intent || '—';
+      const intentLabels = {
+        transactional: 'giao dịch',
+        commercial: 'thương mại',
+        informational: 'thông tin',
+        navigational: 'điều hướng',
+        junk: 'rác',
+      };
+      intentPill.textContent = intentLabels[k.intent] || k.intent || '—';
       const tdI = document.createElement('td'); tdI.appendChild(intentPill); tr.appendChild(tdI);
 
       // Score
@@ -2208,19 +2229,19 @@
       const tdP = document.createElement('td'); tdP.className = 'cell-priority';
       if (statusFilter === 'pending') {
         const up = document.createElement('button');
-        up.className = 'pri-btn'; up.title = 'Bump priority +10'; up.textContent = '↑';
+        up.className = 'pri-btn'; up.title = 'Tăng ưu tiên +10'; up.textContent = '↑';
         up.onclick = async () => {
           await patchKeyword(k.id, { priority: (k.priority || 0) + 10 });
           loadQueue();
         };
         const down = document.createElement('button');
-        down.className = 'pri-btn'; down.title = 'Lower priority −10'; down.textContent = '↓';
+        down.className = 'pri-btn'; down.title = 'Giảm ưu tiên −10'; down.textContent = '↓';
         down.onclick = async () => {
           await patchKeyword(k.id, { priority: (k.priority || 0) - 10 });
           loadQueue();
         };
         const drop = document.createElement('button');
-        drop.className = 'pri-btn pri-drop'; drop.title = 'Mark failed (skip)'; drop.textContent = '✕';
+        drop.className = 'pri-btn pri-drop'; drop.title = 'Đánh dấu thất bại (bỏ qua)'; drop.textContent = '✕';
         drop.onclick = async () => {
           await patchKeyword(k.id, { status: 'failed' });
           loadQueue();
@@ -2229,7 +2250,7 @@
         tdP.append(val, up, down, drop);
       } else if (statusFilter === 'failed') {
         const retry = document.createElement('button');
-        retry.className = 'pri-btn'; retry.title = 'Retry'; retry.textContent = '↻';
+        retry.className = 'pri-btn'; retry.title = 'Thử lại'; retry.textContent = '↻';
         retry.onclick = async () => {
           await patchKeyword(k.id, { status: 'pending' });
           loadQueue();
@@ -2244,7 +2265,12 @@
       // Status pill
       const pill = document.createElement('span');
       pill.className = 'pill ' + (k.status === 'failed' ? 'bad' : k.status === 'done' ? 'good' : 'warn');
-      pill.textContent = k.status;
+      const qStatusLabels = {
+        failed: 'Thất bại',
+        done: 'Hoàn thành',
+        pending: 'Đang chờ',
+      };
+      pill.textContent = qStatusLabels[k.status] || k.status;
       const tdS = document.createElement('td'); tdS.appendChild(pill); tr.appendChild(tdS);
 
       tr.appendChild(td(k.page_id ? '/p/…' : '—'));
@@ -2255,13 +2281,13 @@
   async function runProgNext() {
     const btn = $('#prog-go');
     const status = $('#prog-status');
-    btn.disabled = true; status.className = 'status'; status.textContent = 'Generating… ~60-120s';
+    btn.disabled = true; status.className = 'status'; status.textContent = 'Đang tạo… ~60-120s';
     const { status: code, body } = await api('/api/admin/prog/generate-next', { method: 'POST', body: '{}' });
     btn.disabled = false;
-    if (code === 200 && body?.drained) { status.className = 'status'; status.textContent = 'Queue is empty.'; return; }
+    if (code === 200 && body?.drained) { status.className = 'status'; status.textContent = 'Hàng đợi đang trống.'; return; }
     if (code !== 200 || !body?.ok) { status.className = 'status bad'; status.textContent = (body?.error || code) + ' ' + (body?.detail || ''); return; }
     status.className = 'status good';
-    status.textContent = 'Generated /p/' + body.slug;
+    status.textContent = 'Đã tạo trang /p/' + body.slug;
     loadQueue();
     loadOverview();
   }
@@ -2270,16 +2296,16 @@
   async function pingIndexNow() {
     const btn = $('#ping-go');
     const status = $('#ping-status');
-    btn.disabled = true; status.className = 'status'; status.textContent = 'Pinging…';
+    btn.disabled = true; status.className = 'status'; status.textContent = 'Đang gửi…';
     const { status: code, body } = await api('/api/admin/indexnow-ping', { method: 'POST', body: '{}' });
     btn.disabled = false;
     if (code !== 200 || !body?.ok) {
       status.className = 'status bad';
-      status.textContent = (body?.error || `failed (${code})`);
+      status.textContent = (body?.error || `thất bại (${code})`);
       return;
     }
     status.className = 'status good';
-    status.textContent = `OK · ${body.urls?.length || 0} URLs (${body.source})`;
+    status.textContent = `Thành công · ${body.urls?.length || 0} URL (${body.source})`;
   }
 
   // Widget embed snippet UI. Three flavours (JS / iframe / link)
@@ -2322,6 +2348,41 @@
       }
     } catch { /* malformed url */ }
     return 'https://' + location.host;
+  }
+
+  // Distribution overview for the active project: the public URLs its
+  // content is served from, plus the publish target posts are pushed to.
+  // One render so a project switch refreshes the whole page.
+  const DIST_PUBLISHERS = {
+    internal_d1: 'Blog của nền tảng',
+    webhook: 'Webhook',
+    custom_api: 'Custom API',
+    wordpress: 'WordPress REST',
+  };
+
+  function renderDistribution() {
+    renderWidgetSnippet();
+
+    const base = activeProjectBase();
+    const channels = {
+      'dist-blog-url': base + '/blog',
+      'dist-feed-url': base + '/feed.xml',
+      'dist-sitemap-url': base + '/sitemap.xml',
+    };
+    for (const [id, url] of Object.entries(channels)) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      el.textContent = url;
+      if (el.tagName === 'A') el.href = url;
+    }
+
+    const project = window.__psActiveProject || {};
+    const type = project.publisher_type || 'internal_d1';
+    const target = document.getElementById('dist-publisher');
+    if (target) {
+      const label = DIST_PUBLISHERS[type] || type;
+      target.textContent = project.endpoint_url ? label + ' — ' + project.endpoint_url : label;
+    }
   }
 
   function renderWidgetSnippet() {
@@ -2437,10 +2498,10 @@
         try {
           await navigator.clipboard.writeText(snippetEl.textContent);
           copyBtn.classList.add('is-copied');
-          copyBtn.textContent = '✓ Copied';
+          copyBtn.textContent = '✓ Đã sao chép';
           setTimeout(() => {
             copyBtn.classList.remove('is-copied');
-            copyBtn.textContent = 'Copy';
+            copyBtn.textContent = 'Sao chép';
           }, 2000);
         } catch {
           // Clipboard denied — fall back to selecting the text
@@ -2448,8 +2509,8 @@
           range.selectNode(snippetEl);
           window.getSelection().removeAllRanges();
           window.getSelection().addRange(range);
-          copyBtn.textContent = 'Press ⌘C';
-          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2500);
+          copyBtn.textContent = 'Nhấn ⌘C';
+          setTimeout(() => { copyBtn.textContent = 'Sao chép'; }, 2500);
         }
       });
     }
@@ -2510,16 +2571,16 @@
       clearChildren(root);
 
       const { status: code, body } = await api('/api/admin/status');
-      if (btn) { btn.disabled = false; btn.textContent = 'Run checks'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Chạy kiểm tra'; }
       if (code !== 200 || !body?.ok) {
-        summary.textContent = 'Could not run checks: ' + (body?.error || code);
+        summary.textContent = 'Không thể chạy kiểm tra: ' + (body?.error || code);
         summary.className = 'status bad';
         return;
       }
       const failed = (body.checks || []).filter((c) => c.ok === false).length;
       summary.textContent = failed
-        ? `${failed} check${failed === 1 ? '' : 's'} failing`
-        : 'All checks green';
+        ? `${failed} mục kiểm tra không đạt`
+        : 'Tất cả mục kiểm tra đều tốt';
       summary.className = 'status ' + (failed ? 'bad' : 'good');
 
       // Surface a tab-level badge when any check is failing so the
@@ -2562,10 +2623,10 @@
           if (c[k] != null) extraBits.push(`${k}: ${c[k]}`);
         }
         if (c.providers?.length) {
-          extraBits.push('providers: ' + c.providers.map((p) => `${p.key}${p.configured ? '✓' : ' ✗'}`).join(', '));
+          extraBits.push('nhà cung cấp: ' + c.providers.map((p) => `${p.key}${p.configured ? '✓' : ' ✗'}`).join(', '));
         }
         if (c.missing?.length) {
-          extraBits.push('missing: ' + c.missing.join(', '));
+          extraBits.push('còn thiếu: ' + c.missing.join(', '));
         }
         if (extraBits.length) {
           const ex = document.createElement('div');
@@ -2581,7 +2642,7 @@
           a.className = 'status-check-action';
           a.target = '_blank';
           a.rel = 'noopener';
-          a.textContent = '→ Repair this install';
+          a.textContent = '→ Sửa bản cài đặt này';
           // Try to pre-fill project slug. The install flow writes
           // settings.install_cf_project; failing that, we'll let
           // the user type it on the repair page.
@@ -2601,15 +2662,15 @@
     async function testProviders() {
       const ul = $('#providers-results');
       const btn = $('#providers-test');
-      if (btn) { btn.disabled = true; btn.textContent = 'Testing…'; }
+      if (btn) { btn.disabled = true; btn.textContent = 'Đang kiểm tra…'; }
       clearChildren(ul);
 
       const { status: code, body } = await api('/api/admin/providers/test', { method: 'POST', body: '{}' });
-      if (btn) { btn.disabled = false; btn.textContent = 'Test all providers'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Kiểm tra tất cả nhà cung cấp'; }
       if (code !== 200 || !body?.ok) {
         const li = document.createElement('li');
         li.className = 'provider-result bad';
-        li.textContent = 'Test request failed: ' + (body?.error || code);
+        li.textContent = 'Yêu cầu kiểm tra thất bại: ' + (body?.error || code);
         ul.appendChild(li);
         return;
       }
@@ -2621,7 +2682,7 @@
         status.className = 'provider-status';
         status.textContent = r.ok
           ? `✓ ${r.ms != null ? r.ms + 'ms' : 'ok'}`
-          : `✗ ${r.error || 'failed'}`;
+          : `✗ ${r.error || 'thất bại'}`;
         const detail = document.createElement('span');
         detail.className = 'provider-detail';
         detail.textContent = r.detail || r.sample || '';
@@ -2643,7 +2704,7 @@
       if (code !== 200 || !body?.ok) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 4; td.textContent = 'Failed to load audit log: ' + (body?.error || code);
+        td.colSpan = 4; td.textContent = 'Không thể tải nhật ký hoạt động: ' + (body?.error || code);
         td.style.color = 'var(--bad)';
         tr.appendChild(td);
         tbody.appendChild(tr);
@@ -2652,7 +2713,7 @@
       if (!body.entries?.length) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 4; td.textContent = 'No entries match this filter yet.';
+        td.colSpan = 4; td.textContent = 'Chưa có bản ghi nào khớp bộ lọc này.';
         td.style.color = 'var(--ink-faint)';
         tr.appendChild(td);
         tbody.appendChild(tr);
@@ -2738,7 +2799,7 @@
       const copyBtn = $('#ai-help-copy');
       const statusEl = $('#ai-help-status');
       copyBtn?.addEventListener('click', async () => {
-        statusEl.textContent = 'Scanning your site…';
+        statusEl.textContent = 'Đang quét trang web của bạn…';
         try {
           let text = null;
           if (site) {
@@ -2751,10 +2812,10 @@
             text = await r2.text();
           }
           await navigator.clipboard.writeText(text);
-          statusEl.textContent = `✓ Copied (${Math.round(text.length / 1024)}k chars, scan-tailored) — paste into any AI`;
+          statusEl.textContent = `✓ Đã sao chép (${Math.round(text.length / 1024)}k ký tự, tùy biến theo kết quả quét) — dán vào bất kỳ AI nào`;
           setTimeout(() => { statusEl.textContent = ''; }, 6000);
         } catch (e) {
-          statusEl.textContent = 'Copy failed — open the link instead.';
+          statusEl.textContent = 'Sao chép thất bại — hãy mở liên kết trực tiếp.';
         }
       });
     }
@@ -2781,7 +2842,7 @@
       if (switcher) switcher.hidden = true;
       if (badge) {
         badge.hidden = false;
-        const current = projects.find((p) => p.id === projectId) || { name: whoami?.site_name || 'Project' };
+        const current = projects.find((p) => p.id === projectId) || { name: whoami?.site_name || 'Dự án' };
         badge.textContent = `🏪 ${current.name}`;
       }
       window.__psActiveProjectId = projectId;
@@ -2977,7 +3038,7 @@
     async function load() {
       const { status, body } = await api('/api/admin/aliases');
       if (status !== 200) {
-        $('#link-list-manual').innerHTML = '<div class="muted">Failed to load: ' + (body?.error || status) + '</div>';
+        $('#link-list-manual').innerHTML = '<div class="muted">Lỗi tải danh sách liên kết: ' + (body?.error || status) + '</div>';
         return;
       }
       aliases = body.aliases || [];
@@ -2991,7 +3052,7 @@
 
       const wrap = $('#link-list-manual');
       if (!manual.length) {
-        wrap.innerHTML = '<div class="muted">No curated links yet. Click <b>+ Add link</b> to teach the AI about a page.</div>';
+        wrap.innerHTML = '<div class="muted">Chưa có liên kết tùy chọn nào. Bấm <b>+ Thêm liên kết</b> để dạy AI về trang này.</div>';
       } else {
         wrap.innerHTML = '';
         for (const a of manual) {
@@ -3004,7 +3065,7 @@
               ${a.description ? `<span class="link-desc">${escH(a.description)}</span>` : ''}
             </div>
             <span class="link-kind ${a.kind === 'reserved' ? 'is-reserved' : ''}">${escH(a.kind)}</span>
-            <button class="link-edit" type="button" data-name="${escH(a.name)}">Edit</button>
+            <button class="link-edit" type="button" data-name="${escH(a.name)}">Sửa</button>
           `;
           wrap.appendChild(row);
         }
@@ -3019,7 +3080,7 @@
 
       const swrap = $('#link-list-sitemap');
       if (!sitemap.length) {
-        swrap.innerHTML = '<div class="muted">No sitemap-imported links yet. Click <b>Sync from sitemap</b> after publishing a post.</div>';
+        swrap.innerHTML = '<div class="muted">Chưa có liên kết nào từ sitemap. Nhấn <b>Đồng bộ từ sitemap</b> sau khi xuất bản bài viết.</div>';
       } else {
         swrap.innerHTML = '';
         for (const a of sitemap.slice(0, 200)) {
@@ -3037,7 +3098,7 @@
         if (sitemap.length > 200) {
           const more = document.createElement('div');
           more.className = 'muted';
-          more.textContent = `+ ${sitemap.length - 200} more.`;
+          more.textContent = `+ thêm ${sitemap.length - 200} liên kết nữa.`;
           swrap.appendChild(more);
         }
       }
@@ -3045,7 +3106,7 @@
 
     function openModal(a) {
       editingName = a?.name || null;
-      $('#link-modal-title').textContent = editingName ? 'Edit link' : 'Add link';
+      $('#link-modal-title').textContent = editingName ? 'Sửa liên kết' : 'Thêm liên kết';
       $('#link-mod-name').value = a?.name || '';
       $('#link-mod-name').disabled = !!editingName; // names are immutable once created
       $('#link-mod-url').value  = a?.url  || '';
@@ -3067,10 +3128,10 @@
       const err  = $('#link-mod-err'); err.textContent = '';
       if (!editingName) {
         if (!/^[a-z0-9][a-z0-9_-]{0,40}$/.test(name)) {
-          err.textContent = 'Name: lowercase letters, digits, _ or -; up to 40 chars.'; return;
+          err.textContent = 'Tên: chữ thường, số, _ hoặc -; tối đa 40 ký tự.'; return;
         }
       }
-      if (!url) { err.textContent = 'URL is required.'; return; }
+      if (!url) { err.textContent = 'URL không được để trống.'; return; }
       let res;
       if (editingName) {
         res = await api('/api/admin/aliases', {
@@ -3083,32 +3144,32 @@
           body: JSON.stringify({ name, url, description: desc }),
         });
       }
-      if (res.status !== 200) { err.textContent = res.body?.detail || res.body?.error || 'Save failed'; return; }
+      if (res.status !== 200) { err.textContent = res.body?.detail || res.body?.error || 'Lưu thất bại'; return; }
       closeModal();
       load();
     }
 
     async function remove() {
       if (!editingName) return;
-      if (!confirm(`Delete link "${editingName}"?`)) return;
+      if (!confirm(`Xóa liên kết "${editingName}"?`)) return;
       const res = await api('/api/admin/aliases?name=' + encodeURIComponent(editingName), { method: 'DELETE' });
-      if (res.status !== 200) { $('#link-mod-err').textContent = res.body?.error || 'Delete failed'; return; }
+      if (res.status !== 200) { $('#link-mod-err').textContent = res.body?.error || 'Xóa thất bại'; return; }
       closeModal();
       load();
     }
 
     async function sync() {
       const btn = $('#link-sync'); const orig = btn.textContent;
-      btn.disabled = true; btn.textContent = 'Syncing…';
+      btn.disabled = true; btn.textContent = 'Đang đồng bộ…';
       const res = await api('/api/admin/aliases/sync', { method: 'POST' });
       btn.disabled = false; btn.textContent = orig;
       if (res.status === 200) {
         const r = res.body;
-        const msg = `Sitemap synced — ${r.added || 0} added, ${r.removed || 0} removed (${r.total || 0} total).`;
+        const msg = `Đã đồng bộ sitemap — thêm ${r.added || 0}, xóa ${r.removed || 0} (${r.total || 0} tổng cộng).`;
         btn.textContent = '✓ ' + msg.slice(0, 50);
         setTimeout(() => { btn.textContent = orig; }, 3000);
       } else {
-        toast(res.body?.error || 'Sync failed', 'bad', { errorCode: res.body?.error });
+        toast(res.body?.error || 'Đồng bộ thất bại', 'bad', { errorCode: res.body?.error });
       }
       load();
     }
@@ -3255,7 +3316,7 @@
         // Give the user a one-line status while we submit.
         if (errEl) {
           errEl.style.color = 'var(--ink-dim, #4b525e)';
-          errEl.textContent = 'Finishing install with the credentials from your terminal…';
+          errEl.textContent = 'Đang hoàn tất cài đặt với thông tin từ terminal…';
         }
         // Tiny delay so the user can see what's happening before the
         // form replaces the screen with the dashboard.
@@ -3281,13 +3342,13 @@
       const site_url  = $('#setup-site-url').value.trim();
       const email     = $('#setup-email').value.trim().toLowerCase();
       const password  = $('#setup-password').value;
-      if (!site_name) { err.textContent = 'Site name is required.'; return; }
-      if (!/^https?:\/\/.+/i.test(site_url)) { err.textContent = 'Site URL must start with http(s)://'; return; }
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = 'Enter a valid email address.'; return; }
-      if (password.length < 8) { err.textContent = 'Password must be 8+ characters.'; return; }
+      if (!site_name) { err.textContent = 'Tên trang web là bắt buộc.'; return; }
+      if (!/^https?:\/\/.+/i.test(site_url)) { err.textContent = 'URL trang web phải bắt đầu bằng http(s)://'; return; }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = 'Vui lòng nhập địa chỉ email hợp lệ.'; return; }
+      if (password.length < 8) { err.textContent = 'Mật khẩu phải có từ 8 ký tự trở lên.'; return; }
 
       const btn = $('#setup-go');
-      btn.disabled = true; btn.textContent = 'Setting up…';
+      btn.disabled = true; btn.textContent = 'Đang thiết lập…';
 
       // The magic-link token (if any) gates this POST server-side.
       // Browser-flow installs have one; CLI installs leave it empty
@@ -3301,8 +3362,8 @@
         }),
       });
       if (status !== 200) {
-        btn.disabled = false; btn.textContent = 'Finish setup →';
-        err.textContent = body?.detail || body?.error || 'Setup failed.';
+        btn.disabled = false; btn.textContent = 'Hoàn tất thiết lập →';
+        err.textContent = body?.detail || body?.error || 'Thiết lập thất bại.';
         return;
       }
       showSuccess();
@@ -3314,9 +3375,9 @@
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
-      btn.disabled = false; btn.textContent = 'Finish setup →';
+      btn.disabled = false; btn.textContent = 'Hoàn tất thiết lập →';
       if (loginR.status !== 200) {
-        err.textContent = 'Account created, but auto-login failed. Please sign in manually.';
+        err.textContent = 'Tài khoản đã được tạo, nhưng đăng nhập tự động thất bại. Vui lòng đăng nhập thủ công.';
         $('#setup').hidden = true;
         const g = $('#gate'); g.hidden = false;
         return;
@@ -3414,7 +3475,7 @@
       err.textContent = '';
       if (!/^https?:\/\/.+/i.test(url)) { err.textContent = 'Please enter a full URL starting with https://'; return; }
       const btn = $('#wiz-go-2');
-      btn.disabled = true; btn.textContent = 'Reading…';
+      btn.disabled = true; btn.textContent = 'Đang đọc…';
       // Switch to pane 2 with loading state; populate fields once back.
       show('2');
       $('#wiz-brand-loading').hidden = false;
@@ -3429,10 +3490,10 @@
           topics_to_avoid:  $('#wiz-avoid').value.trim(),
         }),
       });
-      btn.disabled = false; btn.textContent = 'Read my site →';
+      btn.disabled = false; btn.textContent = 'Đọc trang web của tôi →';
       if (status !== 200 || !body?.brand) {
         $('#wiz-brand-loading').hidden = true;
-        const msg = body?.detail || body?.error || 'Generation failed.';
+        const msg = body?.detail || body?.error || 'Tạo thất bại.';
         $('#wiz-2-err').textContent = msg;
         show('1');
         err.textContent = msg;
@@ -3454,7 +3515,7 @@
     // ── pane 2 → beat-brand: save brand DNA ───────────────────────
     async function step2Next() {
       const errEl = $('#wiz-2-err'); errEl.textContent = '';
-      const btn = $('#wiz-go-3'); btn.disabled = true; btn.textContent = 'Saving…';
+      const btn = $('#wiz-go-3'); btn.disabled = true; btn.textContent = 'Đang lưu…';
       const payload = {
         business_type:    $('#wiz-b-business').value.trim(),
         voice_tone:       $('#wiz-b-voice').value.trim(),
@@ -3471,8 +3532,8 @@
         method: 'PUT',
         body: JSON.stringify(payload),
       });
-      btn.disabled = false; btn.textContent = 'Save & continue →';
-      if (status !== 200) { errEl.textContent = body?.error || 'Save failed.'; return; }
+      btn.disabled = false; btn.textContent = 'Lưu & tiếp tục →';
+      if (status !== 200) { errEl.textContent = body?.error || 'Lưu thất bại.'; return; }
 
       // Customise the beat's "your site" pill with the host.
       try { $('#wiz-beat-host').textContent = new URL(brand.source_url).hostname; }
@@ -3510,7 +3571,7 @@
       const banner = document.createElement('div');
       banner.className = 'wiz-prov is-set';
       banner.style.gridColumn = '1 / -1';
-      banner.innerHTML = '<div class="wiz-prov-head"><b>Cloudflare Workers AI</b><span class="wiz-prov-pill">Built in</span></div><div class="wiz-prov-hint">Llama 3.3 70B for text · Flux 1 schnell for images. No key needed — included on the Cloudflare free tier.</div>';
+      banner.innerHTML = '<div class="wiz-prov-head"><b>Cloudflare Workers AI</b><span class="wiz-prov-pill">Tích hợp sẵn</span></div><div class="wiz-prov-hint">Llama 3.3 70B cho văn bản · Flux 1 schnell cho hình ảnh. Không cần API key — đã bao gồm trong gói miễn phí của Cloudflare.</div>';
       grid.appendChild(banner);
 
       for (const p of opts) {
@@ -3520,9 +3581,9 @@
         card.innerHTML = `
           <div class="wiz-prov-head">
             <b>${p.label}</b>
-            <span class="wiz-prov-pill">${isSet ? 'Saved' : 'Optional'}</span>
+            <span class="wiz-prov-pill">${isSet ? 'Đã lưu' : 'Tùy chọn'}</span>
           </div>
-          <input type="password" placeholder="${isSet ? '••••••••  (already saved)' : 'Paste API key'}" data-prov="${p.envKey}" autocomplete="off" />
+          <input type="password" placeholder="${isSet ? '••••••••  (đã lưu)' : 'Dán API key'}" data-prov="${p.envKey}" autocomplete="off" />
         `;
         grid.appendChild(card);
       }
@@ -3535,14 +3596,14 @@
       const toSave = inputs
         .map((el) => ({ key: el.dataset.prov, val: el.value.trim() }))
         .filter((p) => p.val.length > 0);
-      const btn = $('#wiz-go-4'); btn.disabled = true; btn.textContent = 'Saving…';
+      const btn = $('#wiz-go-4'); btn.disabled = true; btn.textContent = 'Đang lưu…';
       for (const p of toSave) {
         await api('/api/admin/secrets', {
           method: 'POST',
           body: JSON.stringify({ name: p.key, value: p.val }),
         }).catch(() => {});
       }
-      btn.disabled = false; btn.textContent = 'Continue →';
+      btn.disabled = false; btn.textContent = 'Tiếp tục →';
 
       show('4');
       // Kick off the planner. We don't pass replace:true — if the
@@ -3557,7 +3618,7 @@
       });
       $('#wiz-plan-loading').hidden = true;
       if (status !== 200) {
-        $('#wiz-4-err').textContent = body?.detail || body?.error || 'Planning failed.';
+        $('#wiz-4-err').textContent = body?.detail || body?.error || 'Lên kế hoạch thất bại.';
         $('#wiz-go-done').disabled = false;
         return;
       }
@@ -3570,10 +3631,10 @@
       list.innerHTML = '';
       if (!slots.length) {
         const li = document.createElement('li');
-        li.innerHTML = '<span class="wiz-plan-title">No new slots needed — your calendar already has upcoming content.</span>';
+        li.innerHTML = '<span class="wiz-plan-title">Không cần thêm bài viết mới — lịch của bạn đã có sẵn nội dung sắp tới.</span>';
         list.appendChild(li);
       } else {
-        const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const monthsShort = ['Thg 1','Thg 2','Thg 3','Thg 4','Thg 5','Thg 6','Thg 7','Thg 8','Thg 9','Thg 10','Thg 11','Thg 12'];
         for (const s of slots) {
           const li = document.createElement('li');
           const dt = new Date(s.scheduled_for + 'T00:00:00Z');
@@ -3661,10 +3722,10 @@
       if (!iso) return '';
       const d = new Date(iso);
       const dh = Math.round((Date.now() - d.getTime()) / 3600000);
-      if (dh < 1) return 'just now';
-      if (dh < 24) return dh + 'h ago';
+      if (dh < 1) return 'vừa xong';
+      if (dh < 24) return dh + ' giờ trước';
       const dd = Math.round(dh / 24);
-      if (dd < 30) return dd + 'd ago';
+      if (dd < 30) return dd + ' ngày trước';
       return d.toISOString().slice(0, 10);
     }
 
@@ -3678,37 +3739,37 @@
 
       let pill, label, value;
       if (s.up_to_date) {
-        pill = '<span class="upd-pill is-current">Up to date</span>';
-        label = 'You\'re running the latest commit on upstream main.';
-        value = s.current ? esc(s.current.short) : 'unknown';
+        pill = '<span class="upd-pill is-current">Đã cập nhật mới nhất</span>';
+        label = 'Bạn đang chạy commit mới nhất trên nhánh chính upstream.';
+        value = s.current ? esc(s.current.short) : 'không rõ';
         badge.hidden = true;
       } else if (!s.current) {
-        pill = '<span class="upd-pill is-unknown">Unknown</span>';
-        label = 'We don\'t know which commit this install came from. Apply an update to set a baseline.';
+        pill = '<span class="upd-pill is-unknown">Không rõ</span>';
+        label = 'Không xác định được commit cài đặt ban đầu. Hãy áp dụng bản cập nhật để tạo mốc chuẩn.';
         value = '—';
         badge.hidden = true;
       } else {
-        pill = '<span class="upd-pill is-behind">' + s.ahead + ' commit' + (s.ahead === 1 ? '' : 's') + ' behind</span>';
-        label = 'Upstream has moved on. Have a look below and update when you\'re ready.';
+        pill = '<span class="upd-pill is-behind">Chậm hơn ' + s.ahead + ' commit</span>';
+        label = 'Upstream đã có cập nhật mới. Hãy xem danh sách bên dưới và cập nhật khi bạn sẵn sàng.';
         value = esc(s.current.short);
         badge.hidden = false;
         badge.textContent = s.ahead;
       }
       summary.innerHTML = `
-        <div class="upd-row"><span class="upd-label">Status</span>${pill}</div>
-        <div class="upd-row"><span class="upd-label">Installed</span><span class="upd-value">${value}</span></div>
-        <div class="upd-row"><span class="upd-label">Latest upstream</span><span class="upd-value">${esc(s.latest?.short || '—')}${s.latest?.date ? ' · ' + esc(relativeDate(s.latest.date)) : ''}</span></div>
-        <div class="upd-row"><span class="upd-label">Install method</span><span class="upd-value">${esc(s.install_method || 'unknown')}</span></div>
+        <div class="upd-row"><span class="upd-label">Trạng thái</span>${pill}</div>
+        <div class="upd-row"><span class="upd-label">Đã cài đặt</span><span class="upd-value">${value}</span></div>
+        <div class="upd-row"><span class="upd-label">Mới nhất upstream</span><span class="upd-value">${esc(s.latest?.short || '—')}${s.latest?.date ? ' · ' + esc(relativeDate(s.latest.date)) : ''}</span></div>
+        <div class="upd-row"><span class="upd-label">Phương thức cài đặt</span><span class="upd-value">${esc(s.install_method || 'không rõ')}</span></div>
         <div class="upd-row" style="margin-top:6px;color:var(--ink-dim);font-size:13px">${esc(label)}</div>
       `;
 
       if (s.commits && s.commits.length) {
         changesCard.hidden = false;
-        $('#upd-changes-lede').textContent = `${s.commits.length} commit${s.commits.length === 1 ? '' : 's'} from ${s.repo?.owner || 'Benjamin-Bloch'}/${s.repo?.name || 'pages-seo'} since your install.`;
+        $('#upd-changes-lede').textContent = `${s.commits.length} commit từ ${s.repo?.owner || 'Benjamin-Bloch'}/${s.repo?.name || 'pages-seo'} kể từ khi bạn cài đặt.`;
         const stats = $('#upd-diff-stats');
         if (s.files_changed) {
           stats.hidden = false;
-          stats.innerHTML = `${s.files_changed} file${s.files_changed === 1 ? '' : 's'} · <span class="add">+${s.additions}</span> <span class="del">−${s.deletions}</span>`;
+          stats.innerHTML = `${s.files_changed} tệp · <span class="add">+${s.additions}</span> <span class="del">−${s.deletions}</span>`;
         } else {
           stats.hidden = true;
         }
@@ -3757,8 +3818,8 @@
         const div = document.createElement('div');
         div.className = isTransient ? 'status warn' : 'status bad';
         div.textContent = isTransient
-          ? "GitHub didn't answer this time — usually a transient rate-limit. Click Check for updates again in 30 seconds."
-          : "Couldn't reach the update endpoint: " + detail;
+          ? "GitHub chưa phản hồi — thường do giới hạn tần suất tạm thời. Hãy bấm kiểm tra lại sau 30 giây."
+          : "Không thể kết nối tới endpoint cập nhật: " + detail;
         summary.appendChild(div);
         return;
       }
@@ -3769,9 +3830,9 @@
       const token = $('#upd-token').value.trim();
       const status = $('#upd-apply-status');
       const btn = $('#upd-apply-go');
-      if (!token) { status.className = 'status bad'; status.textContent = 'Token required.'; return; }
+      if (!token) { status.className = 'status bad'; status.textContent = 'Yêu cầu token.'; return; }
       btn.disabled = true;
-      status.className = 'status'; status.textContent = 'Triggering rebuild…';
+      status.className = 'status'; status.textContent = 'Đang kích hoạt tạo lại bản dựng…';
       const { status: code, body } = await api('/api/admin/update/apply', {
         method: 'POST',
         body: JSON.stringify({ token }),
@@ -3783,7 +3844,7 @@
         return;
       }
       status.className = 'status good';
-      status.textContent = 'Rebuild kicked off. Cloudflare usually takes 1–3 minutes to publish.';
+      status.textContent = 'Đã kích hoạt tạo lại bản dựng. Cloudflare thường mất khoảng 1–3 phút để xuất bản.';
       $('#upd-token').value = '';
       // Re-check after a moment so the UI flips to "up to date".
       setTimeout(check, 3000);
@@ -3841,9 +3902,9 @@
     function dowMonFirst(d) { return (d.getUTCDay() + 6) % 7; }
 
     function fmtRange(monthStart) {
-      // Show "May – June 2026" if the visible grid spans across a month.
-      const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const monthsLong  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      // Show "Tháng 5 – Tháng 6 2026" if the visible grid spans across a month.
+      const monthsShort = ['Thg 1','Thg 2','Thg 3','Thg 4','Thg 5','Thg 6','Thg 7','Thg 8','Thg 9','Thg 10','Thg 11','Thg 12'];
+      const monthsLong  = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
       const start = gridStart(monthStart);
       const end = addDays(start, 41);
       const sm = start.getUTCMonth(), em = end.getUTCMonth();
@@ -3869,7 +3930,7 @@
       const { status, body } = await api(`/api/admin/calendar?from=${isoOf(start)}&to=${isoOf(end)}`);
       loading = false;
       if (status !== 200) {
-        $('#cal-grid').innerHTML = '<div class="cal-empty">Failed to load calendar.</div>';
+        $('#cal-grid').innerHTML = '<div class="cal-empty">Không thể tải lịch bài viết.</div>';
         return;
       }
       slots = body.slots || [];
@@ -3901,13 +3962,13 @@
         dayLabel.className = 'cal-day';
         const dayNum = document.createElement('span');
         const firstOfMonth = day.getUTCDate() === 1;
-        const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const monthsShort = ['Thg 1','Thg 2','Thg 3','Thg 4','Thg 5','Thg 6','Thg 7','Thg 8','Thg 9','Thg 10','Thg 11','Thg 12'];
         dayNum.textContent = firstOfMonth ? `${monthsShort[day.getUTCMonth()]} ${day.getUTCDate()}` : day.getUTCDate();
         dayLabel.appendChild(dayNum);
         if (isToday) {
           const tag = document.createElement('span');
           tag.className = 'cal-day-tag';
-          tag.textContent = 'Today';
+          tag.textContent = 'Hôm nay';
           dayLabel.appendChild(tag);
         }
         cell.appendChild(dayLabel);
@@ -3936,7 +3997,7 @@
           titleEl.textContent = s.title;
           slot.appendChild(iconEl);
           slot.appendChild(titleEl);
-          slot.title = (s.angle || '') + (s.primary_keyword ? `\nKeyword: ${s.primary_keyword}` : '');
+          slot.title = (s.angle || '') + (s.primary_keyword ? `\nTừ khóa: ${s.primary_keyword}` : '');
           slot.addEventListener('click', () => openModal(s));
           cell.appendChild(slot);
         }
@@ -3945,7 +4006,7 @@
           add.type = 'button';
           add.className = 'cal-add';
           add.textContent = '+';
-          add.title = 'Add an article for this day';
+          add.title = 'Thêm bài viết cho ngày này';
           add.addEventListener('click', () => openModal({ scheduled_for: k }));
           cell.appendChild(add);
         }
@@ -3956,7 +4017,7 @@
 
     function openModal(slot) {
       editingId = slot.id || null;
-      $('#cal-modal-title').textContent = editingId ? 'Edit article' : 'New article';
+      $('#cal-modal-title').textContent = editingId ? 'Sửa bài viết' : 'Bài viết mới';
       $('#cal-mod-title').value = slot.title || '';
       $('#cal-mod-date').value = slot.scheduled_for || todayIso();
       $('#cal-mod-keyword').value = slot.primary_keyword || '';
@@ -3965,7 +4026,7 @@
       del.hidden = !editingId || slot.status === 'published';
       const save = $('#cal-mod-save');
       const isPub = slot.status === 'published';
-      save.textContent = isPub ? 'OK' : 'Save';
+      save.textContent = isPub ? 'OK' : 'Lưu';
       $('#cal-modal').hidden = false;
       setTimeout(() => $('#cal-mod-title').focus(), 30);
     }
@@ -3999,7 +4060,7 @@
         });
       }
       if (res.status !== 200) {
-        toast(res.body?.detail || res.body?.error || 'Save failed', 'bad', { errorCode: res.body?.error });
+        toast(res.body?.detail || res.body?.error || 'Lưu thất bại', 'bad', { errorCode: res.body?.error });
         return;
       }
       closeModal();
@@ -4008,10 +4069,10 @@
 
     async function del() {
       if (!editingId) return;
-      if (!confirm('Delete this article slot?')) return;
+      if (!confirm('Xóa vị trí bài viết này?')) return;
       const res = await api('/api/admin/calendar?id=' + encodeURIComponent(editingId), { method: 'DELETE' });
       if (res.status !== 200) {
-        toast(res.body?.detail || res.body?.error || 'Delete failed', 'bad', { errorCode: res.body?.error });
+        toast(res.body?.detail || res.body?.error || 'Xóa thất bại', 'bad', { errorCode: res.body?.error });
         return;
       }
       closeModal();
@@ -4019,10 +4080,10 @@
     }
 
     async function regenerate() {
-      const replace = confirm('Replace all future scheduled articles with a fresh plan?\n\nOK = wipe and re-plan.\nCancel = append to existing (no wipe).');
+      const replace = confirm('Thay thế toàn bộ bài viết đã lên lịch tương lai bằng kế hoạch mới?\n\nOK = xóa và lên lịch lại.\nHủy = giữ nguyên và thêm vào phần còn trống.');
       const btn = $('#cal-plan');
       const orig = btn.textContent;
-      btn.disabled = true; btn.textContent = 'Planning…';
+      btn.disabled = true; btn.textContent = 'Đang lập kế hoạch…';
       const res = await api('/api/admin/calendar/plan', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -4031,13 +4092,13 @@
       btn.disabled = false; btn.textContent = orig;
       if (res.status !== 200) {
         if (res.body?.error === 'no_brand_dna') {
-          toast('Save your Brand DNA first — the planner uses it to pick topics.', 'warn', {
-            action: { label: 'Open Brand', onClick: () => activateTab('brand') },
+          toast('Hãy lưu Brand DNA trước — trình lập kế hoạch cần thông tin này để chọn chủ đề.', 'warn', {
+            action: { label: 'Mở Brand', onClick: () => activateTab('brand') },
           });
           activateTab('brand');
           return;
         }
-        toast(res.body?.detail || res.body?.error || 'Planning failed', 'bad', { errorCode: res.body?.error });
+        toast(res.body?.detail || res.body?.error || 'Lập kế hoạch thất bại', 'bad', { errorCode: res.body?.error });
         return;
       }
       load();
@@ -4100,7 +4161,7 @@
         // to roll out; show a friendly waiting screen and poll whoami
         // until it stops returning a DB-missing 503.
         const err = document.getElementById('gate-err');
-        if (err) err.textContent = 'Fixing your site’s database connection… this takes about a minute.';
+        if (err) err.textContent = 'Đang sửa kết nối cơ sở dữ liệu của trang web… việc này mất khoảng 1 phút.';
         for (let i = 0; i < 60; i++) {
           await new Promise((res) => setTimeout(res, 2000));
           // Poll /api/setup until it stops returning no_db_binding.

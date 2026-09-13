@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" />
-<title>Admin · Gulagi Blogs</title>
+<title>Quản trị · Gulagi Blogs</title>
 <link rel="preload" href="/_fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="preload" href="/_fonts/inter-500.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="preload" href="/_fonts/jetbrains-mono-400.woff2" as="font" type="font/woff2" crossorigin />
@@ -29,7 +29,7 @@
 <div id="gate" class="gate" hidden>
   <div class="gate-card">
     <h1>pages-seo admin</h1>
-    <p>Sign in to manage your blog and programmatic SEO pipeline.</p>
+    <p>Đăng nhập để quản lý blog và quy trình Programmatic SEO của bạn.</p>
     <form id="login-form" method="post" action="#" autocomplete="on">
       <label class="gate-field">
         <span>Email</span>
@@ -39,7 +39,7 @@
         <span>Password</span>
         <input id="gate-password" type="password" autocomplete="current-password" required placeholder="" />
       </label>
-      <button id="gate-go" type="submit" class="btn btn-primary">Sign in</button>
+      <button id="gate-go" type="submit" class="btn btn-primary">Đăng nhập</button>
     </form>
     <div id="gate-err" class="err"></div>
   </div>
@@ -57,48 +57,48 @@
         <span class="wiz-dot"></span>
         <span class="wiz-brand-text">Gulagi Blogs</span>
       </div>
-      <ol class="wiz-steps" aria-label="Setup progress">
-        <li class="wiz-step is-current"><b>Account</b></li>
+      <ol class="wiz-steps" aria-label="Tiến trình thiết lập">
+        <li class="wiz-step is-current"><b>Tài khoản</b></li>
       </ol>
       <span></span>
     </header>
 
     <section class="wiz-pane wiz-pane-center" hidden id="setup-success">
       <div class="wiz-tick wiz-tick-big">✓</div>
-      <h1 class="wiz-h1"><span class="serif-i">All set.</span></h1>
-      <p class="wiz-lede">Your admin account is ready. Signing you in…</p>
+      <h1 class="wiz-h1"><span class="serif-i">Hoàn tất.</span></h1>
+      <p class="wiz-lede">Tài khoản quản trị đã sẵn sàng. Đang đăng nhập…</p>
     </section>
 
     <section class="wiz-pane" id="setup-form-pane">
-      <div class="wiz-eyebrow">Welcome</div>
-      <h1 class="wiz-h1"><span class="serif-i">Let's</span> set up<br/>your install.</h1>
-      <p class="wiz-lede">Looks like this is a fresh deploy. Pick an email and password for the admin account, tell us where your site lives, and we'll do the rest — schema, secrets, the lot.</p>
+      <div class="wiz-eyebrow">Xin chào</div>
+      <h1 class="wiz-h1"><span class="serif-i">Hãy</span> thiết lập<br/>bản cài đặt của bạn.</h1>
+      <p class="wiz-lede">Có vẻ đây là bản triển khai mới. Chọn email và mật khẩu cho tài khoản quản trị, cho chúng tôi biết website của bạn ở đâu, phần còn lại hãy để chúng tôi lo — schema, mã bảo mật và toàn bộ hệ thống.</p>
 
       <form id="setup-form" method="post" action="#" autocomplete="on">
         <div class="wiz-row">
           <label class="wiz-field">
-            <span>Your site name</span>
-            <input id="setup-site-name" type="text" placeholder="My Site" required maxlength="80" />
+            <span>Tên website của bạn</span>
+            <input id="setup-site-name" type="text" placeholder="Trang web của tôi" required maxlength="80" />
           </label>
           <label class="wiz-field">
-            <span>Your site URL</span>
+            <span>URL website của bạn</span>
             <input id="setup-site-url" type="url" placeholder="https://example.com" required autocomplete="url" />
           </label>
         </div>
         <label class="wiz-field">
-          <span>Admin email</span>
+          <span>Email quản trị</span>
           <input id="setup-email" type="email" placeholder="you@example.com" required autocomplete="username" />
         </label>
         <label class="wiz-field wiz-field-big">
-          <span>Password <em>(8+ characters)</em></span>
+          <span>Mật khẩu <em>(từ 8 ký tự trở lên)</em></span>
           <input id="setup-password" type="password" placeholder="" required minlength="8" maxlength="256" autocomplete="new-password" />
         </label>
         <div class="wiz-actions wiz-actions-single">
-          <button id="setup-go" class="btn btn-primary wiz-btn-lg" type="submit">Finish setup →</button>
+          <button id="setup-go" class="btn btn-primary wiz-btn-lg" type="submit">Hoàn tất thiết lập →</button>
         </div>
       </form>
       <div id="setup-err" class="wiz-err"></div>
-      <p class="wiz-foot-note">This runs once. After it's done, you'll log in like any other admin and the onboarding wizard takes over.</p>
+      <p class="wiz-foot-note">Bước này chỉ chạy một lần. Sau khi xong, bạn sẽ đăng nhập như bình thường và trình hướng dẫn ban đầu sẽ tiếp quản.</p>
     </section>
   </div>
 </div>
@@ -115,23 +115,23 @@
          first child and renders the sub-nav strip below. Every page
          lives in exactly one place; no duplicate top-level buttons. -->
     <nav class="tabs">
-      <button class="tab" data-tab="overview" aria-current="page">Overview</button>
-      <button class="tab" data-tab="blog" data-children="blog,calendar,trends">Blog</button>
-      <button class="tab" data-tab="brand" data-children="brand,covers,prog,links">Brand</button>
-      <button class="tab" data-tab="analytics">Analytics</button>
-      <button class="tab" data-tab="seo" data-children="seo,embeds">Distribution</button>
+      <button class="tab" data-tab="overview" aria-current="page">Tổng quan</button>
+      <button class="tab" data-tab="blog" data-children="blog,calendar,trends">Bài viết</button>
+      <button class="tab" data-tab="brand" data-children="brand,covers,prog,links">Thương hiệu</button>
+      <button class="tab" data-tab="analytics">Phân tích</button>
+      <button class="tab" data-tab="seo" data-children="seo,embeds">Phân phối</button>
       <button class="tab" data-tab="status" data-children="status,updates,usage">
-        System
+        Hệ thống
         <span id="status-badge" class="tab-badge" hidden></span>
         <span id="updates-badge" class="tab-badge" hidden></span>
       </button>
-      <button class="tab" data-tab="settings">Settings</button>
+      <button class="tab" data-tab="settings">Cài đặt</button>
     </nav>
     <!-- Sub-nav strip. Populated dynamically by admin.js when a tab
          with data-children is active. Hidden otherwise. -->
     <nav id="subtabs" class="subtabs" hidden></nav>
     <div class="topbar-tools">
-      <div id="project-scope" class="project-scope"><label for="project-switcher" class="sr-only">Project</label><select id="project-switcher" class="project-switcher"></select><span id="project-badge" class="project-badge" hidden></span></div>
+      <div id="project-scope" class="project-scope"><label for="project-switcher" class="sr-only">Dự án</label><select id="project-switcher" class="project-switcher"></select><span id="project-badge" class="project-badge" hidden></span></div>
       <!-- Version badge. Shows your installed version (short sha or
            release tag). When upstream is ahead, an orange dot appears
            and the button links to the Updates tab. Populated by
@@ -139,19 +139,19 @@
            /api/version, then compares against the installed sha
            stored in settings. -->
       <button id="version-badge" class="version-badge" type="button" hidden
-              title="Installed version" data-jump-to="updates">
+              title="Phiên bản đã cài đặt" data-jump-to="updates">
         <span class="version-dot" hidden></span>
         <span class="version-label">…</span>
       </button>
       <button id="theme-toggle" class="btn btn-ghost btn-sm theme-toggle" type="button"
-              title="Toggle light/dark mode" aria-label="Toggle light/dark mode">
+              title="Chuyển chế độ sáng/tối" aria-label="Chuyển chế độ sáng/tối">
         <!-- Icon swapped via CSS on [data-theme="light"] root. -->
         <span class="theme-icon theme-icon-dark" aria-hidden="true">☾</span>
         <span class="theme-icon theme-icon-light" aria-hidden="true">☀</span>
       </button>
       <button id="lang-toggle" class="btn btn-ghost btn-sm" type="button" title="Chuyển ngôn ngữ / Switch language">VI</button>
-      <button id="open-wizard" class="btn btn-ghost btn-sm" title="Re-run the onboarding wizard">Setup wizard</button>
-      <button id="lock" class="btn btn-ghost btn-sm">Sign out</button>
+      <button id="open-wizard" class="btn btn-ghost btn-sm" title="Chạy lại trình hướng dẫn thiết lập">Trình thiết lập</button>
+      <button id="lock" class="btn btn-ghost btn-sm">Đăng xuất</button>
     </div>
   </header>
 
@@ -161,30 +161,30 @@
     <section data-page="overview" class="page">
       <div class="grid-3">
         <div class="card">
-          <div class="card-eyebrow">Posts</div>
+          <div class="card-eyebrow">Bài viết</div>
           <div class="card-stat" id="stat-blog-count">—</div>
-          <div class="card-sub">Published blog posts</div>
+          <div class="card-sub">Bài viết blog đã xuất bản</div>
         </div>
         <div class="card">
           <div class="card-eyebrow">Programmatic</div>
           <div class="card-stat" id="stat-prog-count">—</div>
-          <div class="card-sub">Generated landing pages</div>
+          <div class="card-sub">Trang landing đã tạo</div>
         </div>
         <div class="card">
-          <div class="card-eyebrow">Queue</div>
+          <div class="card-eyebrow">Hàng đợi</div>
           <div class="card-stat" id="stat-queue-count">—</div>
-          <div class="card-sub">Pending keywords</div>
+          <div class="card-sub">Từ khóa đang chờ xử lý</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Quick actions</div>
-        <h2>Run something</h2>
-        <p>Trigger a one-off generation or refresh search engines now.</p>
+        <div class="card-eyebrow">Thao tác nhanh</div>
+        <h2>Khởi chạy tác vụ</h2>
+        <p>Kích hoạt tạo nội dung tức thì hoặc làm mới các công cụ tìm kiếm ngay bây giờ.</p>
         <div class="row">
-          <button id="qa-blog" class="btn btn-primary">Generate blog post</button>
-          <button id="qa-prog" class="btn btn-primary">Generate next programmatic page</button>
-          <button id="qa-ping" class="btn btn-ghost">Ping IndexNow</button>
+          <button id="qa-blog" class="btn btn-primary">Tạo bài viết blog</button>
+          <button id="qa-prog" class="btn btn-primary">Tạo trang programmatic tiếp theo</button>
+          <button id="qa-ping" class="btn btn-ghost">Gửi IndexNow</button>
         </div>
         <pre id="qa-out" class="log" hidden></pre>
       </div>
@@ -193,45 +193,45 @@
     <!-- ============ BLOG ============ -->
     <section data-page="blog" class="page" hidden>
       <div class="card">
-        <div class="card-eyebrow">Daily blog</div>
-        <h2>Generate a post</h2>
-        <p>One full chain: pick topic → write 900-1300 words → generate hero image → publish + ping IndexNow. ~60-120s total.</p>
+        <div class="card-eyebrow">Blog hàng ngày</div>
+        <h2>Tạo bài viết</h2>
+        <p>Quy trình khép kín: chọn chủ đề → viết 900-1300 từ → tạo ảnh bìa → xuất bản + gửi IndexNow. Tổng thời gian khoảng 60-120 giây.</p>
         <div class="row">
-          <button id="blog-go" class="btn btn-primary">Generate now</button>
+          <button id="blog-go" class="btn btn-primary">Tạo ngay</button>
           <span id="blog-status" class="status"></span>
         </div>
         <pre id="blog-log" class="log" hidden></pre>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Content refresh</div>
-        <h2>Refresh stale posts</h2>
-        <p>Finds published posts older than 90 days (max 2 refreshes per week), rewrites them in place keeping the same URL, then re-pings IndexNow.</p>
+        <div class="card-eyebrow">Làm mới nội dung</div>
+        <h2>Cập nhật bài viết cũ</h2>
+        <p>Tìm các bài viết đã xuất bản hơn 90 ngày (tối đa 2 lần cập nhật mỗi tuần), viết lại nội dung tại chỗ và giữ nguyên URL, sau đó gửi lại IndexNow.</p>
         <div class="row">
-          <button id="refresh-scan" class="btn btn-primary">Scan stale posts</button>
+          <button id="refresh-scan" class="btn btn-primary">Quét bài viết cũ</button>
           <span id="refresh-status" class="status"></span>
         </div>
         <div id="refresh-list" class="dim" style="margin-top:12px">Chưa quét.</div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Drafts &amp; failed</div>
-        <h2>Resume incomplete jobs</h2>
-        <p>Each step is idempotent, so retry resumes from whichever step failed.</p>
+        <div class="card-eyebrow">Bản nháp &amp; thất bại</div>
+        <h2>Tiếp tục các tác vụ chưa hoàn thành</h2>
+        <p>Mỗi bước đều có tính lũy kế (idempotent), nên khi thử lại sẽ tiếp tục từ bước bị gián đoạn.</p>
         <div class="row">
-          <button id="jobs-refresh" class="btn btn-ghost btn-sm">Refresh</button>
+          <button id="jobs-refresh" class="btn btn-ghost btn-sm">Làm mới</button>
         </div>
         <table id="jobs-table" class="data">
-          <thead><tr><th>When</th><th>Topic</th><th>Slug</th><th>Status</th><th>Error</th><th></th></tr></thead>
+          <thead><tr><th>Thời gian</th><th>Chủ đề</th><th>Slug</th><th>Trạng thái</th><th>Lỗi</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Published posts</div>
-        <h2>Blog post list</h2>
+        <div class="card-eyebrow">Bài viết đã xuất bản</div>
+        <h2>Danh sách bài viết blog</h2>
         <table id="posts-table" class="data">
-          <thead><tr><th>Date</th><th>Title</th><th>Slug</th><th>Provider</th><th></th></tr></thead>
+          <thead><tr><th>Ngày</th><th>Tiêu đề</th><th>Slug</th><th>Nhà cung cấp</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -240,48 +240,48 @@
     <!-- ============ PROGRAMMATIC ============ -->
     <section data-page="prog" class="page" hidden>
       <div class="card">
-        <div class="card-eyebrow">Pull keywords</div>
-        <h2>Discover from Google Autocomplete</h2>
-        <p>Type a seed phrase, get 50 related long-tails, queued straight into the generation pipeline.</p>
+        <div class="card-eyebrow">Thu thập từ khóa</div>
+        <h2>Khám phá từ Google Autocomplete</h2>
+        <p>Nhập cụm từ khóa gốc, nhận 50 từ khóa đuôi dài liên quan và tự động đưa vào hàng đợi xử lý.</p>
         <div class="row">
-          <input id="pull-seed" placeholder="e.g. instagram followers" />
+          <input id="pull-seed" placeholder="vd: instagram followers" />
           <input id="pull-limit" type="number" value="50" min="1" max="200" style="max-width:90px" />
-          <button id="pull-go" class="btn btn-primary">Pull &amp; queue</button>
-          <button id="pull-preview" class="btn btn-ghost">Preview only</button>
+          <button id="pull-go" class="btn btn-primary">Thu thập &amp; xếp hàng</button>
+          <button id="pull-preview" class="btn btn-ghost">Chỉ xem trước</button>
         </div>
         <pre id="pull-out" class="log" hidden></pre>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Upload keyword list</div>
-        <h2>Paste your own</h2>
-        <p>One keyword per line. Duplicates are skipped automatically.</p>
+        <div class="card-eyebrow">Tải lên danh sách từ khóa</div>
+        <h2>Dán danh sách của bạn</h2>
+        <p>Mỗi từ khóa trên một dòng. Các từ khóa trùng lặp sẽ tự động được bỏ qua.</p>
         <textarea id="upload-csv" placeholder="best smm panel uk&#10;cheap instagram followers&#10;…"></textarea>
         <div class="row">
-          <button id="upload-go" class="btn btn-primary">Add to queue</button>
+          <button id="upload-go" class="btn btn-primary">Thêm vào hàng đợi</button>
           <span id="upload-status" class="status"></span>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Queue</div>
-        <h2>Pending keywords</h2>
+        <div class="card-eyebrow">Hàng đợi</div>
+        <h2>Từ khóa đang chờ</h2>
         <div class="row">
           <select id="queue-status">
-            <option value="pending" selected>Pending</option>
-            <option value="processing">Processing</option>
-            <option value="done">Done</option>
-            <option value="failed">Failed</option>
+            <option value="pending" selected>Đang chờ</option>
+            <option value="processing">Đang xử lý</option>
+            <option value="done">Hoàn thành</option>
+            <option value="failed">Thất bại</option>
           </select>
-          <button id="queue-refresh" class="btn btn-ghost btn-sm">Refresh</button>
+          <button id="queue-refresh" class="btn btn-ghost btn-sm">Làm mới</button>
         </div>
         <table id="queue-table" class="data data-queue">
           <thead><tr>
-            <th>Keyword</th>
-            <th title="Intent classification: transactional > commercial > informational">Intent</th>
-            <th title="Heuristic 0-100 score. Higher = more likely to convert.">Score</th>
-            <th title="Cron picks highest priority first. Click ↑/↓ to adjust.">Priority</th>
-            <th>Status</th>
+            <th>Từ khóa</th>
+            <th title="Phân loại ý định: giao dịch > thương mại > thông tin">Ý định</th>
+            <th title="Điểm ước lượng 0-100. Điểm càng cao càng dễ chuyển đổi.">Điểm số</th>
+            <th title="Cron chọn ưu tiên cao nhất trước. Bấm ↑/↓ để điều chỉnh.">Độ ưu tiên</th>
+            <th>Trạng thái</th>
             <th>Slug</th>
           </tr></thead>
           <tbody></tbody>
@@ -289,11 +289,11 @@
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Run now</div>
-        <h2>Generate the next page</h2>
-        <p>Takes ~60-120s. Run multiple to chew through the queue manually; otherwise the daily cron handles 10/day.</p>
+        <div class="card-eyebrow">Tạo ngay</div>
+        <h2>Tạo trang tiếp theo</h2>
+        <p>Mất khoảng 60-120 giây. Bạn có thể bấm chạy nhiều lần để xử lý hàng đợi thủ công; nếu không cron hàng ngày sẽ xử lý 10 trang/ngày.</p>
         <div class="row">
-          <button id="prog-go" class="btn btn-primary">Generate next</button>
+          <button id="prog-go" class="btn btn-primary">Tạo trang tiếp</button>
           <span id="prog-status" class="status"></span>
         </div>
       </div>
@@ -302,63 +302,97 @@
     <!-- ============ SEO ============ -->
     <section data-page="seo" class="page" hidden>
       <div class="card">
+        <div class="card-eyebrow">Các cách phân phối</div>
+        <h2>Nội dung của dự án này được phát đi bằng những cách nào</h2>
+        <p class="muted">Mọi kênh dưới đây đều tự động cập nhật khi có bài mới xuất bản — không cần thao tác lại. Đường dẫn đã gắn đúng dự án đang chọn ở thanh trên.</p>
+        <div class="dist-list">
+          <div class="dist-item">
+            <div class="dist-name">Blog công khai</div>
+            <div class="dist-desc">Trang blog đọc trực tiếp trên host của nền tảng.</div>
+            <a id="dist-blog-url" class="dist-url" href="#" target="_blank" rel="noopener"></a>
+          </div>
+          <div class="dist-item">
+            <div class="dist-name">RSS feed</div>
+            <div class="dist-desc">Cho Feedly, Inoreader, NetNewsWire và các site khác lấy lại tiêu đề.</div>
+            <a id="dist-feed-url" class="dist-url" href="#" target="_blank" rel="noopener"></a>
+          </div>
+          <div class="dist-item">
+            <div class="dist-name">Sitemap</div>
+            <div class="dist-desc">Google đọc để lập chỉ mục; cũng là nguồn cho IndexNow.</div>
+            <a id="dist-sitemap-url" class="dist-url" href="#" target="_blank" rel="noopener"></a>
+          </div>
+          <div class="dist-item">
+            <div class="dist-name">Widget nhúng</div>
+            <div class="dist-desc">Dán vào Webflow, Shopify, WordPress hay một trang HTML bất kỳ — xem mục bên dưới.</div>
+          </div>
+          <div class="dist-item">
+            <div class="dist-name">Đích xuất bản</div>
+            <div class="dist-desc">Nơi bài viết được đẩy tới khi xuất bản. Cấu hình ở tab Cài đặt (chỉ quản trị cấp nền tảng).</div>
+            <span id="dist-publisher" class="dist-url"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-eyebrow">IndexNow</div>
-        <h2>Push the sitemap to Bing, Yandex, Seznam</h2>
-        <p>Reads <code>/sitemap.xml</code> and submits every URL to IndexNow. Runs automatically after each new post; this button is for ad-hoc re-pings.</p>
+        <h2>Đẩy sitemap lên Bing, Yandex, Seznam</h2>
+        <p>Đọc <code>/sitemap.xml</code> của dự án đang chọn và gửi toàn bộ URL tới IndexNow. Tự chạy sau mỗi bài mới; nút này để ping lại thủ công.</p>
         <div class="row">
           <button id="ping-go" class="btn btn-primary">Ping IndexNow</button>
           <span id="ping-status" class="status"></span>
         </div>
       </div>
+
       <div class="card">
         <div class="card-eyebrow">Sitemap</div>
-        <h2>Live sitemap</h2>
-        <p><a id="sitemap-link" href="/sitemap.xml" target="_blank">/sitemap.xml ↗</a></p>
+        <h2>Sitemap đang phát</h2>
+        <p><a id="sitemap-link" href="/sitemap.xml" target="_blank" rel="noopener">/sitemap.xml ↗</a></p>
       </div>
+
       <div class="card widget-card">
-        <div class="card-eyebrow">Embed widget</div>
-        <h2>Drop your blog on any site</h2>
-        <p class="muted">Paste one of these snippets anywhere — Webflow, Shopify, WordPress, a plain HTML page. The widget renders your most recent published posts inline. Cross-origin enabled.</p>
+        <div class="card-eyebrow">Widget nhúng</div>
+        <h2>Đưa blog lên bất kỳ website nào</h2>
+        <p class="muted">Dán một trong các đoạn mã dưới đây vào Webflow, Shopify, WordPress hay một trang HTML thuần. Widget hiển thị các bài mới nhất ngay tại chỗ. Đã bật cross-origin.</p>
 
         <div class="widget-tabs" role="tablist">
           <button class="widget-tab is-active" type="button" data-flavour="js">JavaScript</button>
           <button class="widget-tab" type="button" data-flavour="iframe">iframe</button>
-          <button class="widget-tab" type="button" data-flavour="link">Link only</button>
+          <button class="widget-tab" type="button" data-flavour="link">Chỉ dẫn liên kết</button>
         </div>
 
         <div class="widget-snippet-wrap">
           <pre id="widget-snippet" class="widget-snippet"></pre>
-          <button id="widget-copy" class="btn btn-sm widget-copy" type="button">Copy</button>
+          <button id="widget-copy" class="btn btn-sm widget-copy" type="button">Sao chép</button>
         </div>
 
         <details class="widget-options">
-          <summary>Customise</summary>
+          <summary>Tuỳ chỉnh</summary>
           <div class="widget-options-grid">
-            <label>Container id
+            <label>Id vùng chứa
               <input id="widget-opt-id" type="text" value="ps-blog" />
             </label>
-            <label>Heading
-              <input id="widget-opt-title" type="text" placeholder="Latest from our blog" />
+            <label>Tiêu đề
+              <input id="widget-opt-title" type="text" placeholder="Bài mới từ blog của chúng tôi" />
             </label>
-            <label>Posts to show
+            <label>Số bài hiển thị
               <input id="widget-opt-count" type="number" min="1" max="50" value="5" />
             </label>
-            <label>Theme
+            <label>Giao diện
               <select id="widget-opt-theme">
-                <option value="auto">Match site (auto)</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
+                <option value="auto">Theo website (tự động)</option>
+                <option value="light">Sáng</option>
+                <option value="dark">Tối</option>
               </select>
             </label>
           </div>
         </details>
 
-        <div class="widget-preview" aria-label="Live preview of the widget">
+        <div class="widget-preview" aria-label="Xem trước widget trực tiếp">
           <div class="widget-preview-bar">
             <span class="widget-preview-dot"></span>
             <span class="widget-preview-dot"></span>
             <span class="widget-preview-dot"></span>
-            <span class="widget-preview-label">Preview</span>
+            <span class="widget-preview-label">Xem trước</span>
           </div>
           <div id="widget-preview-host"></div>
         </div>
@@ -368,81 +402,81 @@
     <!-- ============ BRAND DNA ============ -->
     <section data-page="brand" class="page" hidden>
       <div class="card">
-        <div class="card-eyebrow">Step 1 · Scrape</div>
-        <h2>Generate brand DNA from your website</h2>
-        <p>Enter the URL of the site this content engine represents. We'll fetch the homepage, extract the meaningful content, and send it to your preferred AI provider to produce a structured brand profile. Always review the output before saving — the AI is fast, not infallible.</p>
+        <div class="card-eyebrow">Bước 1 · Thu thập dữ liệu</div>
+        <h2>Tạo Brand DNA từ website của bạn</h2>
+        <p>Nhập URL của trang web mà hệ thống nội dung này đại diện. Chúng tôi sẽ tải trang chủ, trích xuất nội dung ý nghĩa và gửi tới nhà cung cấp AI ưa thích của bạn để tạo hồ sơ thương hiệu có cấu trúc. Hãy luôn kiểm tra lại kết quả trước khi lưu — AI xử lý nhanh nhưng không phải lúc nào cũng hoàn hảo.</p>
         <div class="row form-row">
           <input id="brand-url" type="url" placeholder="https://example.com" />
-          <button id="brand-generate" class="btn btn-primary">Generate</button>
+          <button id="brand-generate" class="btn btn-primary">Tạo ngay</button>
           <span id="brand-gen-status" class="status"></span>
         </div>
-        <p class="dim" style="margin-top:8px"><small>Tip: a homepage with rich body copy works best. JS-only / SPA homepages return little usable text — try a content-heavy page like <code>/about</code> or <code>/services</code> instead.</small></p>
+        <p class="dim" style="margin-top:8px"><small>Mẹo: trang chủ có nội dung văn bản phong phú sẽ hoạt động tốt nhất. Trang chủ chỉ có JS / SPA sẽ trả về rất ít văn bản dùng được — bạn có thể thử trang có nhiều nội dung như <code>/about</code> hoặc <code>/services</code>.</small></p>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Step 2 · Review &amp; edit</div>
+        <div class="card-eyebrow">Bước 2 · Xem lại &amp; chỉnh sửa</div>
         <h2>Brand DNA <span id="brand-project-info" class="dim" style="font-size:13px;font-weight:normal;margin-left:8px;"></span></h2>
-        <p>Every field below is editable. Once you click Save, these flow into every blog post and programmatic page the toolkit generates.</p>
+        <p>Mọi trường bên dưới đều có thể chỉnh sửa. Sau khi bạn bấm Lưu, thông tin này sẽ được đưa vào mọi bài viết blog và trang programmatic mà bộ công cụ tạo ra.</p>
         <div class="form-grid">
           <label>
-            <span>Business type</span>
-            <textarea data-brand="business_type" rows="6" placeholder="What does the business do? Model? Differentiators? Who do they serve?"></textarea>
-            <small>4–8 sentences. The LLM uses this as the primary context for every post.</small>
+            <span>Mô hình kinh doanh</span>
+            <textarea data-brand="business_type" rows="6" placeholder="Doanh nghiệp làm gì? Mô hình kinh doanh? Điểm khác biệt? Phục vụ đối tượng nào?"></textarea>
+            <small>4–8 câu. LLM sử dụng thông tin này làm ngữ cảnh chính cho mỗi bài viết.</small>
           </label>
           <label>
-            <span>Brand voice &amp; tone</span>
-            <textarea data-brand="voice_tone" rows="4" placeholder="How should this brand sound on the page?"></textarea>
-            <small>2–4 sentences. Tone, register, what to emphasise.</small>
+            <span>Giọng văn &amp; phong cách thương hiệu</span>
+            <textarea data-brand="voice_tone" rows="4" placeholder="Thương hiệu nên có phong cách thể hiện như thế nào trên trang?"></textarea>
+            <small>2–4 câu. Giọng điệu, sắc thái, nội dung cần nhấn mạnh.</small>
           </label>
           <label>
-            <span>Target audience</span>
-            <textarea data-brand="target_audience" rows="6" placeholder="Who's reading? Demographics, intent, jobs-to-be-done."></textarea>
-            <small>3–6 sentences. Primary + secondary segments.</small>
+            <span>Đối tượng độc giả mục tiêu</span>
+            <textarea data-brand="target_audience" rows="6" placeholder="Độc giả là ai? Nhân khẩu học, ý định tìm kiếm, nhu cầu cần giải quyết."></textarea>
+            <small>3–6 câu. Nhóm đối tượng chính và nhóm phụ.</small>
           </label>
           <label>
-            <span>Key themes</span>
-            <textarea data-brand="key_themes" rows="6" placeholder="One theme per line"></textarea>
-            <small>Topics the engine should cover. One per line.</small>
-          </label>
-        </div>
-        <div class="form-grid form-grid-cols">
-          <label>
-            <span>Service area <em class="optional">optional</em></span>
-            <input data-brand="service_area" type="text" placeholder="e.g. Edinburgh's New Town and West End" />
-            <small>If your business serves a specific area, add it here.</small>
-          </label>
-          <label>
-            <span>Topics to avoid <em class="optional">optional</em></span>
-            <textarea data-brand="topics_to_avoid" rows="3" placeholder="Competitor names, pricing details, services you don't offer"></textarea>
-            <small>The LLM will skip these entirely.</small>
+            <span>Chủ đề cốt lõi</span>
+            <textarea data-brand="key_themes" rows="6" placeholder="Mỗi chủ đề trên một dòng"></textarea>
+            <small>Các chủ đề hệ thống cần bao quát. Mỗi chủ đề trên một dòng.</small>
           </label>
         </div>
         <div class="form-grid form-grid-cols">
           <label>
-            <span>Source URL <em class="optional">informational</em></span>
-            <input data-brand="source_url" type="text" readonly placeholder="(none yet)" />
-            <small>Where we scraped this from. Read-only.</small>
+            <span>Khu vực phục vụ <em class="optional">không bắt buộc</em></span>
+            <input data-brand="service_area" type="text" placeholder="vd: Hà Nội, TP.HCM hoặc toàn quốc" />
+            <small>Nếu doanh nghiệp của bạn phục vụ một khu vực cụ thể, hãy thêm vào đây.</small>
           </label>
           <label>
-            <span>Last generated</span>
-            <input id="brand-generated-at" type="text" readonly placeholder="(never)" />
-            <small>When this DNA was last refreshed.</small>
+            <span>Chủ đề cần tránh <em class="optional">không bắt buộc</em></span>
+            <textarea data-brand="topics_to_avoid" rows="3" placeholder="Tên đối thủ, chi tiết giá cả nhạy cảm, dịch vụ bạn không cung cấp"></textarea>
+            <small>LLM sẽ bỏ qua hoàn toàn các chủ đề này.</small>
+          </label>
+        </div>
+        <div class="form-grid form-grid-cols">
+          <label>
+            <span>URL nguồn <em class="optional">thông tin tham khảo</em></span>
+            <input data-brand="source_url" type="text" readonly placeholder="(chưa có)" />
+            <small>Nơi dữ liệu được thu thập. Chỉ đọc.</small>
+          </label>
+          <label>
+            <span>Tạo lần cuối</span>
+            <input id="brand-generated-at" type="text" readonly placeholder="(chưa bao giờ)" />
+            <small>Thời điểm hồ sơ DNA này được làm mới lần cuối.</small>
           </label>
         </div>
         <div class="row">
-          <button id="brand-save" class="btn btn-primary">Save brand DNA</button>
-          <button id="brand-clear" class="btn btn-ghost">Clear all fields</button>
+          <button id="brand-save" class="btn btn-primary">Lưu Brand DNA</button>
+          <button id="brand-clear" class="btn btn-ghost">Xóa toàn bộ trường</button>
           <span id="brand-save-status" class="status"></span>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Step 3 · Apply</div>
-        <h2>Filter the pending keyword queue against this brand</h2>
-        <p>Runs every pending keyword past the LLM with the brand context. Off-brand keywords get marked failed (not deleted) so you can review them in the Failed queue. Recommend dry-run first.</p>
+        <div class="card-eyebrow">Bước 3 · Áp dụng</div>
+        <h2>Lọc hàng đợi từ khóa theo thương hiệu</h2>
+        <p>Chạy từng từ khóa đang chờ qua LLM cùng với ngữ cảnh thương hiệu. Các từ khóa không phù hợp sẽ được đánh dấu thất bại (không bị xóa) để bạn xem lại trong hàng đợi Thất bại. Khuyên bạn nên chạy thử (Dry run) trước.</p>
         <div class="row">
-          <button id="brand-filter-dry" class="btn">Dry run</button>
-          <button id="brand-filter-go" class="btn btn-primary">Run filter</button>
+          <button id="brand-filter-dry" class="btn">Chạy thử</button>
+          <button id="brand-filter-go" class="btn btn-primary">Chạy bộ lọc</button>
           <span id="brand-filter-status" class="status"></span>
         </div>
         <div id="brand-filter-results" class="filter-results" hidden></div>
@@ -453,24 +487,24 @@
     <section data-page="links" class="page" hidden>
       <div class="cal-head">
         <div>
-          <h2 class="cal-title">Internal links</h2>
-          <p class="cal-sub">Named shortcuts the AI uses inside generated posts. Empty by default — add the routes that exist on your site, and import every existing page from the sitemap with one click.</p>
+          <h2 class="cal-title">Liên kết nội bộ</h2>
+          <p class="cal-sub">Các lối tắt có tên mà AI dùng bên trong bài viết được tạo. Mặc định để trống — hãy thêm các đường dẫn trên website của bạn và nhập toàn bộ trang từ sitemap chỉ với một cú nhấp chuột.</p>
         </div>
         <div class="cal-actions">
-          <button id="link-sync" class="btn btn-ghost" title="Import every published post + landing page as a link the AI can use">Sync from sitemap</button>
-          <button id="link-add" class="btn btn-primary">+ Add link</button>
+          <button id="link-sync" class="btn btn-ghost" title="Nhập mọi bài viết đã xuất bản + trang landing thành liên kết AI có thể dùng">Đồng bộ từ sitemap</button>
+          <button id="link-add" class="btn btn-primary">+ Thêm liên kết</button>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Curated links</div>
-        <p class="muted">Reserved names (<code>blog</code>, <code>home</code>, <code>rss</code>, <code>sitemap</code>) are always available. Add anything else the AI should reference — login pages, pricing, individual landing pages, anything.</p>
-        <div id="link-list-manual" class="link-list"><div class="muted">Loading…</div></div>
+        <div class="card-eyebrow">Liên kết tuyển chọn</div>
+        <p class="muted">Các tên dành riêng (<code>blog</code>, <code>home</code>, <code>rss</code>, <code>sitemap</code>) luôn sẵn dùng. Thêm bất kỳ đường dẫn nào khác mà AI nên tham chiếu — trang đăng nhập, bảng giá, trang landing cụ thể, v.v.</p>
+        <div id="link-list-manual" class="link-list"><div class="muted">Đang tải…</div></div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">From your sitemap</div>
-        <p class="muted">Auto-imported when you click "Sync". The AI sees these and may link to them where they fit the article naturally. Click sync after publishing new posts.</p>
+        <div class="card-eyebrow">Từ sitemap của bạn</div>
+        <p class="muted">Tự động nhập khi bạn bấm "Đồng bộ". AI sẽ thấy các liên kết này và chèn vào bài viết một cách tự nhiên nếu phù hợp. Bấm đồng bộ sau khi xuất bản bài viết mới.</p>
         <div id="link-list-sitemap" class="link-list link-list-compact"></div>
       </div>
     </section>
@@ -479,12 +513,12 @@
     <section data-page="calendar" class="page" hidden>
       <div class="cal-head">
         <div>
-          <h2 class="cal-title">Content Calendar</h2>
-          <p class="cal-sub" id="cal-sub">Auto-planned from your Brand DNA. Add, remove or swap anything you want.</p>
+          <h2 class="cal-title">Lịch bài viết</h2>
+          <p class="cal-sub" id="cal-sub">Tự động lên kế hoạch từ Brand DNA của bạn. Bạn có thể thêm, bớt hoặc đổi vị trí bất kỳ mục nào.</p>
         </div>
         <div class="cal-actions">
-          <button id="cal-new" class="btn btn-ghost">+ New article</button>
-          <button id="cal-plan" class="btn btn-primary">Regenerate plan</button>
+          <button id="cal-new" class="btn btn-ghost">+ Bài viết mới</button>
+          <button id="cal-plan" class="btn btn-primary">Tạo lại kế hoạch</button>
         </div>
       </div>
 
@@ -492,25 +526,25 @@
         <div class="cal-bar">
           <h3 id="cal-range" class="cal-range">—</h3>
           <div class="cal-nav">
-            <button id="cal-prev" class="cal-arrow" aria-label="Previous month">‹</button>
-            <button id="cal-today" class="cal-today">Today</button>
-            <button id="cal-next" class="cal-arrow" aria-label="Next month">›</button>
+            <button id="cal-prev" class="cal-arrow" aria-label="Tháng trước">‹</button>
+            <button id="cal-today" class="cal-today">Hôm nay</button>
+            <button id="cal-next" class="cal-arrow" aria-label="Tháng sau">›</button>
           </div>
         </div>
 
         <div class="cal-week-head">
-          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
         </div>
         <div id="cal-grid" class="cal-grid">
-          <div class="cal-empty">Loading…</div>
+          <div class="cal-empty">Đang tải…</div>
         </div>
 
         <div class="cal-legend">
-          <span class="cal-leg cal-leg-scheduled">📅 Scheduled</span>
-          <span class="cal-leg cal-leg-generating">⟳ Generating</span>
-          <span class="cal-leg cal-leg-draft">📝 Draft</span>
-          <span class="cal-leg cal-leg-published">✓ Published</span>
-          <span class="cal-leg cal-leg-auto">✨ Auto-planned</span>
+          <span class="cal-leg cal-leg-scheduled">📅 Đã lên lịch</span>
+          <span class="cal-leg cal-leg-generating">⟳ Đang tạo</span>
+          <span class="cal-leg cal-leg-draft">📝 Bản nháp</span>
+          <span class="cal-leg cal-leg-published">✓ Đã xuất bản</span>
+          <span class="cal-leg cal-leg-auto">✨ Tự động lên lịch</span>
         </div>
       </div>
     </section>
@@ -522,31 +556,31 @@
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">This month</div>
-        <h2>Budget &amp; spend</h2>
+        <div class="card-eyebrow">Tháng này</div>
+        <h2>Ngân sách &amp; chi tiêu</h2>
         <div class="usage-summary">
           <div class="usage-stat">
-            <div class="usage-stat-label">Spent</div>
+            <div class="usage-stat-label">Đã chi</div>
             <div class="usage-stat-value" id="usage-spent">—</div>
           </div>
           <div class="usage-stat">
-            <div class="usage-stat-label">Budget</div>
+            <div class="usage-stat-label">Ngân sách</div>
             <div class="usage-stat-value" id="usage-budget">—</div>
           </div>
           <div class="usage-stat">
-            <div class="usage-stat-label">% used</div>
+            <div class="usage-stat-label">% đã dùng</div>
             <div class="usage-stat-value" id="usage-pct">—</div>
           </div>
           <div class="usage-stat">
-            <div class="usage-stat-label">Calls</div>
+            <div class="usage-stat-label">Lượt gọi</div>
             <div class="usage-stat-value" id="usage-calls">—</div>
           </div>
           <div class="usage-stat">
-            <div class="usage-stat-label">Tokens</div>
+            <div class="usage-stat-label">Token</div>
             <div class="usage-stat-value" id="usage-tokens">—</div>
           </div>
           <div class="usage-stat">
-            <div class="usage-stat-label">Errors</div>
+            <div class="usage-stat-label">Lỗi</div>
             <div class="usage-stat-value" id="usage-errors">—</div>
           </div>
         </div>
@@ -555,44 +589,44 @@
         </div>
         <div class="row" style="margin-top:14px">
           <select id="usage-window">
-            <option value="month" selected>Current month</option>
-            <option value="7d">Last 7 days</option>
-            <option value="24h">Last 24 hours</option>
+            <option value="month" selected>Tháng hiện tại</option>
+            <option value="7d">7 ngày qua</option>
+            <option value="24h">24 giờ qua</option>
           </select>
-          <button id="usage-refresh" class="btn btn-ghost btn-sm">Refresh</button>
+          <button id="usage-refresh" class="btn btn-ghost btn-sm">Làm mới</button>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">By provider</div>
-        <h2>Spend per provider</h2>
+        <div class="card-eyebrow">Theo nhà cung cấp</div>
+        <h2>Chi phí theo nhà cung cấp</h2>
         <table class="data data-usage">
-          <thead><tr><th>Provider</th><th>Calls</th><th>Tokens</th><th>Cost (USD)</th></tr></thead>
-          <tbody id="usage-by-provider"><tr><td colspan="4" class="dim">Loading…</td></tr></tbody>
+          <thead><tr><th>Nhà cung cấp</th><th>Lượt gọi</th><th>Token</th><th>Chi phí (USD)</th></tr></thead>
+          <tbody id="usage-by-provider"><tr><td colspan="4" class="dim">Đang tải…</td></tr></tbody>
         </table>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">By job kind</div>
-        <h2>Where the tokens went</h2>
+        <div class="card-eyebrow">Theo loại tác vụ</div>
+        <h2>Phân bổ sử dụng token</h2>
         <table class="data data-usage">
-          <thead><tr><th>Kind</th><th>Calls</th><th>Tokens</th><th>Cost (USD)</th></tr></thead>
-          <tbody id="usage-by-kind"><tr><td colspan="4" class="dim">Loading…</td></tr></tbody>
+          <thead><tr><th>Loại</th><th>Lượt gọi</th><th>Token</th><th>Chi phí (USD)</th></tr></thead>
+          <tbody id="usage-by-kind"><tr><td colspan="4" class="dim">Đang tải…</td></tr></tbody>
         </table>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Daily</div>
-        <h2>Cost per day</h2>
-        <div id="usage-daily" class="usage-daily">Loading…</div>
+        <div class="card-eyebrow">Hàng ngày</div>
+        <h2>Chi phí mỗi ngày</h2>
+        <div id="usage-daily" class="usage-daily">Đang tải…</div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Recent</div>
-        <h2>Last 25 calls</h2>
+        <div class="card-eyebrow">Gần đây</div>
+        <h2>25 lượt gọi gần nhất</h2>
         <table class="data data-usage data-recent">
-          <thead><tr><th>When</th><th>Provider</th><th>Kind</th><th>Source</th><th>Tokens</th><th>Cost</th><th>OK</th></tr></thead>
-          <tbody id="usage-recent"><tr><td colspan="7" class="dim">Loading…</td></tr></tbody>
+          <thead><tr><th>Thời gian</th><th>Nhà cung cấp</th><th>Loại</th><th>Nguồn</th><th>Token</th><th>Chi phí</th><th>OK</th></tr></thead>
+          <tbody id="usage-recent"><tr><td colspan="7" class="dim">Đang tải…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -601,8 +635,8 @@
     <section data-page="covers" class="page" hidden>
       <div id="cover-frozen-banner" class="frozen-banner" hidden>
         <div class="frozen-banner-inner">
-          <strong>Cover editor is read-only.</strong>
-          <p>This site is set to use <em>AI-generated images</em> as blog covers. To use the cover editor, switch the mode in <a href="#" data-jump-to="settings">Settings → Hero images</a>.</p>
+          <strong>Trình chỉnh sửa ảnh bìa đang ở chế độ chỉ đọc.</strong>
+          <p>Trang web này đang được thiết lập sử dụng <em>hình ảnh do AI tạo</em> làm ảnh bìa blog. Để dùng trình chỉnh sửa ảnh bìa, hãy chuyển chế độ trong <a href="#" data-jump-to="settings">Cài đặt → Chế độ tạo ảnh bìa</a>.</p>
         </div>
       </div>
       <div id="cover-content">
@@ -616,39 +650,39 @@
     <!-- ============ EMBEDS ============ -->
     <section data-page="embeds" class="page" hidden>
       <div class="card">
-        <div class="card-eyebrow">What this is</div>
-        <h2>Embed your blog anywhere</h2>
-        <p>Create a snippet to paste on any website. The widget renders this site's published blog posts inside a <code>&lt;div id="ps-blog"&gt;</code> container. Each embed gets its own unguessable id, so you can revoke one without affecting the others.</p>
+        <div class="card-eyebrow">Giới thiệu</div>
+        <h2>Nhúng blog của bạn vào bất cứ đâu</h2>
+        <p>Tạo đoạn mã để dán vào bất kỳ website nào. Widget sẽ hiển thị các bài viết blog đã xuất bản của trang này bên trong vùng chứa <code>&lt;div id="ps-blog"&gt;</code>. Mỗi đoạn mã nhúng có ID riêng biệt không thể đoán trước, do đó bạn có thể thu hồi một mã mà không ảnh hưởng tới các mã khác.</p>
         <div class="form-grid form-grid-cols">
           <label>
-            <span>Name (admin label)</span>
-            <input id="embed-create-name" type="text" placeholder="My main site sidebar" />
+            <span>Tên (nhãn quản trị)</span>
+            <input id="embed-create-name" type="text" placeholder="Thanh bên trang web chính" />
           </label>
           <label>
-            <span>Title shown above the widget</span>
-            <input id="embed-create-title" type="text" placeholder="Blog" />
+            <span>Tiêu đề hiển thị phía trên widget</span>
+            <input id="embed-create-title" type="text" placeholder="Bài viết" />
           </label>
           <label>
-            <span>Accent colour</span>
+            <span>Màu nhấn</span>
             <input id="embed-create-accent" type="color" value="#0a0a0a" />
           </label>
           <label>
-            <span>Max posts shown</span>
+            <span>Số bài hiển thị tối đa</span>
             <input id="embed-create-limit" type="number" min="1" max="100" placeholder="30" />
           </label>
         </div>
         <div class="row" style="margin-top:14px">
-          <button id="embed-create-go" class="btn btn-primary">Create embed</button>
+          <button id="embed-create-go" class="btn btn-primary">Tạo widget nhúng</button>
           <span id="embed-create-status" class="status"></span>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Existing embeds</div>
-        <h2>Snippets</h2>
-        <p>Paste the snippet on any website. The widget auto-refreshes from this site every 5 minutes — new blog posts appear without anyone touching the host page.</p>
+        <div class="card-eyebrow">Widget hiện có</div>
+        <h2>Đoạn mã nhúng</h2>
+        <p>Dán đoạn mã vào bất kỳ trang web nào. Widget sẽ tự động làm mới từ trang này mỗi 5 phút — bài viết mới xuất hiện mà không cần ai chỉnh sửa trang đích.</p>
         <div id="embed-list">
-          <div class="dim">Loading…</div>
+          <div class="dim">Đang tải…</div>
         </div>
       </div>
     </section>
@@ -656,120 +690,112 @@
     <!-- ============ UPDATES ============ -->
     <section data-page="updates" class="page" hidden>
       <div class="card">
-        <div class="card-eyebrow">App version</div>
+        <div class="card-eyebrow">Phiên bản ứng dụng</div>
         <div id="upd-summary" class="upd-summary">
-          <div class="muted">Checking for updates…</div>
+          <div class="muted">Đang kiểm tra bản cập nhật…</div>
         </div>
       </div>
 
       <div class="card" id="upd-changes-card" hidden>
-        <div class="card-eyebrow">What's new</div>
+        <div class="card-eyebrow">Có gì mới</div>
         <p class="muted" id="upd-changes-lede">—</p>
         <div id="upd-diff-stats" class="upd-diff-stats" hidden></div>
         <ul id="upd-commit-list" class="upd-commit-list"></ul>
       </div>
 
       <div class="card" id="upd-apply-card" hidden>
-        <div class="card-eyebrow">Apply update</div>
-        <p class="muted">Triggers Cloudflare Pages to rebuild your project from the latest upstream commit on your fork. <b>Sync your fork on GitHub first</b> (one click — open <a id="upd-sync-link" target="_blank" rel="noopener">your fork</a>, hit "Sync fork") so the build pulls today's code, not the snapshot from install day.</p>
+        <div class="card-eyebrow">Áp dụng cập nhật</div>
+        <p class="muted">Kích hoạt Cloudflare Pages xây dựng lại dự án từ commit mới nhất trên nhánh fork của bạn. <b>Hãy đồng bộ fork của bạn trên GitHub trước</b> (một thao tác đơn giản — mở <a id="upd-sync-link" target="_blank" rel="noopener">bản fork của bạn</a>, bấm "Sync fork") để bản build kéo mã nguồn hôm nay, không phải bản snapshot từ ngày cài đặt.</p>
         <label class="form-row">
-          <span>Cloudflare API token <em class="optional">Pages:Edit scope. Not stored.</em></span>
-          <input id="upd-token" type="password" autocomplete="off" placeholder="Paste your CF API token" />
+          <span>Token API Cloudflare <em class="optional">Quyền Pages:Edit. Không lưu trữ.</em></span>
+          <input id="upd-token" type="password" autocomplete="off" placeholder="Dán mã API Token Cloudflare của bạn" />
         </label>
-        <p class="muted">Don't have one handy? <a id="upd-token-link" target="_blank" rel="noopener">Create a new token</a> — the link pre-fills the right permissions.</p>
+        <p class="muted">Chưa có sẵn? <a id="upd-token-link" target="_blank" rel="noopener">Tạo token mới</a> — liên kết đã điền sẵn các quyền cần thiết.</p>
         <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
-          <button id="upd-apply-go" class="btn btn-primary">Trigger rebuild</button>
+          <button id="upd-apply-go" class="btn btn-primary">Kích hoạt build lại</button>
           <span id="upd-apply-status" class="status"></span>
         </div>
       </div>
 
       <div class="card" id="upd-cli-card" hidden>
-        <div class="card-eyebrow">CLI install detected</div>
-        <p class="muted">In-app update is only available for installs done via the browser flow. You installed this site via the terminal, so updates run the same way:</p>
+        <div class="card-eyebrow">Phát hiện cài đặt qua CLI</div>
+        <p class="muted">Cập nhật trực tiếp trên giao diện chỉ khả dụng cho các bản cài đặt qua trình duyệt. Bạn đã cài đặt trang web này qua terminal, vì vậy việc cập nhật cũng thực hiện tương tự:</p>
         <pre class="log" style="margin:8px 0">curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash</pre>
-        <p class="muted">It detects an existing install with the same project slug and only re-deploys the code — your D1, R2, and admin user are preserved.</p>
+        <p class="muted">Lệnh sẽ tự động nhận diện bản cài đặt hiện có cùng slug dự án và chỉ triển khai lại mã nguồn — cơ sở dữ liệu D1, kho R2 và tài khoản quản trị của bạn được giữ nguyên vẹn.</p>
       </div>
     </section>
 
     <!-- ============ STATUS ============ -->
     <section data-page="status" class="page" hidden>
       <div class="card ai-help-card">
-        <div class="card-eyebrow">Stuck?</div>
-        <h2>Hand off to an AI</h2>
+        <div class="card-eyebrow">Cần trợ giúp?</div>
+        <h2>Hỗ trợ cùng AI</h2>
         <p class="muted">
-          One click generates a self-contained prompt with <em>your</em> site
-          URLs and admin link baked in. Paste it into ChatGPT, Claude or
-          Gemini and it'll diagnose any issue end-to-end.
+          Một cú nhấp chuột sẽ tạo câu lệnh prompt hoàn chỉnh tích hợp sẵn URL trang web và liên kết quản trị của <em>bạn</em>. Dán vào ChatGPT, Claude hoặc Gemini để chẩn đoán toàn diện mọi vấn đề.
         </p>
         <div class="row form-row" style="margin-top:8px;flex-wrap:wrap;gap:8px">
           <a id="ai-help-repair" class="btn btn-primary" href="https://seo.benjaminb.xyz/ai-setup?mode=repair" target="_blank" rel="noopener">
-            ✦ Get an AI to fix it
+            ✦ Nhờ AI sửa lỗi
           </a>
           <a id="ai-help-update" class="btn" href="https://seo.benjaminb.xyz/ai-setup?mode=update" target="_blank" rel="noopener">
-            Update guide
+            Hướng dẫn cập nhật
           </a>
-          <button id="ai-help-copy" class="btn" type="button">Copy prompt</button>
+          <button id="ai-help-copy" class="btn" type="button">Sao chép prompt</button>
           <span id="ai-help-status" class="muted" aria-live="polite"></span>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Health</div>
-        <h2>System status</h2>
+        <div class="card-eyebrow">Tình trạng</div>
+        <h2>Trạng thái hệ thống</h2>
         <p class="muted">
-          What's wired up correctly and what isn't. Run this any time you
-          suspect something is broken — it's a one-shot check against D1,
-          R2, Workers AI, the audit log, your spend cap, and the
-          self-repair secrets.
-          See <a href="https://seo.benjaminb.xyz/docs#errors" target="_blank">the docs</a> for what each error means.
+          Kiểm tra những gì đã kết nối đúng và những gì chưa. Chạy tính năng này bất cứ khi nào bạn nghi ngờ có lỗi — đây là bước kiểm tra tức thì đối với D1, R2, Workers AI, nhật ký kiểm toán, hạn mức chi tiêu và các mã khóa tự sửa chữa.
+          Xem <a href="https://seo.benjaminb.xyz/docs#errors" target="_blank">tài liệu hướng dẫn</a> để hiểu ý nghĩa từng mã lỗi.
         </p>
         <div class="row form-row" style="margin-top:8px">
-          <button id="status-refresh" class="btn btn-primary">Run checks</button>
+          <button id="status-refresh" class="btn btn-primary">Chạy kiểm tra</button>
           <span id="status-summary" class="muted"></span>
         </div>
         <div id="status-checks" class="status-checks" style="margin-top:16px"></div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">AI providers</div>
-        <h2>Test each provider</h2>
+        <div class="card-eyebrow">Nhà cung cấp AI</div>
+        <h2>Kiểm tra từng nhà cung cấp</h2>
         <p class="muted">
-          Sends a 20-token "pong" prompt to every configured provider and reports the round-trip time
-          + a sample of the response. Workers AI is always there; other providers appear when you've
-          added a key in Settings.
+          Gửi prompt "pong" 20 token đến từng nhà cung cấp đã cấu hình và báo cáo thời gian phản hồi (round-trip) kèm phản hồi mẫu. Workers AI luôn có sẵn; các nhà cung cấp khác xuất hiện khi bạn đã thêm khóa API trong Cài đặt.
         </p>
         <div class="row form-row">
-          <button id="providers-test" class="btn">Test all providers</button>
+          <button id="providers-test" class="btn">Kiểm tra tất cả</button>
         </div>
         <ul id="providers-results" class="providers-results" style="margin-top:12px"></ul>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">Recent activity</div>
-        <h2>Audit log</h2>
+        <div class="card-eyebrow">Hoạt động gần đây</div>
+        <h2>Nhật ký hệ thống</h2>
         <p class="muted">
-          Last 50 actions taken on this install — admin saves, cron runs, generation
-          failures, cover uploads. Use the filter to find specific kinds of events.
+          50 hành động gần nhất trên bản cài đặt này — lưu cài đặt, cron chạy, lỗi tạo bài, tải ảnh bìa. Dùng bộ lọc để tìm các loại sự kiện cụ thể.
         </p>
         <div class="row form-row">
           <select id="audit-filter" class="input">
-            <option value="">All actions</option>
-            <option value="fail">Only failures</option>
-            <option value="cover">Covers</option>
-            <option value="blog">Blog generation</option>
+            <option value="">Tất cả hành động</option>
+            <option value="fail">Chỉ các lỗi</option>
+            <option value="cover">Ảnh bìa</option>
+            <option value="blog">Tạo blog</option>
             <option value="prog">Programmatic</option>
-            <option value="settings">Settings</option>
-            <option value="cover_template_export">Template exports</option>
-            <option value="cover_template_import">Template imports</option>
+            <option value="settings">Cài đặt</option>
+            <option value="cover_template_export">Xuất mẫu ảnh bìa</option>
+            <option value="cover_template_import">Nhập mẫu ảnh bìa</option>
           </select>
-          <button id="audit-refresh" class="btn">Refresh</button>
+          <button id="audit-refresh" class="btn">Làm mới</button>
         </div>
         <table class="audit-table" style="margin-top:12px;width:100%;font-size:13px">
           <thead><tr>
-            <th style="text-align:left">When</th>
-            <th style="text-align:left">Actor</th>
-            <th style="text-align:left">Action</th>
-            <th style="text-align:left">Details</th>
+            <th style="text-align:left">Thời gian</th>
+            <th style="text-align:left">Người thực hiện</th>
+            <th style="text-align:left">Hành động</th>
+            <th style="text-align:left">Chi tiết</th>
           </tr></thead>
           <tbody id="audit-rows"></tbody>
         </table>
@@ -779,179 +805,178 @@
     <!-- ============ SETTINGS ============ -->
     <section data-page="settings" class="page" hidden>
       <div class="card">
-        <div class="card-eyebrow">Brand voice</div>
-        <h2>Tone &amp; audience</h2>
-        <p>Layered on top of every LLM prompt. Tell the model who's writing and who's reading — output quality jumps immediately. Leave any field blank to use the built-in default.</p>
+        <div class="card-eyebrow">Giọng văn thương hiệu</div>
+        <h2>Tone of voice &amp; độc giả</h2>
+        <p>Được đưa vào đầu mỗi prompt gửi tới LLM. Cho mô hình biết ai đang viết và ai đang đọc — chất lượng đầu ra sẽ cải thiện rõ rệt. Để trống trường bất kỳ để sử dụng giá trị mặc định tích hợp sẵn.</p>
         <div class="form-grid">
           <label>
-            <span>Site CTA</span>
-            <input data-setting="site_cta" type="text" placeholder="Sign up to get started." />
-            <small>Injected into the closing paragraph of every post.</small>
+            <span>Lời kêu gọi hành động (CTA)</span>
+            <input data-setting="site_cta" type="text" placeholder="Đăng ký ngay để bắt đầu." />
+            <small>Được chèn vào đoạn kết của mỗi bài viết.</small>
           </label>
           <label>
-            <span>Voice / tone</span>
-            <textarea data-setting="site_tone" rows="2" placeholder="warm but authoritative interior-design voice, like a senior editor at Architectural Digest"></textarea>
-            <small>Free-form description. The more specific, the better.</small>
+            <span>Giọng văn / phong cách</span>
+            <textarea data-setting="site_tone" rows="2" placeholder="giọng văn ấm áp nhưng uy quyền trong thiết kế nội thất, như một biên tập viên cao cấp tại Architectural Digest"></textarea>
+            <small>Mô tả tự do. Càng cụ thể càng tốt.</small>
           </label>
           <label>
-            <span>Target reader</span>
-            <textarea data-setting="site_audience" rows="2" placeholder="someone planning a £20k+ bathroom renovation, comparing materials and brands"></textarea>
-            <small>What does the reader already know? What's their intent?</small>
+            <span>Độc giả mục tiêu</span>
+            <textarea data-setting="site_audience" rows="2" placeholder="người đang lên kế hoạch cải tạo phòng tắm từ 500 triệu trở lên, so sánh các vật liệu và thương hiệu"></textarea>
+            <small>Độc giả đã biết những gì? Ý định của họ là gì?</small>
           </label>
         </div>
       </div>
       <div class="card">
-        <div class="card-eyebrow">Hero images</div>
-        <h2>How blog covers are produced</h2>
-        <p>Choose how the daily blog chain creates the hero image for each post.</p>
+        <div class="card-eyebrow">Ảnh bìa</div>
+        <h2>Chế độ tạo ảnh bìa</h2>
+        <p>Chọn cách quy trình blog hàng ngày tạo ảnh bìa cho mỗi bài viết.</p>
         <div class="form-grid form-grid-cols">
           <label class="mode-card">
             <input type="radio" name="hero_image_mode" value="ai" data-setting="hero_image_mode" />
             <div class="mode-card-body">
-              <strong>AI-generated images</strong>
-              <small>Workers AI (Flux) renders a fresh photo from the post's hero-image prompt. No setup required; free on the Workers AI tier. The Covers tab is shown but disabled.</small>
+              <strong>Hình ảnh do AI tạo</strong>
+              <small>Workers AI (Flux) tạo ảnh mới từ prompt ảnh bìa của bài viết. Không cần thiết lập; miễn phí theo hạn mức Workers AI. Tab Ảnh bìa vẫn hiển thị nhưng bị vô hiệu hóa.</small>
             </div>
           </label>
           <label class="mode-card">
             <input type="radio" name="hero_image_mode" value="cover" data-setting="hero_image_mode" />
             <div class="mode-card-body">
-              <strong>Cover templates</strong>
-              <small>Use a saved template from the Covers tab. The post title is rendered into the template (via the <code>{title}</code> token). Requires at least one template marked default.</small>
+              <strong>Mẫu ảnh bìa</strong>
+              <small>Sử dụng mẫu đã lưu từ tab Ảnh bìa. Tiêu đề bài viết được chèn vào mẫu (qua biến <code>{title}</code>). Yêu cầu ít nhất một mẫu được đánh dấu mặc định.</small>
             </div>
           </label>
         </div>
       </div>
       <div class="card">
-        <div class="card-eyebrow">Budget</div>
-        <h2>Monthly AI spend cap</h2>
-        <p>The cron Worker hard-stops once monthly spend reaches the limit. Manual admin generations keep working but you'll see a warning banner. Set to 0 to disable.</p>
+        <div class="card-eyebrow">Ngân sách</div>
+        <h2>Hạn mức chi phí AI hàng tháng</h2>
+        <p>Cron Worker sẽ dừng cứng khi chi phí hàng tháng đạt đến giới hạn. Tạo bài thủ công trong admin vẫn hoạt động nhưng bạn sẽ thấy biểu ngữ cảnh báo. Đặt về 0 để tắt.</p>
         <div class="form-grid form-grid-cols">
           <label>
-            <span>Monthly budget (USD)</span>
+            <span>Ngân sách hàng tháng (USD)</span>
             <input data-setting="monthly_budget_usd" type="number" min="0" step="0.01" placeholder="10.00" />
-            <small>Tracks across all providers. Resets at the start of each calendar month (UTC).</small>
+            <small>Theo dõi trên toàn bộ nhà cung cấp. Đặt lại vào đầu mỗi tháng (UTC).</small>
           </label>
           <label>
-            <span>Warn at %</span>
+            <span>Cảnh báo tại mức %</span>
             <input data-setting="budget_warn_pct" type="number" min="0" max="100" placeholder="80" />
-            <small>Show a banner once spend reaches this percentage of the budget.</small>
+            <small>Hiển thị biểu ngữ khi chi tiêu đạt tỷ lệ phần trăm này của ngân sách.</small>
           </label>
         </div>
       </div>
       <div class="card">
-        <div class="card-eyebrow">Pricing</div>
-        <h2>LLM rate catalogue</h2>
-        <p>Token costs are pulled from <a href="https://models.dev" target="_blank" rel="noopener">models.dev</a>, a community-maintained catalogue of LLM prices. Falls back to a bundled snapshot if the network call fails.</p>
+        <div class="card-eyebrow">Bảng giá</div>
+        <h2>Biểu giá mô hình LLM</h2>
+        <p>Chi phí token được lấy từ <a href="https://models.dev" target="_blank" rel="noopener">models.dev</a>, danh mục giá LLM do cộng đồng duy trì. Sẽ dùng bản snapshot có sẵn nếu lệnh gọi mạng thất bại.</p>
         <div class="row">
-          <button id="pricing-refresh" class="btn">Refresh from models.dev</button>
+          <button id="pricing-refresh" class="btn">Làm mới từ models.dev</button>
           <span id="pricing-status" class="status"></span>
         </div>
-        <div id="pricing-current" class="pricing-current dim">Loading current rates…</div>
+        <div id="pricing-current" class="pricing-current dim">Đang tải biểu giá hiện tại…</div>
       </div>
       <div class="card">
-        <div class="card-eyebrow">Length</div>
-        <h2>Post length targets</h2>
-        <p>Hints to the model. Workers AI tends to undershoot; cloud models hit these reliably.</p>
+        <div class="card-eyebrow">Độ dài</div>
+        <h2>Mục tiêu độ dài bài viết</h2>
+        <p>Gợi ý cho mô hình. Workers AI thường có xu hướng viết ngắn hơn; các mô hình đám mây đáp ứng các mức này ổn định.</p>
         <div class="form-grid form-grid-cols">
           <label>
-            <span>Blog post min words</span>
+            <span>Số từ tối thiểu bài viết blog</span>
             <input data-setting="article_min_words" type="number" min="100" max="5000" placeholder="900" />
           </label>
           <label>
-            <span>Blog post max words</span>
+            <span>Số từ tối đa bài viết blog</span>
             <input data-setting="article_max_words" type="number" min="100" max="5000" placeholder="1300" />
           </label>
           <label>
-            <span>Programmatic min words</span>
+            <span>Số từ tối thiểu trang programmatic</span>
             <input data-setting="prog_min_words" type="number" min="100" max="5000" placeholder="700" />
           </label>
           <label>
-            <span>Programmatic max words</span>
+            <span>Số từ tối đa trang programmatic</span>
             <input data-setting="prog_max_words" type="number" min="100" max="5000" placeholder="1000" />
           </label>
         </div>
       </div>
       <div class="card">
-        <div class="card-eyebrow">Provider</div>
-        <h2>Preferred AI provider</h2>
-        <p>The toolkit tries this provider first for every job. If it fails, the rest of the configured providers are tried in registry order. Leave blank to use the default (Workers AI).</p>
+        <div class="card-eyebrow">Nhà cung cấp</div>
+        <h2>Nhà cung cấp AI ưu tiên</h2>
+        <p>Bộ công cụ sẽ thử nhà cung cấp này trước cho mỗi tác vụ. Nếu thất bại, các nhà cung cấp đã cấu hình khác sẽ được thử theo thứ tự đã đăng ký. Để trống để dùng mặc định (Workers AI).</p>
         <label>
-          <span>Default provider</span>
+          <span>Nhà cung cấp mặc định</span>
           <select data-setting="default_ai_provider">
-            <option value="">(use registry order)</option>
+            <option value="">(theo thứ tự danh mục)</option>
           </select>
         </label>
       </div>
       <div class="card">
-        <div class="card-eyebrow">Search engines</div>
-        <h2>Auto-index new posts on Google + Bing</h2>
+        <div class="card-eyebrow">Công cụ tìm kiếm</div>
+        <h2>Tự động lập chỉ mục bài viết mới trên Google + Bing</h2>
         <p class="muted">
-          IndexNow (Bing, Yandex, Seznam) pings automatically on every publish — no setup needed.
-          For Google, paste a Search Console service-account JSON below and we'll re-submit your
-          sitemap on every publish. Optional: enable the Indexing API for faster pickup.
+          IndexNow (Bing, Yandex, Seznam) tự động gửi tín hiệu mỗi khi xuất bản — không cần thiết lập.
+          Đối với Google, dán tệp JSON tài khoản dịch vụ Search Console vào bên dưới và chúng tôi sẽ gửi lại sitemap của bạn mỗi lần xuất bản. Tùy chọn: bật Indexing API để lập chỉ mục nhanh hơn.
         </p>
 
         <details class="gsc-howto">
-          <summary>How to get a service-account JSON (3 minutes)</summary>
+          <summary>Cách lấy JSON tài khoản dịch vụ (3 phút)</summary>
           <ol class="gsc-steps">
-            <li>Open <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud → Create project</a>. Name it anything (e.g. "pages-seo-indexing").</li>
-            <li>In that project, open <a href="https://console.cloud.google.com/apis/library/searchconsole.googleapis.com" target="_blank" rel="noopener">Search Console API</a> and click <b>Enable</b>. Also enable the <a href="https://console.cloud.google.com/apis/library/indexing.googleapis.com" target="_blank" rel="noopener">Indexing API</a> if you want per-URL pings.</li>
-            <li>Go to <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener">Service accounts → Create service account</a>. Skip the role + user steps.</li>
-            <li>Click the account → <b>Keys</b> tab → <b>Add Key → JSON</b>. Save the file.</li>
-            <li>In <a href="https://search.google.com/search-console/users" target="_blank" rel="noopener">Search Console → Users and permissions</a>, click <b>Add user</b>. Paste the service account email (it ends in <code>iam.gserviceaccount.com</code>). Set permission to <b>Owner</b>.
+            <li>Mở <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud → Tạo dự án</a>. Đặt tên tùy ý (vd: "pages-seo-indexing").</li>
+            <li>Trong dự án đó, mở <a href="https://console.cloud.google.com/apis/library/searchconsole.googleapis.com" target="_blank" rel="noopener">Search Console API</a> và bấm <b>Bật</b>. Đồng thời bật <a href="https://console.cloud.google.com/apis/library/indexing.googleapis.com" target="_blank" rel="noopener">Indexing API</a> nếu bạn muốn gửi tín hiệu từng URL.</li>
+            <li>Chuyển tới <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener">Service accounts → Tạo tài khoản dịch vụ</a>. Bỏ qua các bước vai trò và người dùng.</li>
+            <li>Bấm vào tài khoản → tab <b>Keys</b> → <b>Add Key → JSON</b>. Lưu tệp về máy.</li>
+            <li>Tại <a href="https://search.google.com/search-console/users" target="_blank" rel="noopener">Search Console → Người dùng và quyền</a>, bấm <b>Thêm người dùng</b>. Dán email tài khoản dịch vụ (có đuôi <code>iam.gserviceaccount.com</code>). Đặt quyền là <b>Chủ sở hữu (Owner)</b>.
               <div class="gsc-warn">
-                <b>If Google says <em>"Account not found"</em>:</b> that error is misleading. Google checks whether the email is a registered Google account first — service accounts aren't. Click <b>Add</b> anyway and the permission will be granted regardless. The error doesn't block the action. (Bug acknowledged by Google; no fix shipped as of 2026.)
+                <b>Nếu Google báo <em>"Không tìm thấy tài khoản"</em>:</b> thông báo lỗi này dễ gây hiểu nhầm. Google kiểm tra email có phải tài khoản Google thông thường trước — tài khoản dịch vụ thì không phải. Cứ bấm <b>Thêm</b> và quyền sẽ vẫn được cấp bình thường. Lỗi này không ngăn cản hành động. (Google đã xác nhận lỗi này; chưa có bản vá tính đến năm 2026.)
               </div>
               <div class="gsc-warn" style="margin-top:6px">
-                <b>For Domain properties (e.g. <code>sc-domain:example.com</code>):</b> the dialog might not let you set Owner permission, only Restricted/Full. Pick <b>Full</b> — that's enough for sitemap re-submission and the Indexing API.
+                <b>Đối với thuộc tính Miền (vd: <code>sc-domain:example.com</code>):</b> hộp thoại có thể không cho phép chọn quyền Chủ sở hữu, chỉ có Bị hạn chế / Đầy đủ. Hãy chọn <b>Đầy đủ (Full)</b> — quyền này đã đủ để gửi lại sitemap và sử dụng Indexing API.
               </div>
             </li>
-            <li>Open the JSON file in a text editor, copy the entire contents, paste below.</li>
+            <li>Mở tệp JSON bằng trình soạn thảo văn bản, sao chép toàn bộ nội dung và dán vào bên dưới.</li>
           </ol>
         </details>
 
         <label class="settings-field" style="margin-top:14px">
-          <span>Service-account JSON</span>
+          <span>JSON tài khoản dịch vụ</span>
           <textarea id="gsc-sa-json" rows="6" placeholder='{"type":"service_account","project_id":"...","client_email":"...iam.gserviceaccount.com","private_key":"-----BEGIN PRIVATE KEY-----\n..."}'></textarea>
-          <small id="gsc-sa-status" class="dim">Not configured.</small>
+          <small id="gsc-sa-status" class="dim">Chưa cấu hình.</small>
         </label>
 
         <label class="settings-field">
-          <span>Property identifier <em>(optional — auto-derived from site URL)</em></span>
-          <input id="gsc-property" type="text" placeholder="https://example.com/ — or — sc-domain:example.com" />
+          <span>Mã định danh thuộc tính <em>(không bắt buộc — tự động suy ra từ URL trang web)</em></span>
+          <input id="gsc-property" type="text" placeholder="https://example.com/ — hoặc — sc-domain:example.com" />
           <small class="dim">
-            URL-prefix property → <code>https://example.com/</code> (with trailing slash).
-            Domain property → <code>sc-domain:example.com</code> (no http).
+            Thuộc tính tiền tố URL → <code>https://example.com/</code> (có dấu gạch chéo ở cuối).
+            Thuộc tính miền → <code>sc-domain:example.com</code> (không có http).
           </small>
         </label>
 
         <label class="settings-field settings-field-check">
           <input id="gsc-use-indexing-api" type="checkbox" />
           <span>
-            Also use the Indexing API (faster crawl, but technically against Google's ToS for non-job-posting content).
+            Đồng thời sử dụng Indexing API (thu thập dữ liệu nhanh hơn, nhưng về mặt kỹ thuật đi ngược điều khoản của Google đối với nội dung không phải tin tuyển dụng).
           </span>
         </label>
 
         <div class="row form-row" style="margin-top:8px;flex-wrap:wrap;gap:8px">
-          <button id="gsc-save" class="btn btn-primary" type="button">Save Google credentials</button>
-          <button id="gsc-test" class="btn" type="button">Test connection</button>
-          <button id="gsc-clear" class="btn btn-ghost btn-sm" type="button">Clear</button>
+          <button id="gsc-save" class="btn btn-primary" type="button">Lưu thông tin xác thực Google</button>
+          <button id="gsc-test" class="btn" type="button">Kiểm tra kết nối</button>
+          <button id="gsc-clear" class="btn btn-ghost btn-sm" type="button">Xóa</button>
           <span id="gsc-status" class="status" aria-live="polite"></span>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-eyebrow">AI provider keys</div>
-        <h2>API key status</h2>
-        <p>Paste a key below to store it encrypted in the database (AES-GCM, keyed off your admin token). Or, for the strongest guarantee, run the CLI command and store it as a Pages secret instead — those win over vault values.</p>
+        <div class="card-eyebrow">Khóa nhà cung cấp AI</div>
+        <h2>Trạng thái khóa API</h2>
+        <p>Dán khóa vào bên dưới để lưu trữ mã hóa trong cơ sở dữ liệu (AES-GCM, mã hóa dựa trên token quản trị của bạn). Hoặc, để đảm bảo an toàn cao nhất, hãy chạy lệnh CLI và lưu dưới dạng bí mật Pages (Pages secret) — giá trị đó sẽ được ưu tiên hơn giá trị trong kho mã hóa.</p>
         <div id="providers-grid" class="providers-grid">
-          <div class="dim">Loading…</div>
+          <div class="dim">Đang tải…</div>
         </div>
-        <p class="dim" style="margin-top:14px"><small><strong>How keys are resolved:</strong> Pages secrets first, then vault. <strong>Vault risk:</strong> anyone with your admin token + database access can decrypt. Rotate the token via <code>wrangler pages secret put ADMIN_TOKEN</code> if it leaks (vault keys will then need to be re-saved here).</small></p>
+        <p class="dim" style="margin-top:14px"><small><strong>Cách ưu tiên khóa:</strong> Bí mật Pages trước, sau đó mới tới kho mã hóa. <strong>Rủi ro kho lưu trữ:</strong> bất kỳ ai có token quản trị + quyền truy cập cơ sở dữ liệu đều có thể giải mã. Hãy đổi token qua lệnh <code>wrangler pages secret put ADMIN_TOKEN</code> nếu bị lộ (các khóa trong kho sau đó sẽ cần được lưu lại tại đây).</small></p>
       </div>
       <div class="card">
         <div class="row">
-          <button id="settings-save" class="btn btn-primary">Save settings</button>
+          <button id="settings-save" class="btn btn-primary">Lưu cài đặt</button>
           <span id="settings-status" class="status"></span>
         </div>
       </div>
@@ -959,7 +984,7 @@
 
     <!-- ============ ANALYTICS ============ -->
     <section data-page="analytics" class="page" hidden>
-      <h1>Analytics Dashboard</h1>
+      <h1>Bảng điều khiển phân tích</h1>
       <div class="card" style="margin-bottom:20px">
         <div class="card-eyebrow">Hướng dẫn</div>
         <h2>Hướng dẫn sử dụng</h2>
@@ -977,7 +1002,7 @@
           <p class="dim">Tổng bài viết đã xuất bản</p>
         </div>
         <div class="card">
-          <div class="card-eyebrow">Leads</div>
+          <div class="card-eyebrow">Khách hàng tiềm năng</div>
           <h2 id="an-total-leads" style="font-size:2rem;margin:0">...</h2>
           <p class="dim">Khách hàng tiềm năng đã thu thập</p>
         </div>
@@ -998,7 +1023,7 @@
         <div id="an-views" class="dim">Đang tải...</div>
       </div>
       <div class="card" style="margin-top:20px">
-        <div class="card-eyebrow">Leads mới nhất</div>
+        <div class="card-eyebrow">Khách hàng mới nhất</div>
         <h2>Khách hàng tiềm năng</h2>
         <div id="an-leads" class="dim">Đang tải...</div>
       </div>
@@ -1020,7 +1045,7 @@
         </ol>
       </div>
       <div class="card" style="margin-top:20px">
-        <div class="card-eyebrow">AI Trend Discovery</div>
+        <div class="card-eyebrow">Khám phá xu hướng bằng AI</div>
         <h2>Tạo chủ đề từ xu hướng</h2>
         <p>Nhấn nút để AI phân tích xu hướng thị trường và tạo danh sách chủ đề tiềm năng.</p>
         <button id="trend-generate" class="btn btn-primary" style="margin-top:12px">Khám phá xu hướng</button>
@@ -1073,86 +1098,86 @@
         <span class="wiz-dot"></span>
         <span class="wiz-brand-text">Gulagi Blogs</span>
       </div>
-      <ol class="wiz-steps" aria-label="Onboarding progress">
-        <li class="wiz-step" data-step="1"><b>Hello</b></li>
-        <li class="wiz-step" data-step="2"><b>Brand</b></li>
-        <li class="wiz-step" data-step="3"><b>Providers</b></li>
-        <li class="wiz-step" data-step="4"><b>Calendar</b></li>
+      <ol class="wiz-steps" aria-label="Tiến trình làm quen hệ thống">
+        <li class="wiz-step" data-step="1"><b>Xin chào</b></li>
+        <li class="wiz-step" data-step="2"><b>Thương hiệu</b></li>
+        <li class="wiz-step" data-step="3"><b>Nhà cung cấp</b></li>
+        <li class="wiz-step" data-step="4"><b>Lịch bài</b></li>
       </ol>
-      <button id="wiz-skip" class="wiz-skip" type="button" title="Skip onboarding">Skip</button>
+      <button id="wiz-skip" class="wiz-skip" type="button" title="Bỏ qua hướng dẫn">Bỏ qua</button>
     </header>
 
     <!-- PANE 0: Welcome -->
     <section class="wiz-pane wiz-pane-center" data-pane="0">
-      <div class="wiz-eyebrow">Welcome</div>
-      <h1 class="wiz-h1"><span class="serif-i">Let's get</span> your blog<br/>on autopilot.</h1>
-      <p class="wiz-lede">In four short steps we'll learn about your brand, plug in any AI keys you want to use, and draft your first month of articles. You can change anything later.</p>
+      <div class="wiz-eyebrow">Xin chào</div>
+      <h1 class="wiz-h1"><span class="serif-i">Hãy đưa</span> blog của bạn<br/>vào chế độ tự động.</h1>
+      <p class="wiz-lede">Qua bốn bước ngắn gọn, chúng tôi sẽ tìm hiểu về thương hiệu của bạn, kết nối bất kỳ khóa API AI nào bạn muốn dùng và lên lịch tháng bài viết đầu tiên. Bạn có thể thay đổi mọi thứ sau này.</p>
       <ul class="wiz-bullets">
-        <li><span>1</span> Tell us about your site</li>
-        <li><span>2</span> Review your brand DNA</li>
-        <li><span>3</span> Pick AI providers <em>(optional)</em></li>
-        <li><span>4</span> Approve your 28-day plan</li>
+        <li><span>1</span> Giới thiệu về trang web của bạn</li>
+        <li><span>2</span> Xem lại Brand DNA của bạn</li>
+        <li><span>3</span> Chọn nhà cung cấp AI <em>(không bắt buộc)</em></li>
+        <li><span>4</span> Phê duyệt kế hoạch 28 ngày của bạn</li>
       </ul>
       <div class="wiz-actions wiz-actions-single">
-        <button id="wiz-start" class="btn btn-primary wiz-btn-lg" type="button">Let's go →</button>
+        <button id="wiz-start" class="btn btn-primary wiz-btn-lg" type="button">Bắt đầu ngay →</button>
       </div>
-      <p class="wiz-foot-note">Takes about two minutes. Workers AI runs everything for free out of the box.</p>
+      <p class="wiz-foot-note">Chỉ mất khoảng hai phút. Workers AI chạy hoàn toàn miễn phí ngay từ đầu.</p>
     </section>
 
     <!-- PANE 1: Brand URL -->
     <section class="wiz-pane" data-pane="1" hidden>
-      <div class="wiz-eyebrow">Step 1 of 4</div>
-      <h1 class="wiz-h1"><span class="serif-i">Where</span> does your brand live?</h1>
-      <p class="wiz-lede">Paste your homepage URL and we'll read it to draft a Brand DNA — voice, audience, themes, the lot. Takes ~30 seconds.</p>
+      <div class="wiz-eyebrow">Bước 1 / 4</div>
+      <h1 class="wiz-h1"><span class="serif-i">Thương hiệu</span> của bạn hoạt động ở đâu?</h1>
+      <p class="wiz-lede">Dán URL trang chủ của bạn và chúng tôi sẽ đọc nội dung để phác thảo Brand DNA — giọng văn, đối tượng độc giả, chủ đề cốt lõi. Mất khoảng 30 giây.</p>
       <label class="wiz-field wiz-field-big">
-        <span>Your website</span>
+        <span>Trang web của bạn</span>
         <input id="wiz-url" type="url" placeholder="https://example.com" autocomplete="url" inputmode="url" />
       </label>
       <details class="wiz-details">
-        <summary>Advanced options</summary>
+        <summary>Tùy chọn nâng cao</summary>
         <div class="wiz-row">
           <label class="wiz-field">
-            <span>Service area <em>(optional)</em></span>
-            <input id="wiz-service-area" type="text" placeholder="e.g. London or UK-wide" />
+            <span>Khu vực phục vụ <em>(không bắt buộc)</em></span>
+            <input id="wiz-service-area" type="text" placeholder="vd: Hà Nội hoặc toàn quốc" />
           </label>
           <label class="wiz-field">
-            <span>Topics to avoid <em>(optional)</em></span>
-            <input id="wiz-avoid" type="text" placeholder="e.g. competitor names" />
+            <span>Chủ đề cần tránh <em>(không bắt buộc)</em></span>
+            <input id="wiz-avoid" type="text" placeholder="vd: tên đối thủ" />
           </label>
         </div>
       </details>
       <div class="wiz-actions">
-        <button class="btn btn-ghost" type="button" data-wiz-back="0">← Back</button>
-        <button id="wiz-go-2" class="btn btn-primary" type="button">Read my site →</button>
+        <button class="btn btn-ghost" type="button" data-wiz-back="0">← Quay lại</button>
+        <button id="wiz-go-2" class="btn btn-primary" type="button">Đọc trang web của tôi →</button>
       </div>
       <div id="wiz-1-err" class="wiz-err"></div>
     </section>
 
     <!-- PANE 2: Brand DNA review -->
     <section class="wiz-pane" data-pane="2" hidden>
-      <div class="wiz-eyebrow">Step 2 of 4</div>
-      <h1 class="wiz-h1"><span class="serif-i">Here's</span> how we read your brand.</h1>
-      <p class="wiz-lede">A quick scan. Tweak anything that's wrong — these fields flow into every prompt the toolkit ever sends.</p>
+      <div class="wiz-eyebrow">Bước 2 / 4</div>
+      <h1 class="wiz-h1"><span class="serif-i">Đây là</span> cách chúng tôi hiểu về thương hiệu của bạn.</h1>
+      <p class="wiz-lede">Quét nhanh dữ liệu. Hãy chỉnh sửa những điểm chưa chính xác — các trường này sẽ được đưa vào mọi câu lệnh prompt hệ thống gửi đi.</p>
       <div id="wiz-brand-loading" class="wiz-loading-big" hidden>
         <div class="wiz-spinner"></div>
         <div>
-          <b>Reading <span id="wiz-loading-url"></span>…</b>
-          <p>Scraping the homepage and asking the model to summarise your brand voice. Hang on for ~20 seconds.</p>
+          <b>Đang đọc <span id="wiz-loading-url"></span>…</b>
+          <p>Đang thu thập dữ liệu trang chủ và yêu cầu mô hình tóm tắt giọng văn thương hiệu. Vui lòng chờ khoảng 20 giây.</p>
         </div>
       </div>
       <div id="wiz-brand-fields" class="wiz-brand-fields" hidden>
-        <label class="wiz-field"><span>What you do</span><textarea id="wiz-b-business" rows="4" maxlength="2400"></textarea></label>
-        <label class="wiz-field"><span>Voice / tone</span><textarea id="wiz-b-voice" rows="3" maxlength="1200"></textarea></label>
-        <label class="wiz-field"><span>Target audience</span><textarea id="wiz-b-audience" rows="3" maxlength="2000"></textarea></label>
-        <label class="wiz-field"><span>Key themes <em>(one per line)</em></span><textarea id="wiz-b-themes" rows="4" maxlength="1200"></textarea></label>
+        <label class="wiz-field"><span>Mô hình kinh doanh</span><textarea id="wiz-b-business" rows="4" maxlength="2400"></textarea></label>
+        <label class="wiz-field"><span>Giọng văn / phong cách</span><textarea id="wiz-b-voice" rows="3" maxlength="1200"></textarea></label>
+        <label class="wiz-field"><span>Đối tượng độc giả mục tiêu</span><textarea id="wiz-b-audience" rows="3" maxlength="2000"></textarea></label>
+        <label class="wiz-field"><span>Chủ đề cốt lõi <em>(mỗi dòng một chủ đề)</em></span><textarea id="wiz-b-themes" rows="4" maxlength="1200"></textarea></label>
         <div class="wiz-row">
-          <label class="wiz-field"><span>Service area</span><input id="wiz-b-area" type="text" maxlength="400" /></label>
-          <label class="wiz-field"><span>Topics to avoid</span><input id="wiz-b-avoid" type="text" maxlength="600" /></label>
+          <label class="wiz-field"><span>Khu vực phục vụ</span><input id="wiz-b-area" type="text" maxlength="400" /></label>
+          <label class="wiz-field"><span>Chủ đề cần tránh</span><input id="wiz-b-avoid" type="text" maxlength="600" /></label>
         </div>
       </div>
       <div class="wiz-actions">
-        <button class="btn btn-ghost" type="button" data-wiz-back="1">← Back</button>
-        <button id="wiz-go-3" class="btn btn-primary" type="button" disabled>Save & continue →</button>
+        <button class="btn btn-ghost" type="button" data-wiz-back="1">← Quay lại</button>
+        <button id="wiz-go-3" class="btn btn-primary" type="button" disabled>Lưu & tiếp tục →</button>
       </div>
       <div id="wiz-2-err" class="wiz-err"></div>
     </section>
@@ -1160,42 +1185,42 @@
     <!-- BEAT 2: brand confirmed -->
     <section class="wiz-pane wiz-pane-center wiz-beat" data-pane="beat-brand" hidden>
       <div class="wiz-tick">✓</div>
-      <h1 class="wiz-h1"><span class="serif-i">Brand</span> locked in.</h1>
-      <p class="wiz-lede">Every post we write from here will sound like <span id="wiz-beat-host" class="wiz-pill">your site</span>. You can re-edit any field from the Brand DNA tab later.</p>
+      <h1 class="wiz-h1"><span class="serif-i">Thương hiệu</span> đã được xác lập.</h1>
+      <p class="wiz-lede">Mỗi bài viết được tạo từ đây sẽ mang đúng bản sắc của <span id="wiz-beat-host" class="wiz-pill">trang web của bạn</span>. Bạn luôn có thể chỉnh sửa lại bất kỳ trường nào trong tab Brand DNA sau này.</p>
       <div class="wiz-actions wiz-actions-single">
-        <button class="btn btn-primary wiz-btn-lg" type="button" data-wiz-next="3">Next: AI providers →</button>
+        <button class="btn btn-primary wiz-btn-lg" type="button" data-wiz-next="3">Tiếp theo: Nhà cung cấp AI →</button>
       </div>
     </section>
 
     <!-- PANE 3: Providers -->
     <section class="wiz-pane" data-pane="3" hidden>
-      <div class="wiz-eyebrow">Step 3 of 4</div>
-      <h1 class="wiz-h1"><span class="serif-i">Pick</span> your AI engines.</h1>
-      <p class="wiz-lede">Workers AI is built in and free up to the daily limit. Drop in keys for any cloud providers you want as fallbacks — or skip and add them later.</p>
+      <div class="wiz-eyebrow">Bước 3 / 4</div>
+      <h1 class="wiz-h1"><span class="serif-i">Chọn</span> các công cụ AI của bạn.</h1>
+      <p class="wiz-lede">Workers AI đã được tích hợp sẵn và miễn phí theo hạn mức mỗi ngày. Điền khóa API cho các nhà cung cấp đám mây bạn muốn dùng làm dự phòng — hoặc bỏ qua và thêm lại sau.</p>
       <div id="wiz-providers" class="wiz-provs"></div>
       <div class="wiz-actions">
-        <button class="btn btn-ghost" type="button" data-wiz-back="2">← Back</button>
-        <button id="wiz-go-4" class="btn btn-primary" type="button">Continue →</button>
+        <button class="btn btn-ghost" type="button" data-wiz-back="2">← Quay lại</button>
+        <button id="wiz-go-4" class="btn btn-primary" type="button">Tiếp tục →</button>
       </div>
       <div id="wiz-3-err" class="wiz-err"></div>
     </section>
 
     <!-- PANE 4: Plan -->
     <section class="wiz-pane" data-pane="4" hidden>
-      <div class="wiz-eyebrow">Step 4 of 4</div>
-      <h1 class="wiz-h1"><span class="serif-i">Your first</span> month, planned.</h1>
-      <p class="wiz-lede">We've drafted 28 article ideas from your brand DNA. Have a glance — you can swap, remove, or reorder any of them from the Calendar tab.</p>
+      <div class="wiz-eyebrow">Bước 4 / 4</div>
+      <h1 class="wiz-h1"><span class="serif-i">Tháng đầu tiên</span> của bạn đã được lên kế hoạch.</h1>
+      <p class="wiz-lede">Chúng tôi đã phác thảo 28 ý tưởng bài viết từ Brand DNA của bạn. Hãy xem qua — bạn có thể hoán đổi, xóa hoặc sắp xếp lại bất kỳ ý tưởng nào trong tab Lịch bài viết.</p>
       <div id="wiz-plan-loading" class="wiz-loading-big">
         <div class="wiz-spinner"></div>
         <div>
-          <b>Drafting your calendar…</b>
-          <p>One idea per day for the next four weeks. About 20 seconds.</p>
+          <b>Đang phác thảo lịch bài viết…</b>
+          <p>Mỗi ngày một ý tưởng cho bốn tuần tới. Khoảng 20 giây.</p>
         </div>
       </div>
       <ol id="wiz-plan-list" class="wiz-plan-list" hidden></ol>
       <div class="wiz-actions">
-        <button class="btn btn-ghost" type="button" data-wiz-back="3">← Back</button>
-        <button id="wiz-go-done" class="btn btn-primary" type="button" disabled>Looks good →</button>
+        <button class="btn btn-ghost" type="button" data-wiz-back="3">← Quay lại</button>
+        <button id="wiz-go-done" class="btn btn-primary" type="button" disabled>Trông rất ổn →</button>
       </div>
       <div id="wiz-4-err" class="wiz-err"></div>
     </section>
@@ -1203,15 +1228,15 @@
     <!-- BEAT done: all set -->
     <section class="wiz-pane wiz-pane-center wiz-beat" data-pane="beat-done" hidden>
       <div class="wiz-tick wiz-tick-big">✦</div>
-      <h1 class="wiz-h1"><span class="serif-i">You're</span> live.</h1>
-      <p class="wiz-lede">Tomorrow at 08:00 UTC the first post will publish itself — image, SEO metadata, IndexNow ping, the lot. You can also hit "Run now" from the dashboard to publish right away.</p>
+      <h1 class="wiz-h1"><span class="serif-i">Hệ thống</span> đã sẵn sàng.</h1>
+      <p class="wiz-lede">Vào 08:00 UTC ngày mai, bài viết đầu tiên sẽ tự động xuất bản — đầy đủ hình ảnh, metadata SEO, tín hiệu IndexNow và các thành phần khác. Bạn cũng có thể bấm "Tạo ngay" từ bảng điều khiển để xuất bản ngay lập tức.</p>
       <ul class="wiz-bullets wiz-bullets-inline">
-        <li><b>Calendar</b> – browse and edit the next 28 days</li>
-        <li><b>Daily blog</b> – kick off a post manually</li>
-        <li><b>Links</b> – teach the AI about your /login, /pricing, etc.</li>
+        <li><b>Lịch bài viết</b> – duyệt và chỉnh sửa 28 ngày tiếp theo</li>
+        <li><b>Blog hàng ngày</b> – tạo bài viết thủ công ngay lập tức</li>
+        <li><b>Liên kết</b> – hướng dẫn AI về các trang /login, /pricing, v.v.</li>
       </ul>
       <div class="wiz-actions wiz-actions-single">
-        <button id="wiz-done" class="btn btn-primary wiz-btn-lg" type="button">Open my dashboard →</button>
+        <button id="wiz-done" class="btn btn-primary wiz-btn-lg" type="button">Mở bảng điều khiển của tôi →</button>
       </div>
     </section>
 
@@ -1221,23 +1246,23 @@
 <!-- Link editor modal -->
 <div id="link-modal" class="cal-modal-backdrop" hidden>
   <div class="cal-modal">
-    <h3 id="link-modal-title">Add link</h3>
-    <label>Name <em class="muted">(the AI will use this in <code>[text](name)</code>)</em>
-      <input id="link-mod-name" type="text" placeholder="e.g. login" maxlength="40" autocomplete="off" />
+    <h3 id="link-modal-title">Thêm liên kết</h3>
+    <label>Tên <em class="muted">(AI sẽ sử dụng tên này dưới dạng <code>[văn bản](tên)</code>)</em>
+      <input id="link-mod-name" type="text" placeholder="vd: login" maxlength="40" autocomplete="off" />
     </label>
-    <label>URL <em class="muted">(root-relative <code>/path</code> or absolute <code>https://…</code>)</em>
+    <label>URL <em class="muted">(đường dẫn tương đối từ gốc <code>/path</code> hoặc tuyệt đối <code>https://…</code>)</em>
       <input id="link-mod-url" type="text" placeholder="/login" autocomplete="off" />
     </label>
-    <label>Description <em class="muted">(optional — helps the AI know when to use it)</em>
-      <textarea id="link-mod-desc" maxlength="300" placeholder="e.g. user sign-in page"></textarea>
+    <label>Mô tả <em class="muted">(không bắt buộc — giúp AI biết khi nào nên sử dụng)</em>
+      <textarea id="link-mod-desc" maxlength="300" placeholder="vd: trang đăng nhập người dùng"></textarea>
     </label>
     <div class="cal-modal-actions">
       <div class="left">
-        <button id="link-mod-delete" class="btn btn-ghost danger" hidden>Delete</button>
+        <button id="link-mod-delete" class="btn btn-ghost danger" hidden>Xóa</button>
       </div>
       <div class="right">
-        <button id="link-mod-cancel" class="btn btn-ghost">Cancel</button>
-        <button id="link-mod-save" class="btn btn-primary">Save</button>
+        <button id="link-mod-cancel" class="btn btn-ghost">Hủy</button>
+        <button id="link-mod-save" class="btn btn-primary">Lưu</button>
       </div>
     </div>
     <div id="link-mod-err" class="status bad" style="min-height:18px"></div>
@@ -1247,18 +1272,18 @@
 <!-- Slot editor modal (calendar) -->
 <div id="cal-modal" class="cal-modal-backdrop" hidden>
   <div class="cal-modal">
-    <h3 id="cal-modal-title">New article</h3>
-    <label>Title<input id="cal-mod-title" type="text" placeholder="How to do X for Y" maxlength="200" /></label>
-    <label>Date<input id="cal-mod-date" type="date" /></label>
-    <label>Primary keyword<input id="cal-mod-keyword" type="text" placeholder="optional — for SEO targeting" maxlength="120" /></label>
-    <label>Angle / brief<textarea id="cal-mod-angle" placeholder="optional — 1–2 sentences to steer the writer" maxlength="500"></textarea></label>
+    <h3 id="cal-modal-title">Bài viết mới</h3>
+    <label>Tiêu đề<input id="cal-mod-title" type="text" placeholder="Hướng dẫn làm X cho Y" maxlength="200" /></label>
+    <label>Ngày<input id="cal-mod-date" type="date" /></label>
+    <label>Từ khóa chính<input id="cal-mod-keyword" type="text" placeholder="không bắt buộc — phục vụ mục tiêu SEO" maxlength="120" /></label>
+    <label>Góc tiếp cận / tóm tắt ngắn<textarea id="cal-mod-angle" placeholder="không bắt buộc — 1–2 câu định hướng cho người viết" maxlength="500"></textarea></label>
     <div class="cal-modal-actions">
       <div class="left">
-        <button id="cal-mod-delete" class="btn btn-ghost danger" hidden>Delete</button>
+        <button id="cal-mod-delete" class="btn btn-ghost danger" hidden>Xóa</button>
       </div>
       <div class="right">
-        <button id="cal-mod-cancel" class="btn btn-ghost">Cancel</button>
-        <button id="cal-mod-save" class="btn btn-primary">Save</button>
+        <button id="cal-mod-cancel" class="btn btn-ghost">Hủy</button>
+        <button id="cal-mod-save" class="btn btn-primary">Lưu</button>
       </div>
     </div>
   </div>
