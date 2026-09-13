@@ -7,6 +7,15 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.3.15 — 2026-09-13
+
+### Changed
+- **Nâng cấp giao diện trang Admin theo chuẩn thiết kế của Trang chủ (X.com / Global Dark Style):**
+  - Đồng bộ bảng màu nền đen tuyệt đối (`--bg: #000000`, `--bg-card: #101114`).
+  - Điểm nhấn chính chuyển sang nút bấm trắng tương phản cao chữ đen (`.btn-primary`), viền mỏng sắc nét `rgba(255,255,255,0.08)`.
+  - Thay thế font sang bộ **Inter** đồng bộ với trang chủ.
+  - Cập nhật định danh toàn diện từ "Gulagi Blogs" thành **GU SEO Console** kèm logo X-mark tối giản.
+
 ## 1.3.14 — 2026-09-13
 
 ### Added
