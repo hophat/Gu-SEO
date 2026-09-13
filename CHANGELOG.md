@@ -7,6 +7,18 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.8.0 — 2026-09-13
+
+### Added
+- **Trụ cột 4: Growth & Onboarding Automation (Kích hoạt người dùng 60s):**
+  - **Onboarding Quickstart Modal (Aha! Moment):** Tự động kích hoạt khi người dùng mới đăng nhập vào dự án chưa có bài viết:
+    - *Bước 1:* Quét website/fanpage để AI tự động trích xuất Brand DNA trong 10-20 giây.
+    - *Bước 2:* Đề xuất danh sách chủ đề SEO tiềm năng và cho phép chọn 1 chủ đề tâm đắc.
+    - *Bước 3:* Tự động chạy toàn bộ quy trình viết bài, sinh ảnh bìa Flux, chèn link nội bộ và hiển thị thanh tiến trình trực quan.
+    - *Bước 4:* Chúc mừng và cấp link trực tiếp để người dùng xem ngay bài viết vừa xuất bản.
+  - **Hệ thống gửi Báo cáo hiệu quả tuần tự động (Weekly Digest):**
+    - Endpoint `POST /api/admin/cron/weekly-digest` tự động thống kê số bài viết mới xuất bản, tổng số bài và lượt xem trong 7 ngày qua, gửi email thông báo định kỳ tới từng chủ dự án.
+
 ## 1.7.0 — 2026-09-13
 
 ### Added

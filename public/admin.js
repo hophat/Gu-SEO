@@ -3639,6 +3639,237 @@
   // loadUsage, refreshPricing, generateBrand, saveBrand, runBrandFilter,
   // applyToTarget, etc. — remain wired to their tab buttons.)
 
+
+  // ── Onboarding Quickstart Wizard (Aha! Moment in 60s) ───────────
+  const Onboarding = (() => {
+    let bound = false;
+    let selectedTopic = null;
+    let generatedSlug = null;
+
+    function open() {
+      const modal = $('#ob-modal');
+      if (!modal) return;
+      modal.hidden = false;
+      showStep(1);
+
+      // Pre-fill URL if project has one
+      const cur = window.__psActiveProject;
+      const urlInput = $('#ob-url');
+      if (urlInput && !urlInput.value && cur?.website_url) {
+        urlInput.value = cur.website_url;
+      }
+    }
+
+    function close() {
+      const modal = $('#ob-modal');
+      if (modal) modal.hidden = true;
+      localStorage.setItem('ps_onboarding_seen_' + (window.__psActiveProjectId || 'default'), 'true');
+    }
+
+    function showStep(stepNum) {
+      for (let i = 1; i <= 4; i++) {
+        const step = $(`#ob-step-${i}`);
+        if (step) step.hidden = (i !== stepNum);
+      }
+    }
+
+    async function scanWebsite() {
+      const url = ($('#ob-url')?.value || '').trim();
+      const status = $('#ob-scan-status');
+      const btn = $('#ob-scan-btn');
+
+      if (!url) {
+        if (status) { status.textContent = 'Vui lòng nhập địa chỉ website hoặc link trang.'; status.className = 'status bad'; }
+        return;
+      }
+
+      if (btn) { btn.disabled = true; btn.textContent = 'Đang phân tích website…'; }
+      if (status) { status.textContent = 'Đang thu thập nội dung & trích xuất DNA (10–20s)…'; status.className = 'status'; }
+
+      try {
+        const { status: code, body } = await api('/api/admin/brand-dna', {
+          method: 'POST',
+          body: JSON.stringify({ url })
+        });
+
+        if (code !== 200 || !body?.ok) {
+          if (status) { status.textContent = body?.detail || body?.error || 'Không thể cào website.'; status.className = 'status bad'; }
+          return;
+        }
+
+        // Successfully generated Brand DNA, now load recommended topics
+        await loadTopicsForStep2();
+        showStep(2);
+      } catch (e) {
+        if (status) { status.textContent = 'Lỗi kết nối: ' + e.message; status.className = 'status bad'; }
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Phân tích website →'; }
+      }
+    }
+
+    async function loadTopicsForStep2() {
+      const listEl = $('#ob-topic-list');
+      if (!listEl) return;
+      clearChildren(listEl);
+
+      // Try reading project topics
+      const pid = window.__psActiveProjectId;
+      let topics = [];
+      try {
+        const { body } = await api('/api/admin/topics?limit=5');
+        topics = body?.topics || [];
+      } catch {}
+
+      if (!topics.length) {
+        // Fallback default suggestions for the brand
+        const curName = window.__psActiveProject?.name || 'Doanh Nghiệp';
+        topics = [
+          { key: `Xu hướng và giải pháp phát triển cho ${curName} năm 2026`, angle: `Đánh giá toàn diện các cơ hội và chiến lược thực tiễn cho ${curName}.` },
+          { key: `Kinh nghiệm tối ưu chi phí và tăng trưởng bền vững`, angle: `Phân tích chuyên sâu các bước triển khai hiệu quả.` },
+          { key: `So sánh các giải pháp hàng đầu trong ngành`, angle: `Góc nhìn khách quan giúp khách hàng lựa chọn đúng đắn.` }
+        ];
+      }
+
+      selectedTopic = topics[0] || null;
+
+      topics.slice(0, 4).forEach((t, idx) => {
+        const item = document.createElement('div');
+        item.className = 'ob-topic-item' + (idx === 0 ? ' is-selected' : '');
+        item.innerHTML = `
+          <input type="radio" name="ob-topic-radio" class="ob-topic-radio" ${idx === 0 ? 'checked' : ''} />
+          <div>
+            <div style="font-weight:700;font-size:14px;color:var(--ink);margin-bottom:4px;">${t.key || t.topic || t.title}</div>
+            <div style="font-size:12.5px;color:var(--ink-dim);line-height:1.4;">${t.angle || t.brief || ''}</div>
+          </div>
+        `;
+        item.addEventListener('click', () => {
+          $$('.ob-topic-item').forEach(el => el.classList.remove('is-selected'));
+          item.classList.add('is-selected');
+          const radio = item.querySelector('input[type="radio"]');
+          if (radio) radio.checked = true;
+          selectedTopic = t;
+        });
+        listEl.appendChild(item);
+      });
+
+      const genBtn = $('#ob-generate-btn');
+      if (genBtn) genBtn.disabled = false;
+    }
+
+    async function generateFirstPost() {
+      if (!selectedTopic) return;
+      showStep(3);
+
+      const heading = $('#ob-gen-heading');
+      const bar = $('#ob-progress-bar');
+      const log = $('#ob-gen-log');
+      if (log) { log.hidden = false; log.textContent = ''; }
+      const append = (msg) => { if (log) log.textContent += msg + '\n'; };
+
+      try {
+        // 1. Start Job
+        if (heading) heading.textContent = '1/4 Chọn chủ đề & khởi tạo job…';
+        if (bar) bar.style.width = '25%';
+        append('Khởi tạo bài viết với chủ đề: ' + (selectedTopic.key || selectedTopic.title));
+
+        const start = await api('/api/admin/blog/start', {
+          method: 'POST',
+          body: JSON.stringify({
+            topic_key: selectedTopic.key || selectedTopic.title,
+            angle: selectedTopic.angle || selectedTopic.brief || selectedTopic.key
+          })
+        });
+
+        const jobId = start?.body?.job_id;
+        if (!jobId) throw new Error(start?.body?.error || 'Không thể tạo job');
+        append('Job ID: ' + jobId);
+
+        // 2. Generate Text
+        if (heading) heading.textContent = '2/4 AI đang viết 900–1.300 từ…';
+        if (bar) bar.style.width = '50%';
+        append('Đang sản xuất nội dung chuẩn SEO…');
+
+        const text = await api('/api/admin/blog/text', {
+          method: 'POST',
+          body: JSON.stringify({ job_id: jobId })
+        });
+        if (text.status !== 200) throw new Error(text.body?.detail || text.body?.error || 'Lỗi viết bài');
+        append('Tiêu đề: ' + text.body.title);
+        generatedSlug = text.body.slug;
+
+        // 3. Generate Cover Image
+        if (heading) heading.textContent = '3/4 Đang sinh ảnh bìa Flux…';
+        if (bar) bar.style.width = '75%';
+        append('Sinh ảnh hero nghệ thuật…');
+
+        await api('/api/admin/blog/image', {
+          method: 'POST',
+          body: JSON.stringify({ job_id: jobId })
+        });
+
+        // 4. Publish
+        if (heading) heading.textContent = '4/4 Xuất bản & ping IndexNow…';
+        if (bar) bar.style.width = '100%';
+        append('Xuất bản thành công!');
+
+        await api('/api/admin/blog/publish', {
+          method: 'POST',
+          body: JSON.stringify({ job_id: jobId })
+        });
+
+        // Step 4: Show Celebration
+        showStep(4);
+        const viewBtn = $('#ob-view-post-btn');
+        if (viewBtn) {
+          viewBtn.href = activeProjectBase() + '/blog/' + generatedSlug;
+        }
+
+        // Refresh overview counters
+        loadOverview();
+
+      } catch (err) {
+        if (heading) heading.textContent = 'Lỗi trong quá trình tạo bài';
+        if (bar) bar.style.background = 'var(--bad)';
+        append('THẤT BẠI: ' + err.message);
+      }
+    }
+
+    function init() {
+      if (bound) return;
+      bound = true;
+
+      $('#ob-close')?.addEventListener('click', close);
+      $('#ob-finish-btn')?.addEventListener('click', close);
+      $('#ob-scan-btn')?.addEventListener('click', scanWebsite);
+      $('#ob-skip-step-1')?.addEventListener('click', async () => {
+        await loadTopicsForStep2();
+        showStep(2);
+      });
+      $('#ob-back-1')?.addEventListener('click', () => showStep(1));
+      $('#ob-generate-btn')?.addEventListener('click', generateFirstPost);
+
+      // Auto trigger if user hasn't seen it and has 0 posts
+      setTimeout(async () => {
+        const pid = window.__psActiveProjectId;
+        if (!pid) return;
+        const key = 'ps_onboarding_seen_' + pid;
+        if (localStorage.getItem(key)) return;
+
+        // Check if project has 0 posts
+        try {
+          const { body } = await api('/api/admin/blog/list?limit=1');
+          if (!body?.posts || body.posts.length === 0) {
+            open();
+          } else {
+            localStorage.setItem(key, 'true');
+          }
+        } catch {}
+      }, 1500);
+    }
+
+    return { open, close, init };
+  })();
+
   // ── mount ───────────────────────────────────────────────────────
   async function mount() {
     $('#gate').hidden = true;
@@ -3660,10 +3891,10 @@
     // mount so a re-login after an update shows the fresh version.
     // Failures are silent — the badge stays hidden and the admin
     // is otherwise unaffected.
-    populateVersionBadge().catch(() => {});
+    populateVersionBadge().catch(() => {}); Onboarding.init();
     // Re-check every 10 minutes while the tab is open so users
     // notice an upstream release without manually refreshing.
-    setInterval(() => { populateVersionBadge().catch(() => {}); }, 10 * 60 * 1000);
+    setInterval(() => { populateVersionBadge().catch(() => {}); Onboarding.init(); }, 10 * 60 * 1000);
 
     // Pull any active admin notices and render them as sticky
     // toasts. These are conditions detected by the backend (cover

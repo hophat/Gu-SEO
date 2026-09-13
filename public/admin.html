@@ -1495,6 +1495,77 @@
   </div>
 </div>
 
+
+<!-- ============ ONBOARDING QUICKSTART MODAL ============ -->
+<div id="ob-modal" class="ob-backdrop" hidden>
+  <div class="ob-card">
+    <div class="ob-header">
+      <div class="ob-pill">⚡ ONBOARDING · 60 GIÂY ĐẾN BÀI VIẾT ĐẦU TIÊN</div>
+      <button id="ob-close" type="button" class="ob-close-btn" title="Bỏ qua">✕</button>
+    </div>
+
+    <!-- Step 1: Website Input & Brand DNA -->
+    <div id="ob-step-1" class="ob-step">
+      <h2>Khởi tạo bài viết SEO đầu tiên</h2>
+      <p class="ob-sub">
+        Nhập địa chỉ website hoặc trang của bạn. AI sẽ tự động phân tích mô hình kinh doanh và gợi ý các chủ đề SEO chuyên sâu.
+      </p>
+      <div style="margin-bottom:18px;">
+        <label style="font-size:12px;color:var(--ink-dim);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);">
+          Website hoặc Landing page
+        </label>
+        <div style="display:flex;gap:8px;">
+          <input id="ob-url" type="url" placeholder="https://mybrand.com" style="flex:1;" />
+          <button id="ob-scan-btn" type="button" class="btn btn-primary" style="white-space:nowrap;">Phân tích website →</button>
+        </div>
+        <div id="ob-scan-status" class="status" style="margin-top:8px;"></div>
+      </div>
+      <div class="row" style="justify-content:flex-end;">
+        <button id="ob-skip-step-1" type="button" class="btn btn-ghost">Bỏ qua cào web, chọn chủ đề ngay →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Choose First Topic -->
+    <div id="ob-step-2" class="ob-step" hidden>
+      <h2>Chọn chủ đề bài viết đầu tiên</h2>
+      <p class="ob-sub">
+        Hệ thống đề xuất các chủ đề SEO có ý định tìm kiếm cao cho thương hiệu của bạn. Chọn 1 chủ đề để tạo bài ngay:
+      </p>
+      <div id="ob-topic-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;max-height:280px;overflow-y:auto;padding-right:4px;"></div>
+      <div class="row" style="justify-content:space-between;">
+        <button id="ob-back-1" type="button" class="btn btn-ghost">← Nhập lại web</button>
+        <button id="ob-generate-btn" type="button" class="btn btn-primary" disabled>Tạo bài viết ngay →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Generating in Progress -->
+    <div id="ob-step-3" class="ob-step" hidden style="text-align:center;padding:24px 0;">
+      <div style="font-size:36px;margin-bottom:16px;" class="ob-pulse">⚡</div>
+      <h2 id="ob-gen-heading">Đang tạo bài viết chuyên sâu…</h2>
+      <p id="ob-gen-sub" class="ob-sub" style="margin-bottom:24px;">
+        AI đang viết 900–1.300 từ, tự động chèn liên kết nội bộ và xuất bản.
+      </p>
+      <div style="width:100%;height:8px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden;margin-bottom:20px;">
+        <div id="ob-progress-bar" style="height:100%;width:20%;background:linear-gradient(90deg,#10b981,#06b6d4);border-radius:999px;transition:width 0.4s ease;"></div>
+      </div>
+      <pre id="ob-gen-log" class="log" style="text-align:left;max-height:160px;"></pre>
+    </div>
+
+    <!-- Step 4: Success Celebration -->
+    <div id="ob-step-4" class="ob-step" hidden style="text-align:center;padding:12px 0;">
+      <div style="width:52px;height:52px;border-radius:50%;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);display:inline-grid;place-items:center;color:#10b981;font-size:24px;margin-bottom:16px;">✓</div>
+      <h2>Bài viết đầu tiên đã xuất bản!</h2>
+      <p class="ob-sub" id="ob-success-sub" style="margin-bottom:24px;">
+        Bài viết đã sẵn sàng trên trang blog của thương hiệu và đã phát tín hiệu IndexNow tới công cụ tìm kiếm.
+      </p>
+      <div class="row" style="justify-content:center;gap:12px;">
+        <a id="ob-view-post-btn" href="#" target="_blank" class="btn btn-primary">Xem bài viết trực tiếp ↗</a>
+        <button id="ob-finish-btn" type="button" class="btn btn-ghost">Vào bảng điều khiển</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="/cover-editor.js"></script>
 <script src="/admin.js"></script>
 </body>

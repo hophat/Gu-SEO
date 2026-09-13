@@ -1511,3 +1511,75 @@ a.dist-url:hover{color:var(--ink)}
   .dist-item{grid-template-columns:1fr}
   .dist-url{grid-row:auto;text-align:left}
 }
+
+/* ── Onboarding Quickstart Modal ── */
+.ob-backdrop {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.ob-backdrop[hidden] { display: none; }
+.ob-card {
+  width: min(600px, 100%);
+  background: #090d16;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+}
+:root[data-theme="light"] .ob-card {
+  background: #ffffff;
+  border-color: var(--line);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+.ob-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px;
+}
+.ob-pill {
+  font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700;
+  color: #38bdf8; background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 4px 10px; border-radius: 999px;
+  letter-spacing: 0.04em;
+}
+.ob-close-btn {
+  background: transparent; border: 0; color: var(--ink-dim);
+  font-size: 16px; cursor: pointer; padding: 4px;
+  line-height: 1; transition: color 0.15s;
+}
+.ob-close-btn:hover { color: var(--ink); }
+.ob-step h2 {
+  font-size: 22px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.02em;
+}
+.ob-sub {
+  font-size: 14px; color: var(--ink-dim); line-height: 1.6; margin: 0 0 20px;
+}
+.ob-topic-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px; border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  cursor: pointer; transition: all 0.15s ease;
+  text-align: left;
+}
+.ob-topic-item:hover {
+  border-color: var(--accent); background: var(--bg-card);
+}
+.ob-topic-item.is-selected {
+  border-color: #38bdf8; background: rgba(56, 189, 248, 0.08);
+}
+.ob-topic-radio {
+  margin-top: 3px; accent-color: #38bdf8;
+}
+.ob-pulse {
+  animation: obPulse 1.5s infinite alternate;
+}
+@keyframes obPulse {
+  from { transform: scale(1); opacity: 0.8; }
+  to { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 12px #38bdf8); }
+}
