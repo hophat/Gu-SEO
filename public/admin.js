@@ -1744,6 +1744,7 @@
       api('/api/admin/providers'),
     ]);
     const sources = secretsResp.body?.keys || {};
+    const values = secretsResp.body?.values || {};
     const usableText = new Set(providersResp.body?.text || []);
 
     for (const p of PROVIDER_META) {
@@ -1782,7 +1783,7 @@
         note.style.color = 'var(--ink-faint)';
         note.textContent = 'Được cấu hình thông qua binding [ai] trong wrangler.toml.';
         card.append(note);
-        if (p.models?.length) card.append(buildModelRow(p, sources));
+        if (p.models?.length) card.append(buildModelRow(p, sources, values));
         grid.appendChild(card);
         continue;
       }
@@ -1819,7 +1820,7 @@
       card.append(editRow);
 
       // Model selector — always show so users can change without re-entering the key.
-      if (p.models?.length) card.append(buildModelRow(p, sources));
+      if (p.models?.length) card.append(buildModelRow(p, sources, values));
 
       // Source-specific actions row.
       if (source === 'vault') {
@@ -1856,13 +1857,13 @@
     }
 
     // Build the model-selector row for a provider card.
-    function buildModelRow(p, sources) {
+    function buildModelRow(p, sources, values = {}) {
       const wrap = document.createElement('div'); wrap.className = 'provider-model-row';
       const lbl = document.createElement('span'); lbl.className = 'provider-model-label';
       lbl.textContent = 'Mô hình';
       const sel = document.createElement('select'); sel.className = 'provider-model-select';
-      // Current value: the stored secret for this env key, else the default.
-      const curVal = sources[p.modelEnvKey] || p.modelDefault;
+      // Current value: the actual stored model value, else fallback to default.
+      const curVal = values[p.modelEnvKey] || p.modelDefault;
       for (const m of p.models) {
         const o = document.createElement('option');
         o.value = m.id;

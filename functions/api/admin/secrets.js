@@ -33,10 +33,20 @@ const ALLOWED = [
 const MIN_LEN = 2;
 const MAX_LEN = 512;
 
+import { getVaultSecret } from '../../_lib/secret_vault.js';
+
 export const onRequestGet = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
   const status = await describeKeys(env, ALLOWED);
-  return json(200, { ok: true, keys: status, allowed: ALLOWED });
+  const values = {};
+  // For non-sensitive model names, return current effective value so the UI select displays correctly
+  for (const k of ALLOWED) {
+    if (k.endsWith('_MODEL')) {
+      const val = (env?.[k] && String(env[k]).trim()) || (await getVaultSecret(env, k)) || '';
+      if (val) values[k] = val;
+    }
+  }
+  return json(200, { ok: true, keys: status, values, allowed: ALLOWED });
 };
 
 export const onRequestPost = async ({ env, request }) => {

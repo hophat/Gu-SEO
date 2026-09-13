@@ -837,9 +837,10 @@ const PROVIDER_SECRET_NAMES = [
 // vault values.
 async function withVault(env) {
   const overlay = await envWithVault(env, PROVIDER_SECRET_NAMES);
+  // If no vault secret override is saved, check settings table
   try {
     const s = await loadSettings(env);
-    if (s.gurouter_text_model && String(s.gurouter_text_model).trim()) {
+    if (!overlay.GUROUTER_TEXT_MODEL && s.gurouter_text_model && String(s.gurouter_text_model).trim()) {
       overlay.GUROUTER_TEXT_MODEL = String(s.gurouter_text_model).trim();
     }
   } catch {}
