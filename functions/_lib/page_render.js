@@ -160,7 +160,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
 
   const relatedHTML = (kind === 'blog' && related.length) ? `
 <aside class="read-next">
-  <h2 class="read-next-title">Bài viết liên quan</h2>
+  <h2 class="read-next-title">Đọc tiếp</h2>
   <ul class="read-next-list">
     ${related.map((r) => {
       const rSrc = r.hero_image_key ? `/image/${esc(r.hero_image_key)}` : `/cover/${esc(r.slug)}.svg`;
