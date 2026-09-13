@@ -632,4 +632,13 @@ ALTER TABLE projects ADD COLUMN theme_color TEXT;
 -- default plan is 'free', post_limit 100 posts for free tier.
 ALTER TABLE users ADD COLUMN plan_tier TEXT DEFAULT 'free';
 ALTER TABLE users ADD COLUMN post_limit INTEGER DEFAULT 100;
+
+-- Registration OTP verifications table:
+CREATE TABLE IF NOT EXISTS email_verifications (
+  email       TEXT PRIMARY KEY COLLATE NOCASE,
+  otp_code    TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  expires_at  INTEGER NOT NULL,
+  verified_at INTEGER
+);
 `;

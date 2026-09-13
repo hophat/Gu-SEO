@@ -60,17 +60,24 @@
         <input id="reg-website" type="url" placeholder="https://example.com" />
       </label>
       <label class="gate-field">
-        <span>Email đăng ký</span>
-        <input id="reg-email" type="email" autocomplete="username" required placeholder="you@example.com" />
+        <span>Email đăng ký (nhận mã OTP)</span>
+        <div style="display:flex;gap:8px;">
+          <input id="reg-email" type="email" autocomplete="username" required placeholder="you@example.com" style="flex:1;" />
+          <button id="reg-send-otp" type="button" class="btn btn-sm btn-ghost" style="white-space:nowrap;padding:0 14px;">Gửi OTP</button>
+        </div>
+      </label>
+      <label class="gate-field">
+        <span>Mã xác thực OTP (6 chữ số gửi qua Gmail)</span>
+        <input id="reg-otp" type="text" required maxlength="6" pattern="[0-9]{6}" placeholder="Nhập 6 số OTP..." autocomplete="one-time-code" style="font-family:var(--mono);letter-spacing:4px;font-weight:700;" />
       </label>
       <label class="gate-field">
         <span>Mật khẩu (tối thiểu 8 ký tự)</span>
         <input id="reg-password" type="password" autocomplete="new-password" required minlength="8" placeholder="••••••••" />
       </label>
       <div style="font-size:12px;color:var(--ink-dim);margin:10px 0 16px;line-height:1.4;">
-        🎁 <b>Gói Free:</b> Tự động tạo Project, Branch & Brand DNA, lên lịch & thiết kế nhận diện. Tặng 100 bài viết SEO tự động. Không hỗ trợ xóa bài.
+        🎁 <b>Gói Free:</b> Tự động tạo Project, Brand DNA, lên lịch & thiết kế. Tặng 100 bài SEO tự động. Không hỗ trợ xóa bài.
       </div>
-      <button id="reg-go" type="submit" class="btn btn-primary" style="width:100%;">Tạo tài khoản Free & Vào Console →</button>
+      <button id="reg-go" type="submit" class="btn btn-primary" style="width:100%;">Xác Thực OTP & Vào Console →</button>
     </form>
 
     <div id="gate-err" class="err"></div>

@@ -326,6 +326,66 @@
       });
     }
 
+    const sendOtpBtn = document.getElementById('reg-send-otp');
+    if (sendOtpBtn) {
+      sendOtpBtn.addEventListener('click', async () => {
+        const email = document.getElementById('reg-email')?.value.trim().toLowerCase();
+        const brand = document.getElementById('reg-brand')?.value.trim() || 'GU SEO';
+        const err = document.getElementById('gate-err');
+
+        if (!email || !email.includes('@')) {
+          if (err) err.textContent = 'Vui lòng nhập địa chỉ email hợp lệ trước khi gửi OTP.';
+          return;
+        }
+
+        sendOtpBtn.disabled = true;
+        sendOtpBtn.textContent = 'Đang gửi…';
+        if (err) err.textContent = '';
+
+        try {
+          const res = await fetch('/api/public/send-otp', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ email, brand_name: brand })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.ok) {
+            let countdown = 60;
+            sendOtpBtn.textContent = `Gửi lại (${countdown}s)`;
+            const timer = setInterval(() => {
+              countdown--;
+              if (countdown <= 0) {
+                clearInterval(timer);
+                sendOtpBtn.disabled = false;
+                sendOtpBtn.textContent = 'Gửi OTP';
+              } else {
+                sendOtpBtn.textContent = `Gửi lại (${countdown}s)`;
+              }
+            }, 1000);
+            if (err) {
+              err.className = 'status good';
+              err.textContent = `Đã gửi mã OTP tới ${email}. Vui lòng kiểm tra hộp thư Gmail (kể cả mục Spam).`;
+            }
+            document.getElementById('reg-otp')?.focus();
+            return;
+          }
+          if (err) {
+            err.className = 'err';
+            err.textContent = data.detail || data.error || 'Không thể gửi mã OTP. Vui lòng thử lại sau.';
+          }
+          sendOtpBtn.disabled = false;
+          sendOtpBtn.textContent = 'Gửi OTP';
+        } catch (e) {
+          if (err) {
+            err.className = 'err';
+            err.textContent = 'Lỗi kết nối máy chủ gửi thư: ' + e.message;
+          }
+          sendOtpBtn.disabled = false;
+          sendOtpBtn.textContent = 'Gửi OTP';
+        }
+      });
+    }
+
     if (regForm) {
       regForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -335,8 +395,14 @@
         const password = document.getElementById('reg-password')?.value;
         const btn = document.getElementById('reg-go');
 
+        const otp = document.getElementById('reg-otp')?.value.trim();
+
         if (!brand || !email || !password) {
           if (err) err.textContent = 'Vui lòng điền đầy đủ tên thương hiệu, email và mật khẩu.';
+          return;
+        }
+        if (!otp || otp.length !== 6) {
+          if (err) err.textContent = 'Vui lòng bấm "Gửi OTP" và nhập mã xác thực 6 số từ Gmail.';
           return;
         }
         if (password.length < 8) {
@@ -345,7 +411,7 @@
         }
 
         if (err) err.textContent = '';
-        if (btn) { btn.disabled = true; btn.textContent = 'Đang tạo Project & Tài khoản Free…'; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Đang xác thực OTP & Khởi tạo…'; }
 
         try {
           const res = await fetch('/api/public/register', {
@@ -355,7 +421,8 @@
               brand_name: brand,
               website_url: website,
               email,
-              password
+              password,
+              otp
             }),
             credentials: 'same-origin'
           });

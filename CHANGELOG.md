@@ -7,6 +7,16 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.6.0 — 2026-09-13
+
+### Added
+- **Xác thực OTP Email qua Gmail SMTP TLS cho Đăng ký Tài khoản:**
+  - Tích hợp module gửi email SMTP trực tiếp qua TLS (`cloudflare:sockets`) kết nối an toàn tới máy chủ `smtp.gmail.com:465`.
+  - Cấu hình tài khoản gửi thư hệ thống: `gulagi.com@gmail.com` với mật khẩu ứng dụng Gmail chuyên dụng.
+  - Endpoint `POST /api/public/send-otp` tự động sinh mã OTP ngẫu nhiên 6 chữ số mã hóa an toàn, lưu bảng `email_verifications` (hạn dùng 10 phút) và gửi template HTML chuyên nghiệp về email người dùng.
+  - Endpoint `POST /api/public/register` yêu cầu và kiểm tra nghiêm ngặt mã OTP hợp lệ trước khi kích hoạt tạo Project và cấp quyền tài khoản gói Free.
+  - Giao diện đăng ký cập nhật nút **"Gửi OTP"** kèm bộ đếm ngược 60 giây (anti-spam) và ô nhập mã xác thực OTP 6 số.
+
 ## 1.5.0 — 2026-09-13
 
 ### Added

@@ -35,6 +35,11 @@ export const onRequestPost = async ({ env, request }) => {
     return json(400, { error: 'brand_name_required', detail: 'Vui lòng nhập tên thương hiệu / dự án' });
   }
 
+  const otp = String(body?.otp || body?.otp_code || '').trim();
+  if (!otp || otp.length !== 6) {
+    return json(400, { error: 'otp_required', detail: 'Vui lòng nhập mã xác thực OTP 6 số đã được gửi qua email.' });
+  }
+
   // Check unique email
   const existing = await env.DB.prepare(
     'SELECT id FROM users WHERE email = ? LIMIT 1'
@@ -42,6 +47,27 @@ export const onRequestPost = async ({ env, request }) => {
   if (existing) {
     return json(409, { error: 'email_already_exists', detail: 'Email này đã được đăng ký tài khoản.' });
   }
+
+  // Verify OTP from email_verifications table
+  const now = nowSec();
+  const verification = await env.DB.prepare(
+    'SELECT otp_code, expires_at FROM email_verifications WHERE email = ? LIMIT 1'
+  ).bind(email).first().catch(() => null);
+
+  if (!verification) {
+    return json(400, { error: 'otp_not_found', detail: 'Chưa có mã OTP nào được gửi cho email này. Vui lòng bấm Gửi OTP.' });
+  }
+
+  if (verification.expires_at < now) {
+    return json(400, { error: 'otp_expired', detail: 'Mã OTP đã hết hiệu lực (quá 10 phút). Vui lòng yêu cầu mã mới.' });
+  }
+
+  if (verification.otp_code !== otp) {
+    return json(400, { error: 'otp_invalid', detail: 'Mã OTP không chính xác. Vui lòng kiểm tra lại hộp thư Gmail.' });
+  }
+
+  // Mark OTP as verified / clean up
+  await env.DB.prepare('UPDATE email_verifications SET verified_at = ? WHERE email = ?').bind(now, email).run();
 
   // Hash password
   let creds;
