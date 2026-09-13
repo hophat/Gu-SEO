@@ -109,14 +109,20 @@
       installedSha = String(r.body?.settings?.installed_sha || '').trim();
     } catch { /* */ }
 
+    // Ask our own origin. The previous version of this called the
+    // maintainer's site cross-origin, which logged CORS failures in the
+    // console and broke this badge whenever that third party flapped.
     let upstream = null;
     try {
-      // No-cors-issues: seo.benjaminb.xyz/api/version sets
-      // Access-Control-Allow-Origin: *.
-      const r = await fetch('https://seo.benjaminb.xyz/api/version', {
-        credentials: 'omit',
-      });
-      if (r.ok) upstream = await r.json();
+      const r = await api('/api/admin/update');
+      if (r.status === 200 && r.body?.ok && r.body?.latest) {
+        upstream = {
+          ok: true,
+          sha: r.body.latest.sha,
+          short: r.body.latest.short,
+          tag: null,
+        };
+      }
     } catch { /* */ }
 
     btn.hidden = false;

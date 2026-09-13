@@ -32,18 +32,14 @@ import { json } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
 import { loadSettings } from '../../../_lib/settings.js';
 
-const UPSTREAM_OWNER = 'Benjamin-Bloch';
-const UPSTREAM_REPO  = 'pages-seo';
+const UPSTREAM_OWNER = 'hophat';
+const UPSTREAM_REPO  = 'Gu-SEO';
 const BRANCH = 'main';
 
-// The canonical version endpoint. Hit this first so:
-//   - We share the rate-limit pool with every other install rather
-//     than burning each install's own 60/hr GitHub quota.
-//   - The answer is edge-cached, so the round-trip is ~30ms instead
-//     of waiting for GitHub from the user's colo.
-// If it's unreachable we fall straight through to direct GitHub
-// calls, so a seo.benjaminb.xyz outage never breaks /admin Updates.
-const CANONICAL_BASE = 'https://seo.benjaminb.xyz';
+// Version checks talk to GitHub directly. We deliberately do NOT proxy
+// through the upstream maintainer's site (seo.benjaminb.xyz): it is a
+// third party we don't control, and when it flapped it took this
+// endpoint down with a 502 and broke the admin UI.
 
 // Authenticate when GITHUB_TOKEN is bound. The unauth fallback uses
 // Cloudflare's shared edge-IP pool (60 req/hr) which can 502; the
@@ -59,85 +55,21 @@ function ghHeaders(env) {
   return h;
 }
 
-// Canonical-first commit lookup. Falls back to direct GitHub if the
-// canonical site is unreachable or returns a non-2xx (e.g. during
-// its own deploy). Either way the return shape matches what
-// fetchLatest() always returned.
-async function fetchLatestViaCanonical() {
-  try {
-    const r = await fetch(`${CANONICAL_BASE}/api/version`, {
-      cf: { cacheTtl: 60 },   // Workers cache hint; harmless on Pages
-    });
-    if (!r.ok) throw new Error('canonical_' + r.status);
-    const d = await r.json();
-    if (!d?.ok || !d?.sha) throw new Error('canonical_bad_shape');
-    return {
-      sha: d.sha,
-      commit: {
-        message: d.message,
-        author: { date: d.date },
-      },
-      // Pass through the tag info too. The admin renderer ignores
-      // unknown keys, so this is forward-compat for showing
-      // "v1.4.2" instead of a short sha.
-      _tag: d.tag,
-      _tag_html_url: d.tag_html_url,
-    };
-  } catch {
-    return null;  // caller falls back to direct GH
-  }
-}
-
 async function fetchLatest(env) {
-  const viaCanonical = await fetchLatestViaCanonical();
-  if (viaCanonical) return viaCanonical;
   const r = await fetch(
     `https://api.github.com/repos/${UPSTREAM_OWNER}/${UPSTREAM_REPO}/commits/${BRANCH}`,
-    { headers: ghHeaders(env) },
+    { headers: ghHeaders(env), signal: AbortSignal.timeout(8000) },
   );
   if (!r.ok) throw new Error('github_latest_' + r.status);
   return r.json();
 }
 
-// Canonical-first compare. /api/changes returns a tighter shape
-// than GitHub's compare endpoint, but we re-pack it to match what
-// the rest of this file already consumes (commits[], files[],
-// stats fields). Falls back to direct GitHub if canonical fails.
-async function fetchCompareViaCanonical(base) {
-  try {
-    const r = await fetch(
-      `${CANONICAL_BASE}/api/changes?since=${encodeURIComponent(base)}&limit=100`,
-      { cf: { cacheTtl: 60 } },
-    );
-    if (!r.ok) throw new Error('canonical_' + r.status);
-    const d = await r.json();
-    if (!d?.ok || !Array.isArray(d.commits)) throw new Error('canonical_bad_shape');
-    return {
-      commits: d.commits.map((c) => ({
-        sha: c.sha,
-        html_url: c.url,
-        commit: {
-          message: c.subject + (c.body ? '\n\n' + c.body : ''),
-          author: { name: c.author, date: c.date },
-        },
-        author: { login: c.author },
-      })),
-      files: [],   // canonical doesn't surface files; we drop file stats
-    };
-  } catch {
-    return null;
-  }
-}
-
 async function fetchCompare(base, head, env) {
-  // Canonical first, GitHub direct as fallback.
-  const viaCanonical = await fetchCompareViaCanonical(base);
-  if (viaCanonical) return viaCanonical;
   // GitHub's compare endpoint returns commits + stats in one call.
   // Capped at 250 commits — way more than any sane update window.
   const r = await fetch(
     `https://api.github.com/repos/${UPSTREAM_OWNER}/${UPSTREAM_REPO}/compare/${base}...${head}`,
-    { headers: ghHeaders(env) },
+    { headers: ghHeaders(env), signal: AbortSignal.timeout(8000) },
   );
   if (!r.ok) throw new Error('github_compare_' + r.status);
   return r.json();
@@ -145,9 +77,36 @@ async function fetchCompare(base, head, env) {
 
 function short(sha) { return String(sha || '').slice(0, 7); }
 
+// The admin shell calls this on every mount, so it must never be able
+// to take the dashboard down with it: any unexpected throw is caught
+// and reported as JSON rather than surfacing as an edge 502.
 export const onRequestGet = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
 
+  try {
+    return await buildUpdateReport(env);
+  } catch (e) {
+    return json(200, {
+      ok: false,
+      error: 'update_check_failed',
+      detail: String(e?.message || e).slice(0, 200),
+      install_method: '',
+      current: null,
+      latest: null,
+      ahead: 0,
+      up_to_date: false,
+      can_apply: false,
+      can_apply_reason: 'check_failed',
+      repo: { owner: UPSTREAM_OWNER, name: UPSTREAM_REPO },
+      commits: [],
+      files_changed: 0,
+      additions: 0,
+      deletions: 0,
+    });
+  }
+};
+
+async function buildUpdateReport(env) {
   const s = await loadSettings(env);
   const installedSha = String(s.installed_sha || '').trim();
   const installMethod = String(s.install_method || '').trim();
@@ -246,4 +205,4 @@ export const onRequestGet = async ({ env, request }) => {
     additions: (cmp.files || []).reduce((n, f) => n + (f.additions || 0), 0),
     deletions: (cmp.files || []).reduce((n, f) => n + (f.deletions || 0), 0),
   });
-};
+}
