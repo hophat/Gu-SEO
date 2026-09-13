@@ -30,56 +30,62 @@
      POSTs to /api/admin/login which sets an HttpOnly cookie. -->
 <div id="gate" class="gate" hidden>
   <div class="gate-card">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><img src="/logo-guseo-sm.png" alt="GU SEO" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" /><h1 style="margin:0;">GU SEO Console</h1></div>
-    <p id="gate-sub">Đăng nhập hoặc tạo tài khoản miễn phí để trải nghiệm nền tảng.</p>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+      <img src="/logo-guseo-sm.png" alt="GU SEO" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" />
+      <div>
+        <h1 style="margin:0;font-size:20px;">GU SEO Console</h1>
+        <div style="font-size:11px;color:var(--accent);font-weight:600;letter-spacing:0.04em;">ANT DESIGN PRO v6</div>
+      </div>
+    </div>
+    <p id="gate-sub">Đăng nhập tài khoản hoặc đăng ký dùng thử 100 bài viết SEO tự động.</p>
     
-    <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--line);padding-bottom:12px;">
-      <button id="tab-btn-login" type="button" class="btn btn-sm btn-primary" style="flex:1;">Đăng nhập</button>
-      <button id="tab-btn-register" type="button" class="btn btn-sm btn-ghost" style="flex:1;">Đăng ký (Free 100 bài)</button>
+    <div class="gate-tabs">
+      <button id="tab-btn-login" type="button" class="gate-tab-btn is-active">Đăng nhập</button>
+      <button id="tab-btn-register" type="button" class="gate-tab-btn">Đăng ký (Free 100 bài)</button>
     </div>
 
     <!-- Login Form -->
     <form id="login-form" method="post" action="#" autocomplete="on">
       <label class="gate-field">
-        <span>Email</span>
-        <input id="gate-email" type="email" autocomplete="username" required placeholder="you@example.com" />
+        <span>Email tài khoản</span>
+        <input id="gate-email" type="email" autocomplete="username" required placeholder="name@company.com" />
       </label>
       <label class="gate-field">
         <span>Mật khẩu</span>
-        <input id="gate-password" type="password" autocomplete="current-password" required placeholder="" />
+        <input id="gate-password" type="password" autocomplete="current-password" required placeholder="Nhập mật khẩu của bạn" />
       </label>
-      <button id="gate-go" type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">Đăng nhập</button>
+      <button id="gate-go" type="submit" class="gate-btn-submit">Đăng nhập →</button>
     </form>
 
     <!-- Register Form -->
     <form id="register-form" method="post" action="#" autocomplete="on" hidden>
       <label class="gate-field">
         <span>Tên thương hiệu / Website</span>
-        <input id="reg-brand" type="text" required placeholder="Ví dụ: My Shop, Tech Blog..." maxlength="80" />
+        <input id="reg-brand" type="text" required placeholder="Ví dụ: My Shop, USaS Global, Tech Blog..." maxlength="80" />
       </label>
       <label class="gate-field">
-        <span>Website chính (tùy chọn)</span>
+        <span>Địa chỉ website chính (tùy chọn)</span>
         <input id="reg-website" type="url" placeholder="https://example.com" />
       </label>
       <label class="gate-field">
         <span>Email đăng ký (nhận mã OTP)</span>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;align-items:stretch;">
           <input id="reg-email" type="email" autocomplete="username" required placeholder="you@example.com" style="flex:1;" />
-          <button id="reg-send-otp" type="button" class="btn btn-sm btn-ghost" style="white-space:nowrap;padding:0 14px;">Gửi OTP</button>
+          <button id="reg-send-otp" type="button" class="gate-otp-btn">Gửi mã OTP</button>
         </div>
       </label>
       <label class="gate-field">
-        <span>Mã xác thực OTP (6 chữ số gửi qua Gmail)</span>
-        <input id="reg-otp" type="text" required maxlength="6" pattern="[0-9]{6}" placeholder="Nhập 6 số OTP..." autocomplete="one-time-code" style="font-family:var(--mono);letter-spacing:4px;font-weight:700;" />
+        <span>Mã xác thực OTP (6 chữ số qua Gmail)</span>
+        <input id="reg-otp" type="text" required maxlength="6" pattern="[0-9]{6}" placeholder="6 chữ số OTP..." autocomplete="one-time-code" style="font-family:var(--mono);letter-spacing:4px;font-weight:700;" />
       </label>
       <label class="gate-field">
-        <span>Mật khẩu (tối thiểu 8 ký tự)</span>
+        <span>Mật khẩu mới (tối thiểu 8 ký tự)</span>
         <input id="reg-password" type="password" autocomplete="new-password" required minlength="8" placeholder="••••••••" />
       </label>
-      <div style="font-size:12px;color:var(--ink-dim);margin:10px 0 16px;line-height:1.4;">
-        🎁 <b>Gói Free:</b> Tự động tạo Project, Brand DNA, lên lịch & thiết kế. Tặng 100 bài SEO tự động. Không hỗ trợ xóa bài.
+      <div class="gate-hint-box">
+        🎁 <b>Đặc quyền Gói Free:</b> Tặng 100 bài SEO tự động, hệ thống tự động sinh cấu hình Brand DNA, lập lịch xuất bản và tạo ảnh bài viết.
       </div>
-      <button id="reg-go" type="submit" class="btn btn-primary" style="width:100%;">Xác Thực OTP & Vào Console →</button>
+      <button id="reg-go" type="submit" class="gate-btn-submit">Xác thực OTP &amp; Tạo tài khoản →</button>
     </form>
 
     <div id="gate-err" class="err"></div>

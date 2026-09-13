@@ -316,16 +316,16 @@
 
     if (tabLogin && tabReg) {
       tabLogin.addEventListener('click', () => {
-        tabLogin.className = 'btn btn-sm btn-primary';
-        tabReg.className = 'btn btn-sm btn-ghost';
+        tabLogin.classList.add('is-active');
+        tabReg.classList.remove('is-active');
         if (loginForm) loginForm.hidden = false;
         if (regForm) regForm.hidden = true;
         if (err) err.textContent = '';
       });
 
       tabReg.addEventListener('click', () => {
-        tabReg.className = 'btn btn-sm btn-primary';
-        tabLogin.className = 'btn btn-sm btn-ghost';
+        tabReg.classList.add('is-active');
+        tabLogin.classList.remove('is-active');
         if (loginForm) loginForm.hidden = true;
         if (regForm) regForm.hidden = false;
         if (err) err.textContent = '';
