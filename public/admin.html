@@ -156,6 +156,13 @@
       <img src="/logo-guseo-sm.png" alt="GU SEO Logo" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex:none;" />
       <span>GU SEO</span>
     </div>
+    <button class="mobile-menu-toggle" aria-label="Toggle menu" type="button">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
     <!-- Top-level tabs. Pages are grouped under 7 parents by workflow:
          overview | content (blog, calendar, trends) | brand assets
          (brand, covers, prog, links) | analytics | distribution
@@ -299,14 +306,14 @@
           </div>
         </div>
 
-        <div class="row" style="align-items:center;gap:10px;margin-bottom:16px;">
+        <div class="domain-input-group row" style="align-items:center;gap:10px;margin-bottom:16px;">
           <input id="overview-custom-domain" type="text" placeholder="vd: docs.kinhaptronglamdong.com hoặc blog.yourdomain.com" style="flex:1;min-width:260px;" />
           <button id="overview-save-domain" type="button" class="btn btn-primary">Lưu tên miền</button>
           <button id="overview-delete-domain" type="button" class="btn btn-ghost" style="color:var(--red,#ef4444);" hidden>Xóa tên miền</button>
         </div>
         <div id="overview-domain-msg" class="status" style="margin-bottom:16px;display:block;"></div>
 
-        <div class="dns-guide-box" style="background:rgba(255,255,255,0.02);border:1px solid var(--border,#333);border-radius:8px;padding:14px 16px;">
+        <div id="overview-dns-guide" class="dns-guide-box" style="background:rgba(255,255,255,0.02);border:1px solid var(--border,#333);border-radius:8px;padding:14px 16px;">
           <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--ink);display:flex;align-items:center;gap:6px;">
             <span>📋</span> Hướng dẫn cấu hình DNS tại nhà cung cấp tên miền (Cloudflare, Namecheap, GoDaddy, v.v.):
           </div>
@@ -322,10 +329,10 @@
               </thead>
               <tbody>
                 <tr>
-                  <td><code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">CNAME</code></td>
-                  <td>Tiền tố subdomain (vd: <code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">docs</code> hoặc <code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">blog</code>)</td>
-                  <td><code id="overview-cname-target" style="color:var(--accent,#3b82f6);background:rgba(59,130,246,0.1);padding:2px 6px;border-radius:4px;">gu-seo.pages.dev</code></td>
-                  <td>DNS only (hoặc Auto)</td>
+                  <td data-label="Loại bản ghi"><code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">CNAME</code></td>
+                  <td data-label="Tên / Host">Tiền tố subdomain (vd: <code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">docs</code> hoặc <code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">blog</code>)</td>
+                  <td data-label="Giá trị đích (Target)"><code id="overview-cname-target" style="color:var(--accent,#3b82f6);background:rgba(59,130,246,0.1);padding:2px 6px;border-radius:4px;">gu-seo.pages.dev</code></td>
+                  <td data-label="Proxy / TTL">DNS only (hoặc Auto)</td>
                 </tr>
               </tbody>
             </table>

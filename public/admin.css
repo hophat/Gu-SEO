@@ -850,12 +850,225 @@ em.optional{font-style:normal;color:var(--ink-faint);font-size:11px;letter-spaci
 .form-grid select:focus{outline:none;border-color:var(--accent)}
 
 /* ── Mobile ──────────────────────────────────────────────────────── */
+.mobile-menu-toggle {
+  display: none;
+}
+
 @media (max-width:700px){
   .topbar{flex-wrap:wrap;gap:10px;padding:12px 16px}
   .topbar .tabs{order:99;flex-basis:100%;margin-left:0;overflow:auto}
   .pages{padding:18px 16px 60px}
   .card{padding:16px}
   .card-stat{font-size:28px}
+}
+
+/* Enhanced Mobile Optimizations */
+@media (max-width: 768px) {
+  :root {
+    --sidebar-w: 100%;
+    --header-h: 56px;
+  }
+  
+  /* Mobile menu toggle */
+  .mobile-menu-toggle {
+    display: flex !important;
+  }
+  
+  /* Tabs become bottom navigation on mobile */
+  .topbar .tabs {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--line);
+    border-bottom: none;
+    margin: 0;
+    padding: 0;
+    flex-direction: row;
+    justify-content: space-around;
+    z-index: 99;
+  }
+  
+  .topbar .tab {
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+    border-radius: 0;
+    font-size: 10px;
+    gap: 4px;
+  }
+  
+  .topbar .tab-icon {
+    margin-right: 0;
+    width: 20px; height: 20px;
+  }
+  
+  .topbar .tab-label {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  
+  .topbar .tab[aria-current="page"]::after {
+    display: none;
+  }
+  
+  .topbar .tab[aria-current="page"] {
+    background: transparent;
+    color: var(--accent);
+  }
+  
+  /* Pages container for mobile */
+  .pages {
+    margin-left: 0;
+    padding: 16px;
+    padding-bottom: 80px; /* Space for bottom nav */
+    max-width: 100%;
+  }
+  
+  /* DNS guide box on mobile */
+  .dns-guide-box {
+    padding: 12px;
+    border-radius: 10px;
+  }
+  
+  .dns-guide-box table {
+    font-size: 11px;
+  }
+  
+  .dns-guide-box th,
+  .dns-guide-box td {
+    padding: 6px 8px;
+  }
+  
+  /* Custom domain section on mobile */
+  .domain-input-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .domain-input-group input {
+    width: 100%;
+  }
+  
+  .domain-input-group .btn {
+    width: 100%;
+  }
+  
+  /* Cards on mobile */
+  .card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+  
+  .card-header {
+    margin-bottom: 12px;
+  }
+  
+  .card-title {
+    font-size: 15px;
+  }
+  
+  /* Data tables on mobile */
+  .data {
+    font-size: 11px;
+  }
+  
+  .data th,
+  .data td {
+    padding: 8px 10px;
+  }
+  
+  .data thead {
+    display: none; /* Hide headers on mobile */
+  }
+  
+  .data tbody tr {
+    display: block;
+    margin-bottom: 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px;
+  }
+  
+  .data tbody td {
+    display: block;
+    padding: 4px 0;
+    border: none;
+  }
+  
+  .data tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    margin-right: 8px;
+    color: var(--ink-dim);
+  }
+  
+  /* Forms on mobile */
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .form-grid input,
+  .form-grid select,
+  .form-grid textarea {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  
+  /* Buttons on mobile */
+  .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    min-height: 44px; /* Touch target size */
+  }
+  
+  .btn-sm {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+  
+  /* Status messages on mobile */
+  .status {
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+  
+  /* Stat cards on mobile */
+  .card-stat {
+    font-size: 24px;
+  }
+  
+  .card-stat-label {
+    font-size: 11px;
+  }
+  
+  /* Badge on mobile */
+  .badge {
+    font-size: 10px;
+    min-width: 18px;
+    height: 18px;
+  }
+  
+  /* Modal on mobile */
+  .wiz-shell {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  /* Input group on mobile */
+  .input-group {
+    flex-direction: column;
+  }
+  
+  .input-group input {
+    width: 100%;
+  }
+  
+  .input-group .btn {
+    width: 100%;
+  }
 }
 
 /* ── Content Calendar ─────────────────────────────────────────────── */

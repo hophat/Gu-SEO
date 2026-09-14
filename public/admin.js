@@ -2253,6 +2253,12 @@
     if (targetEl) targetEl.textContent = target;
     inputEl.value = domain;
 
+    // Hide DNS guide if domain is already configured, show if empty
+    const dnsGuideEl = $('#overview-dns-guide');
+    if (dnsGuideEl) {
+      dnsGuideEl.hidden = !!domain;
+    }
+
     if (domain) {
       curEl.innerHTML = `<span style="color:var(--good,#10b981);display:inline-flex;align-items:center;gap:6px;">● <strong>${escapeHtml(domain)}</strong></span>`;
       if (delBtn) delBtn.hidden = false;
@@ -2462,9 +2468,19 @@
     }
     for (const j of body.jobs) {
       const tr = document.createElement('tr');
-      tr.appendChild(td(new Date((j.updated_at || 0) * 1000).toLocaleString('vi-VN')));
-      tr.appendChild(td(j.topic_key || '—'));
-      tr.appendChild(td(j.slug || '—'));
+      
+      const tdTime = td(new Date((j.updated_at || 0) * 1000).toLocaleString('vi-VN'));
+      tdTime.setAttribute('data-label', 'Thời gian');
+      tr.appendChild(tdTime);
+      
+      const tdTopic = td(j.topic_key || '—');
+      tdTopic.setAttribute('data-label', 'Chủ đề');
+      tr.appendChild(tdTopic);
+      
+      const tdSlug = td(j.slug || '—');
+      tdSlug.setAttribute('data-label', 'Slug');
+      tr.appendChild(tdSlug);
+      
       const pill = document.createElement('span');
       pill.className = 'pill ' + (j.status === 'failed' ? 'bad' : j.status === 'image_done' ? 'good' : 'warn');
       const statusLabels = {
@@ -2475,16 +2491,26 @@
         pending: 'Đang chờ',
       };
       pill.textContent = statusLabels[j.status] || j.status;
-      const tdStatus = document.createElement('td'); tdStatus.appendChild(pill); tr.appendChild(tdStatus);
-      tr.appendChild(td(j.error ? j.error.slice(0, 80) : '—'));
+      const tdStatus = document.createElement('td'); 
+      tdStatus.appendChild(pill); 
+      tdStatus.setAttribute('data-label', 'Trạng thái');
+      tr.appendChild(tdStatus);
+      
+      const tdError = td(j.error ? j.error.slice(0, 80) : '—');
+      tdError.setAttribute('data-label', 'Lỗi');
+      tr.appendChild(tdError);
+      
       const tdAct = document.createElement('td');
+      tdAct.setAttribute('data-label', 'Hành động');
       const retry = mkBtn('Tiếp tục', 'btn-sm', () => resumeJob(j.id, retry));
       const del = mkBtn('Xóa', 'btn-sm btn-danger', async () => {
         if (!confirm('Xóa bản nháp này?')) return;
         await api('/api/admin/blog/delete-job', { method: 'POST', body: JSON.stringify({ id: j.id }) });
         loadJobs();
       });
-      tdAct.append(retry, del); tr.appendChild(tdAct);
+      tdAct.append(retry, del); 
+      tr.appendChild(tdAct);
+      
       tbody.appendChild(tr);
     }
   }
@@ -2528,13 +2554,32 @@
     }
     for (const p of posts) {
       const tr = document.createElement('tr');
-      tr.appendChild(td(new Date((p.published_at || 0) * 1000).toLocaleDateString('vi-VN')));
-      const tdT = document.createElement('td'); tdT.className = 'cell-strong';
-      const a = document.createElement('a'); a.href = activeProjectBase() + '/blog/' + p.slug; a.target = '_blank'; a.rel = 'noopener'; a.textContent = p.title;
-      tdT.appendChild(a); tr.appendChild(tdT);
-      tr.appendChild(td(p.slug));
-      tr.appendChild(td(p.ai_provider || '—'));
+      
+      const tdDate = td(new Date((p.published_at || 0) * 1000).toLocaleDateString('vi-VN'));
+      tdDate.setAttribute('data-label', 'Ngày');
+      tr.appendChild(tdDate);
+      
+      const tdT = document.createElement('td'); 
+      tdT.className = 'cell-strong';
+      tdT.setAttribute('data-label', 'Tiêu đề');
+      const a = document.createElement('a'); 
+      a.href = activeProjectBase() + '/blog/' + p.slug; 
+      a.target = '_blank'; 
+      a.rel = 'noopener'; 
+      a.textContent = p.title;
+      tdT.appendChild(a); 
+      tr.appendChild(tdT);
+      
+      const tdSlug = td(p.slug);
+      tdSlug.setAttribute('data-label', 'Slug');
+      tr.appendChild(tdSlug);
+      
+      const tdProvider = td(p.ai_provider || '—');
+      tdProvider.setAttribute('data-label', 'Nhà cung cấp');
+      tr.appendChild(tdProvider);
+      
       const tdAct = document.createElement('td');
+      tdAct.setAttribute('data-label', 'Hành động');
       const toggle = mkBtn(p.status === 'hidden' ? 'Hiện' : 'Ẩn', 'btn-sm', async () => {
         await api('/api/admin/blog/post', { method: 'POST', body: JSON.stringify({ id: p.id, action: p.status === 'hidden' ? 'show' : 'hide' }) });
         loadPosts();
