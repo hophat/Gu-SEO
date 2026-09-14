@@ -2220,6 +2220,125 @@
     setText($('#stat-prog-count'), (prog.body?.keywords || []).length);
     const queue = await api('/api/admin/prog/queue?status=pending&limit=500');
     setText($('#stat-queue-count'), (queue.body?.keywords || []).length);
+
+    await loadOverviewDomain();
+  }
+
+  async function loadOverviewDomain() {
+    const curEl = $('#overview-domain-current');
+    const inputEl = $('#overview-custom-domain');
+    const delBtn = $('#overview-delete-domain');
+    const linkWrap = $('#overview-domain-link-wrap');
+    const linkEl = $('#overview-domain-link');
+    const targetEl = $('#overview-cname-target');
+    const msgEl = $('#overview-domain-msg');
+    if (!curEl || !inputEl) return;
+
+    if (msgEl) { msgEl.textContent = ''; msgEl.className = 'status'; }
+
+    let domain = window.__psActiveProject?.custom_domain || '';
+    let target = 'gu-seo.pages.dev';
+
+    try {
+      const res = await api('/api/admin/projects/domain');
+      if (res.status === 200 && res.body?.ok) {
+        domain = res.body.custom_domain || '';
+        if (res.body.cname_target) target = res.body.cname_target;
+        if (window.__psActiveProject) {
+          window.__psActiveProject.custom_domain = domain;
+        }
+      }
+    } catch {}
+
+    if (targetEl) targetEl.textContent = target;
+    inputEl.value = domain;
+
+    if (domain) {
+      curEl.innerHTML = `<span style="color:var(--good,#10b981);display:inline-flex;align-items:center;gap:6px;">● <strong>${escapeHtml(domain)}</strong></span>`;
+      if (delBtn) delBtn.hidden = false;
+      if (linkWrap && linkEl) {
+        linkWrap.hidden = false;
+        linkEl.href = `https://${domain}`;
+      }
+    } else {
+      curEl.innerHTML = `<span style="color:var(--ink-dim);">Chưa thiết lập (Đang dùng đường dẫn mặc định)</span>`;
+      if (delBtn) delBtn.hidden = true;
+      if (linkWrap) linkWrap.hidden = true;
+    }
+  }
+
+  async function saveOverviewDomain(remove = false) {
+    const inputEl = $('#overview-custom-domain');
+    const saveBtn = $('#overview-save-domain');
+    const delBtn = $('#overview-delete-domain');
+    const msgEl = $('#overview-domain-msg');
+    if (!inputEl) return;
+
+    const val = remove ? '' : inputEl.value.trim();
+    if (!remove && !val) {
+      if (msgEl) {
+        msgEl.textContent = 'Vui lòng nhập tên miền hoặc subdomain.';
+        msgEl.className = 'status bad';
+      }
+      return;
+    }
+
+    if (saveBtn) saveBtn.disabled = true;
+    if (delBtn) delBtn.disabled = true;
+    if (msgEl) {
+      msgEl.textContent = remove ? 'Đang xóa tên miền…' : 'Đang lưu tên miền…';
+      msgEl.className = 'status';
+    }
+
+    try {
+      const res = await api('/api/admin/projects/domain', {
+        method: 'POST',
+        body: JSON.stringify({ custom_domain: val }),
+      });
+
+      if (res.status !== 200 || !res.body?.ok) {
+        throw new Error(res.body?.detail || res.body?.error || 'Lưu thất bại');
+      }
+
+      const newDomain = res.body.custom_domain || null;
+      if (window.__psActiveProject) {
+        window.__psActiveProject.custom_domain = newDomain;
+        if (newDomain) {
+          window.__psActiveProject.publishing_url = `https://${newDomain}`;
+        }
+      }
+
+      if (Array.isArray(_allProjects) && window.__psActiveProjectId) {
+        const p = _allProjects.find(item => item.id === window.__psActiveProjectId);
+        if (p) {
+          p.custom_domain = newDomain;
+          if (newDomain) p.publishing_url = `https://${newDomain}`;
+        }
+      }
+
+      await loadOverviewDomain();
+      if (typeof renderDistribution === 'function') {
+        renderDistribution();
+      }
+
+      if (msgEl) {
+        if (newDomain) {
+          msgEl.textContent = `Đã cập nhật tên miền: ${newDomain}. Vui lòng kiểm tra bản ghi CNAME tại quản lý DNS của bạn.`;
+          msgEl.className = 'status good';
+        } else {
+          msgEl.textContent = 'Đã xóa tên miền riêng thành công.';
+          msgEl.className = 'status good';
+        }
+      }
+    } catch (err) {
+      if (msgEl) {
+        msgEl.textContent = 'Lỗi: ' + (err.message || 'Không thể cập nhật tên miền');
+        msgEl.className = 'status bad';
+      }
+    } finally {
+      if (saveBtn) saveBtn.disabled = false;
+      if (delBtn) delBtn.disabled = false;
+    }
   }
 
   // ── blog chain ──────────────────────────────────────────────────
@@ -2937,6 +3056,13 @@
       tdWeb.innerHTML = p.website_url ? `<a href="${p.website_url}" target="_blank" style="color:var(--ink);">${p.website_url}</a>` : '—';
       tr.appendChild(tdWeb);
 
+      const tdCustom = document.createElement('td');
+      tdCustom.style.padding = '10px 8px';
+      tdCustom.innerHTML = p.custom_domain
+        ? `<a href="https://${p.custom_domain}" target="_blank" style="color:var(--brand);font-weight:500;">🌐 ${p.custom_domain}</a>`
+        : '<span style="color:var(--text-muted);font-size:12px;">—</span>';
+      tr.appendChild(tdCustom);
+
       tr.appendChild(cell(p.language === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'));
       
       const tdStatus = document.createElement('td');
@@ -2961,6 +3087,13 @@
         activateTab('overview');
       };
 
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'btn btn-sm';
+      editBtn.style.marginRight = '6px';
+      editBtn.textContent = 'Sửa';
+      editBtn.onclick = () => openEditModal(p);
+
       const delBtn = document.createElement('button');
       delBtn.type = 'button';
       delBtn.className = 'btn btn-sm btn-danger';
@@ -2972,7 +3105,7 @@
         delBtn.onclick = () => removeProject(p);
       }
 
-      tdActions.append(switchBtn, delBtn);
+      tdActions.append(switchBtn, editBtn, delBtn);
       tr.appendChild(tdActions);
 
       return tr;
@@ -2998,6 +3131,7 @@
       const name = ($('#proj-new-name')?.value || '').trim();
       const slugInput = ($('#proj-new-slug')?.value || '').trim().toLowerCase();
       const website_url = ($('#proj-new-web')?.value || '').trim();
+      const custom_domain = ($('#proj-new-custom-domain')?.value || '').trim();
       const language = $('#proj-new-lang')?.value || 'vi';
       const btn = $('#proj-new-go');
 
@@ -3019,7 +3153,8 @@
           name,
           slug: slugInput,
           website_url,
-          publishing_url: `${window.location.origin}/${slugInput}`,
+          custom_domain: custom_domain || null,
+          publishing_url: custom_domain ? `https://${custom_domain}` : `${window.location.origin}/${slugInput}`,
           site_name: name,
           site_description: `Chuyên trang thông tin & giải pháp từ ${name}`,
           language,
@@ -3067,6 +3202,7 @@
         if ($('#proj-new-name')) $('#proj-new-name').value = '';
         if ($('#proj-new-slug')) $('#proj-new-slug').value = '';
         if ($('#proj-new-web')) $('#proj-new-web').value = '';
+        if ($('#proj-new-custom-domain')) $('#proj-new-custom-domain').value = '';
 
         // Reload project list & switcher
         load();
@@ -3080,10 +3216,78 @@
       }
     }
 
+    function openEditModal(p) {
+      const modal = $('#proj-edit-modal');
+      if (!modal) return;
+      if ($('#proj-edit-id')) $('#proj-edit-id').value = p.id;
+      if ($('#proj-edit-name')) $('#proj-edit-name').value = p.name || '';
+      if ($('#proj-edit-slug')) $('#proj-edit-slug').value = p.slug || '';
+      if ($('#proj-edit-web')) $('#proj-edit-web').value = p.website_url || '';
+      if ($('#proj-edit-custom-domain')) $('#proj-edit-custom-domain').value = p.custom_domain || '';
+      if ($('#proj-edit-publishing')) $('#proj-edit-publishing').value = p.publishing_url || '';
+      const msg = $('#proj-edit-msg');
+      if (msg) { msg.textContent = ''; msg.className = 'status'; }
+      modal.hidden = false;
+    }
+
+    function closeEditModal() {
+      const modal = $('#proj-edit-modal');
+      if (modal) modal.hidden = true;
+    }
+
+    async function saveEdit() {
+      const id = $('#proj-edit-id')?.value;
+      const name = ($('#proj-edit-name')?.value || '').trim();
+      const slug = ($('#proj-edit-slug')?.value || '').trim().toLowerCase();
+      const website_url = ($('#proj-edit-web')?.value || '').trim();
+      const custom_domain = ($('#proj-edit-custom-domain')?.value || '').trim();
+      const publishing_url = ($('#proj-edit-publishing')?.value || '').trim();
+      const msg = $('#proj-edit-msg');
+      const btn = $('#proj-edit-save');
+
+      if (!name || !slug) {
+        if (msg) { msg.textContent = 'Tên và slug không được để trống.'; msg.className = 'status bad'; }
+        return;
+      }
+
+      if (btn) { btn.disabled = true; btn.textContent = 'Đang lưu…'; }
+      try {
+        const payload = {
+          id,
+          name,
+          slug,
+          website_url,
+          custom_domain: custom_domain || null,
+          publishing_url: publishing_url || (custom_domain ? `https://${custom_domain}` : `${window.location.origin}/${slug}`),
+        };
+        const { status, body } = await api('/api/admin/projects/' + encodeURIComponent(id), {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        if (status !== 200 || !body?.ok) {
+          if (msg) { msg.textContent = body?.detail || body?.error || 'Lỗi khi lưu dự án'; msg.className = 'status bad'; }
+          return;
+        }
+        closeEditModal();
+        load();
+        const who = await api('/api/admin/whoami');
+        if (who?.status === 200 && who?.body) initProjectScope(who.body);
+      } catch (e) {
+        if (msg) { msg.textContent = 'Lỗi kết nối: ' + e.message; msg.className = 'status bad'; }
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Lưu thay đổi'; }
+      }
+    }
+
     function init() {
       if (!mounted) {
         mounted = true;
         $('#proj-new-go')?.addEventListener('click', create);
+        $('#proj-edit-cancel')?.addEventListener('click', closeEditModal);
+        $('#proj-edit-save')?.addEventListener('click', saveEdit);
+        $('#proj-edit-modal')?.addEventListener('click', (e) => {
+          if (e.target === $('#proj-edit-modal')) closeEditModal();
+        });
       }
       load();
     }
@@ -3959,6 +4163,9 @@
     $('#qa-blog').addEventListener('click', () => { activateTab('blog'); runBlogChain(); });
     $('#qa-prog').addEventListener('click', () => { activateTab('prog'); runProgNext(); });
     $('#qa-ping').addEventListener('click', () => { activateTab('seo'); pingIndexNow(); });
+
+    $('#overview-save-domain')?.addEventListener('click', () => saveOverviewDomain(false));
+    $('#overview-delete-domain')?.addEventListener('click', () => saveOverviewDomain(true));
 
     // blog tab
     $('#blog-go').addEventListener('click', runBlogChain);

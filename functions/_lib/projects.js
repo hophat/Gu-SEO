@@ -1,5 +1,19 @@
 import { nowSec, newId } from './util.js';
 
+export function normalizeCustomDomain(value) {
+  if (!value) return null;
+  const raw = String(value).trim().toLowerCase();
+  if (!raw) return null;
+  try {
+    const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    return host || null;
+  } catch {
+    return raw.replace(/^https?:\/\//i, '').split('/')[0].trim().toLowerCase() || null;
+  }
+}
+
 export async function getProject(env, idOrSlug) {
   if (!env.DB || !idOrSlug) return null;
   const project = await env.DB.prepare(
@@ -17,6 +31,7 @@ export async function getProject(env, idOrSlug) {
 
   return {
     ...project,
+    custom_domain: project.custom_domain ? normalizeCustomDomain(project.custom_domain) : null,
     brand: brand || {},
     ai_config: aiConfig || {},
     publishing_config: publishing || {},
@@ -34,8 +49,12 @@ export async function listProjects(env, { status = 'active' } = {}) {
     ? env.DB.prepare(query)
     : env.DB.prepare(query).bind(status);
 
-  const res = await (stmt.all ? stmt.all() : env.DB.prepare(query).all?.()).catch(() => ({ results: [] }));
-  return res?.results || [];
+  const res = await (stmt.all ? stmt.all() : (env.DB.prepare(query).all ? env.DB.prepare(query).all() : Promise.resolve({ results: [] }))).catch(() => ({ results: [] }));
+  const rows = res?.results || [];
+  return rows.map((p) => ({
+    ...p,
+    custom_domain: p.custom_domain ? normalizeCustomDomain(p.custom_domain) : null,
+  }));
 }
 
 export async function upsertProject(env, projectData) {
@@ -45,15 +64,24 @@ export async function upsertProject(env, projectData) {
   const slug = projectData.slug;
   if (!slug) throw new Error('Project slug is required');
 
+  let customDomain = null;
+  if (projectData.custom_domain !== undefined) {
+    customDomain = normalizeCustomDomain(projectData.custom_domain);
+  } else if (projectData.id) {
+    const existing = await env.DB.prepare('SELECT custom_domain FROM projects WHERE id = ? LIMIT 1').bind(projectData.id).first().catch(() => null);
+    customDomain = existing?.custom_domain ? normalizeCustomDomain(existing.custom_domain) : null;
+  }
+
   await env.DB.prepare(
-    `INSERT INTO projects (id, slug, name, description, website_url, publishing_url, site_name, site_description, logo_url, language, timezone, status, approval_mode, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO projects (id, slug, name, description, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, language, timezone, status, approval_mode, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        slug = excluded.slug,
        name = excluded.name,
        description = excluded.description,
        website_url = excluded.website_url,
        publishing_url = excluded.publishing_url,
+       custom_domain = excluded.custom_domain,
        site_name = excluded.site_name,
        site_description = excluded.site_description,
        logo_url = excluded.logo_url,
@@ -69,6 +97,7 @@ export async function upsertProject(env, projectData) {
     projectData.description || '',
     projectData.website_url || '',
     projectData.publishing_url || '',
+    customDomain,
     projectData.site_name || null,
     projectData.site_description || null,
     projectData.logo_url || null,

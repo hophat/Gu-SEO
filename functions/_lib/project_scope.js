@@ -13,6 +13,8 @@ function normalizeHost(value) {
 export function requestHost(request) {
   const forwarded = request?.headers?.get?.('x-forwarded-host');
   if (forwarded) return forwarded.split(',')[0].trim();
+  const hostHdr = request?.headers?.get?.('host');
+  if (hostHdr) return hostHdr.split(':')[0].trim();
   try {
     return new URL(request.url).hostname;
   } catch {
@@ -29,12 +31,19 @@ export async function resolveProjectByHost(env, host, pathname = '/') {
   if (cached && cached.host === target && cached.path === pathname) return cached.project;
 
   const rows = await env.DB.prepare(
-    `SELECT id, slug, name, website_url, publishing_url, site_name, site_description, logo_url, theme_color FROM projects WHERE status = 'active'`
+    `SELECT id, slug, name, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, theme_color FROM projects WHERE status = 'active'`
   ).all().catch(() => ({ results: [] }));
 
-  // A project is addressed either by a dedicated host or by a path prefix
-  // on a shared host (seo.gulagi.com/<slug>). Longest matching path wins
-  // so the shared host's own root still resolves to the root project.
+  for (const project of rows?.results || []) {
+    if (project.custom_domain) {
+      const cdHost = normalizeHost(project.custom_domain);
+      if (cdHost && (cdHost === target || target.endsWith('.' + cdHost))) {
+        try { env[CACHE_KEY] = { host: target, path: pathname, project }; } catch { /* env may be frozen */ }
+        return project;
+      }
+    }
+  }
+
   let match = null, matchLen = -1;
   for (const project of rows?.results || []) {
     for (const raw of [project.website_url, project.publishing_url]) {
@@ -68,17 +77,16 @@ export async function resolveProjectBySlug(env, slug) {
   const clean = String(slug || '').trim().toLowerCase();
   if (!clean || !/^[a-z0-9][a-z0-9-]{0,60}$/.test(clean)) return null;
   const row = await env?.DB?.prepare(
-    `SELECT id, slug, name, website_url, publishing_url, site_name, site_description, logo_url, theme_color FROM projects WHERE slug = ? LIMIT 1`
+    `SELECT id, slug, name, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, theme_color FROM projects WHERE slug = ? LIMIT 1`
   ).bind(clean).first().catch(() => null);
   return row || null;
 }
 
-// Strict form for /<slug>/ routes: only projects whose publishing_url
-// ends in that exact prefix answer there, so no page gets a duplicate URL.
 export async function resolveProjectBySlugPath(env, slug) {
   const clean = String(slug || '').trim().toLowerCase();
   const project = await resolveProjectBySlug(env, clean);
   if (!project) return null;
+  if (project.custom_domain) return project;
   let path = '';
   try { path = new URL(project.publishing_url || '').pathname.replace(/\/+$/, ''); } catch { return null; }
   return path === `/${clean}` ? project : null;
@@ -86,10 +94,6 @@ export async function resolveProjectBySlugPath(env, slug) {
 
 export { normalizeHost };
 
-// Canonical public base (origin + /<slug> prefix) for a project's pages,
-// so IndexNow/GSC pings advertise the URL that actually serves the page.
-// Falls back to the request host, mapping the internal Pages host back
-// to the public site.
 export async function publicBaseFor(env, projectId, request) {
   let fallback = '';
   try {
@@ -99,8 +103,14 @@ export async function publicBaseFor(env, projectId, request) {
 
   if (!projectId) return fallback;
   const row = await env?.DB?.prepare?.(
-    `SELECT publishing_url, website_url FROM projects WHERE id = ? LIMIT 1`
+    `SELECT publishing_url, website_url, custom_domain FROM projects WHERE id = ? LIMIT 1`
   )?.bind?.(projectId)?.first?.()?.catch(() => null);
+
+  if (row?.custom_domain) {
+    const cd = normalizeHost(row.custom_domain);
+    if (cd) return `https://${cd}`;
+  }
+
   const raw = row?.publishing_url || row?.website_url || '';
   try {
     const u = new URL(raw);
@@ -108,12 +118,26 @@ export async function publicBaseFor(env, projectId, request) {
   } catch { return fallback; }
 }
 
-// Path component of publicBaseFor — '' for a project published at the
-// origin root (gulagi.com), '/usasglobal' for one on a shared host.
-// Content written for a project must link under this prefix, otherwise
-// its internal links resolve against the root project's blog.
 export async function publicPathFor(env, projectId, request) {
   if (!projectId) return '';
+  const row = await env?.DB?.prepare?.(
+    `SELECT publishing_url, website_url, custom_domain, slug FROM projects WHERE id = ? LIMIT 1`
+  )?.bind?.(projectId)?.first?.()?.catch(() => null);
+
+  if (!row) return '';
+
+  if (row.custom_domain) {
+    const cd = normalizeHost(row.custom_domain);
+    if (cd) {
+      if (!request) return '';
+      const reqHost = normalizeHost(requestHost(request));
+      if (reqHost === cd || reqHost.endsWith('.' + cd)) {
+        return '';
+      }
+      return `/${row.slug}`;
+    }
+  }
+
   const base = await publicBaseFor(env, projectId, request);
   try { return new URL(base).pathname.replace(/\/+$/, ''); } catch { return ''; }
 }

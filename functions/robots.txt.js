@@ -1,7 +1,10 @@
-// Serves robots.txt. Overrides Cloudflare's managed file if AI-bot
-// blocking is enabled at the project level.
-export const onRequestGet = ({ env, request }) => {
-  const host = new URL(request.url).hostname;
+import { requestHost, resolveProjectByHost, normalizeHost } from './_lib/project_scope.js';
+
+export const onRequestGet = async ({ env, request }) => {
+  const host = requestHost(request);
+  const project = await resolveProjectByHost(env, host).catch(() => null);
+  const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
+  const sitemapHost = customHost || host;
   const body = `# pages-seo robots policy
 User-agent: *
 Allow: /
@@ -21,7 +24,7 @@ Disallow: /
 User-agent: CCBot
 Disallow: /
 
-Sitemap: https://${host}/sitemap.xml
+Sitemap: https://${sitemapHost}/sitemap.xml
 
 # Feeds for aggregators (Feedly, Inoreader, etc.)
 # Not part of the robots spec but conventional alongside Sitemap.

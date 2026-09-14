@@ -618,6 +618,7 @@ CREATE INDEX IF NOT EXISTS idx_embeds_project ON blog_embeds(project_id, updated
 -- Per-project accent colour used by the public blog and the embed widget.
 -- NULL means the stylesheet default applies. Additive only.
 ALTER TABLE projects ADD COLUMN theme_color TEXT;
+ALTER TABLE projects ADD COLUMN custom_domain TEXT;
 
 
 

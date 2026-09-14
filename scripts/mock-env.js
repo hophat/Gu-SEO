@@ -130,8 +130,13 @@ export function createMockEnv() {
         },
         async run() {
           if (q.includes('INSERT INTO projects')) {
-            const [id, slug, name, description, website_url, publishing_url, site_name, site_description, logo_url, language, timezone, status, approval_mode, created_at, updated_at] = params;
-            tables.projects.set(id, { id, slug, name, description, website_url, publishing_url, site_name, site_description, logo_url, language, timezone, status, approval_mode, created_at, updated_at });
+            let id, slug, name, description, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, language, timezone, status, approval_mode, created_at, updated_at;
+            if (q.includes('custom_domain')) {
+              [id, slug, name, description, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, language, timezone, status, approval_mode, created_at, updated_at] = params;
+            } else {
+              [id, slug, name, description, website_url, publishing_url, site_name, site_description, logo_url, language, timezone, status, approval_mode, created_at, updated_at] = params;
+            }
+            tables.projects.set(id, { id, slug, name, description, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, language, timezone, status, approval_mode, created_at, updated_at });
           }
           if (q.includes('INSERT INTO content_calendar')) {
             const [id, project_id, scheduled_for, title, primary_keyword, angle, created_at, updated_at] = params;

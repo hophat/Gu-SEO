@@ -280,6 +280,63 @@
       </div>
 
       <div class="card">
+        <div class="card-eyebrow">Tên miền riêng</div>
+        <h2>Tên miền riêng (Custom Domain)</h2>
+        <p>Kết nối tên miền hoặc subdomain của bạn để phát hành bài viết và trang SEO trực tiếp trên thương hiệu riêng.</p>
+        
+        <div id="overview-domain-status-box" style="margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,0.03);border:1px solid var(--border,#333);border-radius:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <div>
+              <span style="font-size:12px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.05em;">Trạng thái hiện tại:</span>
+              <div id="overview-domain-current" style="font-size:15px;font-weight:600;margin-top:2px;">Chưa thiết lập</div>
+            </div>
+            <div id="overview-domain-link-wrap" hidden>
+              <a id="overview-domain-link" href="#" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                <span>Truy cập trang blog</span>
+                <span style="font-size:12px;">↗</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="align-items:center;gap:10px;margin-bottom:16px;">
+          <input id="overview-custom-domain" type="text" placeholder="vd: docs.kinhaptronglamdong.com hoặc blog.yourdomain.com" style="flex:1;min-width:260px;" />
+          <button id="overview-save-domain" type="button" class="btn btn-primary">Lưu tên miền</button>
+          <button id="overview-delete-domain" type="button" class="btn btn-ghost" style="color:var(--red,#ef4444);" hidden>Xóa tên miền</button>
+        </div>
+        <div id="overview-domain-msg" class="status" style="margin-bottom:16px;display:block;"></div>
+
+        <div class="dns-guide-box" style="background:rgba(255,255,255,0.02);border:1px solid var(--border,#333);border-radius:8px;padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--ink);display:flex;align-items:center;gap:6px;">
+            <span>📋</span> Hướng dẫn cấu hình DNS tại nhà cung cấp tên miền (Cloudflare, Namecheap, GoDaddy, v.v.):
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="data" style="margin:0;font-size:13px;">
+              <thead>
+                <tr>
+                  <th>Loại bản ghi</th>
+                  <th>Tên / Host</th>
+                  <th>Giá trị đích (Target)</th>
+                  <th>Proxy / TTL</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">CNAME</code></td>
+                  <td>Tiền tố subdomain (vd: <code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">docs</code> hoặc <code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">blog</code>)</td>
+                  <td><code id="overview-cname-target" style="color:var(--accent,#3b82f6);background:rgba(59,130,246,0.1);padding:2px 6px;border-radius:4px;">gu-seo.pages.dev</code></td>
+                  <td>DNS only (hoặc Auto)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="font-size:12px;color:var(--ink-dim);margin-top:10px;line-height:1.5;">
+            * Lưu ý: Nếu dùng Cloudflare DNS, hãy tắt đám mây màu cam (chuyển sang <strong>DNS only / Grey cloud</strong>) hoặc thêm Custom Domain vào phần cài đặt Pages của dự án Cloudflare để kích hoạt SSL tự động.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-eyebrow">Thao tác nhanh</div>
         <h2>Khởi chạy tác vụ</h2>
         <p>Kích hoạt tạo nội dung tức thì hoặc làm mới các công cụ tìm kiếm ngay bây giờ.</p>
@@ -949,6 +1006,10 @@
             <input id="proj-new-web" type="url" placeholder="https://example.com" />
           </label>
           <label>
+            <span>Custom Domain (tùy chọn)</span>
+            <input id="proj-new-custom-domain" type="text" placeholder="docs.kinhaptronglamdong.com" />
+          </label>
+          <label>
             <span>Ngôn ngữ bài viết</span>
             <select id="proj-new-lang">
               <option value="vi">Tiếng Việt (vi)</option>
@@ -973,6 +1034,7 @@
                 <th style="text-align:left">Tên dự án</th>
                 <th style="text-align:left">Slug & Đường dẫn</th>
                 <th style="text-align:left">Website</th>
+                <th style="text-align:left">Custom Domain</th>
                 <th style="text-align:left">Ngôn ngữ</th>
                 <th style="text-align:left">Trạng thái</th>
                 <th style="text-align:left">Thao tác</th>
@@ -1523,6 +1585,26 @@
         <button id="cal-mod-save" class="btn btn-primary">Lưu</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="proj-edit-modal" class="cal-modal-backdrop" hidden>
+  <div class="cal-modal">
+    <h3 id="proj-edit-title">Quản lý dự án</h3>
+    <input type="hidden" id="proj-edit-id" />
+    <label>Tên dự án<input id="proj-edit-name" type="text" required maxlength="80" /></label>
+    <label>Slug URL<input id="proj-edit-slug" type="text" required maxlength="40" /></label>
+    <label>Website chính<input id="proj-edit-web" type="url" placeholder="https://example.com" /></label>
+    <label>Custom Domain (tùy chọn)<input id="proj-edit-custom-domain" type="text" placeholder="docs.kinhaptronglamdong.com" /></label>
+    <label>Đường dẫn publish (publishing_url)<input id="proj-edit-publishing" type="text" placeholder="https://seo.gulagi.com/slug" /></label>
+    <div class="cal-modal-actions">
+      <div class="left"></div>
+      <div class="right">
+        <button id="proj-edit-cancel" class="btn btn-ghost" type="button">Hủy</button>
+        <button id="proj-edit-save" class="btn btn-primary" type="button">Lưu thay đổi</button>
+      </div>
+    </div>
+    <div id="proj-edit-msg" class="status" style="min-height:18px;margin-top:8px;"></div>
   </div>
 </div>
 

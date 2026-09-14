@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { createMockEnv } from './mock-env.js';
 import { seedProjects, GULAGI_PROJECT, GUROUTER_PROJECT } from './seed-projects.js';
-import { getProject, listProjects } from '../functions/_lib/projects.js';
+import { getProject, listProjects, upsertProject } from '../functions/_lib/projects.js';
+import { resolveProjectByHost, publicBaseFor, publicPathFor, resolveProjectBySlugPath } from '../functions/_lib/project_scope.js';
 import { pickNextProjectTopic, listProjectTopics } from '../functions/_lib/project_topics.js';
 import { dispatchPublication } from '../functions/_lib/publishing/publisher.js';
 
@@ -255,7 +256,40 @@ async function runTests() {
   assert.equal(calls.filter((c) => c.url.endsWith('/blog/publish')).length, 3);
   console.log('✓ Cron fan-out runs once per project, each with its own project_id.');
 
-  console.log('\nALL TESTS PASSED SUCCESSFULLY! (8/8)');
+  console.log('9. Verifying Custom Domain resolution and paths...');
+  const customProj = await upsertProject(env, {
+    slug: 'kinh-ap-trong-lam-dong',
+    name: 'Kính Áp Tròng Lâm Đồng',
+    website_url: 'https://kinhaptronglamdong.com',
+    custom_domain: 'https://docs.kinhaptronglamdong.com/',
+    publishing_url: 'https://docs.kinhaptronglamdong.com',
+    status: 'active',
+  });
+  assert.equal(customProj.custom_domain, 'docs.kinhaptronglamdong.com');
+
+  const resolved = await resolveProjectByHost(env, 'docs.kinhaptronglamdong.com', '/');
+  assert.ok(resolved);
+  assert.equal(resolved.slug, 'kinh-ap-trong-lam-dong');
+
+  const base = await publicBaseFor(env, customProj.id, { headers: new Headers({ host: 'docs.kinhaptronglamdong.com' }) });
+  assert.equal(base, 'https://docs.kinhaptronglamdong.com');
+
+  const customReq = { headers: new Headers({ host: 'docs.kinhaptronglamdong.com' }) };
+  const pathOnCustom = await publicPathFor(env, customProj.id, customReq);
+  assert.equal(pathOnCustom, '', 'custom domain should have root path');
+
+  const sharedReq = { headers: new Headers({ host: 'seo.gulagi.com' }) };
+  const pathOnShared = await publicPathFor(env, customProj.id, sharedReq);
+  assert.equal(pathOnShared, '/kinh-ap-trong-lam-dong', 'shared host should have slug path');
+
+  const pathNoReq = await publicPathFor(env, customProj.id, null);
+  assert.equal(pathNoReq, '', 'no request on custom domain project should default to root');
+
+  const slugPathProj = await resolveProjectBySlugPath(env, 'kinh-ap-trong-lam-dong');
+  assert.ok(slugPathProj, 'should remain accessible on shared host /<slug>/');
+  console.log('✓ Custom Domain resolution, base, path, and backward compatibility verified.');
+
+  console.log('\nALL TESTS PASSED SUCCESSFULLY! (9/9)');
 }
 
 runTests().catch(err => {

@@ -11,7 +11,7 @@
 import { esc } from '../_lib/util.js';
 import { loadSettings } from '../_lib/settings.js';
 import { themeStyle } from '../_lib/page_render.js';
-import { resolveProjectForRequest, resolveProjectBySlug } from '../_lib/project_scope.js';
+import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost } from '../_lib/project_scope.js';
 
 // Page size for /blog and /blog/page/N. Matches the embed widget's
 // default so the SERP archive feels the same as the embed.
@@ -103,9 +103,11 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
       </li>`;
   }).join('');
 
-  // Canonical: page 1 is /blog (so Google merges /blog and any
-  // /blog/page/1 link equity). Other pages are self-canonical.
-  const canonical = page === 1 ? `${baseUrl}${bp}/blog` : `${baseUrl}${bp}/blog/page/${page}`;
+  const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
+  const effectiveBaseUrl = customHost ? `https://${customHost}` : baseUrl;
+  const effectiveBp = customHost ? '' : bp;
+
+  const canonical = page === 1 ? `${effectiveBaseUrl}${effectiveBp}/blog` : `${effectiveBaseUrl}${effectiveBp}/blog/page/${page}`;
 
   // rel=prev / rel=next — Google deprecated using these for indexing
   // in 2019 but still uses them as hints, and Bing + Yandex use them
@@ -160,11 +162,11 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
     '@graph': [
       {
         '@type': 'WebSite',
-        '@id': `${baseUrl}/#website`,
-        url: baseUrl, name: siteName, description: siteDesc,
+        '@id': `${effectiveBaseUrl}/#website`,
+        url: effectiveBaseUrl, name: siteName, description: siteDesc,
         potentialAction: {
           '@type': 'SearchAction',
-          target: { '@type': 'EntryPoint', urlTemplate: `${baseUrl}${bp}/blog?q={search_term_string}` },
+          target: { '@type': 'EntryPoint', urlTemplate: `${effectiveBaseUrl}${effectiveBp}/blog?q={search_term_string}` },
           'query-input': 'required name=search_term_string',
         },
       },
@@ -172,13 +174,13 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
         '@type': 'CollectionPage',
         '@id': `${canonical}#page`,
         url: canonical, name: titleStr,
-        isPartOf: { '@id': `${baseUrl}/#website` },
+        isPartOf: { '@id': `${effectiveBaseUrl}/#website` },
         mainEntity: {
           '@type': 'ItemList',
           itemListElement: posts.map((p, i) => ({
             '@type': 'ListItem',
             position: offset + i + 1,
-            url: `${baseUrl}${bp}/blog/${p.slug}`,
+            url: `${effectiveBaseUrl}${effectiveBp}/blog/${p.slug}`,
             name: p.title,
           })),
         },
@@ -203,7 +205,7 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
 <link rel="canonical" href="${canonical}" />
 ${relLinks}
 ${verifyMetas}
-<link rel="alternate" type="application/rss+xml" title="${esc(siteName)} — RSS feed" href="${baseUrl}${bp}/feed.xml" />
+<link rel="alternate" type="application/rss+xml" title="${esc(siteName)} — RSS feed" href="${effectiveBaseUrl}${effectiveBp}/feed.xml" />
 <meta name="robots" content="index,follow" />
 <meta property="og:title" content="${esc(titleStr)}" />
 <meta property="og:description" content="${esc(siteDesc)}" />

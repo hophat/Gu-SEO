@@ -11,20 +11,13 @@
 
 import { loadSettings } from './_lib/settings.js';
 import { esc } from './_lib/util.js';
-import { resolveProjectForRequest, resolveProjectBySlug } from './_lib/project_scope.js';
+import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost } from './_lib/project_scope.js';
 
 const ITEMS_LIMIT = 30;
 
 function rfc822(epoch) {
   // RSS 2.0 requires RFC-822 dates: "Thu, 06 Jun 2026 12:00:00 GMT"
   return new Date((epoch || 0) * 1000).toUTCString();
-}
-
-// Build an absolute URL using the request's own host so the feed works
-// on both production and preview hostnames without any config.
-function absUrl(request, path) {
-  const u = new URL(request.url);
-  return u.origin + path;
 }
 
 export const onRequestGet = async ({ env, request, params }) => {
@@ -36,8 +29,12 @@ export const onRequestGet = async ({ env, request, params }) => {
     : await resolveProjectForRequest(env, request).catch(() => null);
   if (projectSlug && !project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   const projectId = project?.id || null;
-  const siteUrl = absUrl(request, `${basePath}/`);
-  const feedUrl = absUrl(request, `${basePath}/feed.xml`);
+
+  const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
+  const feedOrigin = customHost ? `https://${customHost}` : new URL(request.url).origin;
+  const feedBasePath = customHost ? '' : basePath;
+  const siteUrl = `${feedOrigin}${feedBasePath}/`;
+  const feedUrl = `${feedOrigin}${feedBasePath}/feed.xml`;
 
   const siteName = project?.site_name || env.SITE_NAME || settings.site_name || 'pages-seo';
   const siteDesc = project?.site_description || env.SITE_DESCRIPTION || settings.site_description ||
@@ -61,7 +58,7 @@ export const onRequestGet = async ({ env, request, params }) => {
   const lastBuild = posts.length ? rfc822(posts[0].published_at) : new Date().toUTCString();
 
   const items = posts.map((p) => {
-    const url = absUrl(request, `${basePath}/blog/` + p.slug);
+    const url = `${feedOrigin}${feedBasePath}/blog/${p.slug}`;
     return `    <item>
       <title>${esc(p.title || '')}</title>
       <link>${esc(url)}</link>

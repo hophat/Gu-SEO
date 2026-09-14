@@ -19,6 +19,7 @@
 // env after the first read.
 
 import { isMaintainer } from './_lib/maintainer.js';
+import { resolveProjectByHost, requestHost, normalizeHost } from './_lib/project_scope.js';
 
 const INSTALLER_RX = /^\/(install|update)(\/.*)?$/;
 const INSTALLER_API_RX = /^\/api\/(install|update)(\/.*)?$/;
@@ -32,6 +33,14 @@ export const onRequest = async ({ request, env, next }) => {
 
   if (!isInstallerSurface && !isRoot) {
     return next();
+  }
+
+  if (isRoot) {
+    const host = requestHost(request);
+    const customProject = await resolveProjectByHost(env, host, path);
+    if (customProject?.custom_domain && normalizeHost(customProject.custom_domain) === normalizeHost(host)) {
+      return Response.redirect(new URL('/blog', request.url).toString(), 302);
+    }
   }
 
   const maintainer = await isMaintainer(env);

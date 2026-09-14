@@ -12,7 +12,7 @@
 
 import { esc } from './_lib/util.js';
 import { PAGE_SIZE } from './blog/index.js';
-import { resolveProjectByHost, resolveProjectBySlug, requestHost } from './_lib/project_scope.js';
+import { resolveProjectByHost, resolveProjectBySlug, requestHost, normalizeHost } from './_lib/project_scope.js';
 
 const SITEMAP_NS = 'http://www.sitemaps.org/schemas/sitemap/0.9';
 const IMAGE_NS   = 'http://www.google.com/schemas/sitemap-image/1.1';
@@ -145,14 +145,18 @@ async function fetchEntries(env, host, project = null, basePath = '') {
 
 export const onRequestGet = async ({ env, request, params }) => {
   const host = requestHost(request);
-  const site = `https://${host}`;
   const projectSlug = String(params?.project || '').toLowerCase() || null;
-  const basePath = projectSlug ? `/${projectSlug}` : '';
+  let project = null;
   if (projectSlug) {
-    const project = await resolveProjectBySlug(env, projectSlug).catch(() => null);
+    project = await resolveProjectBySlug(env, projectSlug).catch(() => null);
     if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
+  } else {
+    project = await resolveProjectByHost(env, host).catch(() => null);
   }
-  const body = renderIndex(site, isoDay(0), basePath);
+  const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
+  const effectiveHost = customHost || host;
+  const effectiveBasePath = customHost ? '' : (projectSlug ? `/${projectSlug}` : '');
+  const body = renderIndex(`https://${effectiveHost}`, isoDay(0), effectiveBasePath);
   return new Response(body, {
     headers: {
       'content-type': 'application/xml; charset=utf-8',
@@ -164,7 +168,6 @@ export const onRequestGet = async ({ env, request, params }) => {
 // Exported for /sitemap-pages.xml.js to reuse.
 export async function pagesUrlset({ env, request, projectSlug = null, basePath = '' }) {
   const host = requestHost(request);
-  const site = `https://${host}`;
   let project = null;
   if (projectSlug) {
     project = await resolveProjectBySlug(env, projectSlug).catch(() => null);
@@ -172,8 +175,11 @@ export async function pagesUrlset({ env, request, projectSlug = null, basePath =
   } else {
     project = await resolveProjectByHost(env, host).catch(() => null);
   }
-  const entries = await fetchEntries(env, host, project, basePath);
-  const body = renderUrlset(site, entries);
+  const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
+  const effectiveHost = customHost || host;
+  const effectiveBasePath = customHost ? '' : (basePath || (projectSlug ? `/${projectSlug}` : ''));
+  const entries = await fetchEntries(env, effectiveHost, project, effectiveBasePath);
+  const body = renderUrlset(`https://${effectiveHost}`, entries);
   return new Response(body, {
     headers: {
       'content-type': 'application/xml; charset=utf-8',

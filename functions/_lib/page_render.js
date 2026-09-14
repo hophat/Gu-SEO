@@ -1,5 +1,6 @@
 import { renderMarkdown } from './markdown.js';
 import { esc } from './util.js';
+import { normalizeHost, requestHost } from './project_scope.js';
 
 const HERO_W = 1200, HERO_H = 630;
 
@@ -95,8 +96,8 @@ function extractFAQ(post) {
   const body = post.body_markdown || '';
   const faqs = [];
   const faqRegex = /(?:^|\n)#+\s*(?:FAQ|Câu hỏi thường gặp|Hỏi đáp)[\s\S]*?((?:^- .+\n?)+)/gim;
-  let match;
-  while ((match = faqRegex.exec(body)) !== null) {
+  let match = faqRegex.exec(body);
+  while (match !== null) {
     const lines = match[1].split('\n').filter(l => l.trim().startsWith('-'));
     for (const line of lines) {
       const qa = line.replace(/^-\s*/, '').split(/\?\s*(:|–|-)\s*/);
@@ -104,11 +105,14 @@ function extractFAQ(post) {
         faqs.push({ question: qa[0].trim() + '?', answer: qa[1].trim() });
       }
     }
+    match = faqRegex.exec(body);
   }
   if (faqs.length === 0) {
     const h3Regex = /(?:^|\n)###\s+(.+\?)\s*\n\n((?:(?!^#{2,3}\s)[^\n]+(?:\n|$))+)/gim;
-    while ((match = h3Regex.exec(body)) !== null) {
-      faqs.push({ question: match[1].trim(), answer: match[2].trim().split('\n')[0].trim() });
+    let h3Match = h3Regex.exec(body);
+    while (h3Match !== null) {
+      faqs.push({ question: h3Match[1].trim(), answer: h3Match[2].trim().split('\n')[0].trim() });
+      h3Match = h3Regex.exec(body);
     }
   }
   return faqs.length > 0 ? [{
@@ -124,7 +128,12 @@ function extractFAQ(post) {
 export function renderContentPage({ env, request, post, kind, related = [], settings = {}, basePath = '', project = null }) {
   const host = new URL(request.url).hostname;
   const site = brand(env, project);
-  const urlPath = post.urlPath;
+  const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
+  const effectiveHost = customHost || requestHost(request) || host;
+  const effectiveBasePath = customHost ? '' : basePath;
+  const effectiveUrlPath = customHost
+    ? (project?.slug ? post.urlPath.replace(new RegExp(`^/${project.slug}`), '') : post.urlPath)
+    : post.urlPath;
   const dateStr = new Date((post.published_at || 0) * 1000).toLocaleDateString('vi-VN', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
@@ -145,11 +154,8 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   <img class="hero" src="${heroSrc}" alt="${heroAlt}" width="${HERO_W}" height="${HERO_H}" decoding="async" fetchpriority="high" onload="this.classList.add('is-loaded')" onerror="this.classList.add('is-loaded')" />
 </div>`;
 
-  // Posts written before a project had a public path prefix carry bare
-  // /blog/ links that resolve against the root project. Rewriting here
-  // heals them at render time, without a content migration.
   const bodyHTML = renderMarkdown(post.body_markdown)
-    .replace(/(href=")\/(blog|p)\//g, `$1${basePath}/$2/`);
+    .replace(/(href=")\/(blog|p)\//g, `$1${effectiveBasePath}/$2/`);
 
   const excerpt = (s, n) => {
     const t = String(s || '');
@@ -166,7 +172,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
       const rSrc = r.hero_image_key ? `/image/${esc(r.hero_image_key)}` : `/cover/${esc(r.slug)}.svg`;
       return `
       <li>
-        <a href="${basePath}/blog/${esc(r.slug)}">
+        <a href="${effectiveBasePath}/blog/${esc(r.slug)}">
           <img src="${rSrc}" alt="${esc(r.hero_image_alt || r.title)}" width="640" height="336" loading="lazy" decoding="async" />
           <div class="read-next-meta">
             <h3>${esc(r.title)}</h3>
@@ -188,11 +194,11 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   const preloadHero = `<link rel="preload" as="image" href="${heroSrc}" fetchpriority="high" />`;
 
   const faqSchema = extractFAQ(post);
-  const ldGraph = jsonLD({ site, post: { ...post, urlPath }, host, kind, settings, basePath });
+  const ldGraph = jsonLD({ site, post: { ...post, urlPath: effectiveUrlPath }, host: effectiveHost, kind, settings, basePath: effectiveBasePath });
   const ldExtra = faqSchema.length ? `,${faqSchema.map(f => JSON.stringify(f)).join(',')}` : '';
   const ldJson = ldGraph.replace('}', `${ldExtra}}`);
 
-  const shareUrl = `https://${host}${urlPath}`;
+  const shareUrl = `https://${effectiveHost}${effectiveUrlPath}`;
   const shareTitle = encodeURIComponent(post.title);
   const shareUrlEnc = encodeURIComponent(shareUrl);
   const isPreview = post?.status === 'preview';
@@ -248,15 +254,15 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
 <title>${esc(post.title)} · ${esc(site.name)}</title>
 <meta name="description" content="${esc(post.meta_description)}" />
 ${post.keywords ? `<meta name="keywords" content="${esc(post.keywords)}" />` : ''}
-<link rel="canonical" href="https://${host}${urlPath}" />
+<link rel="canonical" href="https://${effectiveHost}${effectiveUrlPath}" />
 <meta name="robots" content="index,follow,max-image-preview:large" />
-<link rel="alternate" type="application/rss+xml" title="${esc(site.name)} — RSS feed" href="https://${host}${basePath}/feed.xml" />
+<link rel="alternate" type="application/rss+xml" title="${esc(site.name)} — RSS feed" href="https://${effectiveHost}${effectiveBasePath}/feed.xml" />
 ${verifyMetas}
 <meta property="og:type" content="${kind === 'blog' ? 'article' : 'website'}" />
 <meta property="og:title" content="${esc(post.title)}" />
 <meta property="og:description" content="${esc(post.meta_description)}" />
-<meta property="og:url" content="https://${host}${urlPath}" />
-<meta property="og:image" content="https://${host}${heroSrc}" />
+<meta property="og:url" content="https://${effectiveHost}${effectiveUrlPath}" />
+<meta property="og:image" content="https://${effectiveHost}${heroSrc}" />
 <meta property="og:image:width" content="${HERO_W}" />
 <meta property="og:image:height" content="${HERO_H}" />
 <meta property="og:site_name" content="${esc(site.name)}" />
@@ -264,7 +270,7 @@ ${verifyMetas}
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${esc(post.title)}" />
 <meta name="twitter:description" content="${esc(post.meta_description)}" />
-<meta name="twitter:image" content="https://${host}${heroSrc}" />
+<meta name="twitter:image" content="https://${effectiveHost}${heroSrc}" />
 ${preloadHero}
 <link rel="stylesheet" href="/style.css" />
 ${themeStyle(site.themeColor)}
@@ -281,14 +287,14 @@ ${themeStyle(site.themeColor)}
     </a>
     <nav class="header-nav">
       <a href="${esc(site.homeUrl)}">Trang chủ</a>
-      <a href="${basePath}/blog" class="active">Blog</a>
+      <a href="${effectiveBasePath}/blog" class="active">Blog</a>
       ${site.isGulagi ? `<a href="${esc(site.ctaSignupUrl)}" class="header-cta">Tạo website ngay</a>` : ''}
     </nav>
   </div>
 </header>
 
 <main class="post-shell">
-  <div class="crumb"><a href="${esc(site.homeUrl)}">Trang chủ</a>${kind === 'blog' ? ` · <a href="${basePath}/blog">Blog</a>` : ''} · <span>${esc(post.title.slice(0, 40))}…</span></div>
+  <div class="crumb"><a href="${esc(site.homeUrl)}">Trang chủ</a>${kind === 'blog' ? ` · <a href="${effectiveBasePath}/blog">Blog</a>` : ''} · <span>${esc(post.title.slice(0, 40))}…</span></div>
   <h1 class="post-title">${esc(post.title)}</h1>
   <div class="post-meta">
     <span class="post-date">${esc(dateStr)}</span>
@@ -365,8 +371,8 @@ ${site.isGulagi ? `<div class="sticky-cta" id="sticky-cta">
     </div>
     <div class="footer-links">
       <a href="${esc(site.homeUrl)}">Trang chủ</a>
-      <a href="${basePath}/blog">Blog</a>
-      <a href="${basePath}/feed.xml">RSS</a>
+      <a href="${effectiveBasePath}/blog">Blog</a>
+      <a href="${effectiveBasePath}/feed.xml">RSS</a>
     </div>
     <div class="footer-copy">© ${new Date().getFullYear()} ${esc(site.name)}. Bảo lưu mọi quyền.</div>
   </div>
