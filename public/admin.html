@@ -215,7 +215,13 @@
     <!-- Sub-nav strip. Populated dynamically by admin.js when a tab
          with data-children is active. Hidden otherwise. -->
     <nav id="subtabs" class="subtabs" hidden></nav>
+    <!-- Mobile menu backdrop -->
+    <div id="mobile-menu-backdrop" class="mobile-menu-backdrop" hidden></div>
     <div class="topbar-tools">
+      <div class="mobile-menu-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span style="font-weight:600;font-size:14px;">Menu</span>
+        <button id="mobile-menu-close" class="btn btn-ghost btn-sm" aria-label="Close menu">✕</button>
+      </div>
       <div id="project-scope" class="project-scope"><label for="project-switcher" class="sr-only">Dự án</label><select id="project-switcher" class="project-switcher"></select><span id="project-badge" class="project-badge" hidden></span></div>
       <span id="role-badge" class="role-badge" hidden></span>
       <!-- Version badge. Shows your installed version (short sha or

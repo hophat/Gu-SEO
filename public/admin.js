@@ -4168,19 +4168,29 @@
     // Mobile menu toggle functionality
     const mobileMenuToggle = $('.mobile-menu-toggle');
     const topbarTools = $('.topbar-tools');
-    if (mobileMenuToggle && topbarTools) {
+    const mobileMenuBackdrop = $('#mobile-menu-backdrop');
+    const mobileMenuClose = $('#mobile-menu-close');
+    
+    function closeMobileMenu() {
+      topbarTools.classList.remove('is-open');
+      mobileMenuBackdrop.hidden = true;
+    }
+    
+    if (mobileMenuToggle && topbarTools && mobileMenuBackdrop) {
       mobileMenuToggle.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        topbarTools.classList.toggle('is-open');
+        const isOpen = topbarTools.classList.toggle('is-open');
+        mobileMenuBackdrop.hidden = !isOpen;
       });
       
-      // Close when clicking outside
-      document.addEventListener('click', (e) => {
-        if (!topbarTools.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-          topbarTools.classList.remove('is-open');
-        }
-      });
+      // Close when clicking on backdrop
+      mobileMenuBackdrop.addEventListener('click', closeMobileMenu);
+      
+      // Close when clicking close button
+      if (mobileMenuClose) {
+        mobileMenuClose.addEventListener('click', closeMobileMenu);
+      }
     }
 
     // A fresh registration should land in the Brand setup wizard, not on
