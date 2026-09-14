@@ -4169,8 +4169,17 @@
     const mobileMenuToggle = $('.mobile-menu-toggle');
     const topbarTools = $('.topbar-tools');
     if (mobileMenuToggle && topbarTools) {
-      mobileMenuToggle.addEventListener('click', () => {
+      mobileMenuToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         topbarTools.classList.toggle('is-open');
+      });
+      
+      // Close when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!topbarTools.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
+          topbarTools.classList.remove('is-open');
+        }
       });
     }
 

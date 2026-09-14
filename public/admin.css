@@ -939,13 +939,31 @@ em.optional{font-style:normal;color:var(--ink-faint);font-size:11px;letter-spaci
     height: 0; overflow: hidden;
     background: var(--bg);
     border-bottom: 1px solid var(--line);
-    transition: height 0.3s ease;
+    transition: max-height 0.3s ease;
     z-index: 98;
+    max-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
   
   .topbar .topbar-tools.is-open {
-    height: auto;
+    max-height: 300px;
+    overflow-y: auto;
     padding: 16px;
+  }
+  
+  .topbar .topbar-tools .project-scope {
+    width: 100%;
+  }
+  
+  .topbar .topbar-tools .project-switcher {
+    width: 100%;
+  }
+  
+  .topbar .topbar-tools .btn {
+    width: 100%;
+    justify-content: center;
   }
   
   /* Hide subtabs on mobile (they're already inline, causing layout issues) */
