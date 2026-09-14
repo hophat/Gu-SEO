@@ -1,0 +1,105 @@
+patterns:
+  daily-triage:
+    name: Daily Triage
+    goal: Review and prioritize issues, PRs, and tasks
+    cadence: 1d
+    risk_level: low
+    readiness_level: L1
+    estimated_cost:
+      L1: 5000
+      L2: 10000
+      L3: 20000
+    phases:
+      - gather_issues
+      - prioritize
+      - assign
+
+  pr-babysitter:
+    name: PR Babysitter
+    goal: Monitor and shepherd PRs through review
+    cadence: 30m
+    risk_level: medium
+    readiness_level: L2
+    estimated_cost:
+      L1: 8000
+      L2: 15000
+      L3: 30000
+    phases:
+      - monitor_prs
+      - request_reviews
+      - follow_up
+
+  ci-sweeper:
+    name: CI Sweeper
+    goal: Monitor and fix CI failures
+    cadence: 15m
+    risk_level: high
+    readiness_level: L2
+    estimated_cost:
+      L1: 10000
+      L2: 20000
+      L3: 40000
+    phases:
+      - monitor_ci
+      - analyze_failures
+      - attempt_fix
+
+  dependency-updater:
+    name: Dependency Updater
+    goal: Keep dependencies up to date securely
+    cadence: 1d
+    risk_level: medium
+    readiness_level: L1
+    estimated_cost:
+      L1: 3000
+      L2: 6000
+      L3: 12000
+    phases:
+      - check_updates
+      - security_audit
+      - create_prs
+
+  code-reviewer:
+    name: Code Reviewer
+    goal: Automated code review for PRs
+    cadence: on_demand
+    risk_level: low
+    readiness_level: L2
+    estimated_cost:
+      L1: 5000
+      L2: 10000
+      L3: 20000
+    phases:
+      - analyze_changes
+      - check_quality
+      - provide_feedback
+
+  test-runner:
+    name: Test Runner
+    goal: Run and analyze test results
+    cadence: on_demand
+    risk_level: low
+    readiness_level: L1
+    estimated_cost:
+      L1: 2000
+      L2: 4000
+      L3: 8000
+    phases:
+      - run_tests
+      - analyze_results
+      - report_failures
+
+  documentation-sync:
+    name: Documentation Sync
+    goal: Keep documentation in sync with code
+    cadence: 1d
+    risk_level: low
+    readiness_level: L1
+    estimated_cost:
+      L1: 3000
+      L2: 6000
+      L3: 12000
+    phases:
+      - scan_changes
+      - update_docs
+      - validate_links

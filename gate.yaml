@@ -1,0 +1,10 @@
+version: 1
+denylist:
+  - schema/init.sql
+  - functions/_lib/schema.js
+  - functions/_lib/auth.js
+  - wrangler.toml
+  - .env
+  - .env.local
+  - package.json
+  - node_modules/
