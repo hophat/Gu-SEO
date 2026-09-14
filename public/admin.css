@@ -924,6 +924,21 @@ em.optional{font-style:normal;color:var(--ink-faint);font-size:11px;letter-spaci
     max-width: 100%;
   }
   
+  /* Topbar tools for mobile */
+  .topbar .topbar-tools {
+    position: fixed; top: var(--header-h); left: 0; right: 0;
+    height: 0; overflow: hidden;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    transition: height 0.3s ease;
+    z-index: 98;
+  }
+  
+  .topbar .topbar-tools.is-open {
+    height: auto;
+    padding: 16px;
+  }
+  
   /* DNS guide box on mobile */
   .dns-guide-box {
     padding: 12px;

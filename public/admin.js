@@ -4165,6 +4165,15 @@
     $('#gate').hidden = true;
     $('#dash').hidden = false;
 
+    // Mobile menu toggle functionality
+    const mobileMenuToggle = $('.mobile-menu-toggle');
+    const topbarTools = $('.topbar-tools');
+    if (mobileMenuToggle && topbarTools) {
+      mobileMenuToggle.addEventListener('click', () => {
+        topbarTools.classList.toggle('is-open');
+      });
+    }
+
     // A fresh registration should land in the Brand setup wizard, not on
     // an empty dashboard with a quickstart popup.
     let openWizardAfterMount = false;
