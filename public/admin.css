@@ -886,6 +886,8 @@ em.optional{font-style:normal;color:var(--ink-faint);font-size:11px;letter-spaci
     flex-direction: row;
     justify-content: space-around;
     z-index: 99;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   .topbar .tab {
@@ -895,6 +897,8 @@ em.optional{font-style:normal;color:var(--ink-faint);font-size:11px;letter-spaci
     border-radius: 0;
     font-size: 10px;
     gap: 4px;
+    min-width: 60px;
+    flex-shrink: 0;
   }
   
   .topbar .tab-icon {
@@ -914,6 +918,11 @@ em.optional{font-style:normal;color:var(--ink-faint);font-size:11px;letter-spaci
   .topbar .tab[aria-current="page"] {
     background: transparent;
     color: var(--accent);
+  }
+  
+  /* Hide tab badges on mobile to save space */
+  .topbar .tab-badge {
+    display: none;
   }
   
   /* Pages container for mobile */
@@ -937,6 +946,11 @@ em.optional{font-style:normal;color:var(--ink-faint);font-size:11px;letter-spaci
   .topbar .topbar-tools.is-open {
     height: auto;
     padding: 16px;
+  }
+  
+  /* Hide subtabs on mobile (they're already inline, causing layout issues) */
+  .topbar .subtabs {
+    display: none !important;
   }
   
   /* DNS guide box on mobile */
