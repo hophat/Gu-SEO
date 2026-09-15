@@ -7,6 +7,20 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.18.1 — 2026-09-15
+
+Tự gắn custom domain lên Cloudflare khi lưu.
+
+### Fixed
+- **Lưu tên miền giờ tự gắn hostname vào Pages project.** Trước đây
+  `POST /api/admin/projects/domain` chỉ ghi D1 nên domain nhập xong vẫn
+  không chạy — user phải mò vào dashboard gắn tay mà không được báo. Giờ
+  endpoint tự gọi CF API bằng secrets self-repair có sẵn (idempotent, xóa
+  domain thì tự gỡ nếu không ai dùng nữa). Lỗi CF không làm mất bản lưu,
+  chỉ báo trạng thái để UI hướng dẫn thêm tay.
+- **Admin hiện trạng thái gắn Cloudflare** sau khi lưu và trong hộp domain:
+  đã gắn / đã lưu nhưng phải thêm tay / site thiếu quyền tự gắn.
+
 ## 1.18.0 — 2026-09-15
 
 Chặn farm tài khoản bằng biến thể dot của Gmail + chống spam OTP.

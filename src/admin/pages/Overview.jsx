@@ -119,7 +119,7 @@ export default function Overview() {
     // Domain
     const dres = await apiGet('/api/admin/projects/domain');
     if (dres.status === 200 && dres.body?.ok) {
-      setDomain({ current: dres.body.custom_domain || '', target: dres.body.cname_target || 'gu-seo.pages.dev', input: dres.body.custom_domain || '' });
+      setDomain({ current: dres.body.custom_domain || '', target: dres.body.cname_target || 'gu-seo.pages.dev', input: dres.body.custom_domain || '', cfManaged: dres.body.cf_managed !== false, cfAttached: !!dres.body.cf_attached, cfStatus: dres.body.cf_status || '' });
     }
     setLoading(false);
   }, []);
@@ -132,8 +132,16 @@ export default function Overview() {
     setDomainMsg({ type: 'info', text: remove ? 'Đang xóa...' : 'Đang lưu...' });
     const res = await apiPost('/api/admin/projects/domain', { custom_domain: val });
     if (res.status === 200 && res.body?.ok) {
-      setDomain((d) => ({ ...d, current: res.body.custom_domain || '', input: res.body.custom_domain || '' }));
-      setDomainMsg({ type: 'success', text: res.body.custom_domain ? `Đã cập nhật: ${res.body.custom_domain}. Vui lòng tạo bản ghi CNAME tại DNS.` : 'Đã xóa tên miền.' });
+      setDomain((d) => ({ ...d, current: res.body.custom_domain || '', input: res.body.custom_domain || '', target: res.body.cname_target || d.target, cfManaged: res.body.cf_managed !== false, cfAttached: !!res.body.cf_attached, cfStatus: res.body.cf_status || '' }));
+      if (!res.body.custom_domain) {
+        setDomainMsg({ type: 'success', text: 'Đã xóa tên miền.' });
+      } else if (res.body.cf_attached) {
+        setDomainMsg({ type: 'success', text: `Đã lưu và tự gắn lên Cloudflare: ${res.body.custom_domain}. Tạo bản ghi CNAME tại DNS là domain sẽ chạy.` });
+      } else if (res.body.cf_managed === false) {
+        setDomainMsg({ type: 'success', text: `Đã lưu: ${res.body.custom_domain}. Site này chưa có quyền tự gắn domain — vào Cloudflare dashboard → Pages → Custom domains để thêm tay, rồi tạo bản ghi CNAME tại DNS.` });
+      } else {
+        setDomainMsg({ type: 'error', text: `Đã lưu nhưng chưa tự gắn được lên Cloudflare (${res.body.cf_error || 'lỗi không rõ'}). Vào Cloudflare dashboard → Pages → Custom domains để thêm tay ${res.body.custom_domain}.` });
+      }
     } else {
       setDomainMsg({ type: 'error', text: res.body?.detail || res.body?.error || 'Lưu thất bại' });
     }
@@ -581,14 +589,21 @@ export default function Overview() {
           {/* Status box */}
           {domain.current ? (
             <Alert
-              type="success"
+              type={domain.cfAttached ? 'success' : 'warning'}
               showIcon
-              icon={<CheckCircleOutlined />}
+              icon={domain.cfAttached ? <CheckCircleOutlined /> : <InfoCircleOutlined />}
               message={
                 <Space>
                   <Text strong>Đã kết nối: </Text>
                   <Link href={`https://${domain.current}`} target="_blank">{domain.current}</Link>
                 </Space>
+              }
+              description={
+                domain.cfAttached
+                  ? `Cloudflare đã gắn tên miền${domain.cfStatus ? ` (trạng thái: ${domain.cfStatus})` : ''}. Nếu chưa vào được, kiểm tra bản ghi CNAME tại DNS.`
+                  : domain.cfManaged === false
+                    ? 'Site chưa tự gắn được tên miền lên Cloudflare — thêm tay trong dashboard (Pages → Custom domains) rồi tạo CNAME tại DNS.'
+                    : 'Tên miền đã lưu nhưng Cloudflare chưa gắn — tạo bản ghi CNAME tại DNS rồi đợi vài phút, hoặc thêm tay trong dashboard (Pages → Custom domains).'
               }
             />
           ) : (
