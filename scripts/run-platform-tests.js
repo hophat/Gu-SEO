@@ -31,9 +31,15 @@ import { onRequestGet as insights } from '../functions/api/admin/insights.js';
 import {
   onRequestGet as onboardingGet, onRequestPost as onboardingPost, onRequestDelete as onboardingDelete,
 } from '../functions/api/admin/onboarding.js';
+import { onRequestPost as register } from '../functions/api/public/register.js';
+import { onRequestPatch as profilePatch } from '../functions/api/admin/projects/profile.js';
 
 // Admin endpoints authenticate through the bearer token, so tests need a
 // request shaped the way adminGate()/resolveTenantContext() expect.
+function jsonReq(url, body) {
+  return adminReq(url, { body });
+}
+
 function adminReq(url, { body, token = 'test-admin-token-123' } = {}) {
   const headers = new Map([['Authorization', `Bearer ${token}`]]);
   const req = {
@@ -956,8 +962,112 @@ async function testOnboarding() {
   ok('losing the setup data re-opens the gate (self-healing)');
 }
 
+// ── I. frictionless registration + project profile ──────────────────
+// Registration collects only email/OTP/password. The brand name and website
+// are captured by the mandatory wizard instead — and crucially, registration
+// no longer writes a placeholder Brand DNA, which used to make the "has Brand
+// DNA" check permanently true and defeat the requirement it existed to enforce.
+async function testRegistrationAndProfile() {
+  console.log('\nI. Registration + project profile');
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+  const email = 'nguyen.van.a@gmail.com';
+
+  await env.DB.prepare(
+    `INSERT INTO email_verifications (email, otp_code, created_at, expires_at) VALUES (?, '123456', ?, ?)`
+  ).bind(email, t, t + 600).run();
+
+  const res = await register({
+    env,
+    request: jsonReq('https://x/api/public/register', { email, password: 'matkhau123', otp: '123456' }),
+  });
+  const body = await res.json();
+  assert.equal(res.status, 200, `registration must succeed without a brand name (${JSON.stringify(body)})`);
+  assert.ok(body.project_id, 'a project is created');
+
+  const project = await env.__get('SELECT id, slug, name, website_url FROM projects WHERE id = ?', body.project_id);
+  assert.equal(project.name, 'Nguyen van a', 'the provisional name is derived from the email local part');
+  assert.ok(project.slug, 'a slug is generated');
+  assert.equal(project.website_url, '', 'no website is required at registration');
+  ok('registration works with only email, OTP and password');
+
+  // THE REGRESSION: no placeholder Brand DNA.
+  const brand = await env.__get('SELECT business_type FROM project_brands WHERE project_id = ?', body.project_id);
+  assert.equal(brand, null, 'registration must not insert a placeholder Brand DNA');
+  ok('registration does not create a placeholder Brand DNA');
+
+  // ...which means the wizard genuinely gates on Brand DNA now.
+  const ob = await (await onboardingGet({
+    env, request: adminReq(`https://x/api/admin/onboarding?project_id=${body.project_id}`),
+  })).json();
+  assert.equal(ob.has_brand_dna, false, 'a fresh signup has no Brand DNA');
+  assert.equal(ob.complete, false, 'a fresh signup must be gated');
+  const missing = ob.steps.filter((x) => x.required && !x.done).map((x) => x.key);
+  assert.deepEqual(missing, ['brand_dna', 'schedule'], 'both required steps are open');
+  ok('a fresh signup is gated on both Brand DNA and schedule');
+
+  // A brand name may still be supplied explicitly.
+  const email2 = 'explicit@example.com';
+  await env.DB.prepare(
+    `INSERT INTO email_verifications (email, otp_code, created_at, expires_at) VALUES (?, '654321', ?, ?)`
+  ).bind(email2, t, t + 600).run();
+  const res2 = await register({
+    env,
+    request: jsonReq('https://x/api/public/register', { email: email2, password: 'matkhau123', otp: '654321', brand_name: 'Bảo Bì Đạt Thành' }),
+  });
+  const body2 = await res2.json();
+  const p2 = await env.__get('SELECT name FROM projects WHERE id = ?', body2.project_id);
+  assert.equal(p2.name, 'Bảo Bì Đạt Thành', 'an explicit brand name still wins');
+  ok('an explicit brand name overrides the provisional one');
+
+  // ── profile endpoint ─────────────────────────────────────────────
+  const pid = body2.project_id;
+  const patch = (payload) => profilePatch({
+    env, request: adminReq(`https://x/api/admin/projects/profile?project_id=${pid}`, { body: payload }),
+  });
+
+  const named = await patch({ name: 'Đạt Thành Dũng Plastic', website_url: 'https://datthanhdungplastic.com/' });
+  assert.equal(named.status, 200);
+  const after = await env.__get('SELECT name, site_name, website_url, slug FROM projects WHERE id = ?', pid);
+  assert.equal(after.name, 'Đạt Thành Dũng Plastic');
+  assert.equal(after.site_name, 'Đạt Thành Dũng Plastic', 'site_name moves with name (it drives public branding)');
+  assert.equal(after.website_url, 'https://datthanhdungplastic.com/');
+  ok('the wizard can set the real brand name and website');
+
+  const badUrl = await patch({ website_url: 'datthanhdungplastic.com' });
+  assert.equal(badUrl.status, 400, 'a URL without a scheme is rejected');
+  ok('profile rejects a website URL without a scheme');
+
+  const emptyName = await patch({ name: '   ' });
+  assert.equal(emptyName.status, 400);
+  ok('profile rejects an empty name');
+
+  // Slug is free to change while nothing is published…
+  const reSlug = await patch({ slug: 'dat-thanh-dung' });
+  assert.equal(reSlug.status, 200);
+  assert.equal((await env.__get('SELECT slug FROM projects WHERE id = ?', pid)).slug, 'dat-thanh-dung');
+  ok('slug can be set before anything is published');
+
+  // …and locked once it is, because the slug is in inbound links, the sitemap
+  // and the AI's link aliases.
+  await env.DB.prepare(
+    `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+     VALUES ('p_pub','pub','T','D','# B','published',?,?,?)`
+  ).bind(pid, t, t).run();
+  const locked = await patch({ slug: 'renamed-after-publish' });
+  assert.equal(locked.status, 409, 'slug is locked once a post is published');
+  assert.equal((await locked.json()).error, 'slug_locked');
+  assert.equal((await env.__get('SELECT slug FROM projects WHERE id = ?', pid)).slug, 'dat-thanh-dung', 'slug is unchanged');
+  ok('slug is locked after the first published post');
+
+  // Slug collision is refused.
+  const taken = await patch({ slug: 'alpha' }); // PROJECT's slug in freshEnv
+  assert.equal(taken.status, 409);
+  ok('profile refuses a slug already used by another project');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -966,6 +1076,7 @@ async function main() {
   await testAttentionAndActivation();
   await testEventsAndInsights();
   await testOnboarding();
+  await testRegistrationAndProfile();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

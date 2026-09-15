@@ -25,16 +25,21 @@ export const onRequestPost = async ({ env, request }) => {
 
   const email = String(body?.email || '').trim().toLowerCase();
   const password = String(body?.password || '');
-  const brandName = String(body?.brand_name || body?.name || '').trim();
   const websiteUrl = String(body?.website_url || '').trim();
 
   if (!validEmail(email)) return json(400, { error: 'invalid_email' });
   if (password.length < MIN_PW || password.length > MAX_PW) {
     return json(400, { error: 'password_length', min: MIN_PW, max: MAX_PW });
   }
-  if (!brandName) {
-    return json(400, { error: 'brand_name_required', detail: 'Vui lòng nhập tên thương hiệu / dự án' });
-  }
+
+  // Registration deliberately collects as little as possible: email, OTP and a
+  // password. The brand name and website are gathered by the mandatory setup
+  // wizard right after, where the website can actually be read and turned into
+  // Brand DNA. Asking for them here was friction with no benefit — the name
+  // was provisional anyway.
+  const localPart = email.split('@')[0].replace(/[^a-z0-9]+/gi, ' ').trim();
+  const brandName = String(body?.brand_name || body?.name || '').trim()
+    || (localPart ? localPart.charAt(0).toUpperCase() + localPart.slice(1) : 'Dự án mới');
 
   const otp = String(body?.otp || body?.otp_code || '').trim();
   if (!otp || otp.length !== 6) {
@@ -105,7 +110,12 @@ export const onRequestPost = async ({ env, request }) => {
     slug,
     brandName,
     `SEO & Content Hub cho ${brandName}`,
-    websiteUrl || `https://${slug}.com`,
+    // Deliberately empty, NOT `https://<slug>.com`. Fabricating a domain meant
+    // the setup wizard prefilled its website field with a URL that does not
+    // exist, so the first thing the operator did was click "read my site" and
+    // watch it fail on an address they never typed. Empty forces them to enter
+    // the real one.
+    websiteUrl,
     publishingUrl,
     brandName,
     `Chuyên trang nội dung & giải pháp từ ${brandName}`,
@@ -113,23 +123,16 @@ export const onRequestPost = async ({ env, request }) => {
     t
   ).run();
 
-  // 2. Create Default Project Brand DNA
-  await env.DB.prepare(
-    `INSERT INTO project_brands (
-      project_id, business_type, tone, audience, key_themes, topics_to_avoid, service_area, cta, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(
-    projectId,
-    `${brandName} cung cấp các giải pháp và dịch vụ chuyên nghiệp hàng đầu.`,
-    'Chuyên gia, rõ ràng, giàu thông tin thực tiễn và hữu ích cho người đọc.',
-    'Khách hàng và đối tác tiềm năng quan tâm đến lĩnh vực hoạt động của doanh nghiệp.',
-    brandName,
-    '',
-    'Toàn quốc',
-    `Liên hệ ${brandName} ngay hôm nay để được tư vấn chi tiết.`,
-    t,
-    t
-  ).run();
+  // 2. Deliberately NO placeholder Brand DNA.
+  //
+  // This used to insert generic copy ("<name> cung cấp các giải pháp và dịch vụ
+  // chuyên nghiệp hàng đầu"). That made `project_brands` non-empty for every
+  // new project, so the "has Brand DNA" check was always true and the wizard's
+  // Brand DNA step could never gate — the placeholder defeated the requirement
+  // it was supposed to satisfy. The mandatory wizard now fills this in for real.
+  //
+  // The project still works without it: the AI falls back to generic copy,
+  // which is exactly the outcome the gate exists to prevent.
 
   // 3. Create Project AI Config (Default: Workers AI free tier)
   await env.DB.prepare(

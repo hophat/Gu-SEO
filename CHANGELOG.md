@@ -7,6 +7,43 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.14.0 — 2026-09-15
+
+Registration is now three fields, and the two placeholders that were quietly
+defeating the mandatory setup are gone.
+
+### Changed
+- **Đăng ký chỉ còn email + OTP + mật khẩu.** Bỏ ô "Tên thương hiệu / Website"
+  và ô website. Tên dự án tạm được suy ra từ phần trước @ của email
+  (`nguyen.van.a@gmail.com` → `Nguyen van a`), và wizard bắt buộc sẽ hỏi tên
+  thật cùng website ngay sau đó — nơi website thực sự được dùng để tạo Brand DNA.
+  Hỏi ở bước đăng ký là ma sát vô ích: tên vốn chỉ là tạm.
+
+### Fixed
+- **Đăng ký tạo Brand DNA giả, vô hiệu hoá chính yêu cầu Brand DNA.** Câu
+  "<tên> cung cấp các giải pháp và dịch vụ chuyên nghiệp hàng đầu" được ghi vào
+  `project_brands` cho mọi tài khoản mới, nên kiểm tra "đã có Brand DNA" luôn
+  đúng và bước Brand DNA **không bao giờ chặn**. Wizard bắt buộc giờ điền thật.
+- **Đăng ký bịa ra `website_url = https://<slug>.com`.** Wizard prefill ô website
+  bằng một domain không tồn tại, nên việc đầu tiên người dùng làm là bấm "đọc
+  trang web của tôi" và nhận lỗi ở một địa chỉ họ chưa từng nhập. Giờ để trống.
+
+### Added
+- **`PATCH /api/admin/projects/profile`** — sửa tên / website / slug của dự án
+  đang chọn (mọi admin, không cần super_admin). `site_name` đi kèm `name` vì nó
+  quyết định branding công khai (tiêu đề widget, OG tags).
+  **Slug bị khoá sau khi có bài xuất bản** — nó nằm trong link đến, sitemap và
+  alias liên kết nội bộ của AI, đổi nữa là hỏng hết. Muốn đổi thì dùng tên miền
+  riêng, và endpoint nói rõ điều đó thay vì âm thầm đổi.
+- **Wizard bước 1 giờ hỏi cả tên thương hiệu** (prefill từ tên tạm) và lưu trước
+  khi đọc website, để Brand DNA được tạo với tên thật.
+
+### Added (tooling)
+- **Platform tests: 89 checks** (was 79). New coverage: registration without a
+  brand name, the provisional name derivation, no placeholder Brand DNA, a
+  fresh signup gated on both steps, profile name/website updates, URL scheme
+  validation, slug change before publish, slug lock after publish, and slug
+  collision.
 ## 1.13.0 — 2026-09-15
 
 Setup is now mandatory. A brand new account could previously skip the wizard

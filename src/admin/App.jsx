@@ -325,7 +325,6 @@ function LoginGate() {
 
   const sendOtp = async () => {
     const email = regForm.getFieldValue('email');
-    const brand = regForm.getFieldValue('brand');
     if (!email || !email.includes('@')) { setError('Nhập email hợp lệ trước khi gửi OTP'); return; }
     setLoading(true);
     setError(null);
@@ -333,7 +332,7 @@ function LoginGate() {
       const res = await fetch('/api/public/send-otp', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), brand_name: brand || 'GU SEO' }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.ok) {
@@ -356,8 +355,6 @@ function LoginGate() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          brand_name: values.brand,
-          website_url: values.website,
           email: values.email.trim().toLowerCase(),
           password: values.password,
           otp: values.otp,
@@ -414,28 +411,29 @@ function LoginGate() {
                   label: 'Đăng ký (Free 100 bài)',
                   children: (
                     <Form form={regForm} layout="vertical" onFinish={onRegister} requiredMark={false}>
-                      <Form.Item name="brand" label="Tên thương hiệu / Website" rules={[{ required: true, message: 'Nhập tên thương hiệu' }]}>
-                        <Input placeholder="My Shop, Tech Blog..." maxLength={80} />
-                      </Form.Item>
-                      <Form.Item name="website" label="Website (tùy chọn)">
-                        <Input placeholder="https://example.com" type="url" />
-                      </Form.Item>
                       <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Nhập email hợp lệ' }]}>
-                        <Input placeholder="you@example.com" autoComplete="username" />
+                        <Input size="large" placeholder="you@example.com" autoComplete="username" />
                       </Form.Item>
                       <Form.Item name="otp" label="Mã OTP (6 số)" rules={[{ required: true, len: 6, message: 'Nhập mã OTP 6 số' }]}>
                         <Space.Compact style={{ width: '100%' }}>
-                          <Input placeholder="6 chữ số OTP" maxLength={6} style={{ fontFamily: 'monospace', letterSpacing: 4, fontWeight: 700 }} autoComplete="one-time-code" />
-                          <Button onClick={sendOtp} disabled={otpCooldown > 0 || loading}>
+                          <Input size="large" placeholder="6 chữ số OTP" maxLength={6} style={{ fontFamily: 'monospace', letterSpacing: 4, fontWeight: 700 }} autoComplete="one-time-code" />
+                          <Button size="large" onClick={sendOtp} disabled={otpCooldown > 0 || loading}>
                             {otpCooldown > 0 ? `Gửi lại (${otpCooldown}s)` : 'Gửi OTP'}
                           </Button>
                         </Space.Compact>
                       </Form.Item>
                       <Form.Item name="password" label="Mật khẩu (tối thiểu 8 ký tự)" rules={[{ required: true, min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
-                        <Input.Password placeholder="••••••••" autoComplete="new-password" />
+                        <Input.Password size="large" placeholder="••••••••" autoComplete="new-password" />
                       </Form.Item>
+                      <Alert
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                        message="Chỉ 3 bước là xong"
+                        description="Tạo tài khoản trước, sau đó trình thiết lập sẽ hỏi tên thương hiệu và website để tạo Brand DNA và lên lịch bài viết."
+                      />
                       {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} closable onClose={() => setError(null)} />}
-                      <Button type="primary" htmlType="submit" block loading={loading}>Xác thực OTP & Tạo tài khoản</Button>
+                      <Button type="primary" size="large" htmlType="submit" block loading={loading}>Xác thực OTP & Tạo tài khoản</Button>
                     </Form>
                   ),
                 },

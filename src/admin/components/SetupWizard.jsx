@@ -31,7 +31,8 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
   const [error, setError] = useState(null);
   const [manualMode, setManualMode] = useState(false);
 
-  // Step 1: URL + options
+  // Step 1: brand identity + website
+  const [projectName, setProjectName] = useState('');
   const [url, setUrl] = useState('');
   const [serviceArea, setServiceArea] = useState('');
   const [topicsAvoid, setTopicsAvoid] = useState('');
@@ -50,19 +51,40 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
   // Step 4: Calendar plan
   const [planSlots, setPlanSlots] = useState([]);
 
-  // Pre-populate URL from existing brand DNA
+  // Prefill from the project's current identity. Registration only collects
+  // email/OTP/password and derives a provisional name from the email local
+  // part, so this step is where the real brand name and website are captured.
   useEffect(() => {
     if (!open) return;
+    apiGet('/api/admin/projects/profile').then(({ status, body }) => {
+      if (status !== 200 || !body?.project) return;
+      setProjectName((n) => n || body.project.name || '');
+      setUrl((u) => u || body.project.website_url || '');
+    }).catch(() => {});
     apiGet('/api/admin/brand-dna').then(({ status, body }) => {
-      if (status === 200 && body?.brand?.source_url) setUrl(body.brand.source_url);
+      if (status === 200 && body?.brand?.source_url) setUrl((u) => u || body.brand.source_url);
     }).catch(() => {});
   }, [open]);
+
+  // Persist identity before generating Brand DNA — the scrape uses the URL, and
+  // the name should be real before the AI reads the site.
+  const saveIdentity = async () => {
+    const name = projectName.trim();
+    if (!name) { setError('Nhập tên thương hiệu / dự án'); return false; }
+    const r = await api('/api/admin/projects/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({ name, website_url: url.trim() }),
+    });
+    if (r.status !== 200) { setError(r.body?.detail || r.body?.error || 'Không lưu được tên dự án'); return false; }
+    return true;
+  };
 
   // Step 1 → 2: Generate Brand DNA from URL
   const generateBrandDna = async () => {
     if (!/^https?:\/\/.+/i.test(url)) { setError('Nhập URL đầy đủ bắt đầu bằng https://'); return; }
     setError(null);
     setLoading(true);
+    if (!(await saveIdentity())) { setLoading(false); return; }
     setStep(1);
     const { status, body } = await api('/api/admin/brand-dna', {
       method: 'POST',
@@ -93,8 +115,11 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
   };
 
   // Skip AI entirely — same destination, operator-supplied copy.
-  const startManual = () => {
+  const startManual = async () => {
     setError(null);
+    setLoading(true);
+    if (!(await saveIdentity())) { setLoading(false); return; }
+    setLoading(false);
     setManualMode(true);
     setBrand({ source_url: url });
     setBrandFields({
@@ -233,14 +258,25 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
 
       {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} closable onClose={() => setError(null)} />}
 
-      {/* Step 0: Welcome + URL */}
+      {/* Step 0: Brand identity + website */}
       {step === 0 && (
         <div>
           <Paragraph>
-            <Text strong>Chào mừng! </Text>
-            <Text type="secondary">Dán URL website của bạn — chúng tôi sẽ đọc và tạo Brand DNA tự động.</Text>
+            <Text strong>Bước 1 — Thương hiệu của bạn. </Text>
+            <Text type="secondary">
+              Cho chúng tôi biết tên dự án và website; AI sẽ đọc website để tạo Brand DNA, rồi lên lịch bài viết.
+            </Text>
           </Paragraph>
           <Form layout="vertical">
+            <Form.Item label="Tên thương hiệu / dự án" required>
+              <Input
+                size="large"
+                prefix={<RocketOutlined />}
+                placeholder="vd: Bảo Bì Nhựa Đạt Thành Dũng"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+              />
+            </Form.Item>
             <Form.Item label="URL website" required>
               <Input
                 size="large"
@@ -260,8 +296,8 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
           </Form>
           <div style={{ textAlign: 'right' }}>
             {!blocking && <Button onClick={handleClose} style={{ marginRight: 8 }}>Để sau</Button>}
-            <Button onClick={startManual} style={{ marginRight: 8 }}>Điền thủ công</Button>
-            <Button type="primary" icon={<ArrowRightOutlined />} onClick={generateBrandDna}>
+            <Button onClick={startManual} loading={loading} style={{ marginRight: 8 }}>Điền thủ công</Button>
+            <Button type="primary" icon={<ArrowRightOutlined />} onClick={generateBrandDna} loading={loading}>
               Đọc trang web của tôi
             </Button>
           </div>
