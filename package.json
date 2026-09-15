@@ -27,7 +27,7 @@
   ],
   "scripts": {
     "setup": "bash setup.sh",
-    "build": "npm run check-public && npm run bundle-schema",
+    "build": "npm run check-public && npm run bundle-schema && npm run admin:build",
     "bundle-schema": "node scripts/bundle-schema.js && node scripts/bundle-migrations.js",
     "check-public": "node scripts/check-public-mirrors.js",
     "test": "node scripts/run-tests.js && node --no-warnings scripts/run-platform-tests.js",
