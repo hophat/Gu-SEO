@@ -23,6 +23,10 @@ const FALLBACK = {
   prog_min_words:      () => '700',
   prog_max_words:      () => '1000',
   default_ai_provider: () => '',
+  // Publish report email. On by default; the operator needs a kill switch
+  // that does not require a redeploy, because outbound mail is the one thing
+  // here that reaches people outside the system.
+  publish_report_email: () => '1',
   // Brand DNA — generated from the user's own site, editable in the
   // admin UI. Plugged into every prompt so the LLM writes as if it
   // works for that business.

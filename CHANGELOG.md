@@ -7,6 +7,59 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.16.0 — 2026-09-15
+
+Email báo cáo sau khi bài viết lên sóng.
+
+### Added
+- **Gửi email khi bài đã đăng, kèm tình trạng phân phối lên Facebook.**
+  Người nhận là **toàn bộ người dùng của dự án** (`users.project_id`), không
+  phải super_admin đang đăng nhập. Nội dung: tiêu đề, mô tả, liên kết bài trên
+  blog, và một dòng cho mỗi kênh mạng xã hội với trạng thái thật + link bài
+  đăng + lý do lỗi nếu thất bại.
+- **Chỉ gửi cho bài được tạo từ lịch nội dung.** Lịch là chỉ thị thường trực
+  của người vận hành ("viết và đăng bài này vào ngày đó"); bài họ tự đăng tay
+  là bài họ đã tận mắt xem, gửi thêm chỉ là nhiễu. Tín hiệu đáng báo là "thứ
+  bạn đặt lịch từ mấy tuần trước đã lên sóng".
+- **Công tắc tắt/bật trong Cài đặt** (`publish_report_email`). Mặc định bật.
+  Email là thứ duy nhất ở đây đi ra ngoài hệ thống, nên cần một cách dừng lại
+  mà không phải deploy.
+- **`POST /api/admin/report/test`** (super_admin) — hai chế độ: không tham số
+  thì gửi email mẫu để kiểm tra SMTP; có `blog_post_id` + `project_id` thì chạy
+  **báo cáo thật** cho bài đó, đầy đủ các điều kiện. Đây là thứ biến tính năng
+  từ "code trông có vẻ đúng" thành "đã chạy thật".
+
+### Changed
+- **`email_smtp.js` tách hàm `sendEmail({ to, subject, html })`.** Trước đây
+  `sendOtpEmail` làm toàn bộ phần bắt tay SMTP ngay trong thân hàm, nên thêm
+  một loại email thứ hai đồng nghĩa với việc copy lại toàn bộ. `sendOtpEmail`
+  giờ chỉ còn là phần nội dung.
+- **`cloudflare:sockets` được import lazy.** Nó chỉ resolve trong Workers, nên
+  import tĩnh khiến module không load được ở bất kỳ đâu khác — kể cả test.
+
+### Notes on the design
+Báo cáo được gửi **sau khi** hàng đợi phân phối chạy xong, không phải trước.
+Gửi trước thì lúc nào cũng báo "đang chờ đăng" — đúng thứ một báo cáo không
+được phép làm. Nếu kênh vẫn đang thử lại, email nói thẳng là đang thử lại,
+kèm số lần đã thử.
+
+Mọi lỗi gửi mail đều bị nuốt có chủ đích: email là thông báo, một SMTP hỏng
+không được biến một lần đăng bài thành công thành lỗi.
+
+### Added (tooling)
+- **Platform tests: 129 checks** (was 117). Kiểm tra: người nhận đúng là user
+  của dự án (và không ai khác), dự án không có user thì không gửi chứ không
+  fallback, chỉ bài từ lịch mới tính là "đã lên lịch", bài đăng tay không gửi,
+  bài đang chờ duyệt không gửi, công tắc tắt hoạt động, và phần render: tên
+  kênh, trạng thái thật, link bài đăng, lý do lỗi, số lần thử, và escape HTML.
+
+### Notes for operators
+- Thử ngay: `POST /api/admin/report/test` (không tham số) → email mẫu về hộp
+  thư của bạn.
+- **Thông tin bảo mật:** thông tin đăng nhập hộp thư gửi (`gulagi.com@gmail.com`)
+  vẫn đang **hardcode trong `functions/_lib/email_smtp.js`**. Đây là tình trạng
+  có trước, không phải thay đổi của bản này, nhưng nghĩa là ai đọc được repo là
+  gửi được mail dưới địa chỉ đó. Nên chuyển sang Pages secrets.
 ## 1.15.1 — 2026-09-15
 
 "Lên lịch thất bại" khi bấm qua bước cuối của trình thiết lập. Cùng một loại

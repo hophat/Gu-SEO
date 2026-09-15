@@ -37,6 +37,7 @@ import { onRequestGet as secretsRead, onRequestPost as secretsWrite } from '../f
 import { onRequestGet as providersList } from '../functions/api/admin/providers.js';
 import { onRequestPost as providersTest } from '../functions/api/admin/providers/test.js';
 import { signSession } from '../functions/_lib/passwords.js';
+import { recipientsFor, isScheduledPost, sendPublishReport, renderReport } from '../functions/_lib/publishing/report.js';
 import { renderBlogIndex } from '../functions/blog/index.js';
 import { onRequestGet as renderFeed } from '../functions/feed.xml.js';
 import { loadSettings, setSetting } from '../functions/_lib/settings.js';
@@ -1460,8 +1461,147 @@ async function testSingleDispatch() {
   ok('the calendar planner inherits the default provider through callRawLLM');
 }
 
+// ── N. publish report email ─────────────────────────────────────────
+// The report goes to whoever owns the project, only for posts that came from a
+// calendar slot, and only once the distribution outcome is actually known.
+// Those three conditions are the whole feature, so they are what is pinned.
+async function testPublishReport() {
+  console.log('\nN. Publish report email');
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+
+  // Two users on the project — both are owners, both get the mail.
+  await env.DB.prepare(
+    `INSERT INTO users (id, email, password_hash, password_salt, role, project_id, created_at)
+     VALUES ('u_owner', 'owner@alpha.example', 'x', 'y', 'project_admin', ?, ?)`
+  ).bind(PROJECT, t).run();
+  await env.DB.prepare(
+    `INSERT INTO users (id, email, password_hash, password_salt, role, project_id, created_at)
+     VALUES ('u_second', 'second@alpha.example', 'x', 'y', 'project_admin', ?, ?)`
+  ).bind(PROJECT, t).run();
+  // And a user on a DIFFERENT project, who must never be mailed about this one.
+  await env.DB.prepare(
+    `INSERT INTO users (id, email, password_hash, password_salt, role, project_id, created_at)
+     VALUES ('u_other', 'other@beta.example', 'x', 'y', 'project_admin', ?, ?)`
+  ).bind(OTHER, t).run();
+
+  const recipients = await recipientsFor(env, PROJECT);
+  assert.deepEqual(recipients.sort(), ['owner@alpha.example', 'second@alpha.example'],
+    'every user on the project is a recipient, and nobody else is');
+  ok('recipients are the project\'s own users');
+
+  assert.deepEqual(await recipientsFor(env, 'proj_nobody'), [], 'an unknown project has no recipients');
+  assert.deepEqual(await recipientsFor(env, null), [], 'a null project has no recipients');
+  ok('a project with no users resolves to no recipients, not a fallback');
+
+  // Scheduled vs hand-published.
+  await env.DB.prepare(
+    `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+     VALUES ('bp_sched','sched','Bài theo lịch','Mô tả','# B','published',?,?,?)`
+  ).bind(PROJECT, t, t).run();
+  await env.DB.prepare(
+    `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+     VALUES ('bp_manual','manual','Bài đăng tay','Mô tả','# B','published',?,?,?)`
+  ).bind(PROJECT, t, t).run();
+  await env.DB.prepare(
+    `INSERT INTO content_calendar (id, project_id, scheduled_for, title, status, source, post_id, created_at, updated_at)
+     VALUES ('cal_rep', ?, ?, 'Bài theo lịch', 'published', 'planner', 'bp_sched', ?, ?)`
+  ).bind(PROJECT, new Date().toISOString().slice(0, 10), t, t).run();
+
+  assert.equal(await isScheduledPost(env, 'bp_sched'), true, 'a calendar post is scheduled');
+  assert.equal(await isScheduledPost(env, 'bp_manual'), false, 'a hand-published post is not');
+  ok('only calendar-sourced posts count as scheduled');
+
+  // A hand-published post must produce no email at all.
+  const manual = await sendPublishReport(env, { projectId: PROJECT, blogPostId: 'bp_manual' });
+  assert.equal(manual.sent, 0);
+  assert.equal(manual.skipped, 'not_scheduled');
+  ok('a hand-published post sends nothing');
+
+  // A draft must not be reported either.
+  await env.DB.prepare(
+    `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+     VALUES ('bp_draft','draft','Nháp','Mô tả','# B','review',?,?,?)`
+  ).bind(PROJECT, t, t).run();
+  await env.DB.prepare(
+    `INSERT INTO content_calendar (id, project_id, scheduled_for, title, status, source, post_id, created_at, updated_at)
+     VALUES ('cal_draft', ?, ?, 'Nháp', 'draft', 'planner', 'bp_draft', ?, ?)`
+  ).bind(PROJECT, new Date().toISOString().slice(0, 10), t, t).run();
+  const draft = await sendPublishReport(env, { projectId: PROJECT, blogPostId: 'bp_draft' });
+  assert.equal(draft.skipped, 'not_published', 'a review-state post is not reported as published');
+  ok('a post held for review is not reported');
+
+  // The kill switch.
+  await setSetting(env, 'publish_report_email', '0');
+  const off = await sendPublishReport(env, { projectId: PROJECT, blogPostId: 'bp_sched' });
+  assert.equal(off.sent, 0);
+  assert.equal(off.skipped, 'disabled');
+  await setSetting(env, 'publish_report_email', '1');
+  ok('the report has a kill switch that needs no redeploy');
+
+  // A project with no users → no send, and no throw.
+  const noUsers = await sendPublishReport(env, { projectId: 'proj_nobody', blogPostId: 'bp_sched' });
+  assert.equal(noUsers.sent, 0);
+  ok('a project with no users is skipped, not thrown');
+
+  // ── the rendered report ──────────────────────────────────────────
+  // This is the part a recipient actually reads, so check what it says.
+  const html = renderReport({
+    projectName: 'Alpha',
+    title: 'Bài theo lịch',
+    description: 'Mô tả',
+    blogUrl: 'https://alpha.example/blog/sched',
+    social: [
+      { channel: 'facebook', status: 'published', attempts: 1, external_url: 'https://facebook.com/123' },
+      { channel: 'instagram', status: 'failed', attempts: 3, external_url: null, error: 'Token hết hạn' },
+    ],
+  });
+  assert.match(html, /https:\/\/alpha\.example\/blog\/sched/, 'the report links to the published post');
+  assert.match(html, /Facebook Page/, 'the channel is named, not its internal id');
+  assert.match(html, /Đã đăng/, 'a successful channel is reported as such');
+  assert.match(html, /Đăng thất bại/, 'a failed channel is not hidden');
+  assert.match(html, /https:\/\/facebook\.com\/123/, 'the external post is linked');
+  assert.match(html, /Token hết hạn/, 'the failure reason is shown so it can be acted on');
+  assert.match(html, /lần thử 3/, 'the retry count is surfaced');
+  assert.match(html, /Bài theo lịch/, 'the title is included');
+  ok('the report names the channel, its real status, the link and the error');
+
+  // A pending channel must NOT be reported as published — the one thing a
+  // report must never do.
+  const pending = renderReport({
+    projectName: 'Alpha', title: 'T', description: '', blogUrl: 'https://x/blog/y',
+    social: [{ channel: 'facebook', status: 'pending', attempts: 0, external_url: null }],
+  });
+  assert.match(pending, /Đang chờ đăng/, 'a pending channel says so');
+  assert.doesNotMatch(pending, /Đã đăng/, 'a pending channel is never reported as done');
+  ok('a pending channel is never reported as published');
+
+  // No channel connected at all.
+  const none = renderReport({
+    projectName: 'Alpha', title: 'T', description: '', blogUrl: 'https://x/blog/y', social: [],
+  });
+  assert.match(none, /Chưa kết nối kênh mạng xã hội/, 'a blog-only project is told there is no channel');
+  ok('a blog-only project gets an honest report');
+
+  // The subject line carries the count, so the inbox is scannable.
+  assert.match(renderReport({
+    projectName: 'Alpha', title: 'T', description: '', blogUrl: 'u',
+    social: [{ channel: 'facebook', status: 'published', attempts: 1, external_url: 'x' }],
+  }), /Alpha/);
+  ok('the report is branded with the project name');
+
+  // HTML escaping — a title with markup must not break the message.
+  const xss = renderReport({
+    projectName: '<script>alert(1)</script>', title: '<img src=x onerror=alert(1)>',
+    description: '', blogUrl: 'https://x/blog/y', social: [],
+  });
+  assert.doesNotMatch(xss, /<script>alert\(1\)<\/script>/, 'project name is escaped');
+  assert.doesNotMatch(xss, /<img src=x onerror/, 'title is escaped');
+  ok('report content is HTML-escaped');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -1475,6 +1615,7 @@ async function main() {
   await testProviderDispatch();
   await testProviderConfigLockdown();
   await testSingleDispatch();
+  await testPublishReport();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

@@ -133,6 +133,17 @@ export default function Settings() {
                   <Form.Item label="Monthly budget (USD)">
                     <InputNumber value={settings.monthly_budget_usd || 10} onChange={(v) => setSettings((s) => ({ ...s, monthly_budget_usd: v }))} min={0} />
                   </Form.Item>
+                  <Form.Item
+                    label="Email báo cáo sau khi đăng bài"
+                    extra="Gửi cho toàn bộ người dùng của dự án, chỉ với bài được tạo từ lịch nội dung. Tắt để dừng gửi ngay, không cần deploy lại."
+                  >
+                    <Switch
+                      checked={settings.publish_report_email !== '0' && settings.publish_report_email !== 'false'}
+                      onChange={(v) => setSettings((s) => ({ ...s, publish_report_email: v ? '1' : '0' }))}
+                      checkedChildren="Bật"
+                      unCheckedChildren="Tắt"
+                    />
+                  </Form.Item>
                   <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => save(settings)}>Lưu cài đặt</Button>
                 </Form>
               </Card>

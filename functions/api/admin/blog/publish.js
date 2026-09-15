@@ -11,6 +11,7 @@ import { getProject } from '../../../_lib/projects.js';
 import { enqueueSocialPost, drainSocialQueue } from '../../../_lib/publishing/social_queue.js';
 import { publicBaseFor } from '../../../_lib/project_scope.js';
 import { trackOnce } from '../../../_lib/events.js';
+import { sendPublishReport } from '../../../_lib/publishing/report.js';
 
 export const onRequestPost = async ({ request, env, waitUntil }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -91,19 +92,35 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
     // below, plus every cron tick) handles retries. Previously this called
     // the publisher inside waitUntil(), so a dropped connection lost the
     // post outright.
+    //
+    // The report email is chained AFTER the drain so it reflects the actual
+    // outcome — sending it first would always say "pending", which is the
+    // one thing a report must not do.
+    let distributed = false;
     if (job.project_id) {
       const proj = await getProject(env, job.project_id).catch(() => null);
       const channel = proj?.publishing_config?.publisher_type;
       if (channel && channel !== 'internal_d1') {
+        distributed = true;
         const q = await enqueueSocialPost(env, {
           projectId: job.project_id, blogPostId: postId, channel,
         }).catch(() => ({ enqueued: false }));
         if (q.enqueued) {
           // Happy path stays immediate; if this is interrupted the cron
           // picks the row up on its next pass.
-          waitUntil(drainSocialQueue(env, { projectId: job.project_id, limit: 3 }).catch(() => {}));
+          waitUntil(
+            drainSocialQueue(env, { projectId: job.project_id, limit: 3 })
+              .catch(() => {})
+              .then(() => sendPublishReport(env, { projectId: job.project_id, blogPostId: postId, baseUrl: base }))
+          );
+        } else {
+          waitUntil(sendPublishReport(env, { projectId: job.project_id, blogPostId: postId, baseUrl: base }));
         }
       }
+    }
+    // No external channel at all — still worth reporting a scheduled post.
+    if (job.project_id && !distributed) {
+      waitUntil(sendPublishReport(env, { projectId: job.project_id, blogPostId: postId, baseUrl: base }));
     }
   }
 
