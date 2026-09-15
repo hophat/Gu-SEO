@@ -8,6 +8,7 @@
 import { json, audit } from '../../../_lib/util.js';
 import { requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 import { planCalendar } from '../../../_lib/calendar_planner.js';
+import { track } from '../../../_lib/events.js';
 
 export const onRequestPost = async ({ env, request }) => {
   const auth = await requireAdminAsync(env, request);
@@ -29,6 +30,7 @@ export const onRequestPost = async ({ env, request }) => {
       projectId: activeProjectId,
     });
     await audit(env, 'admin', 'calendar.plan', '', JSON.stringify({ days, inserted: result.slots.length, replace, project_id: activeProjectId }));
+    await track(env, { event: 'calendar_planned', projectId: activeProjectId, props: { days, slots: result.slots.length } });
     return json(200, {
       ok: true,
       inserted: result.slots.length,

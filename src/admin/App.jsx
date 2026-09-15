@@ -32,6 +32,7 @@ const SeoPage = lazy(() => import('./pages/Seo.jsx'));
 const EmbedsPage = lazy(() => import('./pages/Embeds.jsx'));
 const PublishingPage = lazy(() => import('./pages/Publishing.jsx'));
 const SocialPage = lazy(() => import('./pages/Social.jsx'));
+const InsightsPage = lazy(() => import('./pages/Insights.jsx'));
 const StatusPage = lazy(() => import('./pages/Status.jsx'));
 const UpdatesPage = lazy(() => import('./pages/Updates.jsx'));
 const UsagePage = lazy(() => import('./pages/Usage.jsx'));
@@ -75,6 +76,7 @@ const MENU_ITEMS = [
       { key: 'status', icon: <DashboardOutlined />, label: 'Trạng thái' },
       { key: 'updates', icon: <SyncOutlined />, label: 'Cập nhật' },
       { key: 'usage', icon: <BarChartOutlined />, label: 'Sử dụng' },
+      { key: 'insights', icon: <RiseOutlined />, label: 'Tăng trưởng' },
     ],
   },
   { key: 'settings', icon: <SettingOutlined />, label: 'Cài đặt' },
@@ -88,13 +90,14 @@ const PAGE_COMPONENTS = {
   trends: TrendsPage, brand: BrandPage, covers: CoversPage,
   prog: ProgPage, links: LinksPage, analytics: AnalyticsPage,
   seo: SeoPage, embeds: EmbedsPage, publishing: PublishingPage, social: SocialPage, status: StatusPage,
+  insights: InsightsPage,
   updates: UpdatesPage, usage: UsagePage, settings: SettingsPage,
   users: UsersPage, projects: ProjectsPage,
 };
 
 // Pages hidden from project_admin (non-super_admin) users.
 // Mirrors SUPER_ADMIN_ONLY_TABS + PROJECT_ADMIN_HIDDEN_PAGES from admin.js.
-const SUPER_ADMIN_ONLY = new Set(['settings', 'users', 'projects', 'status', 'updates', 'usage']);
+const SUPER_ADMIN_ONLY = new Set(['settings', 'users', 'projects', 'status', 'updates', 'usage', 'insights']);
 
 function filterMenuByRole(items, role) {
   const isSuper = role === 'super_admin';

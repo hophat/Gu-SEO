@@ -19,6 +19,7 @@ import {
   savePendingPages, clearPendingPages, pendingKey,
 } from '../../../_lib/publishing/facebook_oauth.js';
 import { setVaultSecret } from '../../../_lib/secret_vault.js';
+import { track } from '../../../_lib/events.js';
 
 function backToSettings(status, detail = '') {
   const q = new URLSearchParams({ fb: status });
@@ -58,6 +59,12 @@ export const onRequestGet = async ({ env, request }) => {
   // Every exit path records its outcome so the Settings tab can show it
   // after the SPA reloads (the hash router only understands tab names).
   const done = async (status, detail = '') => {
+    // Record the outcome so a failed connect is visible in the funnel rather
+    // than only in the audit log.
+    await track(env, {
+      event: status === 'connected' ? 'channel_connected' : 'channel_connect_failed',
+      projectId: pid, props: { channel: 'facebook', status, detail },
+    });
     await recordResult(env, pid, status, detail);
     return backToSettings(status, detail);
   };

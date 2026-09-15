@@ -25,6 +25,9 @@ import { buildAliasMap, syncSitemapAliases } from '../functions/_lib/links/alias
 import { onRequestGet as attention } from '../functions/api/admin/attention.js';
 import { onRequestGet as activation } from '../functions/api/admin/activation.js';
 import { onRequestPatch as aliasPatch, onRequestDelete as aliasDelete } from '../functions/api/admin/aliases/index.js';
+import { track, trackOnce } from '../functions/_lib/events.js';
+import { computeInsights, isoWeek } from '../functions/_lib/insights.js';
+import { onRequestGet as insights } from '../functions/api/admin/insights.js';
 
 // Admin endpoints authenticate through the bearer token, so tests need a
 // request shaped the way adminGate()/resolveTenantContext() expect.
@@ -697,14 +700,176 @@ async function testAttentionAndActivation() {
   ok('activation is project-scoped');
 }
 
+// ── G. product events + insights ────────────────────────────────────
+async function testEventsAndInsights() {
+  console.log('\nG. Product events + insights');
+  const env = await freshEnv();
+  const now = Math.floor(Date.now() / 1000);
+  const DAY = 86400;
+
+  // Unknown event names are rejected rather than written — a typo should be a
+  // no-op, not a junk row that skews a funnel.
+  const unknown = await track(env, { event: 'not_a_real_event', projectId: PROJECT });
+  assert.equal(unknown.ok, false);
+  assert.equal(unknown.error, 'unknown_event');
+  ok('track rejects unknown event names');
+
+  const good = await track(env, { event: 'signup', projectId: PROJECT, props: { plan: 'free' } });
+  assert.equal(good.ok, true);
+  const row = await env.__get('SELECT event, project_id, props_json FROM product_events');
+  assert.equal(row.event, 'signup');
+  assert.equal(row.project_id, PROJECT);
+  assert.equal(JSON.parse(row.props_json).plan, 'free');
+  ok('track records the event, project and props');
+
+  // Oversized props are dropped rather than bloating the table.
+  await track(env, { event: 'calendar_planned', projectId: PROJECT, props: { blob: 'x'.repeat(5000) } });
+  const bigRow = await env.__get("SELECT props_json FROM product_events WHERE event='calendar_planned'");
+  assert.equal(bigRow.props_json, null, 'oversized props are dropped');
+  ok('oversized props are dropped instead of stored');
+
+  // trackOnce is idempotent per project — the activation milestone must not
+  // fire on every publish.
+  const first = await trackOnce(env, { event: 'first_post_published', projectId: PROJECT });
+  const second = await trackOnce(env, { event: 'first_post_published', projectId: PROJECT });
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, false);
+  assert.equal(second.error, 'already_tracked');
+  const count = await env.__get("SELECT COUNT(*) AS n FROM product_events WHERE event='first_post_published'");
+  assert.equal(count.n, 1);
+  ok('trackOnce emits a milestone only once per project');
+
+  // A broken DB must not throw — callers fire-and-forget.
+  const broken = { DB: { prepare() { throw new Error('db down'); } } };
+  const survived = await track(broken, { event: 'signup', projectId: PROJECT });
+  assert.equal(survived.ok, false);
+  ok('track never throws when the database fails');
+
+  // ── insights ─────────────────────────────────────────────────────
+  // Seed a project created 30 days ago that published in week 1 and week 3,
+  // and one created 2 days ago that never published.
+  await env.DB.prepare('DELETE FROM blog_posts').run();
+  await env.DB.prepare('DELETE FROM projects').run();
+  const old = now - 30 * DAY;
+  const fresh = now - 2 * DAY;
+  await env.DB.prepare(
+    `INSERT INTO projects (id, slug, name, website_url, publishing_url, language, timezone, status, approval_mode, created_at, updated_at)
+     VALUES ('p_old','old','Old','https://x','https://s/old','vi','UTC','active','auto',?,?)`
+  ).bind(old, old).run();
+  await env.DB.prepare(
+    `INSERT INTO projects (id, slug, name, website_url, publishing_url, language, timezone, status, approval_mode, created_at, updated_at)
+     VALUES ('p_new','new','New','https://x','https://s/new','vi','UTC','active','auto',?,?)`
+  ).bind(fresh, fresh).run();
+  for (const [id, ts] of [
+    ['b1', old + 2 * DAY],    // week 1
+    ['b2', old + 9 * DAY],    // week 2
+    ['b3', old + 23 * DAY],   // week 4
+  ]) {
+    await env.DB.prepare(
+      `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+       VALUES (?, ?, 'T', 'D', '# B', 'published', 'p_old', ?, ?)`
+    ).bind(id, id, ts, ts).run();
+  }
+  await env.DB.prepare(
+    `INSERT INTO project_brands (project_id, business_type, created_at, updated_at) VALUES ('p_old','Plastic',?,?)`
+  ).bind(old, old).run();
+
+  const ins = await computeInsights(env);
+  assert.equal(ins.totals.projects, 2);
+  assert.equal(ins.totals.published_posts, 3);
+
+  const step = (k) => ins.funnel.find((f) => f.key === k);
+  assert.equal(step('signup').count, 2);
+  assert.equal(step('brand_dna').count, 1);
+  assert.equal(step('first_post').count, 1, 'only one project published');
+  assert.equal(step('week2').count, 1, 'only the old project published in week 2+');
+  assert.equal(step('week4').count, 1);
+  assert.equal(step('signup').pct, 100);
+  assert.equal(step('first_post').pct, 50);
+  ok('funnel counts and percentages are derived correctly');
+
+  // A step whose cohort is too young must be flagged, not reported as 0%.
+  // Reporting 0% would read as "everyone churned" and is the kind of number a
+  // product owner acts on wrongly.
+  assert.equal(ins.totals.oldest_project_age_days, 30);
+  assert.equal(step('week2').measurable, true, 'a 30-day-old project makes week 2 measurable');
+  assert.equal(step('week4').measurable, true, 'a 30-day-old project makes week 4 measurable');
+  assert.equal(step('week2').measurable_after_days, 14);
+  ok('funnel steps declare when they become measurable');
+
+  await env.DB.prepare("DELETE FROM projects WHERE id = 'p_old'").run();
+  const young = await computeInsights(env);
+  const yStep = (k) => young.funnel.find((f) => f.key === k);
+  assert.equal(young.totals.oldest_project_age_days, 2);
+  assert.equal(yStep('week2').measurable, false, 'a 2-day-old install cannot measure week 2');
+  assert.equal(yStep('week4').measurable, false);
+  assert.equal(yStep('first_post').measurable, undefined, 'steps that are always measurable carry no flag');
+  ok('young installs are marked not-measurable instead of 0%');
+
+  // Retention cohorts expose how many weeks have actually elapsed, so the UI
+  // can blank out weeks that have not happened.
+  const cohort = young.retention[0];
+  assert.ok(cohort.weeks_elapsed <= 1, 'a 2-day-old cohort has not completed a week');
+  ok('retention cohorts report elapsed weeks');
+
+  assert.equal(ins.time_to_first_post.n, 1);
+  assert.equal(ins.time_to_first_post.median_hours, 48, 'first post landed 2 days after creation');
+  assert.equal(ins.time_to_first_post.under_72h, 1);
+  ok('time-to-first-post is measured from project creation');
+
+  const oldCohort = ins.retention.find((c) => c.size === 1 && c.w2 > 0);
+  assert.ok(oldCohort, 'the old project must appear in a cohort');
+  assert.equal(oldCohort.w1_pct, 100, 'published in week 1');
+  assert.equal(oldCohort.w2_pct, 100, 'published in week 2');
+  assert.equal(oldCohort.w4_pct, 100, 'published in week 4');
+  ok('retention cohorts count activity by weeks since signup');
+
+  assert.ok(ins.weekly.length >= 1, 'weekly activity trend is populated');
+  assert.equal(ins.weekly.reduce((a, w) => a + w.posts, 0), 3, 'every post lands in exactly one week');
+  ok('weekly activity trend accounts for every post');
+
+  const oldRow = ins.projects.find((p) => p.slug === 'old');
+  const newRow = ins.projects.find((p) => p.slug === 'new');
+  assert.equal(oldRow.posts, 3);
+  assert.equal(oldRow.has_brand_dna, true);
+  assert.equal(newRow.posts, 0);
+  assert.equal(newRow.first_post_hours, null, 'a project with no post has no time-to-first-post');
+  assert.equal(newRow.healthy, false, 'a project that never published is not healthy');
+  ok('per-project health reports posts, brand DNA and recency');
+
+  assert.ok(ins.events.find((e) => e.event === 'signup'), 'event log is summarised');
+  ok('insights includes the event log summary');
+
+  // Endpoint is super_admin only.
+  const denied = await insights({ env, request: adminReq('https://x/api/admin/insights', { token: 'wrong-token' }) });
+  assert.equal(denied.status, 401, 'insights must reject a bad token');
+  const allowed = await insights({ env, request: adminReq('https://x/api/admin/insights') });
+  const allowedBody = await allowed.json();
+  assert.equal(allowed.status, 200);
+  assert.equal(allowedBody.ok, true);
+  assert.ok(Array.isArray(allowedBody.funnel));
+  ok('insights endpoint is super_admin only and returns the report');
+
+  const withoutProjects = await insights({ env, request: adminReq('https://x/api/admin/insights?projects=0') });
+  const wpBody = await withoutProjects.json();
+  assert.equal(wpBody.projects, undefined, '?projects=0 omits the per-project table');
+  ok('insights can omit the per-project table');
+
+  // isoWeek is the cohort key; check it against known dates.
+  assert.equal(isoWeek(Date.UTC(2026, 0, 1) / 1000), '2026-W01');
+  assert.equal(isoWeek(Date.UTC(2026, 8, 14) / 1000), '2026-W38');
+  ok('isoWeek produces ISO-8601 week labels');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
   await testCronRouting();
   await testAliasScoping();
   await testAttentionAndActivation();
+  await testEventsAndInsights();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

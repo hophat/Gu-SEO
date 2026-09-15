@@ -10,6 +10,7 @@ import { scorePost, statusForScore } from '../../../_lib/quality.js';
 import { getProject } from '../../../_lib/projects.js';
 import { enqueueSocialPost, drainSocialQueue } from '../../../_lib/publishing/social_queue.js';
 import { publicBaseFor } from '../../../_lib/project_scope.js';
+import { trackOnce } from '../../../_lib/events.js';
 
 export const onRequestPost = async ({ request, env, waitUntil }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -76,6 +77,9 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
     waitUntil(pingIndexNow(env, newUrls, request, blogHost).catch(() => {}));
     waitUntil(gscOnPublish(env, newUrls).catch(() => {}));
     waitUntil(syncSitemapAliases(env, job.project_id || null).catch(() => {}));
+    // Activation milestone — emitted once per project, since a repeat
+    // would make the funnel's activation rate meaningless.
+    waitUntil(trackOnce(env, { event: 'first_post_published', projectId: job.project_id, props: { slug: job.slug } }));
     waitUntil(storeEmbedding(env, job.slug, {
       title: job.title,
       body_markdown: job.body_markdown,

@@ -9,7 +9,8 @@
 // route just persists "did the operator finish it?".
 
 import { json, nowSec } from '../../_lib/util.js';
-import { adminGate } from '../../_lib/auth.js';
+import { adminGate, requireAdminAsync, resolveTenantContext } from '../../_lib/auth.js';
+import { track } from '../../_lib/events.js';
 import { loadSettings, setSetting } from '../../_lib/settings.js';
 import { listProviders } from '../../_lib/ai.js';
 
@@ -35,6 +36,9 @@ export const onRequestGet = async ({ env, request }) => {
 export const onRequestPost = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
   await setSetting(env, 'onboarding_complete', new Date().toISOString());
+  const auth = await requireAdminAsync(env, request);
+  const tenant = await resolveTenantContext(env, request, auth);
+  await track(env, { event: 'onboarding_complete', projectId: tenant?.activeProjectId || null });
   return json(200, { ok: true, marked_at: nowSec() });
 };
 

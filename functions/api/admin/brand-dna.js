@@ -20,6 +20,7 @@
 
 import { json, nowSec, audit } from '../../_lib/util.js';
 import { requireAdminAsync, resolveTenantContext } from '../../_lib/auth.js';
+import { track } from '../../_lib/events.js';
 import { scrapeUrl, scrapeToPromptInput } from '../../_lib/scrape.js';
 import { loadSettings, setSetting } from '../../_lib/settings.js';
 // recordUsage + estimateTokens imported below.
@@ -368,6 +369,7 @@ export const onRequestPost = async ({ env, request, waitUntil }) => {
     provider:         result.provider,
   };
   waitUntil(audit(env, 'admin', 'brand_dna_generate', null, { url: scrape.url, provider: result.provider, project_id: tenant.activeProjectId }));
+  waitUntil(track(env, { event: 'brand_dna_generated', projectId: tenant.activeProjectId, props: { provider: result.provider } }));
   return json(200, {
     ok: true,
     brand,

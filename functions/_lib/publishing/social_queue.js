@@ -18,6 +18,7 @@
 import { newId, nowSec } from '../util.js';
 import { getProject } from '../projects.js';
 import { dispatchPublication } from './publisher.js';
+import { track } from '../events.js';
 
 const BASE_DELAY_SEC = 60;
 const MAX_DELAY_SEC = 3600;
@@ -117,6 +118,7 @@ export async function runSocialJob(env, id, { dispatch = dispatchPublication } =
 
     if (res?.ok === false) throw new Error(res.error || 'dispatch_failed');
 
+    await track(env, { event: 'social_post_published', projectId: job.project_id, props: { channel: job.channel } });
     await finishJob(env, id, {
       status: 'published',
       external_id: res?.post_id || res?.postId || null,
@@ -133,6 +135,7 @@ export async function runSocialJob(env, id, { dispatch = dispatchPublication } =
 
     // A credential failure will never succeed on retry — park it and let
     // the UI ask for a reconnect.
+    await track(env, { event: 'social_post_failed', projectId: job.project_id, props: { channel: job.channel, credential, attempts } });
     if (credential) {
       await finishJob(env, id, {
         status: 'failed', error: String(err.message || err).slice(0, 500), needs_reconnect: 1,

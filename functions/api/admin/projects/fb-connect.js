@@ -5,6 +5,7 @@
 // Facebook" → approve → done.
 import { adminGate, requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 import { getAdminToken } from '../../../_lib/admin_token.js';
+import { track } from '../../../_lib/events.js';
 import {
   getAppId, getAppSecret, buildAuthUrl, fbRedirectUri, signState, getApiVersion,
 } from '../../../_lib/publishing/facebook_oauth.js';
@@ -26,6 +27,8 @@ export const onRequestGet = async ({ env, request }) => {
       detail: 'Nhập App ID và App Secret trước khi kết nối.',
     }), { status: 400, headers: { 'content-type': 'application/json' } });
   }
+
+  await track(env, { event: 'channel_connect_started', projectId: pid, props: { channel: 'facebook' } });
 
   const adminToken = await getAdminToken(env);
   const state = await signState(adminToken, pid);

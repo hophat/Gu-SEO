@@ -7,6 +7,63 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.12.0 — 2026-09-15
+
+Product analytics. Answers the questions that decide whether the product
+keeps its customers — where people drop off, how long activation takes, and
+whether projects that activated are still publishing weeks later.
+
+### Added
+- **Trang Tăng trưởng** (`/admin#insights`, super_admin) with:
+  - **Funnel kích hoạt** — đăng ký → Brand DNA → lịch → bài đầu tiên → kênh
+    MXH → còn hoạt động tuần 2 → tuần 4, with the **step-to-step drop**
+    shown alongside each bar. The cumulative percentage hides which step is
+    actually losing people; the drop between two steps is the number worth
+    acting on.
+  - **Thời gian tới bài đầu tiên** — median, p25, p75, and the share under
+    24h / 72h.
+  - **Retention theo tuần đăng ký** — cohorts by ISO signup week, % that
+    published in each of weeks 1-4, colour-coded as a heatmap.
+  - **Sản lượng theo tuần** — posts and active projects per week.
+  - **Sức khoẻ từng dự án** — posts, first-post latency, days since last
+    post, and which setup steps are done, sorted by output.
+- **`product_events` (migration 003)** — a narrow event log for the moments
+  that are NOT derivable: signup, setup complete, onboarding, Brand DNA
+  generated, calendar planned, first post published, channel
+  connect/connected/failed/disconnected, social post published/failed.
+  Unknown event names are rejected so a typo is a no-op rather than a junk
+  row, oversized props are dropped, and every write is fire-and-forget — a
+  failed insert must never fail the user action it describes.
+  `trackOnce` emits a milestone at most once per project, so
+  `first_post_published` cannot fire on every publish and skew the funnel.
+
+### Notes on the design
+Activation, retention and activity are **derived** from `projects.created_at`
+and `blog_posts.published_at`, not logged as events. That is deliberate:
+the numbers are retroactive (they exist for every project ever created,
+including ones from before any instrumentation), they cannot drift from what
+actually happened, and they cost nothing on the publish hot path. The event
+log exists only to explain a drop-off, not to measure it.
+
+### Fixed
+- **A cohort too young to have reached a step was reported as 0%.** With a
+  four-day-old install, "còn hoạt động tuần 2" showed 0% — which reads as
+  "everyone churned" when the truth is "not measurable yet`. Funnel steps
+  now carry `measurable` / `measurable_after_days` and the UI renders
+  "chưa đủ dữ liệu" with the reason; retention cohorts expose
+  `weeks_elapsed` so weeks that have not happened render as "—".
+
+### Added (tooling)
+- **Platform tests: 71 checks** (was 54). New coverage: event whitelist,
+  props bounding, `trackOnce` idempotency, track never throwing on DB
+  failure, funnel counts/percentages, measurability flags, time-to-first-post
+  percentiles, retention cohort maths, weekly trend accounting, per-project
+  health, `insights` being super_admin-only, and ISO week labels.
+
+### Notes for operators
+- `npm run migrate` to create `product_events` (migration 003). Existing
+  data is untouched; the derived metrics work immediately and retroactively.
+
 ## 1.11.0 — 2026-09-15
 
 Activation release. Adds the two things an operator needs once setup is

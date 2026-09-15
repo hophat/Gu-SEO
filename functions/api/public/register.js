@@ -6,6 +6,7 @@
 import { json, newId, nowSec, audit, slugify } from '../../_lib/util.js';
 import { hashPassword, newSessionId, signSession, buildSessionCookie, sessionExpirySec } from '../../_lib/passwords.js';
 import { getAdminToken } from '../../_lib/admin_token.js';
+import { track } from '../../_lib/events.js';
 
 const MIN_PW = 8;
 const MAX_PW = 256;
@@ -166,6 +167,8 @@ export const onRequestPost = async ({ env, request }) => {
   ).run();
 
   audit(env, 'user', 'register_free', userId, { email, project_id: projectId, plan: 'free', post_limit: 100 });
+  // Funnel entry point. Fire-and-forget: a failed insert must not fail a signup.
+  await track(env, { event: 'signup', projectId, userId, props: { plan: 'free' } });
 
   // 7. Auto login: create session cookie
   const adminToken = await getAdminToken(env);

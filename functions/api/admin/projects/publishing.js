@@ -18,6 +18,7 @@
 import { json, audit } from '../../../_lib/util.js';
 import { adminGate, requireAdminAsync, requireSuperAdmin, resolveTenantContext } from '../../../_lib/auth.js';
 import { setVaultSecret, getVaultSecret } from '../../../_lib/secret_vault.js';
+import { track } from '../../../_lib/events.js';
 import {
   facebookTokenName, resolveFacebookToken, parseFacebookConfig, verifyFacebookPage,
 } from '../../../_lib/publishing/facebook.js';
@@ -169,6 +170,7 @@ export const onRequestPost = async ({ env, request }) => {
     ).bind(pid, JSON.stringify({ page_id: chosen.id, page_name: chosen.name }), t, t).run();
     await clearPendingPages(env, pid);
     audit(env, 'admin', 'fb_select_page', pid, { page_id: chosen.id });
+    await track(env, { event: 'channel_connected', projectId: pid, props: { channel: 'facebook', page: chosen.name } });
     return json(200, { ok: true, page: { id: chosen.id, name: chosen.name } });
   }
 
@@ -183,6 +185,7 @@ export const onRequestPost = async ({ env, request }) => {
          publisher_type = 'internal_d1', config_json = '{}', updated_at = excluded.updated_at`
     ).bind(pid, t, t).run();
     audit(env, 'admin', 'fb_disconnect', pid, {});
+    await track(env, { event: 'channel_disconnected', projectId: pid, props: { channel: 'facebook' } });
     return json(200, { ok: true });
   }
 
