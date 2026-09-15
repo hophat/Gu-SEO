@@ -48,3 +48,44 @@ export function emailPolicyError(value) {
   }
   return null;
 }
+
+// ── canonical form, for DUPLICATE CHECKING ONLY ─────────────────────
+//
+// Gmail ignores dots in the local part and treats `+tag` as a subaddress, so
+// `g.u.l.a.g.i@gmail.com`, `gulagi+shop@gmail.com` and `gulagi@gmail.com` are
+// all one mailbox. Storing a collapsed form lets the "email already exists"
+// check see that, without rejecting anyone who legitimately uses dots.
+//
+// TWO RULES THAT MATTER:
+//
+//   1. This is a comparison key, never an address. It is never mailed to and
+//      never shown. Collapsing is lossy — `g.u.l.a.g.i@gmail.com` cannot be
+//      recovered from `gulagi@gmail.com` — so the real address stays in
+//      `users.email` and is what everything else uses.
+//
+//   2. Only Google domains are collapsed. Outlook, Fastmail and most others
+//      treat dots as significant, so `a.b@outlook.com` really is a different
+//      mailbox from `ab@outlook.com`. Applying Gmail's rule to them would
+//      merge two people's accounts, which is far worse than missing a
+//      duplicate.
+//
+// Known gap: a Google Workspace domain (`you@yourcompany.com` hosted on
+// Google) also ignores dots, but nothing in the address says it is Google —
+// that needs an MX lookup, which is not worth a network round-trip on the
+// sign-up path.
+
+const GOOGLE_DOMAINS = new Set(['gmail.com', 'googlemail.com']);
+
+export function canonicalEmail(value) {
+  const email = normalizeEmail(value);
+  const at = email.lastIndexOf('@');
+  if (at < 1) return email;
+
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  if (!GOOGLE_DOMAINS.has(domain)) return email;
+
+  // googlemail.com and gmail.com are the same mailbox, so collapse the domain
+  // too — otherwise the same person could register twice by switching domains.
+  return `${local.split('+')[0].replace(/\./g, '')}@gmail.com`;
+}

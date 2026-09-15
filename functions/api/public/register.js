@@ -4,7 +4,7 @@
 // - Creates a brand new project, brand profile, schedule, and publishing config
 // - Sets session cookie and logs user in immediately
 import { json, newId, nowSec, audit, slugify } from '../../_lib/util.js';
-import { normalizeEmail, emailPolicyError } from '../../_lib/email_rules.js';
+import { normalizeEmail, canonicalEmail, emailPolicyError } from '../../_lib/email_rules.js';
 import { hashPassword, newSessionId, signSession, buildSessionCookie, sessionExpirySec } from '../../_lib/passwords.js';
 import { getAdminToken } from '../../_lib/admin_token.js';
 import { track } from '../../_lib/events.js';
@@ -42,11 +42,22 @@ export const onRequestPost = async ({ env, request }) => {
     return json(400, { error: 'otp_required', detail: 'Vui lòng nhập mã xác thực OTP 6 số đã được gửi qua email.' });
   }
 
-  // Check unique email
-  const existing = await env.DB.prepare(
-    'SELECT id FROM users WHERE email = ? LIMIT 1'
-  ).bind(email).first().catch(() => null);
-  if (existing) {
+  // Check mailbox uniqueness, not just string uniqueness. Gmail ignores dots
+  // in the local part; email_canonical collapses those aliases. Falls back to
+  // the exact address when migration 005 has not been applied yet, so a
+  // missing column can never silently pass the check.
+  const canonical = canonicalEmail(email);
+  let taken = false;
+  try {
+    taken = !!(await env.DB.prepare(
+      'SELECT id FROM users WHERE email = ? OR email_canonical = ? LIMIT 1'
+    ).bind(email, canonical).first());
+  } catch {
+    taken = !!(await env.DB.prepare(
+      'SELECT id FROM users WHERE email = ? LIMIT 1'
+    ).bind(email).first().catch(() => null));
+  }
+  if (taken) {
     return json(409, { error: 'email_already_exists', detail: 'Email này đã được đăng ký tài khoản.' });
   }
 
@@ -152,18 +163,36 @@ export const onRequestPost = async ({ env, request }) => {
   ).bind(projectId, t, t).run();
 
   // 6. Insert User with role='project_admin', plan_tier='free', post_limit=100
-  await env.DB.prepare(
-    `INSERT INTO users (
-      id, email, password_hash, password_salt, created_at, role, project_id, plan_tier, post_limit
-    ) VALUES (?, ?, ?, ?, ?, 'project_admin', ?, 'free', 100)`
-  ).bind(
-    userId,
-    email,
-    creds.hash,
-    creds.salt,
-    t,
-    projectId
-  ).run();
+  // Two concurrent sign-ups with dot-aliases can both pass the check above;
+  // the UNIQUE index on email_canonical is the backstop, mapped to 409.
+  try {
+    await env.DB.prepare(
+      `INSERT INTO users (
+        id, email, email_canonical, password_hash, password_salt, created_at, role, project_id, plan_tier, post_limit
+      ) VALUES (?, ?, ?, ?, ?, ?, 'project_admin', ?, 'free', 100)`
+    ).bind(
+      userId,
+      email,
+      canonical,
+      creds.hash,
+      creds.salt,
+      t,
+      projectId
+    ).run();
+  } catch (e) {
+    const msg = String(e?.message || e || '');
+    if (/no such column/i.test(msg)) {
+      await env.DB.prepare(
+        `INSERT INTO users (
+          id, email, password_hash, password_salt, created_at, role, project_id, plan_tier, post_limit
+        ) VALUES (?, ?, ?, ?, ?, 'project_admin', ?, 'free', 100)`
+      ).bind(userId, email, creds.hash, creds.salt, t, projectId).run();
+    } else if (/UNIQUE|unique|email_already_exists/i.test(msg)) {
+      return json(409, { error: 'email_already_exists', detail: 'Email này đã được đăng ký tài khoản.' });
+    } else {
+      throw e;
+    }
+  }
 
   audit(env, 'user', 'register_free', userId, { email, project_id: projectId, plan: 'free', post_limit: 100 });
   // Funnel entry point. Fire-and-forget: a failed insert must not fail a signup.

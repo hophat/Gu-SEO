@@ -7,6 +7,35 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.18.0 — 2026-09-15
+
+Chặn farm tài khoản bằng biến thể dot của Gmail + chống spam OTP.
+
+### Added
+- **Phát hiện trùng mailbox, không chỉ trùng chuỗi email.** Gmail bỏ qua dấu
+  chấm (`g.u.l.a.g.i@gmail.com` = `gulagi@gmail.com`) nên check
+  `email_already_exists` cũ so sánh chuỗi là lọt. Cột mới
+  `users.email_canonical` lưu dạng gộp (chỉ Gmail/googlemail — Outlook và các
+  nhà khác giữ nguyên vì dấu chấm ở đó là thật), check ở cả 3 cửa: gửi OTP,
+  đăng ký, admin tạo user. `users.email` vẫn là địa chỉ thật để gửi mail.
+- **Migration 005 + endpoint recanonicalize.** Backfill an toàn (`lower(email)`
+  trong SQL, phần gộp dot chạy bằng đúng hàm JS của app qua
+  `POST /api/admin/users/recanonicalize`, super_admin only). Endpoint báo cáo
+  các mailbox bị trùng sau khi gộp để operator xử lý tay — không tự xóa.
+- **Chống spam/farm OTP ở `send-otp`:** cooldown 60s mỗi email
+  (`429 otp_cooldown`) và tối đa 10 OTP/giờ mỗi IP (`429 otp_rate_limited`,
+  tái dùng bảng `login_attempts`, không cần migration mới).
+- **Check song song không lọt:** UNIQUE index trên `email_canonical` là chốt
+  chặn cuối, lỗi race trả 409 thân thiện thay vì 500. Mọi query đều fallback
+  về exact-email khi DB chưa chạy migration 005 — cột thiếu không bao giờ
+  cho qua lén.
+
+### Notes for operators
+- Sau deploy, gọi một lần `POST /api/admin/users/recanonicalize` để gộp các
+  row Gmail cũ và xem báo cáo `duplicates`.
+- Verify trên production: `g.u.l.a.g.i@gmail.com` khi `gulagi@gmail.com` đã
+  tồn tại → 409 `email_already_exists`; spam OTP 2 lần trong 60s → 429.
+
 ## 1.17.0 — 2026-09-15
 
 Chặn đăng ký bằng địa chỉ dạng tên+phụ (plus-addressing).

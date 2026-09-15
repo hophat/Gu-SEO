@@ -23,6 +23,7 @@
 
 import { json, nowSec, newId } from '../_lib/util.js';
 import { hashPassword } from '../_lib/passwords.js';
+import { canonicalEmail } from '../_lib/email_rules.js';
 import { setSetting, loadSettings } from '../_lib/settings.js';
 import { runMigrations } from '../_lib/migrations.js';
 
@@ -167,9 +168,9 @@ export const onRequestPost = async ({ env, request }) => {
   const id = newId();
   const t = nowSec();
   await env.DB.prepare(
-    `INSERT INTO users (id, email, password_hash, password_salt, created_at)
-     VALUES (?, ?, ?, ?, ?)`
-  ).bind(id, email, creds.hash, creds.salt, t).run();
+    `INSERT INTO users (id, email, email_canonical, password_hash, password_salt, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(id, email, canonicalEmail(email), creds.hash, creds.salt, t).run();
 
   // 6. Mark setup as done — even though the user-count check above
   //    already prevents a second run, this gives the admin UI an

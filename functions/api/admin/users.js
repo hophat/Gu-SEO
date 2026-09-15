@@ -7,7 +7,7 @@
 // POST with the bearer ADMIN_TOKEN — that's the only path open before any
 // user exists.
 import { json, newId, nowSec, audit } from '../../_lib/util.js';
-import { normalizeEmail, emailPolicyError } from '../../_lib/email_rules.js';
+import { normalizeEmail, canonicalEmail, emailPolicyError } from '../../_lib/email_rules.js';
 import { requireSuperAdmin } from '../../_lib/auth.js';
 import { hashPassword } from '../../_lib/passwords.js';
 
@@ -60,12 +60,21 @@ export const onRequestPost = async ({ env, request }) => {
     return json(400, { error: 'unknown_project' });
   }
 
-  // Unique-email check (the table has UNIQUE constraint too, but a
-  // friendly 409 beats a SQL error).
-  const existing = await env.DB.prepare(
-    `SELECT id FROM users WHERE email = ? LIMIT 1`
-  ).bind(email).first().catch(() => null);
-  if (existing) return json(409, { error: 'email_already_exists' });
+  // Mailbox-level uniqueness. The table's UNIQUE(email) cannot catch Gmail's
+  // dot aliases, so compare the canonical key too. Falls back to the exact
+  // address when migration 005 has not been applied yet.
+  const canonical = canonicalEmail(email);
+  let taken = false;
+  try {
+    taken = !!(await env.DB.prepare(
+      `SELECT id FROM users WHERE email = ? OR email_canonical = ? LIMIT 1`
+    ).bind(email, canonical).first());
+  } catch {
+    taken = !!(await env.DB.prepare(
+      `SELECT id FROM users WHERE email = ? LIMIT 1`
+    ).bind(email).first().catch(() => null));
+  }
+  if (taken) return json(409, { error: 'email_already_exists' });
 
   let creds;
   try { creds = await hashPassword(password); }
@@ -73,10 +82,24 @@ export const onRequestPost = async ({ env, request }) => {
 
   const id = newId();
   const t = nowSec();
-  await env.DB.prepare(
-    `INSERT INTO users (id, email, password_hash, password_salt, created_at, role, project_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).bind(id, email, creds.hash, creds.salt, t, role, projectId).run();
+  try {
+    await env.DB.prepare(
+      `INSERT INTO users (id, email, email_canonical, password_hash, password_salt, created_at, role, project_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, email, canonical, creds.hash, creds.salt, t, role, projectId).run();
+  } catch (e) {
+    const msg = String(e?.message || e || '');
+    if (/no such column/i.test(msg)) {
+      await env.DB.prepare(
+        `INSERT INTO users (id, email, password_hash, password_salt, created_at, role, project_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).bind(id, email, creds.hash, creds.salt, t, role, projectId).run();
+    } else if (/UNIQUE|unique|email_already_exists/i.test(msg)) {
+      return json(409, { error: 'email_already_exists' });
+    } else {
+      throw e;
+    }
+  }
 
   audit(env, 'admin', 'user_create', id, { email, role, project_id: projectId });
   return json(200, { ok: true, id, email, role, project_id: projectId });
