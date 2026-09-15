@@ -7,6 +7,44 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.15.0 — 2026-09-15
+
+Cấu hình AI provider trở thành quyền của super_admin, và bỏ hẳn khỏi trình
+thiết lập.
+
+### Changed
+- **Bỏ bước "AI Provider" khỏi trình thiết lập.** Wizard còn 3 bước:
+  Thương hiệu → Brand DNA → Lịch nội dung. Cả bản React (`/admin`) và bản cũ
+  (`/admin-old`) đều bỏ.
+  Lý do: khoá provider là **cấu hình nền tảng** — một deployment có một bộ khoá
+  dùng chung cho mọi dự án. Tenant dán khoá riêng vào đây sẽ ghi đè khoá của
+  toàn bộ deployment, hoặc bị bỏ qua. Không có trường hợp nào đúng.
+
+### Security
+- **`/api/admin/secrets` giờ yêu cầu super_admin cho cả GET, POST và DELETE.**
+  Trước đây chỉ có `adminGate`, nghĩa là **bất kỳ project_admin nào cũng đọc
+  và ghi được khoá provider của nền tảng**. Ghi thì phá mọi tenant khác; đọc
+  thì lộ nền tảng đang chạy provider nào.
+- **`/api/admin/providers` (GET) và `/api/admin/providers/test` (POST) cũng
+  vậy.** `providers/test` đặc biệt quan trọng: mỗi lần gọi là một request
+  **có tính tiền** tới provider, nên tenant không được phép tiêu credit của
+  nền tảng.
+- Bearer `ADMIN_TOKEN` vẫn tương đương super_admin (đúng như thiết kế — đó là
+  credential bootstrap/recovery).
+
+### Added (tooling)
+- **Platform tests: 112 checks** (was 105). Test lockdown dùng **session thật**
+  (user row + session row + cookie đã ký) chứ không dùng bearer — bearer bỏ qua
+  kiểm tra role theo thiết kế, nên test bằng bearer sẽ không chứng minh được gì.
+  Kiểm tra: tenant không ghi/đọc được khoá, không list được provider, không
+  chạy được test tính tiền, super_admin vẫn vào được, và cả hai wizard đều
+  không còn bước provider.
+
+### Notes for operators
+- Không cần migrate. Chỉ cần deploy.
+- Nếu bạn đăng nhập bằng tài khoản có `role` trống, tài khoản đó được coi là
+  super_admin (giữ tương thích ngược với các tài khoản tạo trước khi có cột
+  `role`).
 ## 1.14.3 — 2026-09-15
 
 Brand DNA giờ tuân theo provider mặc định do người vận hành đặt.

@@ -33,6 +33,10 @@ import {
 } from '../functions/api/admin/onboarding.js';
 import { onRequestPost as register } from '../functions/api/public/register.js';
 import { onRequestPatch as profilePatch } from '../functions/api/admin/projects/profile.js';
+import { onRequestGet as secretsRead, onRequestPost as secretsWrite } from '../functions/api/admin/secrets.js';
+import { onRequestGet as providersList } from '../functions/api/admin/providers.js';
+import { onRequestPost as providersTest } from '../functions/api/admin/providers/test.js';
+import { signSession } from '../functions/_lib/passwords.js';
 import { renderBlogIndex } from '../functions/blog/index.js';
 import { onRequestGet as renderFeed } from '../functions/feed.xml.js';
 import { loadSettings, setSetting } from '../functions/_lib/settings.js';
@@ -1289,8 +1293,108 @@ async function testProviderDispatch() {
   ok('the default provider setting is honoured by both entry points');
 }
 
+// ── L. provider config is super_admin only ──────────────────────────
+// Provider keys are platform configuration: one deployment, one set of keys,
+// shared by every project. A tenant writing here would overwrite them for
+// everyone, and reading tells them what the platform runs on. The setup wizard
+// no longer asks tenants for keys for the same reason.
+async function testProviderConfigLockdown() {
+  console.log('\nL. Provider config lockdown');
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+
+  // A tenant admin: real user row, real session, real signed cookie. Bearer
+  // tokens bypass the role check by design (bootstrap credential), so the
+  // test must use a session or it would prove nothing.
+  await env.DB.prepare(
+    `INSERT INTO users (id, email, password_hash, password_salt, role, project_id, created_at)
+     VALUES ('u_tenant', 'tenant@example.com', 'x', 'y', 'project_admin', ?, ?)`
+  ).bind(PROJECT, t).run();
+  await env.DB.prepare(
+    `INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES ('11111111111111111111111111111111', 'u_tenant', ?, ?)`
+  ).bind(t + 86400, t).run();
+  const cookie = await signSession('11111111111111111111111111111111', 'test-admin-token-123');
+  const tenantReq = (url, body) => {
+    const headers = new Map([['Cookie', `ps_session=${cookie}`]]);
+    const req = { url, headers, clone() { return req; }, json: async () => body || {} };
+    return {
+      ...req,
+      headers: {
+        get: (h) => {
+          for (const [k, v] of headers.entries()) if (k.toLowerCase() === h.toLowerCase()) return v;
+          return null;
+        },
+      },
+    };
+  };
+
+  const secretsPost = await secretsWrite({
+    env, request: tenantReq('https://x/api/admin/secrets', { name: 'OPENAI_API_KEY', value: 'sk-test' }),
+  });
+  assert.equal(secretsPost.status, 403, 'a tenant must not be able to write provider keys');
+  const stored = await env.__get("SELECT 1 AS x FROM secrets_vault WHERE key_name='OPENAI_API_KEY'");
+  assert.equal(stored, null, 'the write must not have landed');
+  ok('a tenant cannot write provider keys');
+
+  const secretsGet = await secretsRead({ env, request: tenantReq('https://x/api/admin/secrets') });
+  assert.equal(secretsGet.status, 403, 'a tenant must not be able to read provider config');
+  ok('a tenant cannot read provider config');
+
+  const providersGet = await providersList({ env, request: tenantReq('https://x/api/admin/providers') });
+  assert.equal(providersGet.status, 403, 'a tenant must not list configured providers');
+  ok('a tenant cannot list configured providers');
+
+  // The test endpoint makes real, billable calls — a tenant must not be able
+  // to spend the platform's credits.
+  const providerTest = await providersTest({ env, request: tenantReq('https://x/api/admin/providers/test', {}) });
+  assert.equal(providerTest.status, 403, 'a tenant must not be able to spend provider credits');
+  ok('a tenant cannot run billable provider tests');
+
+  // A super_admin session still works, so the gate is not simply "deny all".
+  await env.DB.prepare(
+    `INSERT INTO users (id, email, password_hash, password_salt, role, created_at)
+     VALUES ('u_super', 'super@example.com', 'x', 'y', 'super_admin', ?)`
+  ).bind(t).run();
+  await env.DB.prepare(
+    `INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES ('22222222222222222222222222222222', 'u_super', ?, ?)`
+  ).bind(t + 86400, t).run();
+  const superCookie = await signSession('22222222222222222222222222222222', 'test-admin-token-123');
+  const superReq = (url, body) => {
+    const headers = new Map([['Cookie', `ps_session=${superCookie}`]]);
+    const req = { url, headers, clone() { return req; }, json: async () => body || {} };
+    return {
+      ...req,
+      headers: {
+        get: (h) => {
+          for (const [k, v] of headers.entries()) if (k.toLowerCase() === h.toLowerCase()) return v;
+          return null;
+        },
+      },
+    };
+  };
+  const superGet = await secretsRead({ env, request: superReq('https://x/api/admin/secrets') });
+  assert.equal(superGet.status, 200, 'a super_admin session must still be able to read provider config');
+  ok('a super_admin session still has access');
+
+  // And the wizard must not ask tenants for keys at all.
+  const wizardSrc = readFileSync(join(ROOT, 'src', 'admin', 'components', 'SetupWizard.jsx'), 'utf8');
+  assert.doesNotMatch(wizardSrc, /api\/admin\/secrets/, 'the wizard must not touch provider keys');
+  assert.doesNotMatch(wizardSrc, /AI Provider/, 'the wizard must not have a provider step');
+  const stepsMatch = wizardSrc.match(/const steps = \[([\s\S]*?)\];/)?.[1] || '';
+  assert.equal((stepsMatch.match(/title:/g) || []).length, 3, 'the wizard is three steps');
+  ok('the setup wizard has no provider step');
+
+  // The legacy wizard too — /admin-old is still reachable.
+  const legacyHtml = readFileSync(join(ROOT, 'public', 'admin-old.html'), 'utf8');
+  assert.doesNotMatch(legacyHtml, /Nhà cung cấp<\/b>/, 'the legacy stepper must not list a provider step');
+  assert.doesNotMatch(legacyHtml, /data-pane="4"/, 'the legacy wizard must not have a 4th pane');
+  const legacyJs = readFileSync(join(ROOT, 'public', 'admin.js'), 'utf8');
+  assert.doesNotMatch(legacyJs, /gotoProviders|renderProviders/, 'the legacy provider pane is gone');
+  ok('the legacy wizard has no provider step either');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -1302,6 +1406,7 @@ async function main() {
   await testRegistrationAndProfile();
   await testRequestCost();
   await testProviderDispatch();
+  await testProviderConfigLockdown();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

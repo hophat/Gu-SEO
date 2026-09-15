@@ -1,0 +1,24 @@
+feat: v1.15.0 — AI provider config is super_admin only, removed from setup
+
+Provider keys are platform configuration: one deployment has one set of keys
+shared by every project. A tenant pasting their own into the wizard would
+either overwrite the deployment's keys for everyone else or be silently
+ignored — neither is correct, so the step is gone. The wizard is now three
+steps: brand identity, Brand DNA, calendar. Both /admin and /admin-old.
+
+The API was worse than the wizard: /api/admin/secrets only had adminGate, so
+ANY project_admin could read and write the platform's provider keys. Writing
+breaks every other tenant; reading leaks which providers the platform runs on.
+It now requires super_admin on GET, POST and DELETE.
+
+Same for /api/admin/providers and /api/admin/providers/test. The latter matters
+most: each call is a real billable request to a provider, so a tenant must not
+be able to spend the platform's credits from it.
+
+The lockdown test uses a real session (user row + session row + signed cookie)
+rather than a bearer token, because bearer deliberately bypasses the role check
+and would have proved nothing.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

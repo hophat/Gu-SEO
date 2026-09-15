@@ -9,9 +9,17 @@
 //                                     Encrypts + stores. value="" deletes.
 //   DELETE /api/admin/secrets?name=X Removes one row.
 //
+// super_admin only, on every method.
+//
+// Provider keys are PLATFORM configuration: one deployment has one set shared
+// by every project. A project_admin writing here would overwrite the keys for
+// every other tenant on the deployment, and reading here leaks which providers
+// the platform has configured. The setup wizard no longer asks tenants for
+// keys for the same reason.
+//
 // Allowed names are restricted to a known set — no arbitrary keys.
 import { json, audit } from '../../_lib/util.js';
-import { adminGate } from '../../_lib/auth.js';
+import { requireSuperAdmin } from '../../_lib/auth.js';
 import { setVaultSecret, describeKeys } from '../../_lib/secret_vault.js';
 
 // The same list as PROVIDER_SECRET_NAMES in ai.js — keep them in sync.
@@ -36,7 +44,7 @@ const MAX_LEN = 512;
 import { getVaultSecret } from '../../_lib/secret_vault.js';
 
 export const onRequestGet = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const gate = await requireSuperAdmin(env, request); if (gate.error) return gate.error;
   const status = await describeKeys(env, ALLOWED);
   const values = {};
   // For non-sensitive model names, return current effective value so the UI select displays correctly
@@ -50,7 +58,7 @@ export const onRequestGet = async ({ env, request }) => {
 };
 
 export const onRequestPost = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const gate = await requireSuperAdmin(env, request); if (gate.error) return gate.error;
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
 
@@ -74,7 +82,7 @@ export const onRequestPost = async ({ env, request }) => {
 };
 
 export const onRequestDelete = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const gate = await requireSuperAdmin(env, request); if (gate.error) return gate.error;
   const url = new URL(request.url);
   const name = String(url.searchParams.get('name') || '').trim().toUpperCase();
   if (!ALLOWED.includes(name)) return json(400, { error: 'unknown_key', allowed: ALLOWED });

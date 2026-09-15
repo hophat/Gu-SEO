@@ -1,27 +1,23 @@
-// SetupWizard — guided onboarding: Brand DNA → Providers → Calendar plan.
-// Reuses /api/admin/brand-dna, /api/admin/secrets, /api/admin/calendar/plan, /api/admin/onboarding.
+// SetupWizard — guided onboarding: brand identity → Brand DNA → calendar plan.
+//
+// Deliberately NO AI provider step. Provider keys are platform configuration:
+// one deployment has one set of keys shared by every project, so letting each
+// tenant paste their own would either be ignored or overwrite the platform's.
+// Only a super_admin configures them, in Settings.
+//
+// Reuses /api/admin/brand-dna, /api/admin/calendar/plan, /api/admin/onboarding,
+// /api/admin/projects/profile.
 import { useState, useEffect, useCallback } from 'react';
 import { Modal, Steps, Button, Form, Input, Alert, Spin, Card, Tag, Space, Typography, message, Row, Col, List } from 'antd';
 import {
-  RocketOutlined, GlobalOutlined, GiftOutlined, CloudOutlined, CalendarOutlined,
+  RocketOutlined, GlobalOutlined, GiftOutlined, CalendarOutlined,
   CheckCircleOutlined, LoadingOutlined, ArrowRightOutlined, ArrowLeftOutlined,
 } from '@ant-design/icons';
 import { apiGet, apiPost, api } from '../api.js';
 
-const { Text, Paragraph, Title } = Typography;
+const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-const PROVIDERS = [
-  { label: 'GuRouter (AI Gateway)', envKey: 'GUROUTER_API_KEY' },
-  { label: 'OpenAI',           envKey: 'OPENAI_API_KEY' },
-  { label: 'Anthropic Claude', envKey: 'ANTHROPIC_API_KEY' },
-  { label: 'Google Gemini',    envKey: 'GEMINI_API_KEY' },
-  { label: 'Groq',             envKey: 'GROQ_API_KEY' },
-  { label: 'DeepSeek',         envKey: 'DEEPSEEK_API_KEY' },
-  { label: 'Mistral',          envKey: 'MISTRAL_API_KEY' },
-  { label: 'Together',         envKey: 'TOGETHER_API_KEY' },
-  { label: 'Cerebras',         envKey: 'CEREBRAS_API_KEY' },
-];
 
 const MONTHS_SHORT = ['Thg 1','Thg 2','Thg 3','Thg 4','Thg 5','Thg 6','Thg 7','Thg 8','Thg 9','Thg 10','Thg 11','Thg 12'];
 
@@ -77,10 +73,6 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
     business_type: '', voice_tone: '', target_audience: '',
     key_themes: '', service_area: '', topics_to_avoid: '',
   });
-
-  // Step 3: Provider keys
-  const [providerKeys, setProviderKeys] = useState({});
-  const [configuredProviders, setConfiguredProviders] = useState(new Set());
 
   // Step 4: Calendar plan
   const [planSlots, setPlanSlots] = useState([]);
@@ -189,27 +181,20 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
     setLoading(false);
     if (status !== 200) { setError(body?.error || 'Lưu thất bại'); return; }
 
-    // Load provider status
-    const secretsR = await apiGet('/api/admin/secrets');
-    const keys = secretsR.body?.keys || {};
-    const configured = new Set(
-      Object.entries(keys).filter(([, v]) => v && v !== 'unset').map(([k]) => k)
-    );
-    setConfiguredProviders(configured);
+    // Straight to the calendar. The provider step that used to sit here was
+    // removed — provider keys are super_admin territory.
     setStep(2);
   };
 
-  // Step 3 → 4: Save provider keys, plan calendar
-  const saveProvidersAndPlan = async () => {
+  // Step 2 → 3: plan the calendar.
+  //
+  // This used to also write provider keys. It no longer does: provider keys are
+  // platform configuration owned by a super_admin, and a tenant pasting their
+  // own here would overwrite the deployment's shared keys for every other
+  // project.
+  const planCalendar = async () => {
     setError(null);
     setLoading(true);
-    // Save any entered keys
-    for (const [key, val] of Object.entries(providerKeys)) {
-      if (val && val.trim()) {
-        await apiPost('/api/admin/secrets', { name: key, value: val.trim() }).catch(() => {});
-      }
-    }
-    // Plan calendar
     const { status, body } = await api('/api/admin/calendar/plan', {
       method: 'POST',
       body: JSON.stringify({ days: 28, replace: false }),
@@ -217,7 +202,7 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
     setLoading(false);
     if (status !== 200) { setError(body?.detail || body?.error || 'Lên lịch thất bại'); return; }
     setPlanSlots(body.slots || []);
-    setStep(3);
+    setStep(2);
   };
 
   // Complete. The API validates that the required steps are actually done, so
@@ -242,7 +227,6 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
     setError(null);
     setBrand(null);
     setPlanSlots([]);
-    setProviderKeys({});
     setManualMode(false);
   };
 
@@ -255,9 +239,8 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
   };
 
   const steps = [
-    { title: 'Website', icon: <GlobalOutlined /> },
+    { title: 'Thương hiệu', icon: <GlobalOutlined /> },
     { title: 'Brand DNA', icon: <GiftOutlined /> },
-    { title: 'AI Provider', icon: <CloudOutlined /> },
     { title: 'Lịch nội dung', icon: <CalendarOutlined /> },
   ];
 
@@ -409,58 +392,8 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
         </div>
       )}
 
-      {/* Step 2: Provider keys */}
+      {/* Step 2: Calendar plan preview */}
       {step === 2 && (
-        <div>
-          <Card size="small" style={{ marginBottom: 16, background: '#f6ffed', border: '1px solid #b7eb8f' }}>
-            <Space>
-              <CheckCircleOutlined style={{ color: '#52c41a' }} />
-              <Text strong>Cloudflare Workers AI</Text>
-              <Tag color="success">Tích hợp sẵn</Tag>
-            </Space>
-            <br />
-            <Text type="secondary" style={{ fontSize: 12 }}>Llama 3.3 70B cho văn bản · Flux 1 schnell cho hình ảnh. Không cần API key.</Text>
-          </Card>
-
-          <Paragraph>
-            <Text type="secondary">Thêm API key (tùy chọn) để dùng model cao cấp hơn:</Text>
-          </Paragraph>
-
-          <Row gutter={[12, 12]}>
-            {PROVIDERS.map((p) => {
-              const isSet = configuredProviders.has(p.envKey);
-              return (
-                <Col span={12} key={p.envKey}>
-                  <Card size="small">
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      <Space>
-                        <Text strong style={{ fontSize: 13 }}>{p.label}</Text>
-                        {isSet && <Tag color="success" style={{ fontSize: 10 }}>Đã lưu</Tag>}
-                      </Space>
-                      <Input.Password
-                        size="small"
-                        placeholder={isSet ? '•••••••• (đã lưu)' : 'Dán API key'}
-                        value={providerKeys[p.envKey] || ''}
-                        onChange={(e) => setProviderKeys({ ...providerKeys, [p.envKey]: e.target.value })}
-                      />
-                    </Space>
-                  </Card>
-                </Col>
-              );
-            })}
-          </Row>
-
-          <div style={{ textAlign: 'right', marginTop: 16 }}>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => setStep(1)} style={{ marginRight: 8 }}>Quay lại</Button>
-            <Button type="primary" icon={<ArrowRightOutlined />} onClick={saveProvidersAndPlan} loading={loading}>
-              Tiếp tục → Lên lịch
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Calendar plan preview */}
-      {step === 3 && (
         <div>
           {loading ? (
             <div style={{ textAlign: 'center', padding: 40 }}>

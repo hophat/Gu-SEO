@@ -4,6 +4,9 @@
 // operator can verify their keys work without waiting for the next
 // blog cron run to either succeed or fail.
 //
+// super_admin only: each ping is a real, billable call to the provider, so a
+// tenant must not be able to spend the platform's credits from here.
+//
 // Body (optional): { name: 'openai' }
 //   When omitted, every text provider with a configured key/binding
 //   gets pinged. Workers AI is always present, so the list will
@@ -19,11 +22,11 @@
 //     ]
 //   }
 import { json, audit } from '../../../_lib/util.js';
-import { adminGate } from '../../../_lib/auth.js';
+import { requireSuperAdmin } from '../../../_lib/auth.js';
 import { listProviders, pingTextProvider } from '../../../_lib/ai.js';
 
 export const onRequestPost = async ({ env, request }) => {
-  const gate = await adminGate(env, request); if (gate) return gate;
+  const gate = await requireSuperAdmin(env, request); if (gate.error) return gate.error;
   let body = {};
   try { body = await request.json(); } catch { /* allow empty body */ }
   const wanted = String(body?.name || '').trim();

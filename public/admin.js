@@ -4770,11 +4770,13 @@
   // First-login guided setup. Walks new operators through:
   //   1. Welcome + paste your site URL
   //   2. Generate + review Brand DNA
-  //   3. (Optional) paste cloud-provider API keys
-  //   4. Auto-plan 28-day calendar, preview it, then mark complete
-  // Reuses the existing /api/admin/brand-dna, /api/admin/secrets, and
-  // /api/admin/calendar/plan endpoints — the wizard is just a flow,
-  // not new server-side logic.
+  //   3. Auto-plan 28-day calendar, preview it, then mark complete
+  // Reuses the existing /api/admin/brand-dna and /api/admin/calendar/plan
+  // endpoints — the wizard is just a flow, not new server-side logic.
+  //
+  // There is deliberately no provider step: provider keys are platform
+  // configuration owned by a super_admin, and /api/admin/secrets now rejects
+  // anything else.
   const Wizard = (() => {
     let brand = {};
 
@@ -4786,17 +4788,15 @@
     //   pane '1'          → milestone 1 (Hello/URL form)
     //   pane '2'          → milestone 2 (Brand DNA)
     //   pane 'beat-brand' → milestone 2 done
-    //   pane '3'          → milestone 3 (Providers)
-    //   pane '4'          → milestone 4 (Calendar)
-    //   pane 'beat-done'  → milestone 4 done
+    //   pane '3'          → milestone 3 (Calendar)
+    //   pane 'beat-done'  → milestone 3 done
     const PANE_TO_STEP = {
       '0': 0,
       '1': 1,
       '2': 2,
       'beat-brand': 2.5,
       '3': 3,
-      '4': 4,
-      'beat-done': 5,
+      'beat-done': 4,
     };
 
     function show(paneId) {
@@ -4912,70 +4912,13 @@
       show('beat-brand');
     }
 
-    // ── beat-brand → 3: load providers, render the grid ───────────
-    async function gotoProviders() {
-      const secretsR = await api('/api/admin/secrets');
-      const keys = secretsR.body?.keys || {};
-      const configured = new Set(
-        Object.entries(keys).filter(([, v]) => v && v !== 'unset').map(([k]) => k)
-      );
-      renderProviders(configured);
+    // ── beat-brand → 3: plan the calendar ─────────────────────────
+    //
+    // This pane used to persist provider keys first. It no longer does:
+    // provider keys are platform configuration owned by a super_admin, and
+    // /api/admin/secrets now returns 403 for anyone else.
+    async function startPlanning() {
       show('3');
-    }
-
-    function renderProviders(configured) {
-      const grid = $('#wiz-providers');
-      grid.innerHTML = '';
-      const opts = [
-        { label: 'GuRouter (AI Gateway)', envKey: 'GUROUTER_API_KEY' },
-        { label: 'OpenAI',           envKey: 'OPENAI_API_KEY' },
-        { label: 'Anthropic Claude', envKey: 'ANTHROPIC_API_KEY' },
-        { label: 'Google Gemini',    envKey: 'GEMINI_API_KEY' },
-        { label: 'Groq',             envKey: 'GROQ_API_KEY' },
-        { label: 'DeepSeek',         envKey: 'DEEPSEEK_API_KEY' },
-        { label: 'Mistral',          envKey: 'MISTRAL_API_KEY' },
-        { label: 'Together',         envKey: 'TOGETHER_API_KEY' },
-        { label: 'Cerebras',         envKey: 'CEREBRAS_API_KEY' },
-      ];
-      // Workers AI banner always-on note.
-      const banner = document.createElement('div');
-      banner.className = 'wiz-prov is-set';
-      banner.style.gridColumn = '1 / -1';
-      banner.innerHTML = '<div class="wiz-prov-head"><b>Cloudflare Workers AI</b><span class="wiz-prov-pill">Tích hợp sẵn</span></div><div class="wiz-prov-hint">Llama 3.3 70B cho văn bản · Flux 1 schnell cho hình ảnh. Không cần API key — đã bao gồm trong gói miễn phí của Cloudflare.</div>';
-      grid.appendChild(banner);
-
-      for (const p of opts) {
-        const isSet = configured.has(p.envKey);
-        const card = document.createElement('div');
-        card.className = 'wiz-prov' + (isSet ? ' is-set' : '');
-        card.innerHTML = `
-          <div class="wiz-prov-head">
-            <b>${p.label}</b>
-            <span class="wiz-prov-pill">${isSet ? 'Đã lưu' : 'Tùy chọn'}</span>
-          </div>
-          <input type="password" placeholder="${isSet ? '••••••••  (đã lưu)' : 'Dán API key'}" data-prov="${p.envKey}" autocomplete="off" />
-        `;
-        grid.appendChild(card);
-      }
-    }
-
-    // ── pane 3 → 4: persist provider keys, kick off the planner ───
-    async function step3Next() {
-      const errEl = $('#wiz-3-err'); errEl.textContent = '';
-      const inputs = $$('[data-prov]');
-      const toSave = inputs
-        .map((el) => ({ key: el.dataset.prov, val: el.value.trim() }))
-        .filter((p) => p.val.length > 0);
-      const btn = $('#wiz-go-4'); btn.disabled = true; btn.textContent = 'Đang lưu…';
-      for (const p of toSave) {
-        await api('/api/admin/secrets', {
-          method: 'POST',
-          body: JSON.stringify({ name: p.key, value: p.val }),
-        }).catch(() => {});
-      }
-      btn.disabled = false; btn.textContent = 'Tiếp tục →';
-
-      show('4');
       // Kick off the planner. We don't pass replace:true — if the
       // user re-runs the wizard later, we keep existing scheduled
       // slots and only top up gaps.
@@ -5038,23 +4981,16 @@
       $('#wiz-start').addEventListener('click', welcomeNext);
       $('#wiz-go-2').addEventListener('click', step1Next);
       $('#wiz-go-3').addEventListener('click', step2Next);
-      $('#wiz-go-4').addEventListener('click', step3Next);
+      $('#wiz-go-plan').addEventListener('click', startPlanning);
       $('#wiz-go-done').addEventListener('click', () => show('beat-done'));
       $('#wiz-done').addEventListener('click', done);
       $('#wiz-skip').addEventListener('click', skip);
 
       // `data-wiz-back="<paneId>"` jumps to a previous pane without
-      // re-running its work. `data-wiz-next="3"` advances from a beat
-      // (no state to capture).
+      // re-running its work.
       $$('[data-wiz-back]').forEach((el) => {
         el.addEventListener('click', () => show(el.dataset.wizBack));
       });
-      $$('[data-wiz-next]').forEach((el) => {
-        const next = el.dataset.wizNext;
-        if (next === '3') el.addEventListener('click', gotoProviders);
-        else el.addEventListener('click', () => show(next));
-      });
-
       // Enter on the URL field jumps forward.
       $('#wiz-url').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); step1Next(); }

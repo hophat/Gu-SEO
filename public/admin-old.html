@@ -1570,8 +1570,7 @@
       <ol class="wiz-steps" aria-label="Tiến trình làm quen hệ thống">
         <li class="wiz-step" data-step="1"><b>Xin chào</b></li>
         <li class="wiz-step" data-step="2"><b>Thương hiệu</b></li>
-        <li class="wiz-step" data-step="3"><b>Nhà cung cấp</b></li>
-        <li class="wiz-step" data-step="4"><b>Lịch bài</b></li>
+        <li class="wiz-step" data-step="3"><b>Lịch bài</b></li>
       </ol>
       <button id="wiz-skip" class="wiz-skip" type="button" title="Bỏ qua hướng dẫn">Bỏ qua</button>
     </header>
@@ -1595,7 +1594,7 @@
 
     <!-- PANE 1: Brand URL -->
     <section class="wiz-pane" data-pane="1" hidden>
-      <div class="wiz-eyebrow">Bước 1 / 4</div>
+      <div class="wiz-eyebrow">Bước 1 / 3</div>
       <h1 class="wiz-h1"><span class="serif-i">Thương hiệu</span> của bạn hoạt động ở đâu?</h1>
       <p class="wiz-lede">Dán URL trang chủ của bạn và chúng tôi sẽ đọc nội dung để phác thảo Brand DNA — giọng văn, đối tượng độc giả, chủ đề cốt lõi. Mất khoảng 30 giây.</p>
       <label class="wiz-field wiz-field-big">
@@ -1624,7 +1623,7 @@
 
     <!-- PANE 2: Brand DNA review -->
     <section class="wiz-pane" data-pane="2" hidden>
-      <div class="wiz-eyebrow">Bước 2 / 4</div>
+      <div class="wiz-eyebrow">Bước 2 / 3</div>
       <h1 class="wiz-h1"><span class="serif-i">Đây là</span> cách chúng tôi hiểu về thương hiệu của bạn.</h1>
       <p class="wiz-lede">Quét nhanh dữ liệu. Hãy chỉnh sửa những điểm chưa chính xác — các trường này sẽ được đưa vào mọi câu lệnh prompt hệ thống gửi đi.</p>
       <div id="wiz-brand-loading" class="wiz-loading-big" hidden>
@@ -1657,26 +1656,13 @@
       <h1 class="wiz-h1"><span class="serif-i">Thương hiệu</span> đã được xác lập.</h1>
       <p class="wiz-lede">Mỗi bài viết được tạo từ đây sẽ mang đúng bản sắc của <span id="wiz-beat-host" class="wiz-pill">trang web của bạn</span>. Bạn luôn có thể chỉnh sửa lại bất kỳ trường nào trong tab Brand DNA sau này.</p>
       <div class="wiz-actions wiz-actions-single">
-        <button class="btn btn-primary wiz-btn-lg" type="button" data-wiz-next="3">Tiếp theo: Nhà cung cấp AI →</button>
+        <button class="btn btn-primary wiz-btn-lg" type="button" id="wiz-go-plan">Tiếp theo: Lên lịch nội dung →</button>
       </div>
     </section>
 
-    <!-- PANE 3: Providers -->
+    <!-- PANE 3: Plan -->
     <section class="wiz-pane" data-pane="3" hidden>
-      <div class="wiz-eyebrow">Bước 3 / 4</div>
-      <h1 class="wiz-h1"><span class="serif-i">Chọn</span> các công cụ AI của bạn.</h1>
-      <p class="wiz-lede">Workers AI đã được tích hợp sẵn và miễn phí theo hạn mức mỗi ngày. Điền khóa API cho các nhà cung cấp đám mây bạn muốn dùng làm dự phòng — hoặc bỏ qua và thêm lại sau.</p>
-      <div id="wiz-providers" class="wiz-provs"></div>
-      <div class="wiz-actions">
-        <button class="btn btn-ghost" type="button" data-wiz-back="2">← Quay lại</button>
-        <button id="wiz-go-4" class="btn btn-primary" type="button">Tiếp tục →</button>
-      </div>
-      <div id="wiz-3-err" class="wiz-err"></div>
-    </section>
-
-    <!-- PANE 4: Plan -->
-    <section class="wiz-pane" data-pane="4" hidden>
-      <div class="wiz-eyebrow">Bước 4 / 4</div>
+      <div class="wiz-eyebrow">Bước 3 / 3</div>
       <h1 class="wiz-h1"><span class="serif-i">Tháng đầu tiên</span> của bạn đã được lên kế hoạch.</h1>
       <p class="wiz-lede">Chúng tôi đã phác thảo 28 ý tưởng bài viết từ Brand DNA của bạn. Hãy xem qua — bạn có thể hoán đổi, xóa hoặc sắp xếp lại bất kỳ ý tưởng nào trong tab Lịch bài viết.</p>
       <div id="wiz-plan-loading" class="wiz-loading-big">
@@ -1688,7 +1674,7 @@
       </div>
       <ol id="wiz-plan-list" class="wiz-plan-list" hidden></ol>
       <div class="wiz-actions">
-        <button class="btn btn-ghost" type="button" data-wiz-back="3">← Quay lại</button>
+        <button class="btn btn-ghost" type="button" data-wiz-back="1">← Quay lại</button>
         <button id="wiz-go-done" class="btn btn-primary" type="button" disabled>Trông rất ổn →</button>
       </div>
       <div id="wiz-4-err" class="wiz-err"></div>
