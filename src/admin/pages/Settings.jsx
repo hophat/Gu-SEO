@@ -1,7 +1,7 @@
 // Settings page — antd Form, Input, Select, Switch, Button, Card, Tabs, message.
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Tabs, Form, Input, Select, Switch, Button, Space, Typography, message, InputNumber, Divider, Alert, Tag, Table, Tooltip, Collapse, Row, Col } from 'antd';
-import { SaveOutlined, GoogleOutlined, ApiOutlined, CheckCircleOutlined, CopyOutlined } from '@ant-design/icons';
+import { SaveOutlined, GoogleOutlined, ApiOutlined, CheckCircleOutlined, CopyOutlined, KeyOutlined, DeleteOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, api } from '../api.js';
 
@@ -150,6 +150,11 @@ export default function Settings() {
             ),
           },
           {
+            key: 'keys',
+            label: 'API keys',
+            children: <ProviderKeys />,
+          },
+          {
             key: 'gsc',
             label: 'Google Search Console',
             children: (
@@ -194,6 +199,156 @@ export default function Settings() {
         ]}
       />
     </PageContainer>
+  );
+}
+
+// ── Provider API keys ─────────────────────────────────────────────
+// The only UI for /api/admin/secrets (super_admin only). Keys are stored
+// encrypted in D1; the API never returns plaintext, so saved keys render
+// as a status tag, never as a value. A key set as a Pages secret wins and
+// can only be changed in the Cloudflare dashboard.
+const PROVIDER_LABELS = {
+  OPENAI: 'OpenAI', ANTHROPIC: 'Anthropic', GEMINI: 'Google Gemini',
+  GROQ: 'Groq', DEEPSEEK: 'DeepSeek', MISTRAL: 'Mistral',
+  TOGETHER: 'Together AI', CEREBRAS: 'Cerebras', GUROUTER: 'GuRouter',
+  WORKERS_AI: 'Workers AI',
+};
+
+function providerOf(name) {
+  if (name.endsWith('_API_KEY')) return name.slice(0, -'_API_KEY'.length);
+  if (name.endsWith('_TEXT_MODEL')) return name.slice(0, -'_TEXT_MODEL'.length);
+  return name;
+}
+
+function ProviderKeys() {
+  const [vault, setVault] = useState(null);
+  const [denied, setDenied] = useState(false);
+  const [inputs, setInputs] = useState({});
+  const [busy, setBusy] = useState({});
+
+  const loadVault = useCallback(async () => {
+    const { status, body } = await apiGet('/api/admin/secrets');
+    if (status === 200 && body?.ok) { setVault(body); return; }
+    if (status === 403) setDenied(true);
+  }, []);
+
+  useEffect(() => { loadVault(); }, [loadVault]);
+
+  const submit = async (name, kind) => {
+    const value = (inputs[name] || '').trim();
+    if (!value) { message.warning('Nhập giá trị trước khi lưu'); return; }
+    setBusy((b) => ({ ...b, [name]: true }));
+    const r = await apiPost('/api/admin/secrets', { name, value });
+    setBusy((b) => ({ ...b, [name]: false }));
+    if (r.status === 200) {
+      message.success(`Đã lưu ${name}`);
+      setInputs((s) => ({ ...s, [name]: '' }));
+      loadVault();
+    } else {
+      message.error(r.body?.detail || r.body?.error || 'Lưu thất bại');
+    }
+  };
+
+  const clear = async (name) => {
+    setBusy((b) => ({ ...b, [name]: true }));
+    const r = await apiPost('/api/admin/secrets', { name, value: '' });
+    setBusy((b) => ({ ...b, [name]: false }));
+    if (r.status === 200) { message.success(`Đã xóa ${name} khỏi vault`); loadVault(); }
+    else message.error(r.body?.detail || r.body?.error || 'Xóa thất bại');
+  };
+
+  if (denied) {
+    return <Alert type="warning" showIcon message="Chỉ super_admin mới xem được API keys" />;
+  }
+  if (!vault) return <Card loading />;
+
+  const groups = {};
+  for (const name of (vault.allowed || [])) {
+    const p = providerOf(name);
+    if (!groups[p]) groups[p] = [];
+    groups[p].push(name);
+  }
+
+  const statusTag = (name) => {
+    const src = vault.keys?.[name];
+    if (src === 'pages-secret') return <Tag color="blue">Pages secret</Tag>;
+    if (src === 'vault') return <Tag color="success">Đã lưu</Tag>;
+    return <Tag>Chưa có</Tag>;
+  };
+
+  return (
+    <Card>
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="Key dùng chung cho toàn nền tảng"
+        description="Một deployment dùng chung một bộ key cho mọi dự án. Key lưu ở đây được mã hoá trong D1 và không bao giờ hiển thị lại. Key đã đặt làm Pages secret thì ưu tiên hơn và chỉ đổi được trong Cloudflare dashboard."
+      />
+      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        {Object.entries(groups).map(([provider, names]) => (
+          <Card key={provider} size="small" title={<Space><KeyOutlined />{PROVIDER_LABELS[provider] || provider}</Space>}>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              {names.map((name) => {
+                const isModel = name.endsWith('_MODEL');
+                const locked = vault.keys?.[name] === 'pages-secret';
+                return (
+                  <Row key={name} gutter={[8, 8]} align="middle">
+                    <Col xs={24} md={6}>
+                      <Text code style={{ fontSize: 12 }}>{name}</Text>
+                      <div style={{ marginTop: 4 }}>{statusTag(name)}</div>
+                    </Col>
+                    <Col xs={24} md={12}>
+                      {isModel ? (
+                        <Input
+                          value={inputs[name] ?? vault.values?.[name] ?? ''}
+                          onChange={(e) => setInputs((s) => ({ ...s, [name]: e.target.value }))}
+                          onPressEnter={() => submit(name)}
+                          placeholder="Để trống dùng mặc định"
+                        />
+                      ) : (
+                        <Input.Password
+                          value={inputs[name] || ''}
+                          onChange={(e) => setInputs((s) => ({ ...s, [name]: e.target.value }))}
+                          onPressEnter={() => submit(name)}
+                          placeholder={vault.keys?.[name] === 'vault' ? '•••••••• (nhập key mới để thay)' : 'Dán API key'}
+                          disabled={locked}
+                        />
+                      )}
+                    </Col>
+                    <Col xs={24} md={6}>
+                      <Space>
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<SaveOutlined />}
+                          loading={!!busy[name]}
+                          onClick={() => submit(name)}
+                          disabled={locked}
+                        >
+                          Lưu
+                        </Button>
+                        {!isModel && vault.keys?.[name] === 'vault' && (
+                          <Button
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            loading={!!busy[name]}
+                            onClick={() => clear(name)}
+                          >
+                            Xóa
+                          </Button>
+                        )}
+                      </Space>
+                    </Col>
+                  </Row>
+                );
+              })}
+            </Space>
+          </Card>
+        ))}
+      </Space>
+    </Card>
   );
 }
 

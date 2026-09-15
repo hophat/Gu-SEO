@@ -7,6 +7,19 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.18.3 — 2026-09-16
+
+Tự gắn domain trên production + tab API keys.
+
+### Fixed
+- **Auto-attach domain đọc thêm credentials `CLOUDFLARE_*`.** Production chỉ có
+  secrets của CLI installer nên bản trước im lặng bỏ qua. Thiếu `CF_PROJECT`
+  thì tự tìm project đang serve hostname (URL `*.pages.dev` suy trực tiếp,
+  custom domain khớp qua list projects).
+- **Tab API keys trong Cài đặt (super_admin).** Backend `/api/admin/secrets`
+  có sẵn nhưng chưa có UI nào gọi — giờ nhập/xóa key và model override ngay
+  trong Settings, key mã hoá trong D1, không bao giờ hiện plaintext.
+
 ## 1.18.2 — 2026-09-15
 
 Sửa wizard kẹt ở bước lịch nội dung.
