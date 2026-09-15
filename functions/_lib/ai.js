@@ -903,7 +903,7 @@ export function orderProviders(registry, env, preferred) {
 }
 
 // Every provider-secret name we care about, for vault overlay.
-import { envWithVault } from './secret_vault.js';
+import { envWithVault, getVaultSecret } from './secret_vault.js';
 const PROVIDER_SECRET_NAMES = [
   'GUROUTER_API_KEY',
   'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY',
@@ -956,7 +956,14 @@ export async function runTextProvider(env, name, prompt) {
   const provider = TEXT_PROVIDERS.find((p) => p.name === name);
   if (!provider) throw new Error('unknown_provider: ' + name);
   if (!provider.available(overlayed)) throw new Error('provider_unavailable: ' + name);
-  return await provider.call(overlayed, prompt);
+  const out = await provider.call(overlayed, prompt);
+  // Callers that want the raw text (raw_llm, brand-filter) get a consistent
+  // shape: the provider's own `raw` when it kept one, otherwise the parsed
+  // object re-serialised. Without this they would each re-derive it and drift.
+  return {
+    ...out,
+    raw: out?.raw ?? (out?.parsed != null ? JSON.stringify(out.parsed) : ''),
+  };
 }
 
 // ── public API ─────────────────────────────────────────────────────────
@@ -1086,11 +1093,34 @@ export async function pingTextProvider(env, name) {
     return { ok: true, ms, sample };
   } catch (e) {
     const ms = Date.now() - started;
-    return {
+    const detail = String(e?.message || e).slice(0, 240);
+    const out = {
       ok: false,
       ms,
       error: 'call_failed',
-      detail: String(e?.message || e).slice(0, 240),
+      detail,
     };
+
+    // An auth failure reads as "your key is wrong" when the far more common
+    // cause is a truncated paste. Report the stored key's LENGTH so that is
+    // visible at a glance — never the value. This is what turns an opaque
+    // "Invalid token" into "the key is 15 characters, that is not a key".
+    if (/\b401\b|invalid[_ ]token|unauthor|invalid api key|incorrect api key/i.test(detail)) {
+      try {
+        // env (Pages secret) wins over the vault, same order as the runtime.
+        const envName = p.envKey || providerEnvKey(name);
+        const key = (overlayed?.[envName] && String(overlayed[envName])) || await getVaultSecret(overlayed, envName);
+        if (key) out.key_length = key.length;
+      } catch { /* hint only */ }
+      out.hint = 'Key bị từ chối. Kiểm tra đã dán đủ chưa — key bị cắt là nguyên nhân phổ biến nhất.';
+    }
+    return out;
   }
+}
+
+// Provider name → the env var its key lives in. The registry entries carry
+// `envKey` for image providers but not text ones, so fall back to the
+// conventional name.
+function providerEnvKey(name) {
+  return String(name || '').toUpperCase().replace(/-/g, '_') + '_API_KEY';
 }

@@ -7,6 +7,43 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.15.1 — 2026-09-15
+
+"Lên lịch thất bại" khi bấm qua bước cuối của trình thiết lập. Cùng một loại
+bug đã sửa ở v1.14.2, nhưng còn hai bản sao nữa chưa tìm ra.
+
+### Fixed
+- **`raw_llm.js` có bản sao thứ ba của bộ dispatch provider.** Nó tự viết
+  `switch (name)` phủ 5 trong 10 provider, thiếu `gurouter` — nên bộ lập lịch
+  (dùng `callRawLLM`) chết với `unknown_provider: gurouter` dù key hợp lệ.
+  Comment trong file tự thú: *"same shape as brand-dna.js but trimmed...
+  refactoring touches too much"*. Giờ dispatch qua `runTextProvider()`.
+- **`raw_llm.js` không đọc `default_ai_provider`.** Trình thiết lập gọi nó
+  không kèm provider, nên nó rơi về thứ tự registry — **Workers AI trước** —
+  tức đúng cái provider mà người vận hành đặt mặc định để tránh, vì nó đã hết
+  quota miễn phí.
+- **`brand-filter-queue.js` có bản sao thứ tư.** Cùng bệnh, cùng cách sửa.
+
+### Fixed (audit trail)
+- **`audit()` không được `await` khi ghi secret, nên bản ghi bị mất.** Promise
+  không await và không đưa vào `waitUntil()` có thể bị huỷ khi response được
+  gửi đi — và D1 write là đúng loại bị rơi. Hậu quả thực tế: khi key GuRouter
+  bị đổi thành giá trị 15 ký tự lúc 14:34, **không có cách nào biết ai đổi và
+  đổi lúc nào**. Giờ `await` cho `secret_set` / `secret_delete`, kèm `length`
+  của giá trị (không bao giờ ghi giá trị).
+
+### Added
+- **`providers/test` báo `key_length` khi lỗi xác thực.** `401 Invalid token`
+  đọc lên như "key sai", nhưng nguyên nhân phổ biến hơn nhiều là **dán thiếu**.
+  Giờ response kèm độ dài key đã lưu (không kèm giá trị) và một gợi ý, nên
+  "Invalid token" thành "key dài 15 ký tự — đó không phải là key".
+
+### Added (tooling)
+- **Platform tests: 117 checks** (was 112). Thay vì kiểm tra từng file, test
+  quét **cả cây `functions/`** cho hai bất biến:
+  - chỉ **một** file được định nghĩa provider dispatch, và nó là registry;
+  - **không file nào** được tự viết lại thứ tự ưu tiên provider.
+  Đây là loại bug đã ship ba lần; kiểm tra theo file sẽ bỏ sót bản sao thứ tư.
 ## 1.15.0 — 2026-09-15
 
 Cấu hình AI provider trở thành quyền của super_admin, và bỏ hẳn khỏi trình

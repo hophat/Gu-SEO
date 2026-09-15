@@ -76,8 +76,17 @@ export const onRequestPost = async ({ env, request }) => {
   } catch (e) {
     return json(500, { error: 'vault_error', detail: String(e?.message || e).slice(0, 200) });
   }
-  // Never log the value. Only log the action.
-  audit(env, 'admin', value ? 'secret_set' : 'secret_delete', name, {});
+  // AWAITED, unlike the usual fire-and-forget audit() call.
+  //
+  // A promise that is not awaited and not handed to waitUntil() can be
+  // cancelled when the response goes out, and D1 writes are exactly the kind
+  // that get dropped. Credential changes are the one action where the trail
+  // matters most: when a key later turns out to be wrong, "who changed it and
+  // when" is the first question, and this call was silently losing the answer.
+  await audit(env, 'admin', value ? 'secret_set' : 'secret_delete', name, {
+    // Length only — never the value. Enough to spot a truncated paste.
+    length: value.length,
+  });
   return json(200, { ok: true, name, ...result });
 };
 
@@ -91,6 +100,6 @@ export const onRequestDelete = async ({ env, request }) => {
   } catch (e) {
     return json(500, { error: 'vault_error', detail: String(e?.message || e).slice(0, 200) });
   }
-  audit(env, 'admin', 'secret_delete', name, {});
+  await audit(env, 'admin', 'secret_delete', name, {});
   return json(200, { ok: true, name, deleted: true });
 };

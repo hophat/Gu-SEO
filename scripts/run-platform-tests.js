@@ -41,7 +41,7 @@ import { renderBlogIndex } from '../functions/blog/index.js';
 import { onRequestGet as renderFeed } from '../functions/feed.xml.js';
 import { loadSettings, setSetting } from '../functions/_lib/settings.js';
 import { resolveProjectBySlug } from '../functions/_lib/project_scope.js';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -1393,8 +1393,75 @@ async function testProviderConfigLockdown() {
   ok('the legacy wizard has no provider step either');
 }
 
+// ── M. one provider dispatcher, one default-provider rule ───────────
+// This bug has now shipped three times: a caller reimplements provider
+// dispatch as its own switch, the registry grows, the copy does not, and the
+// feature fails with `unknown_provider` for a provider that works everywhere
+// else. brand-dna, raw_llm and brand-filter-queue all had their own copy.
+//
+// Two invariants, checked across the whole tree rather than per file:
+//   1. There is exactly one provider switch, and it lives in the registry.
+//   2. Every text entry point honours `default_ai_provider`.
+async function testSingleDispatch() {
+  console.log('\nM. Single provider dispatcher');
+
+  const walk = (dir, out = []) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name === 'functions_dist' || e.name.startsWith('.')) continue;
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p, out);
+      else if (e.name.endsWith('.js')) out.push(p);
+    }
+    return out;
+  };
+
+  const files = walk(join(ROOT, 'functions'));
+
+  // The registry declares providers as data (`{ name: 'workers-ai', call: … }`);
+  // a copy declares them as a switch (`case 'workers-ai':`). The switch form is
+  // what drifted, so its presence anywhere but nowhere is the signal.
+  const withSwitch = files.filter((f) => /case 'workers-ai'/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(withSwitch.map((f) => f.replace(ROOT + '/', '')), [],
+    'no file may reimplement provider dispatch as a switch — use runTextProvider()');
+  ok('no file reimplements provider dispatch as a switch');
+
+  const registries = files.filter((f) => /name: 'workers-ai'/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(registries.map((f) => f.replace(ROOT + '/', '')), ['functions/_lib/ai.js'],
+    'the provider registry must live in exactly one place');
+  ok('the provider registry lives in exactly one place');
+
+  // Every module that picks a text provider must consult the setting.
+  // `_lib/ai.js` owns the rule; the others route through it.
+  const entryPoints = [
+    'functions/api/admin/brand-dna.js',
+    'functions/_lib/raw_llm.js',
+    'functions/api/admin/brand-filter-queue.js',
+  ];
+  for (const rel of entryPoints) {
+    const src = readFileSync(join(ROOT, rel), 'utf8');
+    assert.match(src, /runTextProvider\(/, `${rel} must dispatch through the registry`);
+    assert.match(src, /default_ai_provider/, `${rel} must honour default_ai_provider`);
+  }
+  ok('every text entry point routes through the registry and reads the default provider');
+
+  // A caller that reimplements the order is the bug. Fail loudly on a new copy.
+  const handRolled = files.filter((f) => {
+    const src = readFileSync(f, 'utf8');
+    return /available\.includes\(preferredProvider\)/.test(src);
+  });
+  assert.deepEqual(handRolled, [], 'no file may hand-roll the provider order');
+  ok('no file hand-rolls the provider preference order');
+
+  // And the calendar planner — the path that broke — must reach the setting.
+  const planner = readFileSync(join(ROOT, 'functions', '_lib', 'calendar_planner.js'), 'utf8');
+  assert.match(planner, /callRawLLM\(/, 'the planner goes through callRawLLM');
+  const rawLlm = readFileSync(join(ROOT, 'functions', '_lib', 'raw_llm.js'), 'utf8');
+  assert.match(rawLlm, /settings\.default_ai_provider/, 'callRawLLM must read the default provider');
+  ok('the calendar planner inherits the default provider through callRawLLM');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -1407,6 +1474,7 @@ async function main() {
   await testRequestCost();
   await testProviderDispatch();
   await testProviderConfigLockdown();
+  await testSingleDispatch();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

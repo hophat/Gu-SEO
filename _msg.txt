@@ -1,0 +1,33 @@
+fix: v1.15.1 — "Lên lịch thất bại": two more copies of the provider switch
+
+The same class of bug fixed in v1.14.2, but two more copies were still hiding.
+
+raw_llm.js carried a third copy of the provider dispatch switch — five of the
+ten providers, no gurouter — so the calendar planner (which goes through
+callRawLLM) died with `unknown_provider: gurouter` even though the key was
+valid. Its own comment admitted it: "same shape as brand-dna.js but trimmed...
+refactoring touches too much". brand-filter-queue.js had a fourth.
+
+raw_llm.js also did not read `default_ai_provider`. The wizard calls it with no
+provider, so it fell back to registry order — Workers AI first — which is
+exactly the provider an operator sets a default to get away from once its free
+quota runs out. Both now route through runTextProvider().
+
+Separately: audit() was not awaited when writing secrets, so the record was
+lost. A promise that is neither awaited nor given to waitUntil() can be
+cancelled when the response goes out, and D1 writes are exactly the kind that
+get dropped. When the GuRouter key was overwritten with a 15-character value
+there was no way to tell who did it or when. Credential changes now await, and
+record the value's length (never the value).
+
+providers/test now reports key_length on an auth failure. "401 Invalid token"
+reads as "your key is wrong" when the far more common cause is a truncated
+paste.
+
+The new tests scan the whole functions/ tree rather than individual files: this
+bug has shipped three times, and a per-file check would have missed the fourth
+copy.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
