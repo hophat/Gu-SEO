@@ -73,13 +73,31 @@ export async function resolveProjectForRequest(env, request) {
   return resolveProjectByHost(env, requestHost(request), url?.pathname || '/');
 }
 
+// Memoised per request. On `/<slug>/blog` the wrapper resolves the project to
+// validate the slug, then renderBlogIndex resolves it AGAIN — two identical
+// queries for one page view. D1 bills per row read, so this is pure waste on
+// the public path.
+const SLUG_CACHE_KEY = '__ps_project_slug_cache__';
+
 export async function resolveProjectBySlug(env, slug) {
   const clean = String(slug || '').trim().toLowerCase();
   if (!clean || !/^[a-z0-9][a-z0-9-]{0,60}$/.test(clean)) return null;
+
+  const cache = env?.[SLUG_CACHE_KEY];
+  if (cache && clean in cache) return cache[clean];
+
   const row = await env?.DB?.prepare(
     `SELECT id, slug, name, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, theme_color FROM projects WHERE slug = ? LIMIT 1`
   ).bind(clean).first().catch(() => null);
-  return row || null;
+
+  const project = row || null;
+  if (env) {
+    try {
+      if (!env[SLUG_CACHE_KEY]) env[SLUG_CACHE_KEY] = {};
+      env[SLUG_CACHE_KEY][clean] = project;
+    } catch { /* frozen env */ }
+  }
+  return project;
 }
 
 export async function resolveProjectBySlugPath(env, slug) {

@@ -33,6 +33,15 @@ import {
 } from '../functions/api/admin/onboarding.js';
 import { onRequestPost as register } from '../functions/api/public/register.js';
 import { onRequestPatch as profilePatch } from '../functions/api/admin/projects/profile.js';
+import { renderBlogIndex } from '../functions/blog/index.js';
+import { onRequestGet as renderFeed } from '../functions/feed.xml.js';
+import { loadSettings, setSetting } from '../functions/_lib/settings.js';
+import { resolveProjectBySlug } from '../functions/_lib/project_scope.js';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Admin endpoints authenticate through the bearer token, so tests need a
 // request shaped the way adminGate()/resolveTenantContext() expect.
@@ -1066,8 +1075,110 @@ async function testRegistrationAndProfile() {
   ok('profile refuses a slug already used by another project');
 }
 
+// ── J. request-cost guards ──────────────────────────────────────────
+// D1 bills per row read, and Cloudflare does not cache Pages Function
+// responses by default. So the two things that decide the bill are: how many
+// rows a single page view reads, and whether the response is even cacheable.
+// Both are easy to regress silently, so both are pinned here.
+async function testRequestCost() {
+  console.log('\nJ. Request cost (memoisation + cacheability)');
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+  await env.DB.prepare(
+    `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+     VALUES ('p_cost','cost-post','Tiêu đề','Mô tả','# Body','published',?,?,?)`
+  ).bind(PROJECT, t, t).run();
+
+  // Count every statement the handler runs, so the assertions are about real
+  // query volume rather than about which helper was called.
+  const counting = (base) => {
+    const seen = [];
+    return {
+      env: {
+        ...base,
+        DB: {
+          prepare(sql) { seen.push(String(sql).replace(/\s+/g, ' ').trim()); return base.DB.prepare(sql); },
+          batch: (s) => base.DB.batch(s),
+          exec: (s) => base.DB.exec(s),
+        },
+      },
+      seen,
+    };
+  };
+
+  // loadSettings reads the WHOLE settings table, so calling it twice in one
+  // request doubles the row read for no reason.
+  const a = counting(env);
+  const s1 = await loadSettings(a.env);
+  const s2 = await loadSettings(a.env);
+  const settingsReads = a.seen.filter((q) => q.startsWith('SELECT key, value FROM settings')).length;
+  assert.equal(settingsReads, 1, `loadSettings must read the settings table once per request (got ${settingsReads})`);
+  assert.equal(s1.site_name, s2.site_name, 'both calls return the same value');
+  ok('loadSettings is memoised per request');
+
+  // A write must not leave a stale memoised read behind.
+  await setSetting(a.env, 'site_name_db', 'Đổi tên rồi');
+  const s3 = await loadSettings(a.env);
+  assert.equal(s3.site_name_db, 'Đổi tên rồi', 'setSetting invalidates the memoised read');
+  ok('setSetting invalidates the settings memo');
+
+  // resolveProjectBySlug is called by the /<slug>/ wrapper AND again by the
+  // renderer — two identical queries per page view before memoisation.
+  const b = counting(env);
+  const p1 = await resolveProjectBySlug(b.env, 'alpha');
+  const p2 = await resolveProjectBySlug(b.env, 'alpha');
+  const slugReads = b.seen.filter((q) => q.startsWith('SELECT id, slug, name, website_url')).length;
+  assert.equal(slugReads, 1, `project lookup must hit D1 once per request (got ${slugReads})`);
+  assert.equal(p1.id, p2.id);
+  ok('resolveProjectBySlug is memoised per request');
+
+  // A miss is cached too — otherwise a bad slug would re-query on every call.
+  const c = counting(env);
+  await resolveProjectBySlug(c.env, 'does-not-exist');
+  await resolveProjectBySlug(c.env, 'does-not-exist');
+  assert.equal(c.seen.filter((q) => q.startsWith('SELECT id, slug, name, website_url')).length, 1, 'a negative lookup is cached too');
+  ok('a missing project is memoised as well');
+
+  // Memoisation must be per-request, not global: two different env objects
+  // must not share state (that would leak one tenant's data into another).
+  const envA = await freshEnv();
+  const envB = await freshEnv();
+  await resolveProjectBySlug(envA, 'alpha');
+  assert.equal(envB.__ps_project_slug_cache__, undefined, 'the cache lives on env, not in module scope');
+  ok('memoisation is scoped to the request, not the module');
+
+  // ── cacheability ─────────────────────────────────────────────────
+  // Cloudflare will only cache a Function response if it is allowed to. A
+  // stray no-store or a Set-Cookie silently makes every page view a cache
+  // miss — the single biggest lever on the bill, and invisible in the code.
+  const res = await renderBlogIndex({
+    env, request: new Request('https://seo.test/alpha/blog'), page: 1, projectSlug: 'alpha', basePath: '/alpha',
+  });
+  assert.equal(res.status, 200);
+  const cc = res.headers.get('cache-control') || '';
+  assert.match(cc, /public/, 'public pages must be publicly cacheable');
+  assert.match(cc, /s-maxage=\d+/, 'public pages must set an edge TTL (s-maxage)');
+  assert.doesNotMatch(cc, /no-store|private/, 'public pages must not opt out of caching');
+  assert.equal(res.headers.get('set-cookie'), null, 'a Set-Cookie would make the response uncacheable');
+  ok('the blog index is edge-cacheable (public + s-maxage, no cookie)');
+
+  const feed = await renderFeed({ env, request: new Request('https://seo.test/alpha/feed.xml'), params: { project: 'alpha' } });
+  const feedCc = feed.headers.get('cache-control') || '';
+  assert.match(feedCc, /public/);
+  assert.match(feedCc, /s-maxage=\d+/);
+  assert.doesNotMatch(feedCc, /no-store|private/);
+  assert.equal(feed.headers.get('set-cookie'), null);
+  ok('the RSS feed is edge-cacheable');
+
+  // The admin SPA is the opposite: it must never be cached.
+  const adminHeaders = readFileSync(join(ROOT, 'public', '_headers'), 'utf8');
+  assert.match(adminHeaders, /\/admin-dist\/main\.js\s*\n\s*Cache-Control: no-store/,
+    'the stable-named admin bundle must stay no-store');
+  ok('the admin bundle stays no-store (it has a stable file name)');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -1077,6 +1188,7 @@ async function main() {
   await testEventsAndInsights();
   await testOnboarding();
   await testRegistrationAndProfile();
+  await testRequestCost();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

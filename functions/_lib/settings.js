@@ -140,7 +140,26 @@ const FALLBACK = {
 
 const KEYS = Object.keys(FALLBACK);
 
+// Per-request memoisation.
+//
+// `loadSettings` reads the ENTIRE settings table (35 rows here). A single blog
+// page view calls it from the renderer and again from whatever helper needs
+// site identity, and every one of those calls re-reads all 35 rows — D1 bills
+// per row read, so this is the single biggest avoidable cost on the public
+// path.
+//
+// The cache lives on `env`, which is one object per request in Pages Functions,
+// so it cannot leak between requests or between tenants. Same pattern as
+// CACHE_KEY in project_scope.js.
+const SETTINGS_CACHE_KEY = '__ps_settings_cache__';
+
+export function invalidateSettingsCache(env) {
+  if (env) delete env[SETTINGS_CACHE_KEY];
+}
+
 export async function loadSettings(env) {
+  if (env?.[SETTINGS_CACHE_KEY]) return env[SETTINGS_CACHE_KEY];
+
   const out = {};
   try {
     const rows = await env.DB.prepare('SELECT key, value FROM settings').all();
@@ -161,6 +180,13 @@ export async function loadSettings(env) {
   out.site_name = (env?.SITE_NAME || '').trim() || out.site_name_db || '';
   out.site_url  = (env?.SITE_URL  || '').trim() || out.site_url_db  || '';
 
+  // Only cache a successful read. If the query threw, the fallbacks above are
+  // still a usable answer for this call, but caching them would pin a broken
+  // read for the rest of the request even if the DB recovers.
+  if (env && out && Object.keys(out).length) {
+    try { env[SETTINGS_CACHE_KEY] = out; } catch { /* frozen env */ }
+  }
+
   return out;
 }
 
@@ -171,6 +197,10 @@ export async function setSetting(env, key, value) {
     `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
      ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`
   ).bind(key, value == null ? '' : String(value), t).run();
+  // A write must not leave a stale memoised read behind — otherwise an
+  // endpoint that saves a setting and then reads it back within the same
+  // request would see the old value.
+  invalidateSettingsCache(env);
 }
 
 export function listSettingKeys() { return [...KEYS]; }

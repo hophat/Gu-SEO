@@ -7,6 +7,33 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.14.1 — 2026-09-15
+
+Fewer D1 rows read per page view. Measured first: public pages already return
+correct cache headers with no Set-Cookie and no Vary, so they are cacheable —
+but Cloudflare reports `cf-cache-status: DYNAMIC` on all of them, meaning it
+does not cache Pages Function responses without a zone Cache Rule. Until that
+is added, every page view is a miss, so the miss path is what costs money.
+
+### Changed
+- **`loadSettings` is memoised per request.** It reads the ENTIRE settings
+  table (35 rows, 555 bytes here) and a single blog page view called it more
+  than once. D1 bills per row read, so this was the biggest avoidable cost on
+  the public path. The memo lives on `env` — one object per request in Pages
+  Functions — so it cannot leak between requests or tenants.
+  `setSetting` invalidates it, otherwise an endpoint that writes a setting and
+  reads it back in the same request would see the old value.
+- **`resolveProjectBySlug` is memoised per request.** The `/<slug>/` wrapper
+  resolved the project to validate the slug, then `renderBlogIndex` resolved it
+  AGAIN — two identical queries for one page view. Negative lookups are cached
+  too, so a bad slug does not re-query on every call.
+
+### Added (tooling)
+- **Platform tests: 97 checks** (was 89). New coverage: both memos collapse to
+  one query, `setSetting` invalidation, memoisation being scoped to `env` and
+  not module scope, and a regression guard that public pages stay
+  edge-cacheable (public + s-maxage, no no-store, no Set-Cookie) while the
+  stable-named admin bundle stays no-store.
 ## 1.14.0 — 2026-09-15
 
 Registration is now three fields, and the two placeholders that were quietly
