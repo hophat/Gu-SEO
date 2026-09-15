@@ -664,6 +664,13 @@ ALTER TABLE projects ADD COLUMN custom_domain TEXT;
 ALTER TABLE users ADD COLUMN plan_tier TEXT DEFAULT 'free';
 ALTER TABLE users ADD COLUMN post_limit INTEGER DEFAULT 100;
 
+-- Canonical mailbox key for duplicate detection, see migration 005 and
+-- functions/_lib/email_rules.js. \`users.email\` is the real address;
+-- this column is never mailed to. The runner tolerates
+-- \`duplicate column name\`, so baseline + 005 converge on old and new DBs.
+ALTER TABLE users ADD COLUMN email_canonical TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_canonical ON users(email_canonical);
+
 -- Registration OTP verifications table:
 CREATE TABLE IF NOT EXISTS email_verifications (
   email       TEXT PRIMARY KEY COLLATE NOCASE,
