@@ -181,9 +181,11 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
     setLoading(false);
     if (status !== 200) { setError(body?.error || 'Lưu thất bại'); return; }
 
-    // Straight to the calendar. The provider step that used to sit here was
-    // removed — provider keys are super_admin territory.
-    setStep(2);
+    // Straight to the calendar planner, not to the preview: the preview
+    // renders planSlots, which is still empty until /calendar/plan runs.
+    // Jumping to step 2 directly showed "0 bài viết" and the final
+    // "Hoàn tất" then failed with 409 because no future slots existed.
+    await planCalendar();
   };
 
   // Step 2 → 3: plan the calendar.
@@ -428,6 +430,11 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
               </Card>
               <Alert type="success" message="Hệ thống sẽ tự động tạo bài viết theo lịch. Cron chạy mỗi ngày." style={{ marginTop: 16 }} showIcon />
               <div style={{ textAlign: 'right', marginTop: 16 }}>
+                {planSlots.length === 0 && (
+                  <Button onClick={planCalendar} loading={loading} style={{ marginRight: 8 }}>
+                    Lên lịch lại
+                  </Button>
+                )}
                 <Button type="primary" size="large" icon={<CheckCircleOutlined />} onClick={finish}>
                   Hoàn tất thiết lập
                 </Button>

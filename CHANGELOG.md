@@ -7,6 +7,18 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.18.2 — 2026-09-15
+
+Sửa wizard kẹt ở bước lịch nội dung.
+
+### Fixed
+- **Lưu Brand DNA xong giờ lên lịch thật trước khi sang preview.** `planCalendar`
+  tồn tại nhưng không ai gọi, nên bước Lịch hiện "0 bài viết" và nút Hoàn tất
+  luôn 409. Giờ `saveBrandDna` gọi planner rồi mới chuyển bước; lỗi plan thì ở
+  lại kèm lý do, bấm Lưu lại để thử tiếp.
+- **Nút "Lên lịch lại"** khi danh sách rỗng — popup blocking mode không có
+  đường thoát nên không được để kẹt.
+
 ## 1.18.1 — 2026-09-15
 
 Tự gắn custom domain lên Cloudflare khi lưu.
