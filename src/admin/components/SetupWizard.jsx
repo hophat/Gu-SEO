@@ -25,10 +25,11 @@ const PROVIDERS = [
 
 const MONTHS_SHORT = ['Thg 1','Thg 2','Thg 3','Thg 4','Thg 5','Thg 6','Thg 7','Thg 8','Thg 9','Thg 10','Thg 11','Thg 12'];
 
-export default function SetupWizard({ open, onClose, onComplete }) {
+export default function SetupWizard({ open, onClose, onComplete, blocking = false }) {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [manualMode, setManualMode] = useState(false);
 
   // Step 1: URL + options
   const [url, setUrl] = useState('');
@@ -69,8 +70,13 @@ export default function SetupWizard({ open, onClose, onComplete }) {
     });
     setLoading(false);
     if (status !== 200 || !body?.brand) {
-      setError(body?.detail || body?.error || 'Tạo Brand DNA thất bại');
-      setStep(0);
+      // Falling back to manual entry rather than bouncing back to step 0 is
+      // deliberate: setup is mandatory, so a scrape failure must not become a
+      // dead end. The operator can describe their business by hand and still
+      // reach a working schedule.
+      setError(`${body?.detail || body?.error || 'Không đọc được website'} — hãy điền Brand DNA thủ công bên dưới.`);
+      setManualMode(true);
+      setBrand({ source_url: url });
       return;
     }
     const b = body.brand;
@@ -81,14 +87,32 @@ export default function SetupWizard({ open, onClose, onComplete }) {
       voice_tone: b.voice_tone || '',
       target_audience: b.target_audience || '',
       key_themes: b.key_themes || '',
-      service_area: b.service_area || '',
-      topics_to_avoid: b.topics_to_avoid || '',
+      service_area: b.service_area || serviceArea || '',
+      topics_to_avoid: b.topics_to_avoid || topicsAvoid || '',
     });
+  };
+
+  // Skip AI entirely — same destination, operator-supplied copy.
+  const startManual = () => {
+    setError(null);
+    setManualMode(true);
+    setBrand({ source_url: url });
+    setBrandFields({
+      business_type: '', voice_tone: '', target_audience: '',
+      key_themes: '', service_area: serviceArea, topics_to_avoid: topicsAvoid,
+    });
+    setStep(1);
   };
 
   // Step 2 → 3: Save Brand DNA
   const saveBrandDna = async () => {
     setError(null);
+    // The API refuses to mark onboarding complete without Brand DNA, so
+    // catching it here gives a better message than a 409 at the last step.
+    if (!brandFields.business_type.trim()) {
+      setError('Nhập loại hình kinh doanh — đây là phần bắt buộc để AI viết đúng nội dung.');
+      return;
+    }
     setLoading(true);
     const { status, body } = await api('/api/admin/brand-dna', {
       method: 'PUT',
@@ -132,25 +156,37 @@ export default function SetupWizard({ open, onClose, onComplete }) {
     setStep(3);
   };
 
-  // Complete
+  // Complete. The API validates that the required steps are actually done, so
+  // a failure here means something is genuinely missing — surface it rather
+  // than pretending setup finished.
   const finish = async () => {
-    await apiPost('/api/admin/onboarding', {}).catch(() => {});
+    setError(null);
+    setLoading(true);
+    const r = await apiPost('/api/admin/onboarding', {});
+    setLoading(false);
+    if (r.status !== 200) {
+      setError(r.body?.detail || r.body?.error || 'Chưa thể hoàn tất thiết lập.');
+      return;
+    }
     message.success('Thiết lập hoàn tất!');
     onComplete?.();
-    handleClose();
+    reset();
   };
 
-  const skip = async () => {
-    await apiPost('/api/admin/onboarding', {}).catch(() => {});
-    handleClose();
-  };
-
-  const handleClose = () => {
+  const reset = () => {
     setStep(0);
     setError(null);
     setBrand(null);
     setPlanSlots([]);
     setProviderKeys({});
+    setManualMode(false);
+  };
+
+  const handleClose = () => {
+    // Blocking mode has no close path — setup is mandatory, so the only way
+    // out is finishing it.
+    if (blocking) return;
+    reset();
     onClose();
   };
 
@@ -168,13 +204,28 @@ export default function SetupWizard({ open, onClose, onComplete }) {
       width={680}
       footer={null}
       destroyOnClose
+      // In blocking mode there is no dismiss affordance at all: no X, no mask
+      // click, no Esc. Setup is required before the product can do anything
+      // useful, so allowing an escape just produces a dead account.
+      closable={!blocking}
+      maskClosable={!blocking}
+      keyboard={!blocking}
       title={
         <Space>
           <RocketOutlined style={{ color: '#1677ff' }} />
-          <span>Trình thiết lập</span>
+          <span>Trình thiết lập{blocking ? ' — bắt buộc' : ''}</span>
         </Space>
       }
     >
+      {blocking && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="Cần hoàn tất 2 bước để hệ thống bắt đầu tạo bài"
+          description="Brand DNA để AI viết đúng giọng thương hiệu, và lịch nội dung để cron biết mỗi ngày viết gì. Không có hai thứ này thì tài khoản sẽ không tạo được bài nào."
+        />
+      )}
       <Steps current={step} items={steps.map((s, i) => ({
         title: s.title,
         icon: i < step ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : s.icon,
@@ -208,7 +259,8 @@ export default function SetupWizard({ open, onClose, onComplete }) {
             </Form.Item>
           </Form>
           <div style={{ textAlign: 'right' }}>
-            <Button onClick={skip} style={{ marginRight: 8 }}>Bỏ qua</Button>
+            {!blocking && <Button onClick={handleClose} style={{ marginRight: 8 }}>Để sau</Button>}
+            <Button onClick={startManual} style={{ marginRight: 8 }}>Điền thủ công</Button>
             <Button type="primary" icon={<ArrowRightOutlined />} onClick={generateBrandDna}>
               Đọc trang web của tôi
             </Button>
@@ -232,9 +284,22 @@ export default function SetupWizard({ open, onClose, onComplete }) {
                 <Text strong>Brand DNA </Text>
                 <Text type="secondary">— xem lại và chỉnh sửa trước khi lưu</Text>
               </Paragraph>
+              {manualMode && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: 12 }}
+                  message="Đang điền thủ công"
+                  description="Chỉ cần mô tả ngắn gọn cũng đủ để AI viết đúng hướng. Có thể chỉnh lại sau ở tab Thương hiệu."
+                />
+              )}
               <Form layout="vertical">
-                <Form.Item label="Loại hình kinh doanh">
-                  <Input value={brandFields.business_type} onChange={(e) => setBrandFields({ ...brandFields, business_type: e.target.value })} />
+                <Form.Item label="Loại hình kinh doanh" required>
+                  <Input
+                    placeholder="vd: công ty sản xuất bao bì nhựa"
+                    value={brandFields.business_type}
+                    onChange={(e) => setBrandFields({ ...brandFields, business_type: e.target.value })}
+                  />
                 </Form.Item>
                 <Form.Item label="Giọng văn & phong cách">
                   <Input value={brandFields.voice_tone} onChange={(e) => setBrandFields({ ...brandFields, voice_tone: e.target.value })} />

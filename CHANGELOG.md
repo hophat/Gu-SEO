@@ -7,6 +7,58 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.13.0 — 2026-09-15
+
+Setup is now mandatory. A brand new account could previously skip the wizard
+entirely and land in an admin that would never produce anything.
+
+### Fixed
+- **Onboarding state was GLOBAL, so new users skipped setup.** It lived in
+  `settings.onboarding_complete` — a row with no `project_id`. The first
+  project to finish the wizard marked EVERY project complete, which is why a
+  freshly registered account sailed straight past it. Brand DNA and schedule
+  were read from the same global settings row, so those checks were wrong for
+  the same reason.
+  State is now per project: `projects.onboarding_complete_at` (migration 004),
+  and the checks read `project_brands` / `content_calendar` for the caller's
+  project.
+  The migration backfills already-set-up projects (Brand DNA **and** calendar
+  slots) so an upgrade does not drop existing installs into the wizard — that
+  would have looked like the upgrade broke their site.
+- **The wizard was skippable.** It is now blocking while a project is
+  incomplete: no close button, no mask click, no Esc, and no "Bỏ qua" button.
+  It re-checks on project switch, so moving to a project that was never set up
+  gates again.
+- **`POST /api/admin/onboarding` accepted completion unconditionally.** The UI
+  blocked it but a direct call could fake activation and inflate the funnel.
+  It now returns 409 with the missing steps. The UI surfaces that instead of
+  reporting success.
+- **A failed website scrape was a dead end.** With setup mandatory, bouncing
+  back to step 1 would have trapped the operator. Brand DNA now falls back to
+  manual entry (and there is an explicit "Điền thủ công" button), so a scrape
+  failure still reaches a working schedule.
+
+### Notes on the design
+`complete` — the gate — is **derived** from the data (Brand DNA exists and a
+future schedule exists), not from a stored flag. That makes it self-healing:
+a project whose Brand DNA is later deleted gates again, because it genuinely
+can no longer produce on-brand content. `onboarding_complete_at` is a
+separate, informational record of when the operator last walked the wizard; it
+feeds the `onboarding_complete` event and does not gate. A stored flag would
+let a project that lost its setup data sail through — the exact class of bug
+this release fixes.
+
+### Added (tooling)
+- **Platform tests: 79 checks** (was 71). New coverage: the required-step
+  declaration, the API refusing to fake completion, Brand-DNA-without-schedule
+  staying incomplete, per-project isolation (the regression), past-dated slots
+  not counting, reset clearing only the confirmation, and losing the setup data
+  re-opening the gate.
+
+### Notes for operators
+- `npm run migrate` applies migration 004 and backfills. On a live install it
+  marked 13 of 16 projects complete and left the 3 that had Brand DNA but no
+  schedule — exactly the accounts that were skipping setup.
 ## 1.12.0 — 2026-09-15
 
 Product analytics. Answers the questions that decide whether the product

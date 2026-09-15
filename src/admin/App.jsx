@@ -117,6 +117,8 @@ function AdminShell() {
   const { projects, activeProject, switchProject, load: loadProjects } = useProjects();
   const [collapsed, setCollapsed] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  // True while this project has not finished the required setup steps.
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [current, setCurrent] = useState(() => {
     const h = window.location.hash.replace(/^#/, '').trim();
     return h || 'overview';
@@ -142,15 +144,27 @@ function AdminShell() {
 
   // Projects are auto-loaded by ProjectsProvider once authenticated.
 
-  // Auto-open wizard for new users (onboarding not complete)
+  // Setup is MANDATORY, not a suggestion.
+  //
+  // Onboarding state is per project (migration 004 — it used to be a single
+  // global settings row, which is why a brand new account skipped setup: some
+  // other project had already set the flag). While it is incomplete the wizard
+  // is blocking: no close button, no mask click, no Esc, no "later".
+  //
+  // Re-checked whenever the active project changes, because switching to a
+  // project that was never set up must gate again.
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeProject) return;
+    let cancelled = false;
     apiGet('/api/admin/onboarding').then(({ status, body }) => {
-      if (status === 200 && body?.ok && !body.complete) {
-        setWizardOpen(true);
+      if (cancelled) return;
+      if (status === 200 && body?.ok) {
+        setNeedsOnboarding(!body.complete);
+        setWizardOpen(!body.complete);
       }
     }).catch(() => {});
-  }, [user]);
+    return () => { cancelled = true; };
+  }, [user, activeProject]);
 
   // Propagate active project to API client
   useEffect(() => {
@@ -266,7 +280,17 @@ function AdminShell() {
             </Content>
           </Layout>
         </Layout>
-        <OnboardingWizard open={wizardOpen} onClose={() => setWizardOpen(false)} onComplete={() => { check(); loadProjects(); }} />
+        <OnboardingWizard
+          open={wizardOpen}
+          blocking={needsOnboarding}
+          onClose={() => setWizardOpen(false)}
+          onComplete={() => {
+            setNeedsOnboarding(false);
+            setWizardOpen(false);
+            check();
+            loadProjects();
+          }}
+        />
       </AntApp>
     </ConfigProvider>
   );

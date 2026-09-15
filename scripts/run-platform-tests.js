@@ -28,6 +28,9 @@ import { onRequestPatch as aliasPatch, onRequestDelete as aliasDelete } from '..
 import { track, trackOnce } from '../functions/_lib/events.js';
 import { computeInsights, isoWeek } from '../functions/_lib/insights.js';
 import { onRequestGet as insights } from '../functions/api/admin/insights.js';
+import {
+  onRequestGet as onboardingGet, onRequestPost as onboardingPost, onRequestDelete as onboardingDelete,
+} from '../functions/api/admin/onboarding.js';
 
 // Admin endpoints authenticate through the bearer token, so tests need a
 // request shaped the way adminGate()/resolveTenantContext() expect.
@@ -861,8 +864,100 @@ async function testEventsAndInsights() {
   ok('isoWeek produces ISO-8601 week labels');
 }
 
+// ── H. mandatory per-project onboarding ─────────────────────────────
+// The bug this covers: onboarding state used to be a single global settings
+// row, so the first project to finish the wizard marked every project
+// complete and a brand new account skipped setup entirely.
+async function testOnboarding() {
+  console.log('\nH. Mandatory per-project onboarding');
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+  const get = async (pid) => (await onboardingGet({ env, request: adminReq(`https://x/api/admin/onboarding?project_id=${pid}`) })).json();
+  const post = async (pid) => onboardingPost({ env, request: adminReq(`https://x/api/admin/onboarding?project_id=${pid}`, { body: {} }) });
+
+  // A fresh project is not complete and the required steps are declared.
+  const s1 = await get(PROJECT);
+  assert.equal(s1.ok, true);
+  assert.equal(s1.complete, false, 'a fresh project must not be complete');
+  assert.equal(s1.has_brand_dna, false);
+  assert.equal(s1.has_future_slots, false);
+  const reqKeys = s1.steps.filter((x) => x.required).map((x) => x.key);
+  assert.deepEqual(reqKeys, ['brand_dna', 'schedule'], 'brand DNA and schedule are the required steps');
+  assert.equal(s1.steps.find((x) => x.key === 'providers').required, false, 'providers stay optional');
+  ok('a fresh project reports incomplete with the right required steps');
+
+  // The API must refuse to fake completion — the UI already blocks it, but a
+  // direct call must not be able to inflate the activation funnel.
+  const refused = await post(PROJECT);
+  assert.equal(refused.status, 409, 'marking complete without the steps must fail');
+  const refusedBody = await refused.json();
+  assert.deepEqual(refusedBody.missing, ['brand_dna', 'schedule']);
+  ok('API refuses to mark complete while required steps are missing');
+
+  // Brand DNA alone is not enough.
+  await env.DB.prepare(
+    `INSERT INTO project_brands (project_id, business_type, created_at, updated_at) VALUES (?, 'Plastic', ?, ?)`
+  ).bind(PROJECT, t, t).run();
+  const onlyBrand = await post(PROJECT);
+  assert.equal(onlyBrand.status, 409);
+  assert.deepEqual((await onlyBrand.json()).missing, ['schedule'], 'schedule is still required');
+  ok('Brand DNA without a schedule is still incomplete');
+
+  // Both steps → complete.
+  await env.DB.prepare(
+    `INSERT INTO content_calendar (id, project_id, scheduled_for, title, status, source, created_at, updated_at)
+     VALUES ('cal_ob', ?, ?, 'T', 'scheduled', 'manual', ?, ?)`
+  ).bind(PROJECT, tomorrow, t, t).run();
+  const done = await post(PROJECT);
+  assert.equal(done.status, 200, 'completing with both steps must succeed');
+  const s2 = await get(PROJECT);
+  assert.equal(s2.complete, true);
+  assert.ok(s2.marked_complete_at > 0, 'the completion timestamp is persisted on the project');
+  ok('both required steps complete the project');
+
+  // THE REGRESSION: another project must NOT inherit completion.
+  const other = await get(OTHER);
+  assert.equal(other.complete, false, 'a second project must not inherit the first project\'s completion');
+  assert.equal(other.has_brand_dna, false);
+  ok('onboarding is per project, not global');
+
+  // A past-dated slot does not count — the cron needs something in the future.
+  await env.DB.prepare(
+    `INSERT INTO project_brands (project_id, business_type, created_at, updated_at) VALUES (?, 'Beta', ?, ?)`
+  ).bind(OTHER, t, t).run();
+  await env.DB.prepare(
+    `INSERT INTO content_calendar (id, project_id, scheduled_for, title, status, source, created_at, updated_at)
+     VALUES ('cal_old', ?, '2020-01-01', 'T', 'scheduled', 'manual', ?, ?)`
+  ).bind(OTHER, t, t).run();
+  const pastOnly = await get(OTHER);
+  assert.equal(pastOnly.has_future_slots, false, 'a slot in the past does not satisfy the schedule step');
+  assert.equal(pastOnly.complete, false);
+  ok('only future slots count toward the schedule step');
+
+  // Reset clears the confirmation timestamp. The gate is derived from the
+  // data, so the project stays usable — re-running the wizard is for review,
+  // not a way to break a working account.
+  await onboardingDelete({ env, request: adminReq(`https://x/api/admin/onboarding?project_id=${PROJECT}`) });
+  const afterReset = await get(PROJECT);
+  assert.equal(afterReset.marked_complete_at, null, 'reset clears the confirmation timestamp');
+  assert.equal(afterReset.complete, true, 'the gate is derived from data, so it stays open');
+  assert.equal(afterReset.has_brand_dna, true, 'reset does not delete the Brand DNA');
+  ok('reset clears the confirmation without breaking a working project');
+
+  // Self-healing in the other direction: losing the setup data re-opens the
+  // gate. This is why `complete` is derived rather than a stored flag — a flag
+  // would let a project that lost its Brand DNA sail through.
+  await env.DB.prepare('DELETE FROM project_brands WHERE project_id = ?').bind(PROJECT).run();
+  const regated = await get(PROJECT);
+  assert.equal(regated.complete, false, 'deleting the Brand DNA re-opens the gate');
+  assert.equal(regated.has_brand_dna, false);
+  ok('losing the setup data re-opens the gate (self-healing)');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -870,6 +965,7 @@ async function main() {
   await testAliasScoping();
   await testAttentionAndActivation();
   await testEventsAndInsights();
+  await testOnboarding();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 
