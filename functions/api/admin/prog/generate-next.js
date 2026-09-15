@@ -41,7 +41,7 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
     "UPDATE prog_keywords SET status='processing', attempts=attempts+1, updated_at=? WHERE id=? AND status='pending'"
   ).bind(t0, next.id).run();
 
-  const aliases = await buildAliasMap(env);
+  const aliases = await buildAliasMap(env, pid);
   const settings = await loadSettings(env);
 
   // Budget check before we touch the LLM. Cron pulls a fresh keyword

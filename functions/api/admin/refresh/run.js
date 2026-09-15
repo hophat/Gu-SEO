@@ -74,7 +74,7 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
     }
   }
 
-  const aliases = await buildAliasMap(env);
+  const aliases = await buildAliasMap(env, post.project_id || null);
   const settings = await loadSettings(env);
 
   let out;
@@ -160,7 +160,7 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
   const newUrls = [`${base}/blog`, `${base}/blog/${newSlug}`];
   waitUntil(pingIndexNow(env, newUrls, request, blogHost).catch(() => {}));
   waitUntil(gscOnPublish(env, newUrls).catch(() => {}));
-  waitUntil(syncSitemapAliases(env).catch(() => {}));
+  waitUntil(syncSitemapAliases(env, post.project_id || null).catch(() => {}));
   waitUntil(storeEmbedding(env, newSlug, {
     title: out.title || post.title,
     body_markdown: out.body_markdown,

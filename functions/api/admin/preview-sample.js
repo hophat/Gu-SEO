@@ -18,6 +18,7 @@ import { adminGate } from '../../_lib/auth.js';
 import { generateContent, generateImage } from '../../_lib/ai.js';
 import { sanitiseMarkdownLinks } from '../../_lib/links/sanitise.js';
 import { buildAliasMap } from '../../_lib/links/aliases.js';
+import { requireAdminAsync, resolveTenantContext } from '../../_lib/auth.js';
 import { renderContentPage } from '../../_lib/page_render.js';
 import { loadSettings } from '../../_lib/settings.js';
 
@@ -25,6 +26,8 @@ const DEFAULT_TOPIC = 'Practical tips for someone starting out';
 
 export const onRequestPost = async ({ request, env }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
+  const auth = await requireAdminAsync(env, request);
+  const tenant = await resolveTenantContext(env, request, auth);
 
   let body = {};
   try { body = await request.json(); } catch { /* empty body ok */ }
@@ -45,7 +48,7 @@ export const onRequestPost = async ({ request, env }) => {
     key_themes:      body.brand?.key_themes      || settings.brand_key_themes      || undefined,
     topics_to_avoid: body.brand?.topics_to_avoid || settings.brand_topics_to_avoid || undefined,
     service_area:    body.brand?.service_area    || settings.brand_service_area    || undefined,
-    aliases: await buildAliasMap(env),
+    aliases: await buildAliasMap(env, tenant?.activeProjectId || null),
   };
 
   let content;

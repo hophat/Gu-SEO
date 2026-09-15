@@ -21,11 +21,48 @@ import {
 } from '../functions/_lib/publishing/facebook.js';
 import { signState, verifyState, buildAuthUrl } from '../functions/_lib/publishing/facebook_oauth.js';
 import { sanitizeEmbedSettings, snippetFor, embedWidgetOptions } from '../functions/_lib/embed_settings.js';
+import { buildAliasMap, syncSitemapAliases } from '../functions/_lib/links/aliases.js';
+import { onRequestGet as attention } from '../functions/api/admin/attention.js';
+import { onRequestGet as activation } from '../functions/api/admin/activation.js';
+import { onRequestPatch as aliasPatch, onRequestDelete as aliasDelete } from '../functions/api/admin/aliases/index.js';
+
+// Admin endpoints authenticate through the bearer token, so tests need a
+// request shaped the way adminGate()/resolveTenantContext() expect.
+function adminReq(url, { body, token = 'test-admin-token-123' } = {}) {
+  const headers = new Map([['Authorization', `Bearer ${token}`]]);
+  const req = {
+    url,
+    headers,
+    clone() { return req; },
+    json: async () => body || {},
+  };
+  return {
+    ...req,
+    headers: {
+      get: (h) => {
+        for (const [k, v] of headers.entries()) {
+          if (k.toLowerCase() === h.toLowerCase()) return v;
+        }
+        return null;
+      },
+    },
+  };
+}
 
 let passed = 0;
 // Captured before any test stubs console.log, so progress lines still print.
 const out = (...args) => process.stdout.write(args.join(' ') + '\n');
 function ok(label) { passed++; out(`✓ ${label}`); }
+
+// Apply the base schema directly, without the migration pass. Used by tests
+// that need to construct a pre-migration database on purpose.
+function execSchema(env) {
+  for (const stmt of SCHEMA_SQL.split(/;\s*(?:\r?\n|$)/)
+    .map((s) => s.replace(/^\s*--.*$/gm, '').trim())
+    .filter(Boolean)) {
+    try { env.__sqlite.exec(stmt); } catch { /* already-applied ALTERs */ }
+  }
+}
 
 const PROJECT = 'proj_test_a';
 const OTHER = 'proj_test_b';
@@ -434,12 +471,240 @@ async function testCronRouting() {
   }
 }
 
+// ── E. project-scoped aliases ───────────────────────────────────────
+// Migration 002 rebuilds site_aliases because the legacy table had
+// `name` as the primary key — one row per name for the WHOLE database, so
+// every project saw every other project's aliases. The migration renames the
+// old table rather than dropping it, so the tests check both that data
+// survives and that isolation now holds.
+async function testAliasScoping() {
+  console.log('\nE. Project-scoped aliases');
+
+  // Legacy database: full base schema (which still declares the OLD
+  // site_aliases shape) plus populated alias rows. This is what a real
+  // upgrade sees.
+  const env = createSqliteEnv();
+  execSchema(env);
+  const t = Math.floor(Date.now() / 1000);
+  // Real projects, so resolveTenantContext() can resolve the caller's scope.
+  // Without them pid is null and every alias operation falls back to the
+  // shared ('') scope — which would make the isolation assertions meaningless.
+  for (const [id, slug] of [[PROJECT, 'alpha'], [OTHER, 'beta']]) {
+    await env.DB.prepare(
+      `INSERT INTO projects (id, slug, name, website_url, publishing_url, language, timezone, status, approval_mode, created_at, updated_at)
+       VALUES (?, ?, ?, 'https://x.example', ?, 'vi', 'Asia/Ho_Chi_Minh', 'active', 'auto', ?, ?)`
+    ).bind(id, slug, slug, `https://seo.test/${slug}`, t, t).run();
+  }
+  env.__sqlite.exec(`
+    INSERT INTO site_aliases (name,url,description,kind,created_at,updated_at) VALUES
+      ('login','/login','Sign in','manual',${t},${t}),
+      ('old-post','/blog/old-post','A post','sitemap',${t},${t});
+  `);
+  await runMigrations(env, { logger: { log: () => {}, error: () => {} } });
+
+  const legacyTable = await env.__get("SELECT name FROM sqlite_master WHERE type='table' AND name='site_aliases_legacy'");
+  assert.ok(legacyTable, 'legacy table must be renamed, not dropped');
+  const legacyRows = await env.__all('SELECT name FROM site_aliases_legacy');
+  assert.equal(legacyRows.length, 2, 'legacy rows must survive in the backup table');
+  ok('migration renames the legacy table instead of dropping it');
+
+  const copied = await env.__all("SELECT name, project_id FROM site_aliases ORDER BY name");
+  assert.equal(copied.length, 2, 'legacy rows must be copied forward');
+  assert.ok(copied.every((r) => r.project_id === ''), 'copied rows are shared/global');
+  ok('legacy rows copied forward as shared, existing installs keep working');
+
+  const cols = await env.__all('PRAGMA table_info(site_aliases)');
+  assert.ok(cols.some((c) => c.name === 'id' && c.pk === 1), 'new primary key is id');
+  assert.ok(cols.some((c) => c.name === 'project_id'), 'project_id column exists');
+  ok('rebuilt table has (id, project_id) and a composite unique index');
+
+  // Two projects may now own the same alias name.
+  const t2 = Math.floor(Date.now() / 1000);
+  for (const [pid, url] of [[PROJECT, '/alpha-login'], [OTHER, '/beta-login']]) {
+    await env.DB.prepare(
+      `INSERT INTO site_aliases (id, project_id, name, url, kind, created_at, updated_at)
+       VALUES (lower(hex(randomblob(16))), ?, 'login', ?, 'manual', ?, ?)`
+    ).bind(pid, url, t2, t2).run();
+  }
+  const logins = await env.__all("SELECT project_id, url FROM site_aliases WHERE name='login' ORDER BY project_id");
+  assert.equal(logins.length, 3, 'shared + two project rows may coexist');
+  ok('two projects can each own an alias with the same name');
+
+  // Duplicate within one project must be rejected.
+  let dupFailed = false;
+  try {
+    await env.DB.prepare(
+      `INSERT INTO site_aliases (id, project_id, name, url, kind, created_at, updated_at)
+       VALUES (lower(hex(randomblob(16))), ?, 'login', '/dupe', 'manual', ?, ?)`
+    ).bind(PROJECT, t2, t2).run();
+  } catch { dupFailed = true; }
+  assert.ok(dupFailed, 'the same name cannot appear twice within one project');
+  ok('duplicate alias name within a project is rejected');
+
+  // Isolation on read.
+  const mapA = await buildAliasMap(env, PROJECT);
+  const mapB = await buildAliasMap(env, OTHER);
+  assert.equal(mapA.login.url, '/alpha-login', 'project A sees its own row');
+  assert.equal(mapB.login.url, '/beta-login', 'project B sees its own row');
+  assert.ok(mapA['old-post'], 'shared legacy rows stay visible to everyone');
+  assert.equal(mapA['beta-login'], undefined);
+  ok('buildAliasMap is project-scoped and still includes shared rows');
+
+  // Isolation on sync.
+  await env.DB.prepare(
+    `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+     VALUES ('p_a','alpha-only','T','D','# B','published',?,?,?)`
+  ).bind(PROJECT, t2, t2).run();
+  await env.DB.prepare(
+    `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+     VALUES ('p_b','beta-only','T','D','# B','published',?,?,?)`
+  ).bind(OTHER, t2, t2).run();
+
+  await syncSitemapAliases(env, PROJECT);
+  const sitemapA = await env.__all("SELECT name, project_id FROM site_aliases WHERE kind='sitemap' AND project_id = ?", PROJECT);
+  assert.deepEqual(sitemapA.map((r) => r.name), ['alpha-only']);
+  const sitemapB = await env.__all("SELECT name FROM site_aliases WHERE kind='sitemap' AND project_id = ?", OTHER);
+  assert.equal(sitemapB.length, 0, 'syncing A must not create B rows');
+  ok('sitemap sync only touches the calling project');
+
+  // A project must not be able to edit or delete another project's row.
+  // Use a name that ONLY the other project owns — patching a name both
+  // projects own would legitimately hit the caller's own row.
+  await env.DB.prepare(
+    `INSERT INTO site_aliases (id, project_id, name, url, kind, created_at, updated_at)
+     VALUES (lower(hex(randomblob(16))), ?, 'beta-exclusive', '/beta-exclusive', 'manual', ?, ?)`
+  ).bind(OTHER, t2, t2).run();
+
+  const patchOther = await aliasPatch({
+    env, request: adminReq(`https://x/api/admin/aliases?project_id=${PROJECT}`, { body: { name: 'beta-exclusive', url: '/hijacked' } }),
+  });
+  assert.equal(patchOther.status, 404, 'cross-project patch must 404');
+  const after = await env.__get("SELECT url FROM site_aliases WHERE name='beta-exclusive' AND project_id = ?", OTHER);
+  assert.equal(after.url, '/beta-exclusive', 'the other project\'s row is untouched');
+  ok('a project cannot patch another project\'s alias');
+
+  const delOther = await aliasDelete({
+    env, request: adminReq(`https://x/api/admin/aliases?name=beta-exclusive&project_id=${PROJECT}`),
+  });
+  assert.equal(delOther.status, 404, 'cross-project delete must 404');
+  const stillThere = await env.__get("SELECT 1 AS x FROM site_aliases WHERE name='beta-exclusive' AND project_id = ?", OTHER);
+  assert.ok(stillThere, 'the other project\'s row survives');
+  ok('a project cannot delete another project\'s alias');
+
+  // Shared/legacy rows are not editable by anyone — editing one would
+  // silently change every tenant's prompt vocabulary.
+  const patchShared = await aliasPatch({
+    env, request: adminReq(`https://x/api/admin/aliases?project_id=${PROJECT}`, { body: { name: 'old-post', url: '/hijacked' } }),
+  });
+  assert.equal(patchShared.status, 404, 'shared rows must not be patchable');
+  const sharedRow = await env.__get("SELECT url, project_id FROM site_aliases WHERE name='old-post'");
+  assert.equal(sharedRow.url, '/blog/old-post', 'shared row is untouched');
+  assert.equal(sharedRow.project_id, '', 'shared row stays shared');
+  ok('shared/legacy aliases are read-only for every project');
+}
+
+// ── F. attention + activation ───────────────────────────────────────
+async function testAttentionAndActivation() {
+  console.log('\nF. Attention list + activation checklist');
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+
+  // No brand DNA, no schedule, no post, no domain, no channel → the list must
+  // surface all of them, ranked critical-first.
+  const res = await attention({ env, request: adminReq(`https://x/api/admin/attention?project_id=${PROJECT}`) });
+  const body = await res.json();
+  assert.equal(res.status, 200);
+  assert.equal(body.ok, true);
+  const ids = body.items.map((i) => i.id);
+  assert.ok(ids.includes('no_brand_dna'), 'missing Brand DNA must be surfaced');
+  assert.ok(ids.includes('no_schedule'), 'empty schedule must be surfaced');
+  assert.ok(ids.includes('no_domain'), 'missing custom domain must be surfaced');
+  assert.ok(ids.includes('no_channel'), 'missing channel must be surfaced');
+  ok('attention surfaces the setup gaps for a fresh project');
+
+  // Ordering: every critical comes before every warning, warnings before info.
+  const rank = { critical: 0, warning: 1, info: 2 };
+  const sev = body.items.map((i) => rank[i.severity]);
+  assert.deepEqual(sev, [...sev].sort((a, b) => a - b), 'items must be ranked critical → warning → info');
+  ok('attention ranks critical before warning before info');
+
+  // Every item must carry an actionable destination.
+  assert.ok(body.items.every((i) => i.action?.label && i.action?.href), 'every item needs a CTA');
+  ok('every attention item carries a call to action');
+
+  // A failed social job with needs_reconnect becomes critical.
+  await env.DB.prepare(
+    `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+     VALUES ('p_att','att','T','D','# B','published',?,?,?)`
+  ).bind(PROJECT, t, t).run();
+  await env.DB.prepare(
+    `INSERT INTO social_posts (id, project_id, blog_post_id, channel, status, attempts, max_attempts, next_attempt_at, needs_reconnect, created_at, updated_at)
+     VALUES ('sp_att', ?, 'p_att', 'facebook', 'failed', 1, 5, ?, 1, ?, ?)`
+  ).bind(PROJECT, t, t, t).run();
+
+  const res2 = await attention({ env, request: adminReq(`https://x/api/admin/attention?project_id=${PROJECT}`) });
+  const body2 = await res2.json();
+  const reconnect = body2.items.find((i) => i.id === 'social_reconnect');
+  assert.ok(reconnect, 'a needs_reconnect job must appear');
+  assert.equal(reconnect.severity, 'critical');
+  assert.equal(reconnect.count, 1);
+  assert.equal(reconnect.action.href, '#publishing');
+  ok('a disconnected social channel is raised as critical with a reconnect CTA');
+
+  // Project scoping: another project's failure must not leak in. It needs its
+  // own blog post — (blog_post_id, channel) is unique across the table.
+  await env.DB.prepare(
+    `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+     VALUES ('p_att_b','att-b','T','D','# B','published',?,?,?)`
+  ).bind(OTHER, t, t).run();
+  await env.DB.prepare(
+    `INSERT INTO social_posts (id, project_id, blog_post_id, channel, status, attempts, max_attempts, next_attempt_at, needs_reconnect, created_at, updated_at)
+     VALUES ('sp_other', ?, 'p_att_b', 'facebook', 'failed', 1, 5, ?, 1, ?, ?)`
+  ).bind(OTHER, t, t, t).run();
+  const res3 = await attention({ env, request: adminReq(`https://x/api/admin/attention?project_id=${OTHER}`) });
+  const body3 = await res3.json();
+  assert.equal(body3.items.find((i) => i.id === 'social_reconnect')?.count, 1, 'counts are per project');
+  ok('attention is project-scoped');
+
+  // Activation checklist.
+  const a1 = await (await activation({ env, request: adminReq(`https://x/api/admin/activation?project_id=${PROJECT}`) })).json();
+  assert.equal(a1.ok, true);
+  assert.equal(a1.complete, false, 'a fresh project is not activated');
+  assert.equal(a1.steps.length, 6);
+  const stepKeys = a1.steps.map((s) => s.key);
+  assert.deepEqual(stepKeys, ['brand_dna', 'providers', 'schedule', 'first_post', 'domain', 'channel']);
+  ok('activation exposes the ordered setup checklist');
+
+  // Mark the required steps done and re-check.
+  await env.DB.prepare(
+    `INSERT INTO project_brands (project_id, business_type, created_at, updated_at) VALUES (?, 'Plastic', ?, ?)`
+  ).bind(PROJECT, t, t).run();
+  await env.DB.prepare(
+    `INSERT INTO content_calendar (id, project_id, scheduled_for, title, status, source, created_at, updated_at)
+     VALUES ('cal_1', ?, ?, 'T', 'scheduled', 'manual', ?, ?)`
+  ).bind(PROJECT, new Date(Date.now() + 86400000).toISOString().slice(0, 10), t, t).run();
+
+  const a2 = await (await activation({ env, request: adminReq(`https://x/api/admin/activation?project_id=${PROJECT}`) })).json();
+  const incomplete = a2.steps.filter((s) => !s.optional && !s.done).map((s) => s.key);
+  assert.equal(a2.complete, true, `required steps still open: ${incomplete.join(', ') || 'none'}`);
+  assert.equal(a2.required_done, a2.required_total);
+  assert.equal(a2.metrics.published_posts, 1);
+  assert.ok(a2.metrics.time_to_first_post_hours >= 0, 'time-to-first-post is measured');
+  ok('activation completes once the required steps are done');
+
+  const a3 = await (await activation({ env, request: adminReq(`https://x/api/admin/activation?project_id=${OTHER}`) })).json();
+  assert.equal(a3.complete, false, 'activation is per project');
+  ok('activation is project-scoped');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · social queue · publishing · cron) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
   await testCronRouting();
+  await testAliasScoping();
+  await testAttentionAndActivation();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

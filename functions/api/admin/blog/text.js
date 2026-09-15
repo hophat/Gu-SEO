@@ -40,7 +40,7 @@ export const onRequestPost = async ({ request, env }) => {
   // it into the prompt so the model can write [Sign up](signup) etc. After
   // the model returns, the sanitiser expands the aliases and validates
   // every link is on the whitelist before the row hits the DB.
-  const aliases = await buildAliasMap(env);
+  const aliases = await buildAliasMap(env, job.project_id || null);
   const settings = await loadSettings(env);
   // The project's public path prefix. Content written for a tenant must
   // link under it, otherwise every internal link resolves against the

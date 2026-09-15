@@ -50,13 +50,15 @@ export default function Overview() {
   const [calendar, setCalendar] = useState({ total: 0, scheduled: 0, published: 0, today: 0, nextDate: null });
   const [brand, setBrand] = useState(null);
   const [social, setSocial] = useState({ jobs: [], counts: {} });
+  const [attention, setAttention] = useState({ items: [], counts: {} });
+  const [activation, setActivation] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     const today = new Date().toISOString().slice(0, 10);
     const from = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
     const to = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);
-    const [posts, prog, queue, who, cal, brandRes, socialRes] = await Promise.all([
+    const [posts, prog, queue, who, cal, brandRes, socialRes, attentionRes, activationRes] = await Promise.all([
       apiGet('/api/admin/blog/list'),
       apiGet('/api/admin/prog/queue?status=done&limit=500'),
       apiGet('/api/admin/prog/queue?status=pending&limit=500'),
@@ -64,6 +66,8 @@ export default function Overview() {
       apiGet(`/api/admin/calendar?from=${from}&to=${to}`),
       apiGet('/api/admin/brand-dna'),
       apiGet('/api/admin/social?limit=200'),
+      apiGet('/api/admin/attention'),
+      apiGet('/api/admin/activation'),
     ]);
     const published = (posts.body?.posts || []).filter((p) => p.status === 'published').length;
     setStats({ published, prog: prog.body?.keywords?.length || 0, queue: queue.body?.keywords?.length || 0 });
@@ -102,6 +106,14 @@ export default function Overview() {
         jobs: socialRes.body.jobs || [],
         counts: socialRes.body.counts || {},
       });
+    }
+
+    // Action center + activation checklist
+    if (attentionRes.status === 200 && attentionRes.body?.ok) {
+      setAttention({ items: attentionRes.body.items || [], counts: attentionRes.body.counts || {} });
+    }
+    if (activationRes.status === 200 && activationRes.body?.ok) {
+      setActivation(activationRes.body);
     }
 
     // Domain
@@ -153,6 +165,94 @@ export default function Overview() {
         </Space>
       }
     >
+      {/* Action center — everything that needs a human, in one place */}
+      {attention.items.length > 0 && (
+        <Card
+          size="small"
+          style={{ marginBottom: 24 }}
+          title={
+            <Space>
+              <WarningOutlined style={{ color: attention.counts.critical ? '#ff4d4f' : '#faad14' }} />
+              Cần xử lý
+              {attention.counts.critical > 0 && <Tag color="error">{attention.counts.critical} nghiêm trọng</Tag>}
+              {attention.counts.warning > 0 && <Tag color="warning">{attention.counts.warning} cảnh báo</Tag>}
+              {attention.counts.info > 0 && <Tag>{attention.counts.info} gợi ý</Tag>}
+            </Space>
+          }
+        >
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            {attention.items.map((it) => {
+              const color = it.severity === 'critical' ? '#ff4d4f' : it.severity === 'warning' ? '#faad14' : '#8c8c8c';
+              const Icon = it.severity === 'info' ? InfoCircleOutlined : WarningOutlined;
+              return (
+                <Row key={it.id} gutter={[12, 8]} align="middle" wrap={false}>
+                  <Col flex="none"><Icon style={{ color, fontSize: 16 }} /></Col>
+                  <Col flex="auto" style={{ minWidth: 0 }}>
+                    <Text strong style={{ fontSize: 13 }}>
+                      {it.title}
+                      {it.count ? <Tag style={{ marginLeft: 6, fontSize: 11 }}>{it.count}</Tag> : null}
+                    </Text>
+                    <div><Text type="secondary" style={{ fontSize: 12 }}>{it.detail}</Text></div>
+                  </Col>
+                  <Col flex="none">
+                    <Button size="small" href={it.action.href}>{it.action.label}</Button>
+                  </Col>
+                </Row>
+              );
+            })}
+          </Space>
+        </Card>
+      )}
+
+      {/* Activation checklist — only while there is something left to do */}
+      {activation && !activation.complete && (
+        <Card
+          size="small"
+          style={{ marginBottom: 24 }}
+          title={
+            <Space>
+              <RocketOutlined />
+              Hoàn tất thiết lập
+              <Progress
+                type="circle"
+                size={22}
+                percent={Math.round((activation.required_done / activation.required_total) * 100)}
+                format={() => `${activation.required_done}/${activation.required_total}`}
+              />
+            </Space>
+          }
+          extra={
+            activation.metrics?.time_to_first_post_hours != null && (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Bài đầu tiên sau {activation.metrics.time_to_first_post_hours} giờ
+              </Text>
+            )
+          }
+        >
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            {activation.steps.map((st) => (
+              <Row key={st.key} gutter={[12, 8]} align="middle" wrap={false}>
+                <Col flex="none">
+                  {st.done
+                    ? <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />
+                    : <ClockCircleOutlined style={{ color: '#bfbfbf', fontSize: 16 }} />}
+                </Col>
+                <Col flex="auto" style={{ minWidth: 0 }}>
+                  <Text strong={!st.done} type={st.done ? 'secondary' : undefined} style={{ fontSize: 13 }}>
+                    {st.title}
+                    {st.optional && <Tag style={{ marginLeft: 6, fontSize: 11 }}>tùy chọn</Tag>}
+                  </Text>
+                  <div><Text type="secondary" style={{ fontSize: 12 }}>{st.detail}</Text></div>
+                </Col>
+                <Col flex="none">
+                  {!st.done && <Button size="small" href={st.action.href}>{st.action.label}</Button>}
+                </Col>
+              </Row>
+            ))}
+          </Space>
+        </Card>
+      )}
+
       {/* Project info hero */}
       {activeProject && (
         <Card style={{ marginBottom: 24, overflow: 'hidden' }}>

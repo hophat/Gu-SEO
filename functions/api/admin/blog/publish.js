@@ -75,7 +75,7 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
     const blogHost = new URL(base).hostname;
     waitUntil(pingIndexNow(env, newUrls, request, blogHost).catch(() => {}));
     waitUntil(gscOnPublish(env, newUrls).catch(() => {}));
-    waitUntil(syncSitemapAliases(env).catch(() => {}));
+    waitUntil(syncSitemapAliases(env, job.project_id || null).catch(() => {}));
     waitUntil(storeEmbedding(env, job.slug, {
       title: job.title,
       body_markdown: job.body_markdown,

@@ -325,6 +325,12 @@ CREATE INDEX IF NOT EXISTS idx_calendar_status_date
 --     curation list.
 --
 -- When two rows share the same \`name\`, manual wins on lookup.
+--
+-- NOTE: this is the LEGACY shape (name as primary key, no project scoping).
+-- Migration 002 rebuilds it as (id, project_id, name) so each project owns its
+-- own alias vocabulary. The legacy shape is kept here on purpose so a fresh
+-- install takes the same upgrade path as an existing one — the migration is
+-- then exercised by every install, not only by old databases.
 CREATE TABLE IF NOT EXISTS site_aliases (
   name            TEXT PRIMARY KEY,                -- lowercase identifier the AI uses
   url             TEXT NOT NULL,                   -- absolute or root-relative URL
@@ -603,6 +609,30 @@ ALTER TABLE trend_topics ADD COLUMN project_id TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_leads_project ON leads(project_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feedback_project ON feedback(project_id, created_at DESC);
+
+-- ── Core-table project scoping ────────────────────────────────────────────
+-- These columns were present in production but MISSING from this file, so a
+-- fresh install produced a schema with no project_id anywhere and the whole
+-- multi-project layer failed. Production only worked because it had been
+-- migrated incrementally. \`scripts/check-schema-drift.mjs\` compares a live
+-- database against this file and is what caught it — run it after any schema
+-- edit.
+--
+-- ADD COLUMN is not idempotent in SQLite; the migration runner tolerates
+-- "duplicate column name" so re-applying this file against an existing
+-- database is safe.
+ALTER TABLE blog_posts      ADD COLUMN project_id TEXT;
+ALTER TABLE blog_posts      ADD COLUMN category TEXT;
+ALTER TABLE blog_jobs       ADD COLUMN project_id TEXT;
+ALTER TABLE content_calendar ADD COLUMN project_id TEXT;
+ALTER TABLE prog_keywords   ADD COLUMN project_id TEXT;
+ALTER TABLE users           ADD COLUMN project_id TEXT;
+ALTER TABLE users           ADD COLUMN role TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_blog_posts_project    ON blog_posts(project_id, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blog_jobs_project     ON blog_jobs(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_calendar_project      ON content_calendar(project_id, scheduled_for);
+CREATE INDEX IF NOT EXISTS idx_prog_keywords_project ON prog_keywords(project_id, status);
 CREATE INDEX IF NOT EXISTS idx_blog_views_project ON blog_views(project_id);
 CREATE INDEX IF NOT EXISTS idx_prog_pages_project ON prog_pages(project_id);
 CREATE INDEX IF NOT EXISTS idx_trend_topics_project ON trend_topics(project_id, created_at DESC);

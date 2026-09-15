@@ -32,11 +32,15 @@ export default function Links() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form] = Form.useForm();
+  const [scope, setScope] = useState({ owned: 0, shared: 0 });
 
   const load = useCallback(async () => {
     setLoading(true);
     const { status, body } = await apiGet('/api/admin/aliases');
-    if (status === 200 && body?.ok) setAliases(body.aliases || []);
+    if (status === 200 && body?.ok) {
+      setAliases(body.aliases || []);
+      setScope(body.counts || { owned: 0, shared: 0 });
+    }
     setLoading(false);
   }, []);
 
@@ -192,6 +196,21 @@ export default function Links() {
         <Col xs={8}><Card><Statistic title="Mặc định" value={manualAliases.filter((a) => a.kind === 'reserved').length} prefix={<LockOutlined />} /></Card></Col>
         <Col xs={8}><Card><Statistic title="Sitemap" value={sitemapAliases.length} prefix={<LinkOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
       </Row>
+
+      {scope.shared > 0 && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={`${scope.shared} alias dùng chung từ trước khi tách theo dự án`}
+          description={
+            <span>
+              Đây là các alias được tạo trước khi có phân tách theo dự án, nên hiện hiển thị cho mọi dự án và không sửa được.
+              Bấm <b>Đồng bộ sitemap</b> để tạo bản riêng cho dự án này, sau đó có thể sửa/xoá bình thường.
+            </span>
+          }
+        />
+      )}
 
       <Tabs items={[
         {

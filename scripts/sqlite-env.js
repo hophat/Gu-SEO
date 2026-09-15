@@ -48,13 +48,20 @@ function createStatement(db, sql) {
   };
 }
 
-export function createSqliteEnv({ seedSql = '' } = {}) {
+export function createSqliteEnv({ seedSql = '', adminToken = 'test-admin-token-123' } = {}) {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys = ON;');
   if (seedSql) db.exec(seedSql);
 
   return {
     __sqlite: db,
+    // Admin endpoints authenticate through the bearer token, so tests need a
+    // request shaped the way adminGate()/resolveTenantContext() expect.
+    ADMIN_TOKEN: adminToken,
+    // adminGate() also refuses to run until site identity is set, otherwise
+    // every admin call would 503 instead of the status under test.
+    SITE_NAME: 'Test Site',
+    SITE_URL: 'https://test.example',
     DB: {
       prepare(sql) { return createStatement(db, sql); },
       async batch(statements) {

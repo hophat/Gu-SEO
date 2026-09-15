@@ -7,6 +7,75 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.11.0 — 2026-09-15
+
+Activation release. Adds the two things an operator needs once setup is
+done: one place that says what is broken, and one that says what is left
+to do. Plus a cross-tenant alias leak.
+
+### Added
+- **"Cần xử lý" — a single action list on the dashboard**
+  (`/api/admin/attention`). Failures used to live in five places (blog jobs,
+  programmatic queue, social queue, provider config, domain, cron staleness)
+  and an operator had to remember to check each one, so in practice a failed
+  Facebook post could sit for a week. Now every issue is ranked
+  critical → warning → info, carries a count, and links straight to the page
+  that clears it. Project-scoped.
+  Checks: social channel needs reconnecting, failed social posts, blog jobs
+  stuck mid-chain, failed blog jobs, failed programmatic pages, AI budget
+  exceeded/near limit, no AI provider, cron looks dead, empty schedule,
+  missing Brand DNA, no custom domain, no social channel.
+- **Activation checklist** (`/api/admin/activation`). The wizard tells an
+  operator what to do once; after that the most common failure mode is an
+  account set up halfway that quietly produces nothing. The dashboard now
+  keeps a checklist until the required steps are done, and reports the
+  activation metric that matters — hours from project creation to the first
+  published post — derived from existing data, no analytics pipeline needed.
+
+### Fixed
+- **Cross-tenant alias leak (migration 002).** `site_aliases` had no
+  `project_id` and `buildAliasMap()` returned every row to every project, so
+  the AI writing for one tenant was told it could link to another tenant's
+  pages and the sanitiser would expand those names into the article. The
+  table is rebuilt as `(id, project_id, name)` with a composite unique index,
+  so two projects can each own a `login` alias — impossible before, since
+  `name` was the primary key for the whole database.
+  The legacy table is **renamed, not dropped**, to `site_aliases_legacy` and
+  every row is copied forward as shared (`project_id = ''`), so existing
+  installs keep working until an operator re-syncs per project. Shared rows
+  are read-only for everyone — editing one would silently change every
+  tenant's prompt vocabulary.
+  `POST /api/admin/aliases/sync` is now per project and only touches the
+  caller's rows.
+- **`schema/init.sql` was missing `project_id` on five core tables**
+  (`blog_posts`, `blog_jobs`, `content_calendar`, `prog_keywords`, `users`)
+  plus `blog_posts.category` and `users.role`. A fresh install therefore
+  produced a schema with no project scoping anywhere and the whole
+  multi-project layer would have failed; production only worked because it
+  had been migrated incrementally. Found by the new drift check below.
+- **Brand DNA was read from the wrong column** in the attention and
+  activation checks (`target_audience` instead of `audience`), and a
+  `.catch(() => null)` swallowed the resulting SQL error so the check
+  silently always reported "missing". Both now read `project_brands` with the
+  legacy settings rows as a fallback.
+
+### Added (tooling)
+- **`npm run check:drift`** — compares a live D1 schema against what
+  `schema/init.sql` produces on a fresh database and reports tables or columns
+  present in one but not the other. This is what caught the missing
+  `project_id` columns. Run it after any schema edit.
+- **Platform tests: 54 checks** (was 36). New coverage: migration 002 data
+  preservation and isolation, cross-project alias patch/delete refusal,
+  shared-row read-only enforcement, attention ranking/CTA/project scoping,
+  activation completion and time-to-first-post.
+
+### Notes for operators
+- `npm run migrate` to apply migration 002. It renames `site_aliases` to
+  `site_aliases_legacy` and copies all rows forward — nothing is deleted, and
+  the backup table stays for rollback.
+- After migrating, open **Thương hiệu → Internal Links** and press
+  **Đồng bộ sitemap** once per project to create that project's own rows.
+  Until then the shared rows keep working as before.
 ## 1.10.0 — 2026-09-15
 
 Reliability release. No new headline features; this makes the existing

@@ -1,6 +1,6 @@
 {
   "name": "pages-seo",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "private": false,
   "license": "MIT",
   "type": "module",
@@ -44,7 +44,8 @@
     "admin:dev": "vite",
     "bundle:migrations": "node scripts/bundle-migrations.js",
     "migrate": "node scripts/migrate.js",
-    "test:platform": "node --no-warnings scripts/run-platform-tests.js"
+    "test:platform": "node --no-warnings scripts/run-platform-tests.js",
+    "check:drift": "node --no-warnings scripts/check-schema-drift.mjs"
   },
   "engines": {
     "node": ">=20"
