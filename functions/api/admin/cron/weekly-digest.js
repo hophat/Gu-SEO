@@ -47,7 +47,7 @@ export const onRequestPost = async ({ env, request }) => {
 
     // Send digest via Gmail SMTP
     try {
-      await sendOtpEmail({
+      await sendOtpEmail(env, {
         toEmail: user.email,
         otpCode: `${newPosts} bài`, // Reusing secure SMTP sender
         brandName: `${brandName} (Báo cáo tuần)`

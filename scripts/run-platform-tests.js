@@ -42,7 +42,7 @@ import { renderBlogIndex } from '../functions/blog/index.js';
 import { onRequestGet as renderFeed } from '../functions/feed.xml.js';
 import { loadSettings, setSetting } from '../functions/_lib/settings.js';
 import { resolveProjectBySlug } from '../functions/_lib/project_scope.js';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -1600,8 +1600,88 @@ async function testPublishReport() {
   ok('report content is HTML-escaped');
 }
 
+// ── O. mail credentials come from secrets ───────────────────────────
+// The Gmail credentials used to be hardcoded in email_smtp.js. Anyone who could
+// read the repo could send mail as that address, and the value is in the git
+// history — so this checks both that the code reads from env and that no
+// credential has crept back into the source.
+async function testMailCredentials() {
+  console.log('\nO. Mail credentials');
+
+  const { mailCredentials } = await import('../functions/_lib/email_smtp.js');
+
+  const creds = mailCredentials({ GMAIL_USER: 'a@b.com', GMAIL_PASS: 'abcdefghijklmnop' });
+  assert.equal(creds.user, 'a@b.com');
+  assert.equal(creds.pass, 'abcdefghijklmnop');
+  ok('credentials are read from env');
+
+  // Google displays an app password as "abcd efgh ijkl mnop" but SMTP wants it
+  // without spaces. Stripping them here means a copy-paste of the displayed
+  // form works instead of failing auth with a confusing 535.
+  const spaced = mailCredentials({ GMAIL_USER: 'a@b.com', GMAIL_PASS: 'abcd efgh ijkl mnop' });
+  assert.equal(spaced.pass, 'abcdefghijklmnop', 'spaces in an app password are stripped');
+  ok('a spaced app password is normalised');
+
+  const trimmed = mailCredentials({ GMAIL_USER: '  a@b.com  ', GMAIL_PASS: ' abc ' });
+  assert.equal(trimmed.user, 'a@b.com');
+  assert.equal(trimmed.pass, 'abc');
+  ok('surrounding whitespace is trimmed');
+
+  // Missing config must fail with a named reason, not an opaque SMTP 535.
+  for (const [env, missing] of [
+    [{}, 'GMAIL_USER'],
+    [{ GMAIL_USER: 'a@b.com' }, 'GMAIL_PASS'],
+    [{ GMAIL_PASS: 'x' }, 'GMAIL_USER'],
+  ]) {
+    let err = null;
+    try { mailCredentials(env); } catch (e) { err = e; }
+    assert.ok(err, 'missing config must throw');
+    assert.equal(err.code, 'email_not_configured');
+    assert.match(err.message, new RegExp(missing), `the error must name ${missing}`);
+  }
+  ok('missing credentials fail with a named reason');
+
+  // The whole point: no credential in the source tree.
+  const walk = (dir, acc = []) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name === 'functions_dist' || e.name.startsWith('.')) continue;
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p, acc);
+      else if (/\.(js|jsx|json|html|toml)$/.test(e.name)) acc.push(p);
+    }
+    return acc;
+  };
+  const srcFiles = [
+    ...walk(join(ROOT, 'functions')),
+    ...walk(join(ROOT, 'src')),
+    join(ROOT, 'wrangler.template.toml'),
+  ].filter((f) => existsSync(f));
+
+  const leaked = srcFiles.filter((f) => /zpgneewuhhldrfsu/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(leaked.map((f) => f.replace(ROOT + '/', '')), [],
+    'the mailbox password must not appear in any source file');
+  ok('no mailbox password anywhere in the source tree');
+
+  const hardcodedUser = srcFiles.filter((f) => /gulagi\.com@gmail\.com/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(hardcodedUser.map((f) => f.replace(ROOT + '/', '')), [],
+    'the mailbox address must not be hardcoded either');
+  ok('no hardcoded mailbox address');
+
+  // And every sender must pass env through, or the secrets never arrive.
+  for (const rel of [
+    'functions/api/public/send-otp.js',
+    'functions/api/admin/cron/weekly-digest.js',
+    'functions/api/admin/report/test.js',
+    'functions/_lib/publishing/report.js',
+  ]) {
+    const src = readFileSync(join(ROOT, rel), 'utf8');
+    assert.match(src, /send(Email|OtpEmail)\(env,/, `${rel} must pass env to the sender`);
+  }
+  ok('every caller passes env to the sender');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -1616,6 +1696,7 @@ async function main() {
   await testProviderConfigLockdown();
   await testSingleDispatch();
   await testPublishReport();
+  await testMailCredentials();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

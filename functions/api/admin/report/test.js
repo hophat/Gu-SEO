@@ -53,7 +53,7 @@ export const onRequestPost = async ({ env, request }) => {
   });
 
   try {
-    await sendEmail({ to, subject: '[GU SEO] Email báo cáo mẫu', html });
+    await sendEmail(env, { to, subject: '[GU SEO] Email báo cáo mẫu', html });
     return json(200, { ok: true, mode: 'sample', to });
   } catch (e) {
     return json(502, { error: 'send_failed', detail: String(e?.message || e).slice(0, 300) });

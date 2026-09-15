@@ -1,0 +1,24 @@
+security: v1.16.1 — mailbox credentials move to Pages secrets
+
+GMAIL_USER and GMAIL_PASS were hardcoded in email_smtp.js, so anyone who could
+read the repo could send mail as that address. They now come from
+env.GMAIL_USER / env.GMAIL_PASS, and a missing one fails with a named reason
+(`email_not_configured: missing GMAIL_USER`) instead of an opaque SMTP 535.
+
+sendEmail and sendOtpEmail now take env — without it the secrets never reach the
+sender. All four callers updated: send-otp, weekly-digest, report/test and
+publishing/report.
+
+An App Password pasted in Google's displayed form ("abcd efgh ijkl mnop") is
+normalised by stripping spaces, so that no longer fails auth.
+
+IMPORTANT: the old password is still in the git history (3 commits). Removing it
+from the file does not remove it from history, so moving it to a secret only
+achieves anything once the App Password is rotated.
+
+Verified on production: report/test returns 200 and public/send-otp returns 200,
+so both mail paths run from the secrets.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

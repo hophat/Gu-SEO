@@ -186,7 +186,7 @@ export async function sendPublishReport(env, { projectId, blogPostId, baseUrl = 
     const failed = [];
     for (const to of recipients) {
       try {
-        await sendEmail({ to, subject, html });
+        await sendEmail(env, { to, subject, html });
         sent++;
       } catch (e) {
         // One bad address must not stop the others.

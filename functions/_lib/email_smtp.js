@@ -1,18 +1,35 @@
 // SMTP Client over direct TLS using Cloudflare Sockets (cloudflare:sockets)
 // Connects to smtp.gmail.com:465 with SSL/TLS wrapper
 //
-// NOTE: the mailbox credentials are hardcoded below. That is pre-existing and
-// out of scope for the change that added sendEmail(), but it means anyone with
-// read access to this repo can send mail as this address. Moving them to Pages
-// secrets (GMAIL_USER / GMAIL_PASS) is a one-line change per value plus a
-// `wrangler pages secret put`, and worth doing.
-// Imported lazily inside sendEmail(). `cloudflare:sockets` only resolves
-// inside the Workers runtime, so a static import made this module impossible to
-// load anywhere else — including tests, which then could not import anything
-// that sends mail. The dynamic import resolves to the same binding in Workers.
+// Credentials come from Pages secrets, NOT from this file. They used to be
+// hardcoded here, which meant anyone who could read the repo could send mail as
+// this address — and because the value is in the git history, rotating it is
+// part of moving it out, not optional.
+//
+//   wrangler pages secret put GMAIL_USER --project-name=<project>
+//   wrangler pages secret put GMAIL_PASS --project-name=<project>
+//
+// GMAIL_PASS must be a Google *App Password* (16 chars, no spaces), not the
+// account password — Google rejects plain-password SMTP auth.
 
-const GMAIL_USER = 'gulagi.com@gmail.com';
-const GMAIL_PASS = 'zpgneewuhhldrfsu';
+// Resolved per call rather than at module load: `env` is only available inside
+// a request, and reading it lazily also means a missing secret surfaces as a
+// clear error instead of a module-level crash.
+export function mailCredentials(env) {
+  const user = String(env?.GMAIL_USER || '').trim();
+  // Google shows app passwords with spaces ("abcd efgh ijkl mnop") but SMTP
+  // wants them without. Strip them so a copy-paste of the displayed form works.
+  const pass = String(env?.GMAIL_PASS || '').replace(/\s+/g, '');
+  if (!user || !pass) {
+    const missing = [];
+    if (!user) missing.push('GMAIL_USER');
+    if (!pass) missing.push('GMAIL_PASS');
+    const err = new Error('email_not_configured: missing ' + missing.join(', '));
+    err.code = 'email_not_configured';
+    throw err;
+  }
+  return { user, pass };
+}
 
 // RFC 2047 encoded-word. Gmail rejects raw UTF-8 in a Subject header, so a
 // Vietnamese subject has to be base64'd this way.
@@ -63,8 +80,8 @@ class SmtpReader {
   }
 }
 
-export async function sendOtpEmail({ toEmail, otpCode, brandName = 'GU SEO' }) {
-  return sendEmail({
+export async function sendOtpEmail(env, { toEmail, otpCode, brandName = 'GU SEO' }) {
+  return sendEmail(env, {
     to: toEmail,
     subject: `Mã xác thực OTP đăng ký GU SEO: ${otpCode}`,
     html: `<!DOCTYPE html>
@@ -102,7 +119,9 @@ export async function sendOtpEmail({ toEmail, otpCode, brandName = 'GU SEO' }) {
 // Generic transactional send. The SMTP dance lives here once so callers only
 // supply content — the previous shape had sendOtpEmail doing the whole
 // handshake inline, which made a second message type mean a second copy of it.
-export async function sendEmail({ to, subject, html, replyTo = '' }) {
+export async function sendEmail(env, { to, subject, html, replyTo = '' }) {
+  const { user: GMAIL_USER, pass: GMAIL_PASS } = mailCredentials(env);
+
   const toEmail = String(to || '').trim();
   if (!toEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(toEmail)) {
     throw new Error('invalid_recipient');

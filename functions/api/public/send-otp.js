@@ -47,7 +47,7 @@ export const onRequestPost = async ({ env, request }) => {
   ).bind(email, otpCode, now, expiresAt).run();
 
   try {
-    await sendOtpEmail({
+    await sendOtpEmail(env, {
       toEmail: email,
       otpCode,
       brandName

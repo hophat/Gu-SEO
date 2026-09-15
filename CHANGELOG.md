@@ -7,6 +7,40 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.16.1 — 2026-09-15
+
+Thông tin đăng nhập hộp thư gửi chuyển từ hardcode sang Pages secrets.
+
+### Security
+- **Bỏ hardcode `GMAIL_USER` / `GMAIL_PASS` khỏi `functions/_lib/email_smtp.js`.**
+  Trước đây ai đọc được repo là gửi được mail dưới địa chỉ đó. Giờ đọc từ
+  `env.GMAIL_USER` / `env.GMAIL_PASS`, và thiếu thì báo lỗi có tên
+  (`email_not_configured: missing GMAIL_USER`) thay vì lỗi SMTP 535 khó hiểu.
+  Đã set secret trên Pages project.
+- **Mật khẩu này vẫn nằm trong git history (3 commit).** Xoá khỏi file KHÔNG
+  xoá khỏi lịch sử, nên **bắt buộc phải rotate** App Password trong Google
+  Account. Việc chuyển sang secret chỉ có ý nghĩa sau khi rotate.
+
+### Changed
+- **`sendEmail(env, {...})` và `sendOtpEmail(env, {...})` nhận `env`.** Không
+  có `env` thì secret không bao giờ tới được hàm gửi. Cả 4 caller đã cập nhật:
+  `send-otp`, `weekly-digest`, `report/test`, `publishing/report`.
+- **App Password có khoảng trắng được chuẩn hoá.** Google hiển thị dạng
+  `abcd efgh ijkl mnop` nhưng SMTP cần dạng liền. Giờ dán nguyên văn bản hiển
+  thị vẫn chạy, thay vì fail auth với 535.
+
+### Added (tooling)
+- **Platform tests: 136 checks** (was 129). Kiểm tra: đọc từ env, chuẩn hoá
+  khoảng trắng, thiếu cấu hình thì báo đúng tên biến thiếu, **không file nào
+  trong `functions/`, `src/` hay `wrangler.template.toml` còn chứa mật khẩu
+  hoặc địa chỉ hộp thư**, và cả 4 caller đều truyền `env`.
+
+### Notes for operators
+- Đã verify trên production: `POST /api/admin/report/test` → 200, và
+  `POST /api/public/send-otp` → 200. Cả hai đường email chạy từ secret.
+- **Việc cần làm:** rotate App Password tại
+  https://myaccount.google.com/apppasswords rồi cập nhật lại:
+  `wrangler pages secret put GMAIL_PASS --project-name=gu-seo`
 ## 1.16.0 — 2026-09-15
 
 Email báo cáo sau khi bài viết lên sóng.
