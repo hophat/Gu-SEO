@@ -15,15 +15,25 @@ import { MIGRATIONS } from '../functions/_lib/migrations_bundle.js';
 
 const DB = process.env.D1_DATABASE || 'pages-seo-db';
 
-// Tables a migration creates are expected to be absent from init.sql — that
-// is the whole point of the two-phase model. Derive them from the migration
-// SQL rather than hardcoding, so adding a migration doesn't require editing
-// this check.
-const MIGRATION_TABLES = new Set([
-  // Created by the runner itself (ensureMigrationTable), not by a migration.
-  'schema_migrations',
-  ...MIGRATIONS.flatMap((m) => [...String(m.sql).matchAll(/CREATE TABLE IF NOT EXISTS\s+(\w+)/gi)].map((x) => x[1])),
-]);
+// A migration may add a table OR a column. Both are legitimately absent from
+// init.sql — that is the two-phase model. Derive them from the migration SQL
+// rather than hardcoding, so adding a migration doesn't require editing this
+// check (and so a column added by a migration doesn't get reported as drift,
+// which would train everyone to ignore the check).
+const MIGRATION_TABLES = new Set(['schema_migrations']); // created by the runner
+const MIGRATION_COLUMNS = new Map(); // table -> Set(column)
+
+for (const m of MIGRATIONS) {
+  const sql = String(m.sql);
+  for (const match of sql.matchAll(/CREATE TABLE IF NOT EXISTS\s+(\w+)/gi)) {
+    MIGRATION_TABLES.add(match[1]);
+  }
+  for (const match of sql.matchAll(/ALTER TABLE\s+(\w+)\s+ADD COLUMN\s+(\w+)/gi)) {
+    const [, table, column] = match;
+    if (!MIGRATION_COLUMNS.has(table)) MIGRATION_COLUMNS.set(table, new Set());
+    MIGRATION_COLUMNS.get(table).add(column);
+  }
+}
 
 const q = (sql) => {
   const raw = execSync(`npx wrangler d1 execute ${DB} --remote --json --command ${JSON.stringify(sql)}`,
@@ -51,7 +61,7 @@ for (const t of tables.sort()) {
   let freshCols;
   try { freshCols = db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name); }
   catch { console.log(`MISSING TABLE in init.sql: ${t}`); issues++; continue; }
-  const missing = prod[t].filter((c) => !freshCols.includes(c));
+  const missing = prod[t].filter((c) => !freshCols.includes(c) && !MIGRATION_COLUMNS.get(t)?.has(c));
   if (missing.length) { console.log(`${t}: missing columns in init.sql → ${missing.join(', ')}`); issues++; }
 }
 
