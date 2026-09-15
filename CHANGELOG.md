@@ -7,6 +7,46 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.17.0 — 2026-09-15
+
+Chặn đăng ký bằng địa chỉ dạng tên+phụ (plus-addressing).
+
+### Added
+- **Từ chối email dạng `ten+phu@domain`.** Mọi nhà cung cấp lớn đều giao
+  `ban+batky@` về cùng một hộp thư, nên đây là cách rẻ nhất để biến một hộp
+  thư thành vô số tài khoản free. Trả `400 subaddress_not_allowed` kèm giải
+  thích, không phải chỉ "email không hợp lệ".
+- **Kiểm tra ngay trên form đăng ký** để người dùng biết trước khi mất một
+  lượt OTP, thay vì chỉ biết sau khi bấm gửi.
+
+### Changed
+- **`functions/_lib/email_rules.js` — một chỗ duy nhất cho luật email.**
+  `validEmail` trước đây bị copy y hệt ở **3 file** (`public/register.js`,
+  `public/send-otp.js`, `admin/users.js`). Cùng loại trùng lặp đã làm bộ
+  dispatch provider lệch ba lần. Một luật về việc ai được tạo tài khoản thì
+  phải giống nhau ở mọi cửa.
+- **Áp dụng ở cả 3 cửa tạo tài khoản:** gửi OTP, đăng ký, và admin tạo user.
+  `send-otp` chặn trước khi sinh OTP (không tốn công, không ghi row).
+
+### Added (tooling)
+- **Platform tests: 146 checks** (was 136). Kiểm tra: dấu `+` chỉ bị chặn ở
+  phần local (dấu `+` trong domain là hợp lệ — vài host dùng thật),
+  `send-otp` từ chối trước khi sinh OTP, đăng ký từ chối **kể cả khi đã có
+  OTP hợp lệ**, admin tạo user cũng bị chặn, không file nào tự viết lại
+  `validEmail`, và cả 3 cửa đều dùng policy chung.
+
+### Notes for operators
+- Verify trên production: `gulagi.com+secretcheck@gmail.com` → 400
+  `subaddress_not_allowed`; email thường vẫn nhận OTP bình thường.
+- Đã dọn row `email_verifications` dạng `%+%` còn sót từ lúc test.
+
+### Điều còn hở (chưa làm vì bạn chưa yêu cầu)
+- **Dấu chấm trong Gmail** vẫn lách được: `g.u.l.a.g.i@gmail.com` và
+  `gulagi@gmail.com` là **cùng một hộp thư** với Gmail, nhưng hiện vẫn được
+  coi là hai tài khoản. Chặn dấu chấm sẽ từ chối cả người dùng thật có dấu
+  chấm trong địa chỉ, nên cách đúng thường là **chuẩn hoá để kiểm tra trùng**
+  (bỏ dấu chấm + bỏ phần sau `+` khi so trùng) thay vì từ chối. Nói rõ ở đây
+  để không ai tưởng đã chặn hết.
 ## 1.16.1 — 2026-09-15
 
 Thông tin đăng nhập hộp thư gửi chuyển từ hardcode sang Pages secrets.

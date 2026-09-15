@@ -4,6 +4,7 @@
 // - Creates a brand new project, brand profile, schedule, and publishing config
 // - Sets session cookie and logs user in immediately
 import { json, newId, nowSec, audit, slugify } from '../../_lib/util.js';
+import { normalizeEmail, emailPolicyError } from '../../_lib/email_rules.js';
 import { hashPassword, newSessionId, signSession, buildSessionCookie, sessionExpirySec } from '../../_lib/passwords.js';
 import { getAdminToken } from '../../_lib/admin_token.js';
 import { track } from '../../_lib/events.js';
@@ -11,23 +12,18 @@ import { track } from '../../_lib/events.js';
 const MIN_PW = 8;
 const MAX_PW = 256;
 
-function validEmail(s) {
-  return typeof s === 'string'
-    && s.length > 3 && s.length < 200
-    && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
-}
-
 export const onRequestPost = async ({ env, request }) => {
   if (!env?.DB) return json(500, { error: 'no_db' });
 
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
 
-  const email = String(body?.email || '').trim().toLowerCase();
+  const email = normalizeEmail(body?.email);
   const password = String(body?.password || '');
   const websiteUrl = String(body?.website_url || '').trim();
 
-  if (!validEmail(email)) return json(400, { error: 'invalid_email' });
+  const policy = emailPolicyError(email);
+  if (policy) return json(400, policy);
   if (password.length < MIN_PW || password.length > MAX_PW) {
     return json(400, { error: 'password_length', min: MIN_PW, max: MAX_PW });
   }

@@ -1,0 +1,28 @@
+feat: v1.17.0 — refuse plus-addressed emails at sign-up
+
+Every major provider delivers you+anything@ to the same inbox, so plus-addressing
+is the cheapest way to turn one mailbox into unlimited free accounts. Sign-up now
+returns 400 subaddress_not_allowed, with a message that explains why rather than
+just "invalid email".
+
+Enforced at all three doors that can create a user: send-otp (before it generates
+an OTP, so nothing is written), public register (even with a valid OTP), and
+admin user creation.
+
+The rule lives in functions/_lib/email_rules.js. validEmail was previously copied
+verbatim into three files — the same duplication that let the provider dispatch
+drift three times. A rule about who may create an account has to be identical at
+every door.
+
+The register form also validates client-side, so the user learns it before
+spending an OTP round-trip.
+
+Note on what this does NOT close: dots in Gmail. g.u.l.a.g.i@gmail.com and
+gulagi@gmail.com are the same inbox, and both are still accepted. Rejecting dots
+would refuse real users who use them, so the right fix is canonicalising for the
+duplicate check rather than rejecting — flagged in the changelog so nobody
+assumes this is airtight.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>

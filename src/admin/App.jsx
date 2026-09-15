@@ -411,7 +411,24 @@ function LoginGate() {
                   label: 'Đăng ký (Free 100 bài)',
                   children: (
                     <Form form={regForm} layout="vertical" onFinish={onRegister} requiredMark={false}>
-                      <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Nhập email hợp lệ' }]}>
+                      <Form.Item
+                        name="email"
+                        label="Email"
+                        rules={[
+                          { required: true, type: 'email', message: 'Nhập email hợp lệ' },
+                          {
+                            // Same rule as the server (functions/_lib/email_rules.js).
+                            // Caught here so the user learns it before spending an
+                            // OTP round-trip, not after.
+                            validator: (_, v) => {
+                              const local = String(v || '').split('@')[0];
+                              return local.includes('+')
+                                ? Promise.reject(new Error('Không dùng địa chỉ dạng tên+phụ (vd: ten+abc@gmail.com) — mọi địa chỉ như vậy đều về cùng một hộp thư'))
+                                : Promise.resolve();
+                            },
+                          },
+                        ]}
+                      >
                         <Input size="large" placeholder="you@example.com" autoComplete="username" />
                       </Form.Item>
                       <Form.Item name="otp" label="Mã OTP (6 số)" rules={[{ required: true, len: 6, message: 'Nhập mã OTP 6 số' }]}>

@@ -38,6 +38,8 @@ import { onRequestGet as providersList } from '../functions/api/admin/providers.
 import { onRequestPost as providersTest } from '../functions/api/admin/providers/test.js';
 import { signSession } from '../functions/_lib/passwords.js';
 import { recipientsFor, isScheduledPost, sendPublishReport, renderReport } from '../functions/_lib/publishing/report.js';
+import { onRequestPost as sendOtp } from '../functions/api/public/send-otp.js';
+import { onRequestPost as usersCreate } from '../functions/api/admin/users.js';
 import { renderBlogIndex } from '../functions/blog/index.js';
 import { onRequestGet as renderFeed } from '../functions/feed.xml.js';
 import { loadSettings, setSetting } from '../functions/_lib/settings.js';
@@ -1680,8 +1682,119 @@ async function testMailCredentials() {
   ok('every caller passes env to the sender');
 }
 
+// ── P. sign-up email policy ─────────────────────────────────────────
+// Plus-addressing (you+tag@domain) delivers to the same inbox, so it turns one
+// mailbox into unlimited free accounts. The rule has to hold at every door that
+// can create a user, which is why it lives in one module and is checked here
+// against all of them.
+async function testEmailPolicy() {
+  console.log('\nP. Sign-up email policy');
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+
+  const { isValidEmail, isSubaddressed, emailPolicyError, normalizeEmail } =
+    await import('../functions/_lib/email_rules.js');
+
+  // Shape checks.
+  assert.equal(isValidEmail('a@b.com'), true);
+  assert.equal(isValidEmail('first.last@sub.example.co.uk'), true);
+  assert.equal(isValidEmail('no-at-sign'), false);
+  assert.equal(isValidEmail('a@b'), false, 'a domain without a dot is not deliverable');
+  assert.equal(isValidEmail('a b@c.com'), false, 'spaces are rejected');
+  assert.equal(isValidEmail(''), false);
+  assert.equal(isValidEmail(`${'x'.repeat(250)}@b.com`), false, 'over 254 chars is not deliverable');
+  ok('email shape validation');
+
+  assert.equal(normalizeEmail('  A@B.COM '), 'a@b.com', 'trimmed and lowercased');
+  ok('emails are normalised before comparison');
+
+  // The subaddress rule.
+  assert.equal(isSubaddressed('gulagi.com+secretcheck@gmail.com'), true);
+  assert.equal(isSubaddressed('user+tag@example.com'), true);
+  assert.equal(isSubaddressed('user@example.com'), false);
+  assert.equal(isSubaddressed('user@ex+ample.com'), false,
+    'a plus in the DOMAIN is not subaddressing — some hosts use it legitimately');
+  assert.equal(isSubaddressed('+tag@example.com'), true);
+  ok('subaddressing is detected in the local part only');
+
+  assert.equal(emailPolicyError('user@example.com'), null, 'a plain address passes');
+  const sub = emailPolicyError('gulagi.com+secretcheck@gmail.com');
+  assert.equal(sub.error, 'subaddress_not_allowed');
+  assert.match(sub.detail, /hộp thư/, 'the message explains why, not just "invalid"');
+  ok('a subaddressed address is refused with a reason');
+
+  // ── enforced at every door ───────────────────────────────────────
+  // Public sign-up: OTP first, then register. Both must refuse.
+  const otpReq = (email) => {
+    const headers = new Map([['content-type', 'application/json']]);
+    const req = { url: 'https://x/api/public/send-otp', headers, clone() { return req; }, json: async () => ({ email }) };
+    return { ...req, headers: { get: (h) => { for (const [k, v] of headers) if (k.toLowerCase() === h.toLowerCase()) return v; return null; } } };
+  };
+
+  const otpSub = await sendOtp({ env, request: otpReq('gulagi.com+secretcheck@gmail.com') });
+  assert.equal(otpSub.status, 400, 'send-otp must refuse a subaddressed address');
+  assert.equal((await otpSub.json()).error, 'subaddress_not_allowed');
+  const noOtpRow = await env.__get("SELECT 1 AS x FROM email_verifications WHERE email LIKE '%+%'");
+  assert.equal(noOtpRow, null, 'no OTP is generated for a refused address');
+  ok('send-otp refuses a subaddressed address before doing any work');
+
+  // A plain address must get past the policy. The send itself cannot succeed
+  // here (no SMTP credentials in a test env), so assert on what the policy
+  // controls: it was not refused, and the OTP row was created.
+  const otpOk = await sendOtp({ env, request: otpReq('plain@example.com') });
+  assert.notEqual(otpOk.status, 400, 'a plain address must not be refused by the policy');
+  const otpRow = await env.__get("SELECT otp_code FROM email_verifications WHERE email = 'plain@example.com'");
+  assert.ok(otpRow?.otp_code, 'an OTP is generated for a plain address');
+  ok('a plain address still gets an OTP');
+
+  // Register: the authoritative boundary. Even with a valid OTP it must refuse.
+  await env.DB.prepare(
+    `INSERT INTO email_verifications (email, otp_code, created_at, expires_at) VALUES (?, '123456', ?, ?)`
+  ).bind('sneaky+tag@example.com', t, t + 600).run();
+  const regSub = await register({
+    env, request: jsonReq('https://x/api/public/register', {
+      email: 'sneaky+tag@example.com', password: 'matkhau123', otp: '123456',
+    }),
+  });
+  assert.equal(regSub.status, 400, 'register must refuse a subaddressed address');
+  assert.equal((await regSub.json()).error, 'subaddress_not_allowed');
+  const created = await env.__get("SELECT 1 AS x FROM users WHERE email LIKE '%+%'");
+  assert.equal(created, null, 'no account is created for a refused address');
+  ok('register refuses a subaddressed address even with a valid OTP');
+
+  // Admin-created users go through the same door.
+  const adminSub = await usersCreate({
+    env, request: adminReq('https://x/api/admin/users', {
+      body: { email: 'staff+ops@example.com', password: 'matkhau123', role: 'project_admin' },
+    }),
+  });
+  assert.equal(adminSub.status, 400, 'admin user creation must refuse a subaddressed address');
+  ok('admin user creation applies the same policy');
+
+  // The rule lives in one place — no door may re-implement it.
+  const walk = (dir, acc = []) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name === 'functions_dist' || e.name.startsWith('.')) continue;
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p, acc); else if (e.name.endsWith('.js')) acc.push(p);
+    }
+    return acc;
+  };
+  const files = walk(join(ROOT, 'functions'));
+  const withCopy = files.filter((f) => /function validEmail\(/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(withCopy.map((f) => f.replace(ROOT + '/', '')), [],
+    'no file may re-implement email validation — use _lib/email_rules.js');
+  ok('no file re-implements email validation');
+
+  for (const rel of ['functions/api/public/register.js', 'functions/api/public/send-otp.js', 'functions/api/admin/users.js']) {
+    assert.match(readFileSync(join(ROOT, rel), 'utf8'), /emailPolicyError/,
+      `${rel} must apply the shared policy`);
+  }
+  ok('every door that creates a user applies the shared policy');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -1697,6 +1810,7 @@ async function main() {
   await testSingleDispatch();
   await testPublishReport();
   await testMailCredentials();
+  await testEmailPolicy();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

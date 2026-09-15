@@ -2,12 +2,7 @@
 // Generates a 6-digit OTP code, saves it to D1, and sends via Gmail SMTP TLS
 import { json, nowSec } from '../../_lib/util.js';
 import { sendOtpEmail } from '../../_lib/email_smtp.js';
-
-function validEmail(s) {
-  return typeof s === 'string'
-    && s.length > 3 && s.length < 200
-    && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
-}
+import { normalizeEmail, emailPolicyError } from '../../_lib/email_rules.js';
 
 export const onRequestPost = async ({ env, request }) => {
   if (!env?.DB) return json(500, { error: 'no_db' });
@@ -15,10 +10,11 @@ export const onRequestPost = async ({ env, request }) => {
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
 
-  const email = String(body?.email || '').trim().toLowerCase();
+  const email = normalizeEmail(body?.email);
   const brandName = String(body?.brand_name || body?.name || 'GU SEO').trim();
 
-  if (!validEmail(email)) return json(400, { error: 'invalid_email', detail: 'Email không đúng định dạng' });
+  const policy = emailPolicyError(email);
+  if (policy) return json(400, policy);
 
   // Check if email already registered
   const existing = await env.DB.prepare(

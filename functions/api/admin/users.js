@@ -7,18 +7,13 @@
 // POST with the bearer ADMIN_TOKEN — that's the only path open before any
 // user exists.
 import { json, newId, nowSec, audit } from '../../_lib/util.js';
+import { normalizeEmail, emailPolicyError } from '../../_lib/email_rules.js';
 import { requireSuperAdmin } from '../../_lib/auth.js';
 import { hashPassword } from '../../_lib/passwords.js';
 
 const MIN_PW = 8;
 const MAX_PW = 256;
 const ROLES = ['super_admin', 'project_admin'];
-
-function validEmail(s) {
-  return typeof s === 'string'
-    && s.length > 3 && s.length < 200
-    && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
-}
 
 function hasKey(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj || {}, key);
@@ -47,9 +42,11 @@ export const onRequestPost = async ({ env, request }) => {
   const gate = await requireSuperAdmin(env, request); if (gate.error) return gate.error;
   let body;
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
-  const email = String(body?.email || '').trim().toLowerCase();
+  const email = normalizeEmail(body?.email);
   const password = String(body?.password || '');
-  if (!validEmail(email)) return json(400, { error: 'invalid_email' });
+  // Same policy as public sign-up: a plus-addressed account is not a new person.
+  const policy = emailPolicyError(email);
+  if (policy) return json(400, policy);
   if (password.length < MIN_PW || password.length > MAX_PW) {
     return json(400, { error: 'password_length', min: MIN_PW, max: MAX_PW });
   }
