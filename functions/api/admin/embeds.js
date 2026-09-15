@@ -8,6 +8,7 @@
 // unguessable.
 import { json, newId, nowSec, audit } from '../../_lib/util.js';
 import { requireAdminAsync, resolveTenantContext } from '../../_lib/auth.js';
+import { sanitizeEmbedSettings, snippetFor } from '../../_lib/embed_settings.js';
 
 const SETTINGS_MAX_BYTES = 8 * 1024;
 
@@ -20,18 +21,11 @@ function newEmbedId() {
 }
 
 function safeSettings(settings) {
-  if (!settings || typeof settings !== 'object') return '{}';
-  const out = {};
-  if (settings.title)  out.title  = String(settings.title).slice(0, 100);
-  if (settings.accent) out.accent = String(settings.accent).slice(0, 24);
-  if (settings.limit != null) {
-    const n = parseInt(settings.limit, 10);
-    if (Number.isFinite(n) && n > 0 && n <= 100) out.limit = n;
-  }
-  const j = JSON.stringify(out);
+  const j = JSON.stringify(sanitizeEmbedSettings(settings));
   if (j.length > SETTINGS_MAX_BYTES) throw new Error('settings_too_large');
   return j;
 }
+
 
 export const onRequestGet = async ({ env, request }) => {
   const auth = await requireAdminAsync(env, request);
@@ -51,7 +45,8 @@ export const onRequestGet = async ({ env, request }) => {
     return {
       ...e, settings,
       embed_url:   `${origin}/api/embed/${e.id}`,
-      snippet:     `<div id="ps-blog"></div>\n<script src="${origin}/api/embed/${e.id}" defer></script>`,
+      preview_url: `${origin}/api/embed/${e.id}`,
+      snippet:     snippetFor(origin, e.id),
       settings_json: undefined,
     };
   });

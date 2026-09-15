@@ -24,7 +24,7 @@
 import { json, nowSec, newId } from '../_lib/util.js';
 import { hashPassword } from '../_lib/passwords.js';
 import { setSetting, loadSettings } from '../_lib/settings.js';
-import { SCHEMA_SQL } from '../_lib/schema.js';
+import { runMigrations } from '../_lib/migrations.js';
 
 const EMAIL_RX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const MIN_PW = 8;
@@ -126,17 +126,18 @@ export const onRequestPost = async ({ env, request }) => {
   if (!/^https?:\/\/.+/i.test(site_url)) return json(400, { error: 'invalid_site_url' });
 
   // 1. Apply schema. Wrangler's d1 console does this for CLI installs;
-  //    on the one-click path we ship it bundled and run it here. Every
-  //    statement is idempotent so re-runs are safe.
-  for (const stmt of splitSql(SCHEMA_SQL)) {
-    try {
-      await env.DB.prepare(stmt).run();
-    } catch (e) {
-      // `ALTER TABLE … ADD COLUMN` is not idempotent in SQLite, so a re-run
-      // against an already-migrated database reports "duplicate column
-      // name". Swallow only that; every other failure still propagates.
-      if (!/duplicate column name/i.test(String(e?.message || e))) throw e;
-    }
+  //    on the one-click path we ship it bundled and run it here.
+  //    runMigrations() applies init.sql as an idempotent baseline AND
+  //    replays any schema/migrations/NNN_*.sql not yet recorded, so a
+  //    database that predates the migration runner converges instead of
+  //    failing on `duplicate column name`.
+  const migrationReport = await runMigrations(env, { logger: { log: () => {}, error: () => {} } });
+  if (!migrationReport.ok) {
+    return json(500, {
+      error: 'migration_failed',
+      detail: migrationReport.failed?.[0]?.error || 'unknown',
+      failed: migrationReport.failed,
+    });
   }
 
   // 2/3. Generate secrets.
@@ -179,15 +180,3 @@ export const onRequestPost = async ({ env, request }) => {
   return json(200, { ok: true, email, site_url });
 };
 
-// Split bundled schema into individual statements for D1.run().
-// D1 doesn't accept multi-statement strings; we split on `;` at the
-// end of a line. Comments are stripped.
-function splitSql(sql) {
-  const stripped = String(sql)
-    .replace(/--[^\n]*\n/g, '\n')   // line comments
-    .replace(/\/\*[\s\S]*?\*\//g, ''); // block comments
-  return stripped
-    .split(/;\s*(?:\n|$)/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-}

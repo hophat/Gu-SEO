@@ -18,7 +18,7 @@ import { nowSec } from '../util.js';
 const RESERVED = {
   blog:    { url: '/blog',         description: 'The main blog index of this site.' },
   home:    { url: '/',             description: 'The homepage of this site.' },
-  rss:     { url: '/rss.xml',      description: 'The RSS feed.' },
+  rss:     { url: '/feed.xml',     description: 'The RSS feed.' },
   sitemap: { url: '/sitemap.xml',  description: 'The XML sitemap.' },
 };
 

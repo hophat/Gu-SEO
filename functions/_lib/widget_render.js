@@ -112,8 +112,8 @@ export function widgetBody({
   // unused articles parameter still accepted for backwards compat.
   articles, // eslint-disable-line no-unused-vars
 }) {
-  const themeCSS = (theme === 'dark') ? '#ps-blog{color-scheme:dark;}'
-                 : (theme === 'light') ? '#ps-blog{color-scheme:light;}'
+  const themeCSS = (theme === 'dark') ? '.ps-blog{color-scheme:dark;}'
+                 : (theme === 'light') ? '.ps-blog{color-scheme:light;}'
                  : '';
   const overrides = [
     palette.bg     ? `--ps-bg:${palette.bg};` : '',
@@ -122,12 +122,16 @@ export function widgetBody({
     palette.line   ? `--ps-line:${palette.line};` : '',
     palette.accent ? `--ps-accent:${palette.accent};` : '',
   ].join('');
-  const overridesCSS = overrides ? `#ps-blog{${overrides}}` : '';
+  const overridesCSS = overrides ? `.ps-blog{${overrides}}` : '';
 
+  // Selectors target .ps-blog (the root we create inside the host's
+  // container) rather than #ps-blog — the host element may carry any id
+  // now that each embed gets its own (see data-target in the snippet),
+  // and an id-based rule would silently stop applying for all of them.
   const css = `
 ${themeCSS}
 ${overridesCSS}
-#ps-blog {
+.ps-blog {
   --ps-accent: ${accent};
   --ps-bg: #ffffff;
   --ps-fg: #0a0a0a;
@@ -142,7 +146,7 @@ ${overridesCSS}
   --ps-radius: 12px;
 }
 @media (prefers-color-scheme: dark) {
-  #ps-blog { --ps-bg: #0e0f12; --ps-fg: #f0eee8; --ps-muted: #a09c93; --ps-line: #262932; --ps-card: #15171c; }
+  .ps-blog { --ps-bg: #0e0f12; --ps-fg: #f0eee8; --ps-muted: #a09c93; --ps-line: #262932; --ps-card: #15171c; }
 }
 .ps-blog { padding: 24px 0; }
 
@@ -373,15 +377,9 @@ var PS_T_MAP = {
 if (!PS_T_MAP[PS_LANG]) PS_LANG = 'vi';
 var PS_T = PS_T_MAP[PS_LANG];
 
-var container = document.getElementById('ps-blog');
-if (!container) {
-  console.warn('pages-seo embed: no element with id="ps-blog" found');
-  return;
-}
-
-// Optional per-project scoping. Read from the <script> tag at runtime so
-// one cached bundle serves every project and every host: the attribute
-// differs per install, the file doesn't.
+// Resolve the mount node. data-target on the <script> tag wins, so
+// several embeds can coexist on one page with distinct container ids;
+// #ps-blog stays the default for hand-written legacy snippets.
 var PS_PROJECT = ${jsString(project)};
 var PS_TARGET_SEL = '';
 try {
@@ -394,9 +392,15 @@ try {
     PS_TARGET_SEL = String(psScript.dataset.target || '').trim();
   }
 } catch (e) {}
+
+var container = null;
 if (PS_TARGET_SEL) {
-  var psTarget = document.querySelector(PS_TARGET_SEL);
-  if (psTarget) container = psTarget;
+  try { container = document.querySelector(PS_TARGET_SEL); } catch (e) { container = null; }
+}
+if (!container) container = document.getElementById('ps-blog');
+if (!container) {
+  console.warn('pages-seo embed: no mount element found (data-target="' + PS_TARGET_SEL + '" or #ps-blog)');
+  return;
 }
 
 // ── srcdoc detection ──

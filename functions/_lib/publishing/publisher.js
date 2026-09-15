@@ -1,3 +1,5 @@
+import { publishToFacebook } from './facebook.js';
+
 export async function dispatchPublication({ project, article, env }) {
   const pubCfg = project?.publishing_config || {};
   const publisherType = pubCfg.publisher_type || 'internal_d1';
@@ -9,6 +11,8 @@ export async function dispatchPublication({ project, article, env }) {
       return publishToCustomApi({ endpointUrl: pubCfg.endpoint_url, authHeader: pubCfg.auth_header, article, configJson: pubCfg.config_json });
     case 'wordpress':
       return publishToWordPress({ endpointUrl: pubCfg.endpoint_url, authHeader: pubCfg.auth_header, article });
+    case 'facebook':
+      return publishToFacebook({ project, article, configJson: pubCfg.config_json, env });
     case 'internal_d1':
     default:
       return {

@@ -508,13 +508,11 @@
   }
 
   // Theme toggle: swap data-theme on <html>, persist choice.
-  // The initial value is applied early in admin.html so there's no
-  // flash-of-wrong-theme on first paint; this just handles the click.
+  // Default is light (Ant Design Pro v6 Light). Dark is opt-in.
   function toggleTheme() {
     const html = document.documentElement;
     const next = html.dataset.theme === 'light' ? 'dark' : 'light';
-    if (next === 'light') html.dataset.theme = 'light';
-    else delete html.dataset.theme;
+    html.dataset.theme = next;
     try { localStorage.setItem('ps_admin_theme', next); } catch { /* private mode */ }
   }
 
@@ -930,23 +928,25 @@
       return;
     }
     if (!body.topics || !body.topics.length) {
-      listEl.textContent = currentLang === 'vi' ? 'Chưa có chủ đề xu hướng nào. Hãy nhấn "Khám phá xu hướng" ở trên.' : 'No trend topics found. Click "Discover trends" above.';
+      const empty = document.createElement('div');
+      empty.className = 'tr-empty';
+      empty.textContent = currentLang === 'vi' ? 'Chưa có chủ đề xu hướng nào. Hãy nhấn "Khám phá xu hướng" ở trên.' : 'No trend topics found. Click "Discover trends" above.';
+      listEl.appendChild(empty);
       return;
     }
 
+    const wrap = document.createElement('div');
+    wrap.className = 'audit-wrap';
     const table = document.createElement('table');
-    table.className = 'table';
-    table.style.width = '100%';
+    table.className = 'tr-table';
     const thead = document.createElement('thead');
     const trh = document.createElement('tr');
     const headers = currentLang === 'vi'
-      ? ['Chủ đề', 'Điểm phù hợp', 'Nguồn', 'Trạng thái', 'Thời gian']
-      : ['Topic', 'Relevance Score', 'Source', 'Status', 'Date'];
+      ? ['Chủ đề', 'Điểm', 'Nguồn', 'Trạng thái', 'Thời gian']
+      : ['Topic', 'Score', 'Source', 'Status', 'Date'];
     for (const h of headers) {
       const th = document.createElement('th');
       th.textContent = h;
-      th.style.textAlign = 'left';
-      th.style.padding = '8px';
       trh.appendChild(th);
     }
     thead.appendChild(trh);
@@ -956,29 +956,24 @@
       const tr = document.createElement('tr');
       const tdTopic = document.createElement('td');
       tdTopic.textContent = topic.topic || '-';
-      tdTopic.style.padding = '8px';
-      tdTopic.style.fontWeight = '500';
+      tdTopic.className = 'tr-topic-cell';
       const tdScore = document.createElement('td');
-      tdScore.textContent = `${topic.relevance_score ?? 80}/100`;
-      tdScore.style.padding = '8px';
+      const score = topic.relevance_score ?? 80;
+      tdScore.innerHTML = `<span class="tr-score-pill tr-score-${score >= 80 ? 'good' : score >= 60 ? 'warn' : 'bad'}">${score}/100</span>`;
       const tdSource = document.createElement('td');
-      tdSource.textContent = topic.source || 'ai';
-      tdSource.style.padding = '8px';
+      tdSource.innerHTML = `<span class="tr-source-pill">${topic.source || 'ai'}</span>`;
       const tdStatus = document.createElement('td');
-      tdStatus.textContent = topic.status || 'pending';
-      tdStatus.style.padding = '8px';
+      const st = topic.status || 'pending';
+      tdStatus.innerHTML = `<span class="tr-status-pill tr-status-${st}">${st}</span>`;
       const tdTime = document.createElement('td');
-      tdTime.textContent = topic.created_at ? new Date(topic.created_at * 1000).toLocaleString() : '-';
-      tdTime.style.padding = '8px';
-      tr.appendChild(tdTopic);
-      tr.appendChild(tdScore);
-      tr.appendChild(tdSource);
-      tr.appendChild(tdStatus);
-      tr.appendChild(tdTime);
+      tdTime.textContent = topic.created_at ? new Date(topic.created_at * 1000).toLocaleDateString('vi-VN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+      tdTime.className = 'tr-time-cell';
+      tr.append(tdTopic, tdScore, tdSource, tdStatus, tdTime);
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
-    listEl.appendChild(table);
+    wrap.appendChild(table);
+    listEl.appendChild(wrap);
     await loadCompetitors();
   }
 
@@ -1041,12 +1036,16 @@
     listEl.classList.remove('dim');
     clearChildren(listEl);
     if (status !== 200 || !body?.ok || !body.snapshots?.length) {
-      listEl.textContent = currentLang === 'vi' ? 'Chưa có snapshot nào. Nhập từ khóa + URL rồi bấm "So sánh đối thủ".' : 'No snapshots yet. Enter a keyword + URLs and scan.';
+      const empty = document.createElement('div');
+      empty.className = 'tr-empty';
+      empty.textContent = currentLang === 'vi' ? 'Chưa có snapshot nào. Nhập từ khóa + URL rồi bấm "So sánh đối thủ".' : 'No snapshots yet. Enter a keyword + URLs and scan.';
+      listEl.appendChild(empty);
       return;
     }
+    const wrap = document.createElement('div');
+    wrap.className = 'audit-wrap';
     const table = document.createElement('table');
-    table.className = 'table';
-    table.style.width = '100%';
+    table.className = 'tr-table';
     const thead = document.createElement('thead');
     const trh = document.createElement('tr');
     const headers = currentLang === 'vi'
@@ -1055,8 +1054,6 @@
     for (const h of headers) {
       const th = document.createElement('th');
       th.textContent = h;
-      th.style.textAlign = 'left';
-      th.style.padding = '8px';
       trh.appendChild(th);
     }
     thead.appendChild(trh);
@@ -1065,19 +1062,17 @@
     for (const s of body.snapshots) {
       const tr = document.createElement('tr');
       const tdUrl = document.createElement('td');
+      tdUrl.className = 'tr-url-cell';
       tdUrl.textContent = s.error ? `${s.competitor_url} (${s.error})` : (s.title ? `${s.title} — ${s.competitor_url}` : s.competitor_url);
-      tdUrl.style.padding = '8px';
-      tdUrl.style.maxWidth = '420px';
-      tdUrl.style.overflow = 'hidden';
-      tdUrl.style.textOverflow = 'ellipsis';
-      const tdW = document.createElement('td'); tdW.textContent = s.word_count ?? '-'; tdW.style.padding = '8px';
-      const tdH = document.createElement('td'); tdH.textContent = s.h2_count ?? '-'; tdH.style.padding = '8px';
-      const tdL = document.createElement('td'); tdL.textContent = s.link_count ?? '-'; tdL.style.padding = '8px';
-      tr.appendChild(tdUrl); tr.appendChild(tdW); tr.appendChild(tdH); tr.appendChild(tdL);
+      const tdW = document.createElement('td'); tdW.textContent = s.word_count ?? '-'; tdW.className = 'tr-num-cell';
+      const tdH = document.createElement('td'); tdH.textContent = s.h2_count ?? '-'; tdH.className = 'tr-num-cell';
+      const tdL = document.createElement('td'); tdL.textContent = s.link_count ?? '-'; tdL.className = 'tr-num-cell';
+      tr.append(tdUrl, tdW, tdH, tdL);
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
-    listEl.appendChild(table);
+    wrap.appendChild(table);
+    listEl.appendChild(wrap);
   }
 
   function renderScoreList(topics) {
@@ -1086,12 +1081,16 @@
     listEl.classList.remove('dim');
     clearChildren(listEl);
     if (!topics.length) {
-      listEl.textContent = currentLang === 'vi' ? 'Không còn candidate nào (đã chọn, dùng hoặc lưu trữ hết).' : 'No candidates left.';
+      const empty = document.createElement('div');
+      empty.className = 'tr-empty';
+      empty.textContent = currentLang === 'vi' ? 'Không còn candidate nào (đã chọn, dùng hoặc lưu trữ hết).' : 'No candidates left.';
+      listEl.appendChild(empty);
       return;
     }
+    const wrap = document.createElement('div');
+    wrap.className = 'audit-wrap';
     const table = document.createElement('table');
-    table.className = 'table';
-    table.style.width = '100%';
+    table.className = 'tr-table';
     const thead = document.createElement('thead');
     const trh = document.createElement('tr');
     const headers = currentLang === 'vi'
@@ -1100,8 +1099,6 @@
     for (const h of headers) {
       const th = document.createElement('th');
       th.textContent = h;
-      th.style.textAlign = 'left';
-      th.style.padding = '8px';
       trh.appendChild(th);
     }
     thead.appendChild(trh);
@@ -1109,17 +1106,23 @@
     const tbody = document.createElement('tbody');
     for (const t of topics) {
       const tr = document.createElement('tr');
-      const cells = [t.key || '-', `${t.final ?? '-'}/100`, t.relevance ?? '-', t.freshness ?? '-', t.competition ?? '-', t.intent || '-'];
-      for (const c of cells) {
-        const td = document.createElement('td');
-        td.textContent = c;
-        td.style.padding = '8px';
-        tr.appendChild(td);
-      }
+      const tdKey = document.createElement('td');
+      tdKey.textContent = t.key || '-';
+      tdKey.className = 'tr-topic-cell';
+      const final = t.final ?? 0;
+      const tdFinal = document.createElement('td');
+      tdFinal.innerHTML = `<span class="tr-score-pill tr-score-${final >= 80 ? 'good' : final >= 60 ? 'warn' : 'bad'}">${final}/100</span>`;
+      const tdRel = document.createElement('td'); tdRel.textContent = t.relevance ?? '-'; tdRel.className = 'tr-num-cell';
+      const tdFresh = document.createElement('td'); tdFresh.textContent = t.freshness ?? '-'; tdFresh.className = 'tr-num-cell';
+      const tdComp = document.createElement('td'); tdComp.textContent = t.competition ?? '-'; tdComp.className = 'tr-num-cell';
+      const tdIntent = document.createElement('td');
+      tdIntent.innerHTML = `<span class="tr-source-pill">${t.intent || '-'}</span>`;
+      tr.append(tdKey, tdFinal, tdRel, tdFresh, tdComp, tdIntent);
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
-    listEl.appendChild(table);
+    wrap.appendChild(table);
+    listEl.appendChild(wrap);
   }
 
   // ── usage ──────────────────────────────────────────────────────
@@ -2192,13 +2195,15 @@
     const statBlogSub = $('#stat-blog-sub');
 
     if (isSuper) {
+      if (cardEl) cardEl.dataset.tier = 'super';
       if (planNameEl) planNameEl.textContent = 'Gói Doanh Nghiệp (Super Admin)';
       if (usedEl) usedEl.textContent = String(usedCount);
-      if (limitEl) limitEl.textContent = 'Không giới hạn';
+      if (limitEl) limitEl.textContent = '∞';
       if (subEl) subEl.textContent = 'Toàn quyền tạo & quản lý mọi dự án';
-      if (barEl) { barEl.style.width = '100%'; barEl.style.background = 'linear-gradient(90deg, #3b82f6, #06b6d4)'; }
+      if (barEl) { barEl.style.width = '100%'; }
       if (statBlogSub) statBlogSub.textContent = 'Bài viết blog đã xuất bản';
     } else {
+      if (cardEl) cardEl.dataset.tier = 'free';
       const remaining = Math.max(0, postLimit - usedCount);
       const pct = Math.min(100, Math.round((usedCount / postLimit) * 100));
       
@@ -2210,9 +2215,7 @@
         : 'Đã hết hạn ngạch 100 bài miễn phí (Vui lòng liên hệ nâng cấp)';
       if (barEl) {
         barEl.style.width = `${pct}%`;
-        barEl.style.background = pct >= 100 
-          ? 'linear-gradient(90deg, #ef4444, #f87171)' 
-          : 'linear-gradient(90deg, #10b981, #06b6d4)';
+        barEl.dataset.pct = String(pct);
       }
       if (statBlogSub) statBlogSub.textContent = `Đã dùng ${usedCount}/${postLimit} bài gói Free`;
     }
@@ -2260,14 +2263,14 @@
     }
 
     if (domain) {
-      curEl.innerHTML = `<span style="color:var(--good,#10b981);display:inline-flex;align-items:center;gap:6px;">● <strong>${escapeHtml(domain)}</strong></span>`;
+      curEl.innerHTML = `<span class="ov-domain-active"><span class="ov-domain-dot"></span><strong>${escapeHtml(domain)}</strong></span>`;
       if (delBtn) delBtn.hidden = false;
       if (linkWrap && linkEl) {
         linkWrap.hidden = false;
         linkEl.href = `https://${domain}`;
       }
     } else {
-      curEl.innerHTML = `<span style="color:var(--ink-dim);">Chưa thiết lập (Đang dùng đường dẫn mặc định)</span>`;
+      curEl.innerHTML = `<span class="ov-domain-idle">Chưa thiết lập (Đang dùng đường dẫn mặc định)</span>`;
       if (delBtn) delBtn.hidden = true;
       if (linkWrap) linkWrap.hidden = true;
     }
@@ -2414,16 +2417,18 @@
         clearChildren(listEl);
         listEl.classList.remove('dim');
         if (!body.jobs?.length) {
-          listEl.textContent = currentLang === 'vi' ? 'Không có bài nào cần refresh.' : 'Nothing to refresh.';
+          const empty = document.createElement('div');
+          empty.className = 'tr-empty';
+          empty.textContent = currentLang === 'vi' ? 'Không có bài nào cần refresh.' : 'Nothing to refresh.';
+          listEl.appendChild(empty);
           return;
         }
         for (const j of body.jobs) {
           const row = document.createElement('div');
-          row.className = 'row';
-          row.style.marginBottom = '8px';
+          row.className = 'bl-refresh-item';
           const label = document.createElement('span');
+          label.className = 'bl-refresh-label';
           label.textContent = j.title || j.slug;
-          label.style.flex = '1';
           const go = document.createElement('button');
           go.className = 'btn btn-ghost btn-sm';
           go.textContent = currentLang === 'vi' ? 'Refresh bài này' : 'Refresh this post';
@@ -2462,7 +2467,7 @@
     const { status, body } = await api('/api/admin/blog/jobs');
     if (status !== 200 || !body?.jobs?.length) {
       const tr = document.createElement('tr');
-      const tdE = document.createElement('td'); tdE.colSpan = 6; tdE.style.color = 'var(--ink-faint)';
+      const tdE = document.createElement('td'); tdE.colSpan = 6; tdE.className = 'bl-empty-row';
       tdE.textContent = status === 200 ? 'Không có bản nháp hoặc tác vụ thất bại.' : 'Lỗi tải danh sách.';
       tr.appendChild(tdE); tbody.appendChild(tr); return;
     }
@@ -2548,7 +2553,7 @@
     const posts = body?.posts || [];
     if (!posts.length) {
       const tr = document.createElement('tr');
-      const tdE = document.createElement('td'); tdE.colSpan = 5; tdE.style.color = 'var(--ink-faint)';
+      const tdE = document.createElement('td'); tdE.colSpan = 5; tdE.className = 'bl-empty-row';
       tdE.textContent = 'Chưa có bài viết nào.';
       tr.appendChild(tdE); tbody.appendChild(tr); return;
     }
@@ -3578,26 +3583,49 @@
   const Status = (() => {
     let mounted = false;
 
+    // Shimmer placeholders while /api/admin/status is in flight so the
+    // grid doesn't sit empty on slow connections.
+    function renderSkeletons(root, n) {
+      clearChildren(root);
+      for (let i = 0; i < n; i++) {
+        const d = document.createElement('div');
+        d.className = 'status-check is-skeleton';
+        d.setAttribute('aria-hidden', 'true');
+        const l1 = document.createElement('div'); l1.className = 'sk-line sk-w40';
+        const l2 = document.createElement('div'); l2.className = 'sk-line sk-w70';
+        d.append(l1, l2);
+        root.appendChild(d);
+      }
+    }
+
     async function loadChecks() {
       const root = $('#status-checks');
-      const summary = $('#status-summary');
+      const hero = $('#status-hero');
+      const title = $('#status-summary');
+      const sub = $('#status-summary-sub');
       const btn = $('#status-refresh');
-      if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
-      summary.textContent = '';
-      clearChildren(root);
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="btn-spin" aria-hidden="true"></span>Đang kiểm tra…'; }
+      if (hero) hero.dataset.state = 'loading';
+      if (title) title.textContent = 'Đang kiểm tra hệ thống…';
+      if (sub) sub.textContent = 'D1 · R2 · Workers AI · nhật ký · hạn mức · khoá tự sửa';
+      renderSkeletons(root, 6);
 
       const { status: code, body } = await api('/api/admin/status');
-      if (btn) { btn.disabled = false; btn.textContent = 'Chạy kiểm tra'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Chạy lại kiểm tra'; }
       if (code !== 200 || !body?.ok) {
-        summary.textContent = 'Không thể chạy kiểm tra: ' + (body?.error || code);
-        summary.className = 'status bad';
+        if (hero) hero.dataset.state = 'bad';
+        if (title) title.textContent = 'Không thể chạy kiểm tra';
+        if (sub) sub.textContent = 'Lỗi: ' + (body?.error || code);
+        clearChildren(root);
         return;
       }
-      const failed = (body.checks || []).filter((c) => c.ok === false).length;
-      summary.textContent = failed
+      const checks = body.checks || [];
+      const failed = checks.filter((c) => c.ok === false).length;
+      if (hero) hero.dataset.state = failed ? 'bad' : 'good';
+      if (title) title.textContent = failed
         ? `${failed} mục kiểm tra không đạt`
-        : 'Tất cả mục kiểm tra đều tốt';
-      summary.className = 'status ' + (failed ? 'bad' : 'good');
+        : 'Tất cả hệ thống hoạt động tốt';
+      if (sub) sub.textContent = `${checks.length - failed}/${checks.length} mục đạt · Cập nhật ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
 
       // Surface a tab-level badge when any check is failing so the
       // operator notices even when they're on another tab.
@@ -3611,7 +3639,8 @@
         }
       }
 
-      for (const c of body.checks) {
+      clearChildren(root);
+      for (const c of checks) {
         const wrap = document.createElement('div');
         wrap.className = 'status-check ' + (c.ok === false ? 'bad' : 'good');
         const top = document.createElement('div');
@@ -3647,7 +3676,12 @@
         if (extraBits.length) {
           const ex = document.createElement('div');
           ex.className = 'status-check-extras';
-          ex.textContent = extraBits.join(' · ');
+          for (const bit of extraBits) {
+            const chip = document.createElement('span');
+            chip.className = 'check-chip';
+            chip.textContent = bit;
+            ex.appendChild(chip);
+          }
           wrap.appendChild(ex);
         }
         // Action button: when a check has a known fix path, expose
@@ -3693,16 +3727,25 @@
       for (const r of (body.results || [])) {
         const li = document.createElement('li');
         li.className = 'provider-result ' + (r.ok ? 'good' : 'bad');
-        const name = document.createElement('strong'); name.textContent = r.name;
+        const head = document.createElement('div');
+        head.className = 'provider-head';
+        const name = document.createElement('span');
+        name.className = 'provider-name';
+        name.textContent = r.name;
         const status = document.createElement('span');
-        status.className = 'provider-status';
+        status.className = 'provider-pill';
         status.textContent = r.ok
           ? `✓ ${r.ms != null ? r.ms + 'ms' : 'ok'}`
           : `✗ ${r.error || 'thất bại'}`;
-        const detail = document.createElement('span');
-        detail.className = 'provider-detail';
-        detail.textContent = r.detail || r.sample || '';
-        li.append(name, status, detail);
+        head.append(name, status);
+        li.appendChild(head);
+        const detailText = r.detail || r.sample || '';
+        if (detailText) {
+          const detail = document.createElement('div');
+          detail.className = 'provider-detail';
+          detail.textContent = detailText;
+          li.appendChild(detail);
+        }
         ul.appendChild(li);
       }
     }
@@ -3743,11 +3786,15 @@
           year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit',
         });
         const c1 = document.createElement('td'); c1.textContent = when; c1.style.color = 'var(--ink-faint)';
+        c1.dataset.label = 'Thời gian';
         const c2 = document.createElement('td'); c2.textContent = e.actor || '—';
+        c2.dataset.label = 'Người thực hiện';
         const c3 = document.createElement('td'); c3.textContent = e.action;
         c3.style.fontFamily = 'var(--mono, monospace)';
+        c3.dataset.label = 'Hành động';
         const c4 = document.createElement('td');
         c4.style.fontSize = '12px'; c4.style.color = 'var(--ink-dim)';
+        c4.dataset.label = 'Chi tiết';
         // details may be parsed object or raw string; render either.
         if (e.details && typeof e.details === 'object') {
           c4.textContent = Object.entries(e.details)

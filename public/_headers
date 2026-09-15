@@ -61,6 +61,20 @@
 /admin.css
   Cache-Control: no-store
 
+# The React admin bundle. main.js has a stable file name, so a stale
+# copy silently serves the previous build (stale role menu, stale
+# project links). Same zone-rewrite problem as /admin.js above —
+# only no-store survives. Content-hashed chunks under /admin-dist/chunks
+# are safe to cache; only the entry point needs no-store.
+/admin-dist/main.js
+  Cache-Control: no-store
+
+# The bundle's stylesheet carries the shared design tokens the vanilla
+# cover editor reads (--bg, --line, …). It has a stable name too, so it
+# needs the same no-store treatment as main.js.
+/admin-dist/assets/index.css
+  Cache-Control: no-store
+
 /cover-editor.js
   Cache-Control: no-store
 

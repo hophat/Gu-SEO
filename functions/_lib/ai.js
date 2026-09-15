@@ -485,32 +485,58 @@ async function chatCompletion({ provider, url, apiKey, model, prompt, useJsonFor
     max_tokens: 8192,
   };
   if (useJsonFormat) body.response_format = { type: 'json_object' };
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      ...extraHeaders,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const t = await r.text().catch(() => '');
-    throw new Error('chat_http_' + r.status + ': ' + t.slice(0, 200));
+
+  // Transient errors (5xx, empty response, 429 rate-limit) get one retry
+  // before we give up and let the caller fall through to the next provider.
+  // Without this, a single GuRouter 500 or Workers AI rate-limit kills the
+  // whole blog chain for that project — even though a second attempt would
+  // likely succeed. The retry is cheap (one extra fetch) and bounded (1x).
+  const MAX_RETRIES = 1;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        ...extraHeaders,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(() => '');
+      const err = new Error('chat_http_' + r.status + ': ' + t.slice(0, 200));
+      // Retry on 5xx (server error) or 429 (rate limit) — these are
+      // transient by definition. 4xx (except 429) is a bad request that
+      // won't fix itself with a retry.
+      if (attempt < MAX_RETRIES && (r.status >= 500 || r.status === 429)) {
+        continue;
+      }
+      throw err;
+    }
+    const data = await r.json();
+    const text = data?.choices?.[0]?.message?.content || '';
+    if (!text) {
+      // chat_empty: the API returned 200 but with no content. This
+      // happens when the model is overloaded or the response was
+      // filtered. Retry once before giving up.
+      if (attempt < MAX_RETRIES) {
+        continue;
+      }
+      throw new Error('chat_empty');
+    }
+    const u = data?.usage || {};
+    return {
+      parsed: looseJsonParse(text),
+      usage: {
+        provider, model,
+        prompt_tokens: u.prompt_tokens || estimateTokens(SYSTEM_JSON_ONLY + prompt),
+        completion_tokens: u.completion_tokens || estimateTokens(text),
+        estimated: !u.prompt_tokens,
+      },
+    };
   }
-  const data = await r.json();
-  const text = data?.choices?.[0]?.message?.content || '';
-  if (!text) throw new Error('chat_empty');
-  const u = data?.usage || {};
-  return {
-    parsed: looseJsonParse(text),
-    usage: {
-      provider, model,
-      prompt_tokens: u.prompt_tokens || estimateTokens(SYSTEM_JSON_ONLY + prompt),
-      completion_tokens: u.completion_tokens || estimateTokens(text),
-      estimated: !u.prompt_tokens,
-    },
-  };
+  // Unreachable — the loop either returns or throws on every path.
+  throw new Error('chat_failed');
 }
 
 // ── OpenAI (Responses API for gpt-5; chat API for image) ──────────────
@@ -774,14 +800,38 @@ async function gurouterText(env, prompt) {
   if (!env?.GUROUTER_API_KEY) throw new Error('gurouter_not_configured');
   const baseUrl = (env?.GUROUTER_BASE_URL || 'https://gurouter.com/v1').replace(/\/+$/, '');
   // Prefer setting or env, fallback to deepseek-v4-flash which is active on GuRouter
-  const model = env?.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-v4-flash';
-  return chatCompletion({
-    provider: 'gurouter',
-    url: `${baseUrl}/chat/completions`,
-    apiKey: env.GUROUTER_API_KEY,
-    model,
-    prompt,
-  });
+  const primaryModel = env?.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-v4-flash';
+  // Fallback models tried in order when the primary model fails with a
+  // transient error (500, empty, rate-limit). These are all active on
+  // GuRouter and handle the JSON article prompt well enough to keep the
+  // daily cron moving when the primary model has a bad minute.
+  const fallbackModels = [
+    'openai/gpt-4o-mini',
+    'anthropic/claude-3.5-sonnet',
+    'google/gemini-flash-1.5',
+  ].filter((m) => m !== primaryModel);
+
+  let lastErr;
+  for (const model of [primaryModel, ...fallbackModels]) {
+    try {
+      return await chatCompletion({
+        provider: 'gurouter',
+        url: `${baseUrl}/chat/completions`,
+        apiKey: env.GUROUTER_API_KEY,
+        model,
+        prompt,
+      });
+    } catch (e) {
+      lastErr = e;
+      // Only fall through to the next model on transient errors. A 400
+      // (bad request) or 401 (auth) won't fix itself by switching models
+      // — but a 500, empty, or 429 might.
+      const msg = String(e?.message || e);
+      const isTransient = /chat_http_5\d\d|chat_empty|chat_http_429/.test(msg);
+      if (!isTransient) throw e;
+    }
+  }
+  throw lastErr || new Error('gurouter_all_models_failed');
 }
 
 // ── provider registry ─────────────────────────────────────────────────

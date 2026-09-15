@@ -1,6 +1,6 @@
 {
   "name": "pages-seo",
-  "version": "1.9.9",
+  "version": "1.10.0",
   "private": false,
   "license": "MIT",
   "type": "module",
@@ -28,23 +28,30 @@
   "scripts": {
     "setup": "bash setup.sh",
     "build": "npm run check-public && npm run bundle-schema",
-    "bundle-schema": "node scripts/bundle-schema.js",
+    "bundle-schema": "node scripts/bundle-schema.js && node scripts/bundle-migrations.js",
     "check-public": "node scripts/check-public-mirrors.js",
-    "test": "node scripts/run-tests.js",
+    "test": "node scripts/run-tests.js && node --no-warnings scripts/run-platform-tests.js",
     "seed": "node scripts/seed-runner.js",
     "build:functions": "npx wrangler pages functions build --outdir functions_dist",
     "dev:local": "npm run build:functions && node dev-server.js",
     "dev": "npx wrangler pages dev public",
     "deploy": "npm run bundle-schema && bash scripts/cloudflare-deploy.sh",
     "deploy:cli": "bash deploy.sh",
-    "db:migrate": "npx wrangler d1 execute pages-seo --remote --file=schema/init.sql",
+    "db:migrate": "node scripts/migrate.js",
     "db:console": "npx wrangler d1 execute pages-seo --remote --command=\"SELECT count(*) AS posts FROM blog_posts\"",
-    "cron:deploy": "cd cron-worker && npx wrangler deploy"
+    "cron:deploy": "cd cron-worker && npx wrangler deploy",
+    "admin:build": "vite build",
+    "admin:dev": "vite",
+    "bundle:migrations": "node scripts/bundle-migrations.js",
+    "migrate": "node scripts/migrate.js",
+    "test:platform": "node --no-warnings scripts/run-platform-tests.js"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "vite": "^8.3.0",
     "wrangler": "^4.0.0"
   },
   "cloudflare": {
@@ -87,5 +94,12 @@
         "description": "Optional. Cerebras API key. Skip unless you want Cerebras as a fast fallback provider."
       }
     }
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.3.4",
+    "antd": "^6.6.4",
+    "dayjs": "^1.11.23",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   }
 }

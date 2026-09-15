@@ -21,19 +21,22 @@ export const onRequestGet = async ({ request, env }) => {
   // Pending defaults to priority ordering; done/failed default to most-recent.
   let orderBy;
   switch (order) {
-    case 'score':    orderBy = 'score DESC, created_at ASC'; break;
-    case 'created':  orderBy = 'created_at DESC'; break;
+    case 'score':    orderBy = 'k.score DESC, k.created_at ASC'; break;
+    case 'created':  orderBy = 'k.created_at DESC'; break;
     case 'priority':
     default:
       orderBy = status === 'pending'
-        ? 'priority DESC, created_at ASC'
-        : 'updated_at DESC';
+        ? 'k.priority DESC, k.created_at ASC'
+        : 'k.updated_at DESC';
   }
 
-  const projectClause = pid ? `project_id = ? AND` : ``;
-  const sql = `SELECT id, keyword, canonical, score, priority, intent, status, attempts,
-            page_id, error, created_at, updated_at
-       FROM prog_keywords WHERE ${projectClause} status=? ORDER BY ${orderBy} LIMIT ?`;
+  const projectClause = pid ? `k.project_id = ? AND` : ``;
+  const sql = `SELECT k.id, k.project_id, k.keyword, k.canonical, k.score, k.priority, k.intent,
+            k.status, k.attempts, k.page_id, k.error, k.created_at, k.updated_at,
+            p.slug AS page_slug, p.title AS page_title, p.hero_image_key AS page_image_key,
+            p.status AS page_status, p.published_at AS page_published_at
+       FROM prog_keywords k LEFT JOIN prog_pages p ON p.id = k.page_id
+      WHERE ${projectClause} k.status=? ORDER BY ${orderBy} LIMIT ?`;
   const stmt = pid
     ? env.DB.prepare(sql).bind(pid, status, limit)
     : env.DB.prepare(sql).bind(status, limit);

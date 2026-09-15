@@ -15,6 +15,7 @@
 
 import { json } from '../../_lib/util.js';
 import { widgetBody } from '../../_lib/widget_render.js';
+import { embedWidgetOptions } from '../../_lib/embed_settings.js';
 
 const CACHE_SEC = 300;
 
@@ -40,41 +41,17 @@ export const onRequestGet = async ({ env, params, request }) => {
     try { settings = JSON.parse(embed.settings_json) || {}; } catch { /* default */ }
   }
 
-  // Settings: title, accent, per_page (was "limit" — kept for back-
-  // compat), theme, palette. Anything missing falls back to defaults.
-  const perPage = Math.min(50, Math.max(1,
-    parseInt(settings.per_page, 10) || parseInt(settings.limit, 10) || 10));
-  const title  = String(settings.title || embed?.name || 'Blog').slice(0, 100);
-  // An explicit embed accent wins; otherwise the embedding project's
-  // theme colour is the accent, so a tenant's widget matches their blog.
-  const accent = String(settings.accent || embed?.project_theme_color || '#0a0a0a').slice(0, 24);
-  const theme  = ['auto', 'light', 'dark'].includes(settings.theme) ? settings.theme : 'auto';
-
-  // Sanitise the palette: only known keys with short hex/rgba/css-name
-  // values pass through.
-  const palette = {};
-  if (settings.palette && typeof settings.palette === 'object') {
-    for (const k of ['bg', 'fg', 'muted', 'line', 'accent']) {
-      const v = settings.palette[k];
-      if (typeof v === 'string' && v.length <= 32 && /^[#a-zA-Z0-9(),.%/\s-]+$/.test(v)) {
-        palette[k] = v;
-      }
-    }
-  }
-
   const url = new URL(request.url);
-  const apiBase = `${url.protocol}//${url.host}`;
+  // Shared with /api/admin/embed-preview so the live preview and the
+  // shipped bundle can never disagree about what a setting means.
   // The embed is scoped to its own project, not to the host it is
   // pasted on — that host is the customer's site and resolves to no
   // project at all.
-  const js = widgetBody({
-    title, accent, apiBase, embedId: id, perPage, theme, palette,
-    project: String(embed?.project_slug || ''),
-    lang: String(embed?.project_language || 'vi'),
-    // An operator-named embed keeps its title; anything else falls back
-    // to the project's site_name from the API.
-    titleAuto: !settings.title,
-  });
+  const js = widgetBody(embedWidgetOptions({
+    settings,
+    embed: { ...(embed || {}), id },
+    origin: `${url.protocol}//${url.host}`,
+  }));
 
   return new Response(js, {
     headers: {

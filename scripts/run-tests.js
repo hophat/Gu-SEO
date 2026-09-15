@@ -235,25 +235,46 @@ async function runTests() {
     return jsonRes({ ok: true, blog_post_id: 'post_' + (payload.job_id || '') });
   };
 
-  let tickRes;
+  let tickRes, tickOne, tick404;
   try {
     tickRes = await cronTick({
       request: wrapReq(makeReq('https://seo.gulagi.com/api/admin/cron/tick', { body: { task: 'blog' } })),
       env,
     });
+    const tickBody = await tickRes.json();
+    assert.equal(tickRes.status, 200);
+    assert.equal(tickBody.task, 'blog');
+    assert.equal(tickBody.projects_processed, 3);
+
+    const starts = calls.filter((c) => c.url.endsWith('/blog/start'));
+    assert.equal(starts.length, 3, 'expected one blog start per active project');
+    const startedIds = starts.map((s) => s.payload.project_id).sort();
+    assert.deepEqual(startedIds, [GULAGI_PROJECT.id, GUROUTER_PROJECT.id, usas.id].sort());
+    assert.equal(calls.filter((c) => c.url.endsWith('/blog/publish')).length, 3);
+
+    // Per-project mode — the cron Worker now calls tick once per project so
+    // no single HTTP call outlives the edge's ~100s response ceiling.
+    calls.length = 0;
+    tickOne = await cronTick({
+      request: wrapReq(makeReq('https://seo.gulagi.com/api/admin/cron/tick', { body: { task: 'blog', project_id: usas.id } })),
+      env,
+    });
+    const oneBody = await tickOne.json();
+    assert.equal(tickOne.status, 200);
+    assert.equal(oneBody.projects_processed, 1);
+    const startsOne = calls.filter((c) => c.url.endsWith('/blog/start'));
+    assert.equal(startsOne.length, 1, 'project_id mode must run exactly one chain');
+    assert.equal(startsOne[0].payload.project_id, usas.id);
+
+    // Unknown project → 404 so the Worker can tell a bad id from a failed chain.
+    tick404 = await cronTick({
+      request: wrapReq(makeReq('https://seo.gulagi.com/api/admin/cron/tick', { body: { task: 'blog', project_id: 'nope' } })),
+      env,
+    });
+    assert.equal(tick404.status, 404);
   } finally {
     globalThis.fetch = realFetch;
   }
-  const tickBody = await tickRes.json();
-  assert.equal(tickRes.status, 200);
-  assert.equal(tickBody.task, 'blog');
-  assert.equal(tickBody.projects_processed, 3);
-
-  const starts = calls.filter((c) => c.url.endsWith('/blog/start'));
-  assert.equal(starts.length, 3, 'expected one blog start per active project');
-  const startedIds = starts.map((s) => s.payload.project_id).sort();
-  assert.deepEqual(startedIds, [GULAGI_PROJECT.id, GUROUTER_PROJECT.id, usas.id].sort());
-  assert.equal(calls.filter((c) => c.url.endsWith('/blog/publish')).length, 3);
   console.log('✓ Cron fan-out runs once per project, each with its own project_id.');
 
   console.log('9. Verifying Custom Domain resolution and paths...');

@@ -8,7 +8,7 @@ import { syncSitemapAliases } from '../../../_lib/links/aliases.js';
 import { storeEmbedding } from '../../../_lib/dedup.js';
 import { scorePost, statusForScore } from '../../../_lib/quality.js';
 import { getProject } from '../../../_lib/projects.js';
-import { dispatchPublication } from '../../../_lib/publishing/publisher.js';
+import { enqueueSocialPost, drainSocialQueue } from '../../../_lib/publishing/social_queue.js';
 import { publicBaseFor } from '../../../_lib/project_scope.js';
 
 export const onRequestPost = async ({ request, env, waitUntil }) => {
@@ -82,28 +82,24 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
       meta_description: job.meta_description,
     }).catch(() => {}));
 
+    // External distribution goes through the durable queue: enqueue is a
+    // cheap insert that can't fail on the network, and the drain (right
+    // below, plus every cron tick) handles retries. Previously this called
+    // the publisher inside waitUntil(), so a dropped connection lost the
+    // post outright.
     if (job.project_id) {
-      waitUntil((async () => {
-        const proj = await getProject(env, job.project_id).catch(() => null);
-        if (proj) {
-          await dispatchPublication({
-            project: proj,
-            article: {
-              id: postId,
-              slug: job.slug,
-              title: job.title,
-              meta_description: job.meta_description,
-              body_markdown: job.body_markdown,
-              hero_image_key: job.hero_image_key,
-              keywords: job.keywords,
-              published_at: t,
-            },
-            env,
-          }).catch(err => {
-            audit(env, 'publisher', 'dispatch_error', postId, { error: err.message, project_id: job.project_id });
-          });
+      const proj = await getProject(env, job.project_id).catch(() => null);
+      const channel = proj?.publishing_config?.publisher_type;
+      if (channel && channel !== 'internal_d1') {
+        const q = await enqueueSocialPost(env, {
+          projectId: job.project_id, blogPostId: postId, channel,
+        }).catch(() => ({ enqueued: false }));
+        if (q.enqueued) {
+          // Happy path stays immediate; if this is interrupted the cron
+          // picks the row up on its next pass.
+          waitUntil(drainSocialQueue(env, { projectId: job.project_id, limit: 3 }).catch(() => {}));
         }
-      })());
+      }
     }
   }
 

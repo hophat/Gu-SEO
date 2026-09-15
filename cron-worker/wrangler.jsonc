@@ -4,16 +4,14 @@
   "main": "src/index.js",
   "compatibility_date": "2026-05-18",
 
-  // Triggers (kept to 3 to fit the account-wide 5-trigger cap on
-  // Cloudflare's free / Workers Paid base plan). Every schedule makes a
-  // single call to /api/admin/cron/tick, which fans the task out across
-  // all active projects:
-  //   0 1 * * *  → daily blog post per project at 08:00 Vietnam time
-  //                (UTC+7). Skips projects that already produced one
-  //                today; approval-mode projects stop at the draft stage
-  //                for a human click.
-  //   0 9 * * *  → programmatic-SEO batch (up to 10 pages per project).
-  //   0 7 * * 1  → weekly content refresh (up to 2 rewrites per project).
+  // ONE trigger drives everything. A single */15 schedule means the social
+  // retry queue is drained every 15 minutes (its backoff ladder is 1m → 2m
+  // → 4m → 8m…), and it uses 1 of the account-wide 5-trigger cap instead of
+  // 3. The worker decides what to run from the invocation's UTC hour:
+  //   01:00  daily blog post per project (08:00 Vietnam time)
+  //   09:00  programmatic-SEO batch (up to 10 pages per project)
+  //   Mon 07:00  weekly content refresh (up to 2 rewrites per project)
+  // Override the hours with BLOG_HOUR / PROG_HOUR / REFRESH_HOUR secrets.
   //
   // Secrets:
   //   BLOG_URL    — https://<host>/api/admin/blog (tick URL derived from it)
@@ -22,9 +20,7 @@
 
   "triggers": {
     "crons": [
-      "0 1 * * *",
-      "0 9 * * *",
-      "0 7 * * 1"
+      "*/15 * * * *"
     ]
   }
 }

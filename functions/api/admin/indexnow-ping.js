@@ -44,8 +44,13 @@ export const onRequestPost = async ({ request, env }) => {
   if (!urls.length) return json(400, { error: 'no_urls', source, host });
   const r = await pingIndexNow(env, urls, request, host);
   audit(env, 'admin', 'indexnow_ping', tenant?.activeProjectId || null, { url_count: urls.length, host, ok: r.ok, rate_limited: r.rate_limited, source });
+  // `url_count` mirrors urls.length so the UI has a single scalar to read
+  // (the old shape only exposed the array, which the admin page misread
+  // as `pinged` and always rendered as 0).
+  const meta = { urls, url_count: urls.length, source, host };
   if (r.rate_limited) {
-    return json(200, { ok: true, rate_limited: true, status: r.status, message: 'IndexNow rate limited (too many pings). Bing will crawl naturally.', urls, source });
+    return json(200, { ok: true, rate_limited: true, status: r.status, message: 'IndexNow rate limited (too many pings). Bing will crawl naturally.', ...meta });
   }
-  return json(r.ok ? 200 : 502, { ...r, urls, source });
+  if (r.error) return json(502, { ok: false, error: r.error, ...meta });
+  return json(r.ok ? 200 : 502, { ok: r.ok, status: r.status, ...meta });
 };

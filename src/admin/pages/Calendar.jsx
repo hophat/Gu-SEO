@@ -1,0 +1,336 @@
+// Calendar page — antd Calendar component with date cells showing slots,
+// drawer for day detail, modal for create/edit.
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Card, Calendar, Badge, Tag, Button, Space, Typography, message, Modal, Form, Input, Select, Drawer, Empty, Popconfirm, Tooltip, Row, Col, Statistic } from 'antd';
+import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, CalendarOutlined, ThunderboltOutlined, ClockCircleOutlined, CheckCircleOutlined, FileTextOutlined } from '@ant-design/icons';
+import PageContainer from '../components/PageContainer.jsx';
+import { apiGet, apiPost, api } from '../api.js';
+import { useProjectUrl } from '../lib/projectUrl.js';
+import dayjs from 'dayjs';
+
+const { Text, Title } = Typography;
+
+const STATUS_TAG = {
+  scheduled:   { color: 'processing', text: 'Đã lên lịch',  badge: 'processing' },
+  generating:  { color: 'processing', text: 'Đang tạo',     badge: 'processing' },
+  draft:       { color: 'default',     text: 'Bản nháp',     badge: 'default' },
+  published:   { color: 'success',     text: 'Đã xuất bản',  badge: 'success' },
+  skipped:     { color: 'warning',      text: 'Bỏ qua',      badge: 'warning' },
+};
+
+export default function CalendarPage() {
+  const { urlForProject } = useProjectUrl();
+  const [slots, setSlots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [planning, setPlanning] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form] = Form.useForm();
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    // Load a 3-month window centered on today for the calendar view
+    const from = dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD');
+    const to   = dayjs().add(2, 'month').endOf('month').format('YYYY-MM-DD');
+    const { status, body } = await apiGet(`/api/admin/calendar?from=${from}&to=${to}`);
+    if (status === 200 && body?.ok) setSlots(body.slots || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Group slots by date string for O(1) lookup
+  const slotsByDate = useMemo(() => {
+    const map = {};
+    for (const s of slots) {
+      const d = s.scheduled_for;
+      if (!map[d]) map[d] = [];
+      map[d].push(s);
+    }
+    return map;
+  }, [slots]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const today = dayjs().format('YYYY-MM-DD');
+    return {
+      total: slots.length,
+      published: slots.filter((s) => s.status === 'published').length,
+      scheduled: slots.filter((s) => s.status === 'scheduled').length,
+      today: (slotsByDate[today] || []).length,
+    };
+  }, [slots, slotsByDate]);
+
+  const plan = async () => {
+    setPlanning(true);
+    const { status, body } = await apiPost('/api/admin/calendar/plan', { days: 28 });
+    if (status === 200 && body?.ok) {
+      message.success(`Đã lên lịch ${body.slots?.length || 0} bài viết`);
+      load();
+    } else {
+      message.error(body?.error || 'Thất bại');
+    }
+    setPlanning(false);
+  };
+
+  const onDateSelect = (date) => {
+    setSelectedDate(date);
+    setDrawerOpen(true);
+  };
+
+  const openCreate = (date) => {
+    setEditing(null);
+    form.resetFields();
+    form.setFieldsValue({ scheduled_for: date.format('YYYY-MM-DD') });
+    setModalOpen(true);
+  };
+
+  const openEdit = (slot) => {
+    setEditing(slot);
+    form.setFieldsValue({
+      scheduled_for: slot.scheduled_for,
+      title: slot.title,
+      primary_keyword: slot.primary_keyword || '',
+      angle: slot.angle || '',
+      status: slot.status,
+    });
+    setModalOpen(true);
+  };
+
+  const onSubmit = async (values) => {
+    if (editing) {
+      const r = await api('/api/admin/calendar', { method: 'PATCH', body: JSON.stringify({ id: editing.id, ...values }) });
+      if (r.status === 200) { message.success('Đã cập nhật'); setModalOpen(false); load(); }
+      else message.error(r.body?.error || 'Lỗi');
+    } else {
+      const r = await apiPost('/api/admin/calendar', values);
+      if (r.status === 200) { message.success('Đã tạo lịch'); setModalOpen(false); load(); }
+      else message.error(r.body?.error || 'Lỗi');
+    }
+  };
+
+  const deleteSlot = async (id) => {
+    const r = await api(`/api/admin/calendar?id=${id}`, { method: 'DELETE' });
+    if (r.status === 200) { message.success('Đã xóa'); load(); }
+    else message.error(r.body?.error || 'Không thể xóa slot đã xuất bản');
+  };
+
+  // Render slots inside each calendar date cell
+  const dateCellRender = (date) => {
+    const dateStr = date.format('YYYY-MM-DD');
+    const daySlots = slotsByDate[dateStr] || [];
+    if (!daySlots.length) return null;
+    // Show up to 3 slots per cell, then "+N more"
+    const visible = daySlots.slice(0, 3);
+    const extra = daySlots.length - visible.length;
+    return (
+      <div style={{ padding: '2px 4px' }}>
+        {visible.map((s) => {
+          const tag = STATUS_TAG[s.status] || STATUS_TAG.scheduled;
+          const img = s.post?.hero_image_key ? `/image/${s.post.hero_image_key}` : null;
+          const isDone = s.status === 'published';
+          return (
+            <div key={s.id} style={{ marginBottom: 3 }}>
+              {img ? (
+                // Published slot with a hero image — show the thumbnail and
+                // strike through the title so it reads as "already generated".
+                <div style={{ position: 'relative', borderRadius: 4, overflow: 'hidden', lineHeight: 0 }}>
+                  <img
+                    src={img}
+                    alt={s.title}
+                    loading="lazy"
+                    style={{ width: '100%', height: 44, objectFit: 'cover', display: 'block' }}
+                  />
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.65) 100%)',
+                    display: 'flex', alignItems: 'flex-end', padding: '2px 4px',
+                  }}>
+                    <Text
+                      ellipsis
+                      style={{
+                        fontSize: 10, color: '#fff', lineHeight: 1.2,
+                        textDecoration: isDone ? 'line-through' : 'none',
+                        textDecorationColor: 'rgba(255,255,255,0.85)',
+                      }}
+                    >
+                      {s.title}
+                    </Text>
+                  </div>
+                </div>
+              ) : (
+                <Badge status={tag.badge} text={
+                  <Text
+                    ellipsis
+                    style={{
+                      fontSize: 11, maxWidth: 120,
+                      textDecoration: isDone ? 'line-through' : 'none',
+                      color: isDone ? 'rgba(0,0,0,0.45)' : undefined,
+                    }}
+                  >
+                    {s.title}
+                  </Text>
+                } />
+              )}
+            </div>
+          );
+        })}
+        {extra > 0 && (
+          <Text type="secondary" style={{ fontSize: 11 }}>+{extra} nữa</Text>
+        )}
+      </div>
+    );
+  };
+
+  // Selected day's slots for the drawer
+  const selectedDateStr = selectedDate.format('YYYY-MM-DD');
+  const selectedSlots = slotsByDate[selectedDateStr] || [];
+
+  return (
+    <PageContainer
+      title="Lịch nội dung"
+      description="Lên lịch và quản lý bài viết theo lịch"
+      breadcrumb={[{ title: 'Bài viết' }, { title: 'Lịch nội dung' }]}
+      extra={
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={load} loading={loading} />
+          <Button icon={<PlusOutlined />} onClick={() => openCreate(selectedDate)}>Thêm lịch</Button>
+          <Button type="primary" icon={<ThunderboltOutlined />} loading={planning} onClick={plan}>Lên lịch 28 ngày</Button>
+        </Space>
+      }
+    >
+      {/* Stats row */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={12} sm={6}><Card><Statistic title="Tổng lịch" value={stats.total} prefix={<CalendarOutlined />} /></Card></Col>
+        <Col xs={12} sm={6}><Card><Statistic title="Hôm nay" value={stats.today} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#1677ff' }} /></Card></Col>
+        <Col xs={12} sm={6}><Card><Statistic title="Đã lên lịch" value={stats.scheduled} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#faad14' }} /></Card></Col>
+        <Col xs={12} sm={6}><Card><Statistic title="Đã xuất bản" value={stats.published} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
+      </Row>
+
+      {/* Calendar */}
+      <Card loading={loading}>
+        <Calendar
+          value={selectedDate}
+          onSelect={onDateSelect}
+          cellRender={(date, info) => {
+            if (info.type === 'date') return dateCellRender(date);
+            return null;
+          }}
+        />
+      </Card>
+
+      {/* Drawer for selected date */}
+      <Drawer
+        title={
+          <Space>
+            <CalendarOutlined />
+            <span>{selectedDate.format('DD/MM/YYYY')}</span>
+            <Tag>{selectedSlots.length} bài viết</Tag>
+          </Space>
+        }
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        width={480}
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openCreate(selectedDate)}>
+            Thêm bài cho ngày này
+          </Button>
+        }
+      >
+        {selectedSlots.length === 0 ? (
+          <Empty description="Không có bài viết nào cho ngày này" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openCreate(selectedDate)}>Tạo lịch</Button>
+          </Empty>
+        ) : (
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            {selectedSlots.map((slot) => {
+              const tag = STATUS_TAG[slot.status] || STATUS_TAG.scheduled;
+              const isDone = slot.status === 'published';
+              const img = slot.post?.hero_image_key ? `/image/${slot.post.hero_image_key}` : null;
+              return (
+                <Card
+                  key={slot.id}
+                  size="small"
+                  style={{ borderLeft: `4px solid ${tag.color === 'success' ? '#52c41a' : tag.color === 'processing' ? '#1677ff' : tag.color === 'warning' ? '#faad14' : '#d9d9d9'}` }}
+                  cover={img ? (
+                    <img
+                      src={img}
+                      alt={slot.title}
+                      loading="lazy"
+                      style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
+                    />
+                  ) : null}
+                  actions={[
+                    <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(slot)} key="edit">Sửa</Button>,
+                    <Popconfirm title="Xóa lịch này?" onConfirm={() => deleteSlot(slot.id)} key="del">
+                      <Button size="small" type="text" danger icon={<DeleteOutlined />}>Xóa</Button>
+                    </Popconfirm>,
+                  ].filter(Boolean)}
+                >
+                  <div style={{ marginBottom: 8 }}>
+                    <Text
+                      strong
+                      ellipsis
+                      style={{
+                        display: 'block',
+                        textDecoration: isDone ? 'line-through' : 'none',
+                        color: isDone ? 'rgba(0,0,0,0.45)' : undefined,
+                      }}
+                    >
+                      {slot.title}
+                    </Text>
+                  </div>
+                  <Space size={[4, 4]} wrap>
+                    <Tag color={tag.color} icon={isDone ? <CheckCircleOutlined /> : <ClockCircleOutlined />}>{tag.text}</Tag>
+                    {slot.primary_keyword && <Tag>{slot.primary_keyword}</Tag>}
+                    <Tag>{slot.source || 'manual'}</Tag>
+                  </Space>
+                  {slot.angle && (
+                    <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>{slot.angle}</Text>
+                  )}
+                  {slot.post && (
+                    <div style={{ marginTop: 8, padding: 8, background: 'rgba(0,0,0,0.02)', borderRadius: 6 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>Đã xuất bản: </Text>
+                      <a href={urlForProject(slot.project_id, '/blog/' + slot.post.slug)} target="_blank">{slot.post.title}</a>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </Space>
+        )}
+      </Drawer>
+
+      {/* Create / Edit modal */}
+      <Modal
+        title={editing ? 'Sửa lịch' : 'Tạo lịch mới'}
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        onOk={() => form.submit()}
+        width={520}
+      >
+        <Form form={form} layout="vertical" onFinish={onSubmit}>
+          <Form.Item name="scheduled_for" label="Ngày xuất bản" rules={[{ required: true }]}>
+            <Input placeholder="YYYY-MM-DD" />
+          </Form.Item>
+          <Form.Item name="title" label="Tiêu đề bài viết" rules={[{ required: true }]}>
+            <Input placeholder="Ví dụ: Cách tối ưu SEO kỹ thuật..." />
+          </Form.Item>
+          <Form.Item name="primary_keyword" label="Từ khóa chính">
+            <Input placeholder="seo kỹ thuật" />
+          </Form.Item>
+          <Form.Item name="angle" label="Góc tiếp cận">
+            <Input.TextArea rows={2} placeholder="Hướng dẫn từng bước cho người mới bắt đầu..." />
+          </Form.Item>
+          {editing && (
+            <Form.Item name="status" label="Trạng thái">
+              <Select options={Object.entries(STATUS_TAG).map(([k, v]) => ({ value: k, label: v.text }))} />
+            </Form.Item>
+          )}
+        </Form>
+      </Modal>
+    </PageContainer>
+  );
+}

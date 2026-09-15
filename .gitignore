@@ -31,3 +31,11 @@ __pycache__/
 *.log
 .idea/
 .vscode/
+
+# React admin bundle output (built by `npm run admin:build`).
+# The SOURCE lives in src/admin/ and IS tracked — a fresh clone must be
+# able to build the admin panel.
+public/admin-dist/
+
+# Agent/session scratch state.
+.omo/

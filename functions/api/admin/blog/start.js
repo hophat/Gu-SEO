@@ -151,15 +151,36 @@ export const onRequestPost = async ({ request, env }) => {
 
   const id = newId();
   const t  = nowSec();
-  await env.DB.prepare(
-    `INSERT INTO blog_jobs (id, status, topic_key, topic_angle, project_id, created_at, updated_at)
-     VALUES (?, 'created', ?, ?, ?, ?, ?)`
-  ).bind(id, topic.key, topic.angle, projectId, t, t).run();
+
+  // Claim the slot BEFORE inserting the job, with a conditional UPDATE so
+  // the claim is atomic: two parallel cron calls racing on the same shared
+  // (project_id IS NULL) slot can't both flip it — the loser gets 0
+  // changes and backs out instead of double-publishing the same topic.
+  if (slot) {
+    const claim = await env.DB.prepare(
+      `UPDATE content_calendar SET status='generating', job_id=?, updated_at=?
+        WHERE id=? AND status IN ('scheduled','draft')`
+    ).bind(id, t, slot.id).run();
+    if (!claim?.meta?.changes) {
+      return json(409, { error: 'slot_already_claimed', detail: 'slot left schedulable state before claim' });
+    }
+  }
+
+  try {
+    await env.DB.prepare(
+      `INSERT INTO blog_jobs (id, status, topic_key, topic_angle, project_id, created_at, updated_at)
+       VALUES (?, 'created', ?, ?, ?, ?, ?)`
+    ).bind(id, topic.key, topic.angle, projectId, t, t).run();
+  } catch (err) {
+    if (slot) {
+      await env.DB.prepare(
+        `UPDATE content_calendar SET status='scheduled', job_id=NULL, updated_at=? WHERE id=?`
+      ).bind(nowSec(), slot.id).run().catch(() => {});
+    }
+    throw err;
+  }
 
   if (slot) {
-    await env.DB.prepare(
-      `UPDATE content_calendar SET status='generating', job_id=?, updated_at=? WHERE id=?`
-    ).bind(id, t, slot.id).run();
     await audit(env, 'cron', 'calendar.claim', slot.id, JSON.stringify({ job_id: id }));
   }
 

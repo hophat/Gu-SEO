@@ -73,3 +73,35 @@ Write ALL topic titles in the project's content language (${project?.language ||
 
   return json(200, { ok: true, project_id: project.id, generated: saved });
 };
+
+// PATCH { id, status } — mark a trend topic as scheduled / published /
+// archived / pending. Lets the Trends page reflect that a topic has been
+// turned into a calendar slot or a live post, so the list stays a
+// work-queue rather than a pile of one-shot suggestions.
+const ALLOWED_STATUS = ['pending', 'scheduled', 'published', 'archived', 'failed'];
+
+export const onRequestPatch = async ({ env, request }) => {
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  if (!env?.DB) return json(500, { error: 'no_db' });
+
+  const tenant = await resolveTenantContext(env, request, auth);
+  const pid = tenant?.activeProjectId || null;
+
+  let body;
+  try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
+  const id = String(body?.id || '').trim();
+  const status = String(body?.status || '').trim();
+  if (!id) return json(400, { error: 'missing_id' });
+  if (!ALLOWED_STATUS.includes(status)) return json(400, { error: 'bad_status', allowed: ALLOWED_STATUS });
+
+  const owned = pid
+    ? await env.DB.prepare(`SELECT id FROM trend_topics WHERE id = ? AND project_id = ? LIMIT 1`).bind(id, pid).first().catch(() => null)
+    : await env.DB.prepare(`SELECT id FROM trend_topics WHERE id = ? LIMIT 1`).bind(id).first().catch(() => null);
+  if (!owned) return json(404, { error: 'not_found' });
+
+  const r = await env.DB.prepare(
+    `UPDATE trend_topics SET status = ? WHERE id = ?${pid ? ' AND project_id = ?' : ''}`
+  ).bind(...(pid ? [status, id, pid] : [status, id])).run();
+  return json(200, { ok: true, changed: r?.meta?.changes || 0 });
+};

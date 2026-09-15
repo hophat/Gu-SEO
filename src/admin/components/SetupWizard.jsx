@@ -1,0 +1,368 @@
+// SetupWizard — guided onboarding: Brand DNA → Providers → Calendar plan.
+// Reuses /api/admin/brand-dna, /api/admin/secrets, /api/admin/calendar/plan, /api/admin/onboarding.
+import { useState, useEffect, useCallback } from 'react';
+import { Modal, Steps, Button, Form, Input, Alert, Spin, Card, Tag, Space, Typography, message, Row, Col, List } from 'antd';
+import {
+  RocketOutlined, GlobalOutlined, GiftOutlined, CloudOutlined, CalendarOutlined,
+  CheckCircleOutlined, LoadingOutlined, ArrowRightOutlined, ArrowLeftOutlined,
+} from '@ant-design/icons';
+import { apiGet, apiPost, api } from '../api.js';
+
+const { Text, Paragraph, Title } = Typography;
+const { TextArea } = Input;
+
+const PROVIDERS = [
+  { label: 'GuRouter (AI Gateway)', envKey: 'GUROUTER_API_KEY' },
+  { label: 'OpenAI',           envKey: 'OPENAI_API_KEY' },
+  { label: 'Anthropic Claude', envKey: 'ANTHROPIC_API_KEY' },
+  { label: 'Google Gemini',    envKey: 'GEMINI_API_KEY' },
+  { label: 'Groq',             envKey: 'GROQ_API_KEY' },
+  { label: 'DeepSeek',         envKey: 'DEEPSEEK_API_KEY' },
+  { label: 'Mistral',          envKey: 'MISTRAL_API_KEY' },
+  { label: 'Together',         envKey: 'TOGETHER_API_KEY' },
+  { label: 'Cerebras',         envKey: 'CEREBRAS_API_KEY' },
+];
+
+const MONTHS_SHORT = ['Thg 1','Thg 2','Thg 3','Thg 4','Thg 5','Thg 6','Thg 7','Thg 8','Thg 9','Thg 10','Thg 11','Thg 12'];
+
+export default function SetupWizard({ open, onClose, onComplete }) {
+  const [step, setStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Step 1: URL + options
+  const [url, setUrl] = useState('');
+  const [serviceArea, setServiceArea] = useState('');
+  const [topicsAvoid, setTopicsAvoid] = useState('');
+
+  // Step 2: Brand DNA fields
+  const [brand, setBrand] = useState(null);
+  const [brandFields, setBrandFields] = useState({
+    business_type: '', voice_tone: '', target_audience: '',
+    key_themes: '', service_area: '', topics_to_avoid: '',
+  });
+
+  // Step 3: Provider keys
+  const [providerKeys, setProviderKeys] = useState({});
+  const [configuredProviders, setConfiguredProviders] = useState(new Set());
+
+  // Step 4: Calendar plan
+  const [planSlots, setPlanSlots] = useState([]);
+
+  // Pre-populate URL from existing brand DNA
+  useEffect(() => {
+    if (!open) return;
+    apiGet('/api/admin/brand-dna').then(({ status, body }) => {
+      if (status === 200 && body?.brand?.source_url) setUrl(body.brand.source_url);
+    }).catch(() => {});
+  }, [open]);
+
+  // Step 1 → 2: Generate Brand DNA from URL
+  const generateBrandDna = async () => {
+    if (!/^https?:\/\/.+/i.test(url)) { setError('Nhập URL đầy đủ bắt đầu bằng https://'); return; }
+    setError(null);
+    setLoading(true);
+    setStep(1);
+    const { status, body } = await api('/api/admin/brand-dna', {
+      method: 'POST',
+      body: JSON.stringify({ url, service_area: serviceArea, topics_to_avoid: topicsAvoid }),
+    });
+    setLoading(false);
+    if (status !== 200 || !body?.brand) {
+      setError(body?.detail || body?.error || 'Tạo Brand DNA thất bại');
+      setStep(0);
+      return;
+    }
+    const b = body.brand;
+    b.source_url = url;
+    setBrand(b);
+    setBrandFields({
+      business_type: b.business_type || '',
+      voice_tone: b.voice_tone || '',
+      target_audience: b.target_audience || '',
+      key_themes: b.key_themes || '',
+      service_area: b.service_area || '',
+      topics_to_avoid: b.topics_to_avoid || '',
+    });
+  };
+
+  // Step 2 → 3: Save Brand DNA
+  const saveBrandDna = async () => {
+    setError(null);
+    setLoading(true);
+    const { status, body } = await api('/api/admin/brand-dna', {
+      method: 'PUT',
+      body: JSON.stringify({
+        ...brandFields,
+        source_url: brand?.source_url || url,
+        skip_auto_plan: true,
+      }),
+    });
+    setLoading(false);
+    if (status !== 200) { setError(body?.error || 'Lưu thất bại'); return; }
+
+    // Load provider status
+    const secretsR = await apiGet('/api/admin/secrets');
+    const keys = secretsR.body?.keys || {};
+    const configured = new Set(
+      Object.entries(keys).filter(([, v]) => v && v !== 'unset').map(([k]) => k)
+    );
+    setConfiguredProviders(configured);
+    setStep(2);
+  };
+
+  // Step 3 → 4: Save provider keys, plan calendar
+  const saveProvidersAndPlan = async () => {
+    setError(null);
+    setLoading(true);
+    // Save any entered keys
+    for (const [key, val] of Object.entries(providerKeys)) {
+      if (val && val.trim()) {
+        await apiPost('/api/admin/secrets', { name: key, value: val.trim() }).catch(() => {});
+      }
+    }
+    // Plan calendar
+    const { status, body } = await api('/api/admin/calendar/plan', {
+      method: 'POST',
+      body: JSON.stringify({ days: 28, replace: false }),
+    });
+    setLoading(false);
+    if (status !== 200) { setError(body?.detail || body?.error || 'Lên lịch thất bại'); return; }
+    setPlanSlots(body.slots || []);
+    setStep(3);
+  };
+
+  // Complete
+  const finish = async () => {
+    await apiPost('/api/admin/onboarding', {}).catch(() => {});
+    message.success('Thiết lập hoàn tất!');
+    onComplete?.();
+    handleClose();
+  };
+
+  const skip = async () => {
+    await apiPost('/api/admin/onboarding', {}).catch(() => {});
+    handleClose();
+  };
+
+  const handleClose = () => {
+    setStep(0);
+    setError(null);
+    setBrand(null);
+    setPlanSlots([]);
+    setProviderKeys({});
+    onClose();
+  };
+
+  const steps = [
+    { title: 'Website', icon: <GlobalOutlined /> },
+    { title: 'Brand DNA', icon: <GiftOutlined /> },
+    { title: 'AI Provider', icon: <CloudOutlined /> },
+    { title: 'Lịch nội dung', icon: <CalendarOutlined /> },
+  ];
+
+  return (
+    <Modal
+      open={open}
+      onCancel={handleClose}
+      width={680}
+      footer={null}
+      destroyOnClose
+      title={
+        <Space>
+          <RocketOutlined style={{ color: '#1677ff' }} />
+          <span>Trình thiết lập</span>
+        </Space>
+      }
+    >
+      <Steps current={step} items={steps.map((s, i) => ({
+        title: s.title,
+        icon: i < step ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : s.icon,
+      }))} style={{ marginBottom: 32 }} />
+
+      {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} closable onClose={() => setError(null)} />}
+
+      {/* Step 0: Welcome + URL */}
+      {step === 0 && (
+        <div>
+          <Paragraph>
+            <Text strong>Chào mừng! </Text>
+            <Text type="secondary">Dán URL website của bạn — chúng tôi sẽ đọc và tạo Brand DNA tự động.</Text>
+          </Paragraph>
+          <Form layout="vertical">
+            <Form.Item label="URL website" required>
+              <Input
+                size="large"
+                prefix={<GlobalOutlined />}
+                placeholder="https://example.com"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onPressEnter={generateBrandDna}
+              />
+            </Form.Item>
+            <Form.Item label="Khu vực phục vụ (tùy chọn)">
+              <Input placeholder="Hà Nội, Việt Nam" value={serviceArea} onChange={(e) => setServiceArea(e.target.value)} />
+            </Form.Item>
+            <Form.Item label="Chủ đề tránh nhắc (tùy chọn)">
+              <Input placeholder="chính trị, tôn giáo..." value={topicsAvoid} onChange={(e) => setTopicsAvoid(e.target.value)} />
+            </Form.Item>
+          </Form>
+          <div style={{ textAlign: 'right' }}>
+            <Button onClick={skip} style={{ marginRight: 8 }}>Bỏ qua</Button>
+            <Button type="primary" icon={<ArrowRightOutlined />} onClick={generateBrandDna}>
+              Đọc trang web của tôi
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 1: Brand DNA loading / review */}
+      {step === 1 && (
+        <div>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} />} />
+              <p style={{ marginTop: 16, color: '#00000073' }}>
+                Đang đọc <Text strong>{url && new URL(url).hostname}</Text> và tạo Brand DNA...
+              </p>
+            </div>
+          ) : (
+            <>
+              <Paragraph>
+                <Text strong>Brand DNA </Text>
+                <Text type="secondary">— xem lại và chỉnh sửa trước khi lưu</Text>
+              </Paragraph>
+              <Form layout="vertical">
+                <Form.Item label="Loại hình kinh doanh">
+                  <Input value={brandFields.business_type} onChange={(e) => setBrandFields({ ...brandFields, business_type: e.target.value })} />
+                </Form.Item>
+                <Form.Item label="Giọng văn & phong cách">
+                  <Input value={brandFields.voice_tone} onChange={(e) => setBrandFields({ ...brandFields, voice_tone: e.target.value })} />
+                </Form.Item>
+                <Form.Item label="Khách hàng mục tiêu">
+                  <TextArea rows={2} value={brandFields.target_audience} onChange={(e) => setBrandFields({ ...brandFields, target_audience: e.target.value })} />
+                </Form.Item>
+                <Form.Item label="Chủ đề chính">
+                  <TextArea rows={2} value={brandFields.key_themes} onChange={(e) => setBrandFields({ ...brandFields, key_themes: e.target.value })} />
+                </Form.Item>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Khu vực phục vụ">
+                      <Input value={brandFields.service_area} onChange={(e) => setBrandFields({ ...brandFields, service_area: e.target.value })} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Chủ đề tránh">
+                      <Input value={brandFields.topics_to_avoid} onChange={(e) => setBrandFields({ ...brandFields, topics_to_avoid: e.target.value })} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </Form>
+              <div style={{ textAlign: 'right' }}>
+                <Button icon={<ArrowLeftOutlined />} onClick={() => setStep(0)} style={{ marginRight: 8 }}>Quay lại</Button>
+                <Button type="primary" icon={<ArrowRightOutlined />} onClick={saveBrandDna} loading={loading}>
+                  Lưu & tiếp tục
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Step 2: Provider keys */}
+      {step === 2 && (
+        <div>
+          <Card size="small" style={{ marginBottom: 16, background: '#f6ffed', border: '1px solid #b7eb8f' }}>
+            <Space>
+              <CheckCircleOutlined style={{ color: '#52c41a' }} />
+              <Text strong>Cloudflare Workers AI</Text>
+              <Tag color="success">Tích hợp sẵn</Tag>
+            </Space>
+            <br />
+            <Text type="secondary" style={{ fontSize: 12 }}>Llama 3.3 70B cho văn bản · Flux 1 schnell cho hình ảnh. Không cần API key.</Text>
+          </Card>
+
+          <Paragraph>
+            <Text type="secondary">Thêm API key (tùy chọn) để dùng model cao cấp hơn:</Text>
+          </Paragraph>
+
+          <Row gutter={[12, 12]}>
+            {PROVIDERS.map((p) => {
+              const isSet = configuredProviders.has(p.envKey);
+              return (
+                <Col span={12} key={p.envKey}>
+                  <Card size="small">
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Space>
+                        <Text strong style={{ fontSize: 13 }}>{p.label}</Text>
+                        {isSet && <Tag color="success" style={{ fontSize: 10 }}>Đã lưu</Tag>}
+                      </Space>
+                      <Input.Password
+                        size="small"
+                        placeholder={isSet ? '•••••••• (đã lưu)' : 'Dán API key'}
+                        value={providerKeys[p.envKey] || ''}
+                        onChange={(e) => setProviderKeys({ ...providerKeys, [p.envKey]: e.target.value })}
+                      />
+                    </Space>
+                  </Card>
+                </Col>
+              );
+            })}
+          </Row>
+
+          <div style={{ textAlign: 'right', marginTop: 16 }}>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => setStep(1)} style={{ marginRight: 8 }}>Quay lại</Button>
+            <Button type="primary" icon={<ArrowRightOutlined />} onClick={saveProvidersAndPlan} loading={loading}>
+              Tiếp tục → Lên lịch
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Calendar plan preview */}
+      {step === 3 && (
+        <div>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} />} />
+              <p style={{ marginTop: 16, color: '#00000073' }}>Đang lên lịch 28 ngày...</p>
+            </div>
+          ) : (
+            <>
+              <Paragraph>
+                <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
+                <Text strong>Đã lên lịch {planSlots.length} bài viết!</Text>
+              </Paragraph>
+              <Card size="small" style={{ maxHeight: 300, overflow: 'auto' }}>
+                <List
+                  size="small"
+                  dataSource={planSlots}
+                  renderItem={(s) => {
+                    const dt = new Date(s.scheduled_for + 'T00:00:00Z');
+                    const dateLabel = `${dt.getUTCDate()} ${MONTHS_SHORT[dt.getUTCMonth()]}`;
+                    return (
+                      <List.Item>
+                        <Space>
+                          <Tag color="blue">{dateLabel}</Tag>
+                          <Text>{s.title}</Text>
+                          {s.primary_keyword && <Tag>{s.primary_keyword}</Tag>}
+                        </Space>
+                      </List.Item>
+                    );
+                  }}
+                  locale={{ emptyText: 'Không cần thêm bài viết mới — lịch đã có sẵn nội dung.' }}
+                />
+              </Card>
+              <Alert type="success" message="Hệ thống sẽ tự động tạo bài viết theo lịch. Cron chạy mỗi ngày." style={{ marginTop: 16 }} showIcon />
+              <div style={{ textAlign: 'right', marginTop: 16 }}>
+                <Button type="primary" size="large" icon={<CheckCircleOutlined />} onClick={finish}>
+                  Hoàn tất thiết lập
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
