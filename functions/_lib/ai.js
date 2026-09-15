@@ -890,7 +890,11 @@ const IMAGE_PROVIDERS = [
   { name: 'gemini',     available: (e) => !!e?.GEMINI_API_KEY,    call: geminiImage    },
 ];
 
-function orderProviders(registry, env, preferred) {
+// Exported so the preference rules can be tested directly. The bug that
+// prompted this: brand DNA ignored the operator's default provider and kept
+// using Workers AI, so a default set precisely because Workers AI ran out had
+// no effect on the one screen the operator was staring at.
+export function orderProviders(registry, env, preferred) {
   const available = registry.filter((p) => p.available(env));
   if (!preferred) return available;
   const head = available.filter((p) => p.name === preferred);
@@ -962,9 +966,10 @@ import { loadSettings } from './settings.js';
 
 // `kind` is 'article' (long blog post) or 'programmatic' (landing page).
 // `seed` is the topic-angle string for articles or the keyword for
-// programmatic pages. `provider` is optional — when omitted we walk the
-// registry in default order (Workers AI first). `source` is logged to
-// ai_usage (e.g. 'cron-blog', 'admin-prog', 'preview').
+// programmatic pages. `provider` is optional — when omitted we use the
+// `default_ai_provider` setting, and failing that walk the registry in
+// registration order. `source` is logged to ai_usage (e.g. 'cron-blog',
+// 'admin-prog', 'preview').
 export async function generateContent(env, { kind, seed, provider, brand, source = 'admin', projectId = null }) {
   const overlayed = await withVault(env);
   const settings = await loadSettings(env);
@@ -979,7 +984,11 @@ export async function generateContent(env, { kind, seed, provider, brand, source
     ? buildProgrammaticPrompt(seed, brand)
     : buildArticlePrompt(seed, brand, { minWords, maxWords });
 
-  const order = orderProviders(TEXT_PROVIDERS, overlayed, provider);
+  // An explicit provider wins; otherwise the operator's default; otherwise
+  // registration order. Reading the setting HERE means a caller that forgets
+  // to pass it still gets the configured default instead of silently using
+  // Workers AI — which is how brand DNA ended up ignoring it.
+  const order = orderProviders(TEXT_PROVIDERS, overlayed, provider || settings.default_ai_provider || null);
   if (!order.length) throw new Error('no_text_providers_configured');
 
   const errs = [];

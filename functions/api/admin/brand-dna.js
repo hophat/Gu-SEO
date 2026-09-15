@@ -83,9 +83,14 @@ import { recordUsage, estimateTokens } from '../../_lib/usage.js';
 // because that runs shapeArticle which assumes blog-post shape. We
 // build a tiny shim: hit the same env.AI / fetch path with our prompt
 // and parse the JSON directly.
+// The provider preference is: explicit request > the `default_ai_provider`
+// setting > registry order.
 //
-// Workers AI is the default if it's bound; otherwise fall back to the
-// first configured cloud provider.
+// brand-dna was the one caller that ignored the setting, so an operator who
+// set a default provider (because Workers AI's free quota ran out, say) would
+// still get Workers AI here and a failure they could not explain. Every other
+// text caller — blog/text, prog/generate-next, refresh/run, preview-sample —
+// already honours it.
 async function callForBrandDNA(env, prompt, preferredProvider) {
   // Overlay any vault-stored API keys on top of env so cloud providers
   // configured from the admin dashboard work without restart.
@@ -93,12 +98,16 @@ async function callForBrandDNA(env, prompt, preferredProvider) {
   const available = (await listProviders(overlayed)).text;
   if (!available.length) throw new Error('no_text_providers_configured');
 
-  // Honour the explicit preference if it's currently usable.
-  const order = preferredProvider && available.includes(preferredProvider)
-    ? [preferredProvider, ...available.filter((p) => p !== preferredProvider)]
+  const settings = await loadSettings(env);
+  const wanted = preferredProvider || settings.default_ai_provider || '';
+
+  // Honour the preference if it's currently usable. If it is not configured,
+  // fall through to the rest rather than failing — a preferred provider whose
+  // key was removed should not take the whole feature down.
+  const order = wanted && available.includes(wanted)
+    ? [wanted, ...available.filter((p) => p !== wanted)]
     : available;
 
-  const settings = await loadSettings(env);
   const errs = [];
   for (const name of order) {
     try {

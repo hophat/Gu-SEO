@@ -7,6 +7,36 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.14.3 — 2026-09-15
+
+Brand DNA giờ tuân theo provider mặc định do người vận hành đặt.
+
+### Fixed
+- **`default_ai_provider` bị bỏ qua ở đúng màn hình cần nó nhất.** Setting này
+  đã tồn tại và được `blog/text`, `prog/generate-next`, `refresh/run`,
+  `preview-sample` dùng — nhưng `brand-dna.js` thì không, nó chỉ đọc provider
+  từ request body rồi rơi về thứ tự registry (Workers AI trước).
+  Nghĩa là: người vận hành đặt provider mặc định **chính vì** Workers AI hết
+  quota, rồi vào trình thiết lập và vẫn nhận lỗi Workers AI — không có cách
+  nào đoán ra tại sao.
+  Giờ `callForBrandDNA` đọc setting, và `generateContent` cũng đọc nó như một
+  fallback để caller lỡ quên truyền vẫn đúng.
+  Thứ tự ưu tiên: request rõ ràng → setting → thứ tự registry.
+
+### Added (tooling)
+- **Platform tests: 105 checks** (was 102). `orderProviders` được export để test
+  trực tiếp: ưu tiên rõ ràng nhảy lên đầu, không có ưu tiên thì giữ thứ tự
+  registry, ưu tiên không tồn tại không được làm lỗi hay đổi thứ tự, và
+  provider chưa cấu hình bị loại khỏi danh sách. Cùng với: cả hai entry point
+  (`brand-dna`, `generateContent`) đều phải đọc `default_ai_provider`.
+
+### Notes for operators
+- Đặt provider mặc định ở **Cài đặt → AI → Provider mặc định**. Trên bản triển
+  khai này nó đang là `gurouter`.
+- Nếu key provider bị từ chối, `Cài đặt → Provider → Kiểm tra` cho biết lý do
+  thật. Key GuRouter (new-api) dài **48 ký tự**, có tiền tố `sk-` — key 15 ký
+  tự là bị cắt khi dán, và nó trả về `401 Invalid token` chứ không phải lỗi
+  rõ ràng về định dạng.
 ## 1.14.2 — 2026-09-15
 
 "Không đọc được website" khi chạy Brand DNA. Website đọc được bình thường —

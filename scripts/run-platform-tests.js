@@ -1246,6 +1246,47 @@ async function testProviderDispatch() {
   assert.doesNotMatch(brandSrc, /switch \(name\)/, 'brand-dna must not reimplement provider dispatch');
   assert.match(brandSrc, /runTextProvider\(/, 'brand-dna must dispatch through the registry');
   ok('brand DNA dispatches through the shared registry, not a local switch');
+
+  // ── provider preference order ────────────────────────────────────
+  // The operator sets `default_ai_provider` precisely when the registry's
+  // first choice stops working (Workers AI's free quota runs out). brand DNA
+  // was the one caller that ignored it, so the setting had no effect on the
+  // screen the operator was looking at.
+  const { orderProviders } = await import('../functions/_lib/ai.js');
+  const registry = [
+    { name: 'workers-ai', available: () => true },
+    { name: 'gurouter', available: () => true },
+    { name: 'openai', available: () => true },
+  ];
+  const names = (r) => r.map((p) => p.name);
+
+  assert.deepEqual(names(orderProviders(registry, {}, 'gurouter')),
+    ['gurouter', 'workers-ai', 'openai'],
+    'an explicit preference moves to the front');
+  assert.deepEqual(names(orderProviders(registry, {}, null)),
+    ['workers-ai', 'gurouter', 'openai'],
+    'with no preference the registry order stands');
+  assert.deepEqual(names(orderProviders(registry, {}, 'not-registered')),
+    ['workers-ai', 'gurouter', 'openai'],
+    'an unknown preference must not reorder or throw');
+  ok('orderProviders honours an explicit preference and falls back cleanly');
+
+  // An unavailable provider must drop out of the list entirely.
+  const partial = [
+    { name: 'workers-ai', available: () => false },
+    { name: 'gurouter', available: () => true },
+  ];
+  assert.deepEqual(names(orderProviders(partial, {}, null)), ['gurouter'],
+    'an unconfigured provider is not offered');
+  ok('an unconfigured provider is excluded from the order');
+
+  // brand-dna must consult the setting, not just the request body.
+  assert.match(brandSrc, /settings\.default_ai_provider/,
+    'brand DNA must read default_ai_provider');
+  const aiSrc2 = readFileSync(join(ROOT, 'functions', '_lib', 'ai.js'), 'utf8');
+  assert.match(aiSrc2, /provider \|\| settings\.default_ai_provider/,
+    'generateContent must fall back to the setting so a forgetful caller still works');
+  ok('the default provider setting is honoured by both entry points');
 }
 
 async function main() {

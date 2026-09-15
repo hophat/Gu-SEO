@@ -1,0 +1,23 @@
+fix: v1.14.3 — brand DNA honours the default provider setting
+
+`default_ai_provider` already existed and was honoured by blog/text,
+prog/generate-next, refresh/run and preview-sample — but not by brand-dna.js,
+which read the provider from the request body only and otherwise fell back to
+registry order (Workers AI first).
+
+So an operator set a default provider precisely BECAUSE Workers AI's free quota
+had run out, went to the setup wizard, and got the same Workers AI failure with
+no way to tell why. The setting had no effect on the one screen they were
+looking at.
+
+callForBrandDNA now reads the setting, and generateContent reads it as a
+fallback so a caller that forgets to pass a provider still gets the configured
+default. Precedence: explicit request > setting > registry order.
+
+Exports orderProviders and pins the rules: an explicit preference moves to the
+front, no preference keeps registry order, an unknown preference neither throws
+nor reorders, and an unconfigured provider drops out entirely.
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
