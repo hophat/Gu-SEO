@@ -678,40 +678,70 @@ async function anthropicText(env, prompt) {
 
 // ── Google Gemini ──────────────────────────────────────────────────────
 
-const GEMINI_TEXT_MODEL = 'gemini-2.5-pro';
+// Gemini retires models on its own schedule, and a retired model returns
+// HTTP 404 — which reads as "your key is broken" when it is really "that
+// model name is gone". `gemini-2.5-pro` hit exactly that: "no longer
+// available to new users". So try a list, newest first, and let the first
+// one that answers win. Same shape as gurouterText's fallback ladder.
+const GEMINI_TEXT_MODELS = [
+  'gemini-3.1-pro-preview',
+  'gemini-2.5-pro',
+  'gemini-2.5-flash',
+];
 const GEMINI_IMAGE_MODEL = 'imagen-4.0-generate-001';
 
 async function geminiText(env, prompt) {
   if (!env?.GEMINI_API_KEY) throw new Error('gemini_not_configured');
-  const model = env.GEMINI_TEXT_MODEL || GEMINI_TEXT_MODEL;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_JSON_ONLY }] },
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
-    }),
-  });
-  if (!r.ok) {
-    const t = await r.text().catch(() => '');
-    throw new Error('gemini_http_' + r.status + ': ' + t.slice(0, 200));
+  // An explicit env/setting override wins and is tried alone — the operator
+  // pinned it on purpose, so silently substituting another model would hide
+  // the problem they were trying to fix.
+  const pinned = env.GEMINI_TEXT_MODEL;
+  const models = pinned ? [pinned] : GEMINI_TEXT_MODELS;
+
+  const errs = [];
+  for (const model of models) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
+    let r;
+    try {
+      r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_JSON_ONLY }] },
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.7 },
+        }),
+      });
+    } catch (e) {
+      errs.push(`${model}: network: ${String(e?.message || e).slice(0, 80)}`);
+      continue;
+    }
+    if (!r.ok) {
+      const t = await r.text().catch(() => '');
+      errs.push(`${model}: http_${r.status}: ${t.slice(0, 120)}`);
+      // 404 means the model name is gone — worth trying the next one.
+      // A 400/401/403 is about the request or the key, so stop.
+      if (r.status === 404) continue;
+      break;
+    }
+    const data = await r.json();
+    const text = (data?.candidates?.[0]?.content?.parts || [])
+      .map((p) => p?.text || '').join('');
+    if (!text) { errs.push(`${model}: empty`); continue; }
+    const u = data?.usageMetadata || {};
+    return {
+      parsed: looseJsonParse(text),
+      usage: {
+        provider: 'gemini', model,
+        prompt_tokens: u.promptTokenCount || estimateTokens(SYSTEM_JSON_ONLY + prompt),
+        completion_tokens: u.candidatesTokenCount || estimateTokens(text),
+        estimated: !u.promptTokenCount,
+      },
+    };
   }
-  const data = await r.json();
-  const text = (data?.candidates?.[0]?.content?.parts || [])
-    .map((p) => p?.text || '').join('');
-  if (!text) throw new Error('gemini_empty');
-  const u = data?.usageMetadata || {};
-  return {
-    parsed: looseJsonParse(text),
-    usage: {
-      provider: 'gemini', model,
-      prompt_tokens: u.promptTokenCount || estimateTokens(SYSTEM_JSON_ONLY + prompt),
-      completion_tokens: u.candidatesTokenCount || estimateTokens(text),
-      estimated: !u.promptTokenCount,
-    },
-  };
+  // Every model in the ladder failed. Surface all of them: the first entry is
+  // usually the informative one (retired model, quota, bad key).
+  throw new Error('gemini_all_models_failed — ' + errs.join(' | '));
 }
 
 async function geminiImage(env, prompt) {
@@ -905,6 +935,24 @@ export async function listProviders(env) {
     text:  TEXT_PROVIDERS.filter((p) => p.available(overlayed)).map((p) => p.name),
     image: IMAGE_PROVIDERS.filter((p) => p.available(overlayed)).map((p) => p.name),
   };
+}
+
+// Dispatch ONE text provider by name through the registry.
+//
+// Callers that need a single provider with their own prompt (brand DNA) used
+// to reimplement this as a local switch. That copy drifted: it covered five
+// providers while the registry had ten, so `listProviders` would offer
+// `gurouter`, the local switch had no case for it, and every brand-DNA
+// generation failed with `unknown_provider: gurouter` even though the key was
+// configured and the provider worked everywhere else.
+//
+// One dispatch, in the registry, so the two lists cannot disagree again.
+export async function runTextProvider(env, name, prompt) {
+  const overlayed = await withVault(env);
+  const provider = TEXT_PROVIDERS.find((p) => p.name === name);
+  if (!provider) throw new Error('unknown_provider: ' + name);
+  if (!provider.available(overlayed)) throw new Error('provider_unavailable: ' + name);
+  return await provider.call(overlayed, prompt);
 }
 
 // ── public API ─────────────────────────────────────────────────────────

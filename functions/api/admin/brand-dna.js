@@ -76,7 +76,7 @@ function buildBrandPrompt(scrapeBlock, hints) {
 
 // We re-use the existing provider registry — same fallback chain, same
 // looseJsonParse, same control-character tolerance.
-import { listProviders, vaultedEnv } from '../../_lib/ai.js';
+import { listProviders, vaultedEnv, runTextProvider } from '../../_lib/ai.js';
 import { recordUsage, estimateTokens } from '../../_lib/usage.js';
 
 // Direct provider call. We don't want to go through generateContent
@@ -102,18 +102,19 @@ async function callForBrandDNA(env, prompt, preferredProvider) {
   const errs = [];
   for (const name of order) {
     try {
-      const { text, model } = await runProvider(overlayed, name, prompt);
-      // Brand-DNA generations don't always have usage in the raw return,
-      // so we estimate. The Workers AI path returns no usage at all,
-      // OpenAI's Responses API can; we treat both conservatively.
+      // Dispatch through the shared registry. This used to be a local switch
+      // that only covered five of the ten providers, so brand DNA failed with
+      // 'unknown_provider: gurouter' while every other feature used gurouter
+      // fine. See runTextProvider() in _lib/ai.js.
+      const out = await runTextProvider(env, name, prompt);
       await recordUsage(env, settings, {
-        provider: name, model,
-        prompt_tokens: estimateTokens(prompt),
-        completion_tokens: estimateTokens(text),
-        estimated: true,
+        provider: name, model: out?.usage?.model || name,
+        prompt_tokens: out?.usage?.prompt_tokens || estimateTokens(prompt),
+        completion_tokens: out?.usage?.completion_tokens || estimateTokens(JSON.stringify(out?.parsed || '')),
+        estimated: !out?.usage?.prompt_tokens,
         kind: 'brand-dna', source: 'admin-brand-dna',
       });
-      return { provider: name, parsed: looseJsonParse(text) };
+      return { provider: name, parsed: out?.parsed || {} };
     } catch (e) {
       errs.push(`${name}: ${String(e?.message || e).slice(0, 120)}`);
     }
@@ -123,98 +124,6 @@ async function callForBrandDNA(env, prompt, preferredProvider) {
     ok: false, error: errs.join(' | '),
   });
   throw new Error('all_providers_failed — ' + errs.join(' | '));
-}
-
-// Per-provider raw text generation (no JSON shape assumption — caller parses).
-async function runProvider(env, name, prompt) {
-  const SYS = 'You are a brand strategist. You return strict JSON only.';
-  switch (name) {
-    case 'workers-ai': {
-      const model = env.WORKERS_AI_TEXT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
-      const r = await env.AI.run(model, {
-        messages: [{ role: 'system', content: SYS }, { role: 'user', content: prompt }],
-        max_tokens: 4096,
-      });
-      const raw = r?.response ?? r?.result?.response ?? r;
-      let text = '';
-      if (raw && typeof raw === 'object' && !Array.isArray(raw) && raw.business_type) {
-        text = JSON.stringify(raw);
-      } else {
-        text = typeof raw === 'string' ? raw : JSON.stringify(raw);
-      }
-      return { text, model };
-    }
-    case 'openai': {
-      const model = env.OPENAI_TEXT_MODEL || 'gpt-5';
-      const r = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, instructions: SYS, input: prompt, text: { format: { type: 'json_object' } } }),
-      });
-      if (!r.ok) throw new Error('openai_http_' + r.status);
-      const d = await r.json();
-      if (d.output_text) return { text: d.output_text, model };
-      for (const item of (d.output || [])) {
-        if (item.type !== 'message') continue;
-        for (const c of (item.content || [])) if (c.type === 'output_text' && c.text) return { text: c.text, model };
-      }
-      throw new Error('openai_empty');
-    }
-    case 'anthropic': {
-      const model = env.ANTHROPIC_TEXT_MODEL || 'claude-fable-5';
-      const r = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, max_tokens: 4096, system: SYS, messages: [{ role: 'user', content: prompt }] }),
-      });
-      if (!r.ok) throw new Error('anthropic_http_' + r.status);
-      const d = await r.json();
-      return { text: (d.content || []).filter((c) => c.type === 'text').map((c) => c.text).join(''), model };
-    }
-    case 'gemini': {
-      const model = env.GEMINI_TEXT_MODEL || 'gemini-2.5-pro';
-      const u = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
-      const r = await fetch(u, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYS }] },
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json', temperature: 0.6 },
-        }),
-      });
-      if (!r.ok) throw new Error('gemini_http_' + r.status);
-      const d = await r.json();
-      return { text: (d.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join(''), model };
-    }
-    case 'groq':
-    case 'deepseek':
-    case 'mistral':
-    case 'together':
-    case 'cerebras': {
-      const map = {
-        groq:     { url: 'https://api.groq.com/openai/v1/chat/completions', key: env.GROQ_API_KEY,     model: env.GROQ_TEXT_MODEL     || 'llama-3.3-70b-versatile' },
-        deepseek: { url: 'https://api.deepseek.com/v1/chat/completions',    key: env.DEEPSEEK_API_KEY, model: env.DEEPSEEK_TEXT_MODEL || 'deepseek-chat' },
-        mistral:  { url: 'https://api.mistral.ai/v1/chat/completions',      key: env.MISTRAL_API_KEY,  model: env.MISTRAL_TEXT_MODEL  || 'mistral-large-latest' },
-        together: { url: 'https://api.together.xyz/v1/chat/completions',    key: env.TOGETHER_API_KEY, model: env.TOGETHER_TEXT_MODEL || 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
-        cerebras: { url: 'https://api.cerebras.ai/v1/chat/completions',     key: env.CEREBRAS_API_KEY, model: env.CEREBRAS_TEXT_MODEL || 'llama-3.3-70b' },
-      }[name];
-      const r = await fetch(map.url, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${map.key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: map.model,
-          messages: [{ role: 'system', content: SYS }, { role: 'user', content: prompt }],
-          temperature: 0.6,
-          response_format: { type: 'json_object' },
-        }),
-      });
-      if (!r.ok) throw new Error(`${name}_http_` + r.status);
-      const d = await r.json();
-      return { text: d?.choices?.[0]?.message?.content || '', model: map.model };
-    }
-    default:
-      throw new Error('unknown_provider: ' + name);
-  }
 }
 
 // Lift the helper used elsewhere. Inlined to avoid a circular import.

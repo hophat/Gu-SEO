@@ -25,6 +25,40 @@ const PROVIDERS = [
 
 const MONTHS_SHORT = ['Thg 1','Thg 2','Thg 3','Thg 4','Thg 5','Thg 6','Thg 7','Thg 8','Thg 9','Thg 10','Thg 11','Thg 12'];
 
+// Turn a brand-DNA failure into something that points at the real cause.
+// The API distinguishes these; the UI used to collapse them all into
+// "couldn't read your website", which is only true for the first one.
+function describeFailure(body, status) {
+  const code = body?.error || '';
+  const detail = String(body?.detail || '');
+
+  if (code === 'scrape_failed') {
+    // The Worker's own fetch failed. `detail` is the raw reason.
+    if (/timeout/i.test(detail)) return 'Website phản hồi quá chậm (quá 12 giây).';
+    if (/not_html_content_type/i.test(detail)) return 'URL đó không trả về trang HTML (có thể là file hoặc ảnh).';
+    if (/^http_\d/.test(detail)) return `Website trả về lỗi ${detail.replace('http_', '')}.`;
+    return 'Không truy cập được website — kiểm tra lại URL hoặc thử thêm www.';
+  }
+  if (code === 'scrape_too_thin') {
+    return 'Trang quá ít nội dung để phân tích (có thể là site chỉ chạy JavaScript). Thử URL trang Giới thiệu/Dịch vụ.';
+  }
+  if (code === 'generation_failed') {
+    // The scrape worked; the AI is the problem. This is the common one, and
+    // the least obvious from the outside.
+    if (/no_text_providers_configured/.test(detail)) {
+      return 'Chưa có AI provider nào được cấu hình. Vào Cài đặt để thêm API key hoặc bật Workers AI.';
+    }
+    if (/4006|neurons/i.test(detail)) {
+      return 'Workers AI đã hết hạn mức miễn phí hôm nay (10.000 neurons/ngày). Thêm API key cho provider khác hoặc nâng cấp gói Cloudflare.';
+    }
+    if (/429/.test(detail)) return 'Provider AI đang bị giới hạn tần suất (429). Thử lại sau hoặc đổi provider.';
+    if (/404/.test(detail)) return 'Model AI không tồn tại với key hiện tại (404). Kiểm tra lại model trong Cài đặt.';
+    return 'AI không tạo được Brand DNA. Kiểm tra provider trong Cài đặt.';
+  }
+  if (status === 401) return 'Phiên đăng nhập đã hết hạn.';
+  return detail || 'Tạo Brand DNA thất bại.';
+}
+
 export default function SetupWizard({ open, onClose, onComplete, blocking = false }) {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -93,10 +127,15 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
     setLoading(false);
     if (status !== 200 || !body?.brand) {
       // Falling back to manual entry rather than bouncing back to step 0 is
-      // deliberate: setup is mandatory, so a scrape failure must not become a
-      // dead end. The operator can describe their business by hand and still
-      // reach a working schedule.
-      setError(`${body?.detail || body?.error || 'Không đọc được website'} — hãy điền Brand DNA thủ công bên dưới.`);
+      // deliberate: setup is mandatory, so a failure must not become a dead
+      // end. The operator can describe their business by hand and still reach
+      // a working schedule.
+      //
+      // The message must name the ACTUAL cause. It used to say "không đọc được
+      // website" for every failure, which sent people off to check their URL
+      // when the real problem was that no AI provider was usable — the
+      // website had been read fine.
+      setError(`${describeFailure(body, status)} Bạn có thể điền Brand DNA thủ công bên dưới.`);
       setManualMode(true);
       setBrand({ source_url: url });
       return;

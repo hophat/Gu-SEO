@@ -7,6 +7,42 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.14.2 — 2026-09-15
+
+"Không đọc được website" khi chạy Brand DNA. Website đọc được bình thường —
+lỗi thật nằm ở tầng AI, và có hai bug code đứng sau nó.
+
+### Fixed
+- **Brand DNA tự viết lại bộ dispatch provider, và nó lệch với registry.**
+  `brand-dna.js` có một `switch (name)` riêng chỉ phủ 5 trong 10 provider,
+  trong khi `listProviders()` quảng cáo cả 10. Nên nó **offer `gurouter`, thử,
+  rồi chết với `unknown_provider: gurouter`** — trong khi mọi tính năng khác
+  dùng gurouter bình thường. Giờ dispatch qua `runTextProvider()` trong
+  registry, một nguồn sự thật duy nhất, nên hai danh sách không thể lệch lại.
+- **Model Gemini đã bị Google khai tử.** `gemini-2.5-pro` trả 404 "no longer
+  available to new users". Lỗi 404 đọc lên như "key của bạn hỏng", trong khi
+  thật ra chỉ là tên model đã bị bỏ. Giờ có thang fallback
+  (`gemini-3.1-pro-preview` → `gemini-2.5-pro` → `gemini-2.5-flash`) và 404 thì
+  nhảy sang model kế tiếp. Override qua `GEMINI_TEXT_MODEL` vẫn được tôn trọng
+  và chỉ thử đúng model đó.
+- **Thông báo lỗi trong wizard sai hướng.** Nó nói "Không đọc được website"
+  cho MỌI lỗi, khiến người dùng đi kiểm tra URL trong khi website đã đọc tốt.
+  Giờ phân biệt: scrape_failed (không truy cập được / timeout / không phải HTML),
+  scrape_too_thin (trang ít nội dung), và generation_failed (hết quota, hết
+  credit, 429, model sai) — mỗi cái một việc cần làm cụ thể.
+
+### Added (tooling)
+- **Platform tests: 102 checks** (was 97). Bất biến được ghim lại: **mọi provider
+  mà `listProviders` offer đều phải có handler dispatch** — đúng cái đã vỡ.
+  Cùng với: tên ngoài registry bị từ chối rõ ràng, provider chưa cấu hình báo
+  đúng trạng thái, gemini nhảy model khi gặp 404, và brand-dna không được tự
+  viết lại `switch (name)`.
+
+### Notes for operators
+- Sau khi deploy, chạy **Cài đặt → Provider → Kiểm tra** để xem provider nào
+  thực sự dùng được. Lúc deploy bản này, cả 4 provider đều hết tiền/quota:
+  Workers AI hết 10.000 neurons/ngày miễn phí, GuRouter và OpenAI hết credit,
+  Gemini hết quota. Đó là vấn đề thanh toán, không phải code.
 ## 1.14.1 — 2026-09-15
 
 Fewer D1 rows read per page view. Measured first: public pages already return

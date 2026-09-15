@@ -1177,8 +1177,79 @@ async function testRequestCost() {
   ok('the admin bundle stays no-store (it has a stable file name)');
 }
 
+// ── K. provider dispatch ────────────────────────────────────────────
+// The invariant that was broken: `listProviders` offered a provider that the
+// dispatcher had no handler for. Brand DNA reimplemented provider dispatch as
+// a local switch covering 5 of the 10 registered providers, so it advertised
+// `gurouter`, tried it, and failed with `unknown_provider` — while every other
+// feature used gurouter fine.
+async function testProviderDispatch() {
+  console.log('\nK. Provider dispatch');
+  const { listProviders, runTextProvider } = await import('../functions/_lib/ai.js');
+
+  // Every registered provider reports as available when its key is present.
+  const env = {
+    GUROUTER_API_KEY: 'k', OPENAI_API_KEY: 'k', ANTHROPIC_API_KEY: 'k',
+    GEMINI_API_KEY: 'k', GROQ_API_KEY: 'k', DEEPSEEK_API_KEY: 'k',
+    MISTRAL_API_KEY: 'k', TOGETHER_API_KEY: 'k', CEREBRAS_API_KEY: 'k',
+    AI: { run: async () => ({ response: '{}' }) },
+  };
+  const { text } = await listProviders(env);
+  assert.ok(text.length >= 9, `expected the full registry, got ${text.length}`);
+
+  // THE REGRESSION: every name offered must have a handler. A network or
+  // credential error is fine here — that means dispatch worked and the call
+  // was attempted. `unknown_provider` is the failure that must never happen.
+  const undispatchable = [];
+  for (const name of text) {
+    try {
+      await runTextProvider(env, name, 'ping');
+    } catch (e) {
+      const msg = String(e?.message || e);
+      if (/unknown_provider|provider_unavailable/.test(msg)) undispatchable.push(`${name} (${msg.slice(0, 60)})`);
+    }
+  }
+  assert.deepEqual(undispatchable, [],
+    `listProviders offered providers the dispatcher cannot handle: ${undispatchable.join(', ')}`);
+  ok(`every one of the ${text.length} offered providers has a dispatch handler`);
+
+  // A name outside the registry is still rejected clearly.
+  await assert.rejects(
+    () => runTextProvider(env, 'not_a_provider', 'ping'),
+    /unknown_provider/,
+    'an unregistered name must fail loudly, not silently fall through'
+  );
+  ok('an unregistered provider name is rejected');
+
+  // A registered-but-unconfigured provider says so, rather than pretending.
+  const empty = { AI: undefined };
+  await assert.rejects(
+    () => runTextProvider(empty, 'openai', 'ping'),
+    /provider_unavailable|unknown_provider/,
+    'an unconfigured provider must report as unavailable'
+  );
+  ok('a registered but unconfigured provider reports unavailable');
+
+  // Gemini retires models on its own schedule; a retired name returns 404, so
+  // the dispatcher must fall through to the next model rather than surfacing
+  // "your key is broken".
+  const aiSrc = readFileSync(join(ROOT, 'functions', '_lib', 'ai.js'), 'utf8');
+  assert.match(aiSrc, /const GEMINI_TEXT_MODELS = \[/, 'gemini must use a model ladder');
+  const ladder = aiSrc.match(/const GEMINI_TEXT_MODELS = \[([\s\S]*?)\]/)?.[1] || '';
+  assert.ok((ladder.match(/'/g) || []).length >= 4, 'the ladder must list more than one model');
+  assert.match(aiSrc, /if \(r\.status === 404\) continue;/, 'a 404 must advance to the next model');
+  ok('gemini falls through on a retired model name instead of failing');
+
+  // And the source of truth for provider dispatch is the registry, not a
+  // second copy in the caller.
+  const brandSrc = readFileSync(join(ROOT, 'functions', 'api', 'admin', 'brand-dna.js'), 'utf8');
+  assert.doesNotMatch(brandSrc, /switch \(name\)/, 'brand-dna must not reimplement provider dispatch');
+  assert.match(brandSrc, /runTextProvider\(/, 'brand-dna must dispatch through the registry');
+  ok('brand DNA dispatches through the shared registry, not a local switch');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost) ---');
+  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -1189,6 +1260,7 @@ async function main() {
   await testOnboarding();
   await testRegistrationAndProfile();
   await testRequestCost();
+  await testProviderDispatch();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 
