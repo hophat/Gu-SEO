@@ -1,9 +1,10 @@
 // Settings page — antd Form, Input, Select, Switch, Button, Card, Tabs, message.
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Tabs, Form, Input, Select, Switch, Button, Space, Typography, message, InputNumber, Divider, Alert, Tag, Table, Tooltip, Collapse, Row, Col } from 'antd';
+import { Card, Tabs, Form, Input, Select, Switch, Button, Space, Typography, message, InputNumber, Divider, Alert, Tag, Table, Tooltip, Collapse, Row, Col, Modal } from 'antd';
 import { SaveOutlined, GoogleOutlined, ApiOutlined, CheckCircleOutlined, CopyOutlined, KeyOutlined, DeleteOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
-import { apiGet, apiPost, api } from '../api.js';
+import { apiGet, apiPost, api, apiDel } from '../api.js';
+import { useAuth, useProjects } from '../hooks/useTheme.jsx';
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -196,9 +197,67 @@ export default function Settings() {
             label: 'Kênh xuất bản',
             children: <FacebookAppConfig />,
           },
+          {
+            key: 'project',
+            label: 'Dự án',
+            children: <ProjectDangerZone />,
+          },
         ]}
       />
     </PageContainer>
+  );
+}
+
+// ── Project danger zone ───────────────────────────────────────────
+// super_admin only. Deletes the active project after slug confirmation
+// (backend also requires ?confirm=<slug> for core seed projects).
+function ProjectDangerZone() {
+  const { user, check } = useAuth();
+  const { activeProject } = useProjects();
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  if (user?.role !== 'super_admin') return null;
+  if (!activeProject) return <Alert type="info" showIcon message="Chưa chọn dự án." />;
+
+  const doDelete = async () => {
+    setDeleting(true);
+    const r = await apiDel(`/api/admin/projects/${encodeURIComponent(activeProject.id)}?confirm=${encodeURIComponent(activeProject.slug)}`);
+    setDeleting(false);
+    if (r.status === 200 && r.body?.ok) {
+      message.success(`Đã xóa dự án ${activeProject.slug}.`);
+      setOpen(false);
+      setTyped('');
+      await check();
+    } else {
+      message.error(r.body?.detail || r.body?.error || 'Xóa thất bại.');
+    }
+  };
+
+  return (
+    <Card title="Vùng nguy hiểm">
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Text>Dự án hiện tại: <Text strong>{activeProject.site_name || activeProject.name || activeProject.slug}</Text> <Text code>{activeProject.slug}</Text></Text>
+        <Text type="secondary">Xóa vĩnh viễn Brand DNA, lịch bài, cấu hình và gỡ domain khỏi Cloudflare. Không thể hoàn tác.</Text>
+        <div>
+          <Button danger icon={<DeleteOutlined />} onClick={() => setOpen(true)}>Xóa dự án này</Button>
+        </div>
+      </Space>
+      <Modal
+        open={open}
+        title="Xóa dự án?"
+        okText="Xóa vĩnh viễn"
+        okType="danger"
+        cancelText="Hủy"
+        okButtonProps={{ disabled: typed.trim().toLowerCase() !== activeProject.slug, loading: deleting }}
+        onCancel={() => { setOpen(false); setTyped(''); }}
+        onOk={doDelete}
+      >
+        <Paragraph>Gõ đúng slug <Text code>{activeProject.slug}</Text> để xác nhận xóa vĩnh viễn.</Paragraph>
+        <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={activeProject.slug} />
+      </Modal>
+    </Card>
   );
 }
 
