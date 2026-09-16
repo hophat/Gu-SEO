@@ -50,6 +50,7 @@ const MENU_ITEMS = [
       { key: 'blog', icon: <FileTextOutlined />, label: 'Blog' },
       { key: 'calendar', icon: <CalendarOutlined />, label: 'Lịch nội dung' },
       { key: 'trends', icon: <RiseOutlined />, label: 'Xu hướng' },
+      { key: 'social', icon: <SendOutlined />, label: 'Bài đăng mạng xã hội' },
     ],
   },
   {
@@ -68,7 +69,6 @@ const MENU_ITEMS = [
       { key: 'seo', icon: <GlobalOutlined />, label: 'SEO & IndexNow' },
       { key: 'embeds', icon: <CodeOutlined />, label: 'Embeds' },
       { key: 'publishing', icon: <ApiOutlined />, label: 'Kênh xuất bản' },
-      { key: 'social', icon: <SendOutlined />, label: 'Bài đăng mạng xã hội' },
     ],
   },
   {
