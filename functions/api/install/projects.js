@@ -1,7 +1,7 @@
 // POST /api/install/projects
 //
-// List the Pages projects on the user's Cloudflare account so /repair
-// can auto-detect (or offer a picker for) the project slug. Saves the
+// List the Pages projects on the user's Cloudflare account so a
+// super_admin tool can offer a picker for the project slug. Saves the
 // user a trip to the CF dashboard to look up the name they entered
 // six months ago.
 //

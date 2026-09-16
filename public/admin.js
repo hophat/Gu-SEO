@@ -3684,27 +3684,6 @@
           }
           wrap.appendChild(ex);
         }
-        // Action button: when a check has a known fix path, expose
-        // it inline. Today only 'repair' has one — deep-links to
-        // the canonical /repair page with project pre-filled.
-        if (c.id === 'repair' && c.ok === false) {
-          const a = document.createElement('a');
-          a.className = 'status-check-action';
-          a.target = '_blank';
-          a.rel = 'noopener';
-          a.textContent = '→ Sửa bản cài đặt này';
-          // Try to pre-fill project slug. The install flow writes
-          // settings.install_cf_project; failing that, we'll let
-          // the user type it on the repair page.
-          let project = '';
-          try {
-            // best-effort, sync inside the loop: pull from a recently
-            // loaded settings cache if available, else leave blank.
-            project = window.__psSettings?.install_cf_project || '';
-          } catch { /* */ }
-          a.href = 'https://seo.benjaminb.xyz/repair' + (project ? `?project=${encodeURIComponent(project)}` : '');
-          wrap.appendChild(a);
-        }
         root.appendChild(wrap);
       }
     }

@@ -98,7 +98,7 @@ curl -fsSL https://seo.benjaminb.xyz/install/run.js | node</code></pre>
 
 <h3 id="ts-no-db-binding">/admin shows <code>no_db_binding</code></h3>
 <p><strong>Cause:</strong> Cloudflare Pages occasionally drops D1/R2 bindings during a project update. The site's Functions can't see <code>env.DB</code>.</p>
-<p><strong>Fix:</strong> if you installed before this fix shipped, visit <a href="/repair">/repair</a>, paste your CF token, repair runs the bindings PATCH that fixes you. If you installed after, the site fixes itself on first /admin visit by calling its own <code>/api/repair-bindings</code> endpoint. See also <a href="#err-no_db_binding">#err-no_db_binding</a>.</p>
+<p><strong>Fix:</strong> the site fixes itself on first /admin visit by calling its own <code>/api/repair-bindings</code> endpoint. If that fails, a super_admin must re-assert the bindings manually via the Cloudflare dashboard (Pages project → Settings → Bindings) and redeploy. See also <a href="#err-no_db_binding">#err-no_db_binding</a>.</p>
 
 <h3 id="ts-cron-not-firing">Daily blog isn't generating</h3>
 <p><strong>Cause:</strong> either the cron trigger isn't set on the Pages project, your monthly budget is exceeded, no provider is configured, or the AI binding is missing.</p>
@@ -138,7 +138,7 @@ curl -fsSL https://seo.benjaminb.xyz/install/run.js | node</code></pre>
   <dd>The Pages project lost its D1 binding. See <a href="#ts-no-db-binding">troubleshooting</a> for the repair path. Won't recur after a fresh install — the install flow now PATCHes and verifies bindings.</dd>
 
   <dt id="err-r2_binding_missing"><code>r2_binding_missing</code></dt>
-  <dd>Same shape as no_db_binding but for the R2 bucket. Same repair flow at <a href="/repair">/repair</a>.</dd>
+  <dd>Same shape as no_db_binding but for the R2 bucket. Same self-repair flow via <code>/api/repair-bindings</code>, otherwise a super_admin re-binds manually in the Cloudflare dashboard.</dd>
 
   <dt id="err-wrong_parent"><code>wrong_parent</code></dt>
   <dd>You have a repo called <code>pages-seo</code> on GitHub but it's a fork of something other than <code>Benjamin-Bloch/pages-seo</code>. Rename it on GitHub or use a different account.</dd>
