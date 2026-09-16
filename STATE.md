@@ -38,6 +38,7 @@ Format: `[YYYY-MM-DD HH:MM:SS UTC] {pattern-name} - {status} - {details}`
 |---|---|---|---|
 | 2026-09-16 17:54:00 UTC | manual-fix (ad-hoc, user-requested) | success + deployed | Brand admin fix e783b26: theme-color/logo UI added to Brand.jsx, save strips logo_url (fixes logo_url_is_server_assigned), voice_tone/target_audience mapping. Gate ✅. Pushed main, deployed https://51e130b6.gu-seo.pages.dev. Left uncommitted (not mine): App.jsx menu move, wrangler.toml name. |
 | 2026-09-16 18:05:00 UTC | manual-feature (ad-hoc, user-requested) | success + deployed (2fb90cc) | Calendar "Tạo bài ngay": per-slot button (scheduled/draft only) in drawer runs blog chain start(calendar_slot_id)→text→image→publish with progress modal. Backend reused as-is (start claims slot, publish marks published). Files: src/admin/pages/Calendar.jsx (+rel=noopener fix). Gate ✅. Pushed main, deployed https://d78cf961.gu-seo.pages.dev. |
+| 2026-09-16 18:15:00 UTC | manual-fix (ad-hoc, user-requested) | success + deployed (25f4ed1) | Move "Bài đăng mạng xã hội" menu item from Phân phối group to Bài viết group (src/admin/App.jsx, pre-existing local change). Gate ✅. Pushed main, deployed https://81f6ab34.gu-seo.pages.dev. Still uncommitted (do-not-commit): wrangler.toml name. |
 
 ## Next actions
 
