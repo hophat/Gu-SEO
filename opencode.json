@@ -2,7 +2,21 @@
   "$schema": "https://opencode.ai/config.json",
   "instructions": ["AGENTS.md", "LOOP.md", "loop-budget.md"],
   "skills": {
-    "paths": ["patterns", ".opencode/skills"]
+    "paths": ["skills", "patterns", ".opencode/skills"]
+  },
+  "agent": {
+    "implementer": {
+      "description": "Implements one minimal scoped fix inside a supplied git worktree. Use for loop auto-fix mode.",
+      "mode": "subagent",
+      "permission": { "bash": "ask" },
+      "prompt": "Implement only the requested minimal fix. Stay within the supplied worktree directory. Follow AGENTS.md and loop-constraints.md. Run npm test and npm run build:functions as evidence. Never touch denylisted paths (schema/init.sql, functions/_lib/schema.js, functions/_lib/auth.js, wrangler.toml, .env). Output a summary plus the diff path."
+    },
+    "verifier": {
+      "description": "Reviews a supplied diff against project rules and tests. APPROVE or REJECT only, never edits.",
+      "mode": "subagent",
+      "permission": { "edit": "deny", "bash": "deny" },
+      "prompt": "Review the supplied diff against AGENTS.md hard rules, loop-constraints.md denylist, and test evidence. Do not edit any files. Output APPROVE or REJECT with reasons, one line per finding."
+    }
   },
   "permission": {
     "edit": {

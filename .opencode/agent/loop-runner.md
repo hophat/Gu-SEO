@@ -1,6 +1,6 @@
 ---
-description: Loop runner — executes Gu-SEO loop engineering patterns safely as a subagent.
-mode: subagent
+description: Loop runner — executes Gu-SEO loop engineering patterns safely. Use when running daily-triage, pr-babysitter, ci-sweeper, or any loop pattern.
+mode: all
 permission:
   edit: ask
   bash: ask

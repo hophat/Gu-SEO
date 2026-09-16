@@ -2,12 +2,15 @@
 
 Tracker for loop engineering runs. Updated by each loop invocation.
 Budget and cadence: see `LOOP.md` + `loop-budget.md`. Safety: see `gate.yaml`.
+Binding rules: `loop-constraints.md` (loaded before every run).
+Mode: `report-only` (L1, propose only) — flip to `mode: auto-fix` in `loop-constraints.md` after 10 stable runs to enable L2. `loop-pause-all` here stops all loops.
 
 ## Active patterns
 
 | Pattern | Cadence | Risk | Readiness | Status |
 |---|---|---|---|---|
-| daily-triage | 1d (09:00 UTC) | low | L1 | active |
+| issue-triage | 2h–1d (`scripts/loop-run.sh issue-triage`) | low | L1 | active — reads/writes `issue-triage-state.md` |
+| daily-triage | 1d (09:00 UTC) | low | L1 | active — merges issue-triage Top 5 into High Priority |
 | pr-babysitter | 30m (business hours) | medium | L2 | active |
 | ci-sweeper | 15m | high | L2 | active |
 | dependency-updater | 1d | medium | L1 | active |
