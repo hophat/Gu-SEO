@@ -36,7 +36,7 @@ Format: `[YYYY-MM-DD HH:MM:SS UTC] {pattern-name} - {status} - {details}`
 
 | Timestamp (UTC) | Pattern | Status | Details |
 |---|---|---|---|
-| — | — | — | No runs yet since OpenCode setup |
+| 2026-09-16 17:54:00 UTC | manual-fix (ad-hoc, user-requested) | success + deployed | Brand admin fix e783b26: theme-color/logo UI added to Brand.jsx, save strips logo_url (fixes logo_url_is_server_assigned), voice_tone/target_audience mapping. Gate ✅. Pushed main, deployed https://51e130b6.gu-seo.pages.dev. Left uncommitted (not mine): App.jsx menu move, wrangler.toml name. |
 
 ## Next actions
 
