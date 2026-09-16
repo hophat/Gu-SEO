@@ -1,7 +1,7 @@
 // Overview page — antd Statistic, Card, Progress, Row/Col, Button, Tag, Input, Alert, Collapse.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, Row, Col, Statistic, Progress, Button, Tag, Input, Alert, Space, Typography, Skeleton, message, Popconfirm, Tooltip, Collapse, Badge, Avatar, Descriptions, Divider } from 'antd';
-import { FileTextOutlined, AppstoreOutlined, ClockCircleOutlined, PlusOutlined, GlobalOutlined, DeleteOutlined, SaveOutlined, InfoCircleOutlined, ThunderboltOutlined, LinkOutlined, CheckCircleOutlined, QuestionCircleOutlined, CloudOutlined, ShopOutlined, EnvironmentOutlined, CalendarOutlined, RocketOutlined, EditOutlined, SendOutlined, WarningOutlined } from '@ant-design/icons';
+import { FileTextOutlined, AppstoreOutlined, ClockCircleOutlined, PlusOutlined, GlobalOutlined, DeleteOutlined, SaveOutlined, InfoCircleOutlined, ThunderboltOutlined, LinkOutlined, CheckCircleOutlined, QuestionCircleOutlined, CloudOutlined, ShopOutlined, EnvironmentOutlined, CalendarOutlined, RocketOutlined, EditOutlined, SendOutlined, WarningOutlined, UploadOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost } from '../api.js';
 import { useAuth, useProjects } from '../hooks/useTheme.jsx';
@@ -38,7 +38,7 @@ function absoluteUrl(u) {
 }
 
 export default function Overview() {
-  const { user } = useAuth();
+  const { user, check } = useAuth();
   const { activeProject } = useProjects();
   const { projectUrl } = useProjectUrl();
   const [loading, setLoading] = useState(true);
@@ -52,6 +52,32 @@ export default function Overview() {
   const [social, setSocial] = useState({ jobs: [], counts: {} });
   const [attention, setAttention] = useState({ items: [], counts: {} });
   const [activation, setActivation] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const logoInput = useRef(null);
+
+  const uploadLogo = async (file) => {
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { message.error('Ảnh quá lớn (tối đa 2 MB).'); return; }
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise((resolve) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result || ''));
+        fr.onerror = () => resolve('');
+        fr.readAsDataURL(file);
+      });
+      if (!dataUrl) { message.error('Không đọc được tệp.'); return; }
+      const r = await apiPost('/api/admin/projects/logo', { filename: file.name, content_type: file.type, base64: dataUrl });
+      if (r.status === 200 && r.body?.ok) {
+        message.success('Đã cập nhật logo.');
+        await check();
+      } else {
+        message.error(r.body?.error || 'Upload thất bại.');
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -271,6 +297,10 @@ export default function Overview() {
                   {(activeProject.site_name || activeProject.slug || 'P')[0]?.toUpperCase()}
                 </Avatar>
               )}
+              <div style={{ marginTop: 8 }}>
+                <input ref={logoInput} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) uploadLogo(f); }} />
+                <Button size="small" icon={<UploadOutlined />} loading={uploading} onClick={() => logoInput.current?.click()}>Logo</Button>
+              </div>
             </Col>
             <Col xs={24} sm={12}>
               <Space direction="vertical" size={4} style={{ width: '100%' }}>

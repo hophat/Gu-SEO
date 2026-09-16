@@ -3075,13 +3075,16 @@
     }
 
     async function removeProject(proj) {
-      if (['gulagi', 'gurouter'].includes(proj.slug)) {
-        alert('Dự án cốt lõi (' + proj.slug + ') được bảo vệ, không thể xóa.');
-        return;
-      }
+      const isProtected = ['gulagi', 'gurouter'].includes(proj.slug);
       if (!confirm('Xóa hoàn toàn dự án "' + proj.name + '" (' + proj.slug + ')?\nMọi Brand DNA, lịch bài và cấu hình liên quan sẽ bị xóa.')) return;
-      
-      const { status, body } = await api('/api/admin/projects/' + encodeURIComponent(proj.id), {
+      let url = '/api/admin/projects/' + encodeURIComponent(proj.id);
+      if (isProtected) {
+        const typed = (prompt('Đây là dự án hệ thống cốt lõi. Gõ đúng slug "' + proj.slug + '" để xác nhận xóa:') || '').trim().toLowerCase();
+        if (typed !== proj.slug) return;
+        url += '?confirm=' + encodeURIComponent(proj.slug);
+      }
+
+      const { status, body } = await api(url, {
         method: 'DELETE'
       });
       if (status !== 200 || !body?.ok) {

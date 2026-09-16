@@ -282,7 +282,7 @@ ${themeStyle(site.themeColor)}
   <div class="header-inner">
     <a class="header-brand" href="${esc(site.homeUrl)}">
       ${site.logoUrl
-        ? `<img class="header-logo-img" src="${esc(site.logoUrl)}" alt="${esc(site.name)}" height="28" />`
+        ? `<img class="header-logo-img" src="${esc(site.logoUrl)}" alt="${esc(site.name)}" height="28" /><span class="header-logo">${esc(site.name)}</span>`
         : `<span class="header-logo">${esc(site.name)}</span>`}
     </a>
     <nav class="header-nav">

@@ -225,7 +225,7 @@ ${themeStyle(project?.theme_color)}
   <div class="header-inner">
     <a class="header-brand" href="${esc(homeUrl)}">
       ${project?.logo_url
-        ? `<img class="header-logo-img" src="${esc(project.logo_url)}" alt="${esc(siteName)}" height="28" />`
+        ? `<img class="header-logo-img" src="${esc(project.logo_url)}" alt="${esc(siteName)}" height="28" /><span class="header-logo">${esc(siteName)}</span>`
         : `<span class="header-logo">${esc(siteName)}</span>`}
     </a>
     <nav class="header-nav">

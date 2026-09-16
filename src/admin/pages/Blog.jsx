@@ -1,7 +1,7 @@
 // Blog page — antd Table, Button, Modal, Tag, Steps, Spin, message, Empty, Card.
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Row, Col, Button, Table, Tag, Steps, Spin, message, Empty, Space, Typography, Modal, Input, Tooltip, Popconfirm } from 'antd';
-import { PlusOutlined, SyncOutlined, FileTextOutlined, PictureOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, SyncOutlined, FileTextOutlined, PictureOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost } from '../api.js';
 import { useProjectUrl } from '../lib/projectUrl.js';
@@ -15,6 +15,7 @@ const STATUS_TAG = {
   created: { color: 'default', icon: <ClockCircleOutlined />, text: 'Đang tạo' },
   failed: { color: 'error', icon: <ExclamationCircleOutlined />, text: 'Thất bại' },
   review: { color: 'warning', icon: <ExclamationCircleOutlined />, text: 'Cần duyệt' },
+  hidden: { color: 'default', icon: <EyeInvisibleOutlined />, text: 'Đang ẩn' },
 };
 
 export default function Blog() {
@@ -104,6 +105,17 @@ export default function Blog() {
     }
   };
 
+  const toggleVisibility = async (post) => {
+    const action = post.status === 'hidden' ? 'show' : 'hide';
+    const r = await apiPost('/api/admin/blog/post', { id: post.id, action });
+    if (r.status === 200 && r.body?.ok) {
+      message.success(action === 'hide' ? 'Đã ẩn bài viết.' : 'Đã hiện bài viết.');
+      loadPosts();
+    } else {
+      message.error(r.body?.error || 'Đổi trạng thái thất bại.');
+    }
+  };
+
   const postColumns = [
     { title: 'Tiêu đề', dataIndex: 'title', key: 'title', ellipsis: true,
       render: (text, r) => <a href={urlForProject(r.project_id, '/blog/' + r.slug)} target="_blank" rel="noopener">{text}</a> },
@@ -112,6 +124,12 @@ export default function Blog() {
       render: (s) => { const t = STATUS_TAG[s] || STATUS_TAG.created; return <Tag color={t.color} icon={t.icon}>{t.text}</Tag>; } },
     { title: 'Ngày', dataIndex: 'published_at', key: 'published_at', width: 120,
       render: (t) => t ? new Date(t * 1000).toLocaleDateString('vi-VN') : '-' },
+    { title: 'Thao tác', key: 'action', width: 110,
+      render: (_, r) => (
+        <Button size="small" icon={r.status === 'hidden' ? <EyeOutlined /> : <EyeInvisibleOutlined />} onClick={() => toggleVisibility(r)}>
+          {r.status === 'hidden' ? 'Hiện' : 'Ẩn'}
+        </Button>
+      ) },
   ];
 
   const jobColumns = [
