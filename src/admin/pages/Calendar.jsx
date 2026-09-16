@@ -1,7 +1,7 @@
 // Calendar page — antd Calendar component with date cells showing slots,
 // drawer for day detail, modal for create/edit.
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, Calendar, Badge, Tag, Button, Space, Typography, message, Modal, Form, Input, Select, Drawer, Empty, Popconfirm, Tooltip, Row, Col, Statistic } from 'antd';
+import { Card, Calendar, Badge, Tag, Button, Space, Typography, message, Modal, Form, Input, Select, Drawer, Empty, Popconfirm, Tooltip, Row, Col, Statistic, Steps } from 'antd';
 import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, CalendarOutlined, ThunderboltOutlined, ClockCircleOutlined, CheckCircleOutlined, FileTextOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, api } from '../api.js';
@@ -28,6 +28,7 @@ export default function CalendarPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form] = Form.useForm();
+  const [gen, setGen] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -115,6 +116,45 @@ export default function CalendarPage() {
     const r = await api(`/api/admin/calendar?id=${id}`, { method: 'DELETE' });
     if (r.status === 200) { message.success('Đã xóa'); load(); }
     else message.error(r.body?.error || 'Không thể xóa slot đã xuất bản');
+  };
+
+  const runSlotNow = async (slot) => {
+    setGen({ slot, step: 0, log: ['1/4 giữ lịch & tạo job...'], error: null, done: false, url: null });
+    const pushLog = (line) => setGen((g) => (g ? { ...g, log: [...g.log, line] } : g));
+    const setStep = (step) => setGen((g) => (g ? { ...g, step } : g));
+    try {
+      const start = await apiPost('/api/admin/blog/start', { calendar_slot_id: slot.id });
+      const jobId = start.body?.job_id;
+      if (!jobId) throw new Error(start.body?.error || 'start failed');
+      pushLog(`job_id: ${jobId}`);
+
+      pushLog('2/4 viết bài...');
+      setStep(1);
+      const text = await apiPost('/api/admin/blog/text', { job_id: jobId });
+      if (text.status !== 200) throw new Error(text.body?.error || 'text failed');
+      pushLog(`tiêu đề: ${text.body.title}`);
+
+      pushLog('3/4 tạo hình ảnh...');
+      setStep(2);
+      const img = await apiPost('/api/admin/blog/image', { job_id: jobId });
+      if (img.status !== 200) throw new Error(img.body?.error || 'image failed');
+
+      pushLog('4/4 xuất bản...');
+      setStep(3);
+      const pub = await apiPost('/api/admin/blog/publish', { job_id: jobId });
+      if (pub.status !== 200) throw new Error(pub.body?.error || 'publish failed');
+      const url = urlForProject(slot.project_id, '/blog/' + pub.body.slug);
+      pushLog(`Đã xuất bản: ${url}`);
+
+      setGen((g) => (g ? { ...g, step: 4, done: true, url } : g));
+      message.success('Bài viết đã xuất bản!');
+      load();
+    } catch (e) {
+      pushLog('lỗi: ' + e.message);
+      setGen((g) => (g ? { ...g, error: e.message } : g));
+      message.error('Thất bại: ' + e.message);
+      load();
+    }
   };
 
   // Render slots inside each calendar date cell
@@ -263,6 +303,26 @@ export default function CalendarPage() {
                     />
                   ) : null}
                   actions={[
+                    (slot.status === 'scheduled' || slot.status === 'draft') && (
+                      <Popconfirm
+                        key="run"
+                        title="Tạo bài viết ngay cho lịch này?"
+                        description="Bài viết sẽ được AI viết và xuất bản luôn, không chờ tới ngày đã lên lịch."
+                        okText="Tạo ngay"
+                        cancelText="Để sau"
+                        onConfirm={() => runSlotNow(slot)}
+                      >
+                        <Button
+                          size="small"
+                          type="text"
+                          icon={<ThunderboltOutlined />}
+                          loading={gen?.slot?.id === slot.id && !gen.done && !gen.error}
+                          style={{ color: '#1677ff' }}
+                        >
+                          Tạo ngay
+                        </Button>
+                      </Popconfirm>
+                    ),
                     <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(slot)} key="edit">Sửa</Button>,
                     <Popconfirm title="Xóa lịch này?" onConfirm={() => deleteSlot(slot.id)} key="del">
                       <Button size="small" type="text" danger icon={<DeleteOutlined />}>Xóa</Button>
@@ -293,7 +353,7 @@ export default function CalendarPage() {
                   {slot.post && (
                     <div style={{ marginTop: 8, padding: 8, background: 'rgba(0,0,0,0.02)', borderRadius: 6 }}>
                       <Text type="secondary" style={{ fontSize: 12 }}>Đã xuất bản: </Text>
-                      <a href={urlForProject(slot.project_id, '/blog/' + slot.post.slug)} target="_blank">{slot.post.title}</a>
+                      <a href={urlForProject(slot.project_id, '/blog/' + slot.post.slug)} target="_blank" rel="noopener noreferrer">{slot.post.title}</a>
                     </div>
                   )}
                 </Card>
@@ -303,8 +363,49 @@ export default function CalendarPage() {
         )}
       </Drawer>
 
-      {/* Create / Edit modal */}
       <Modal
+        title={`Đang tạo bài: ${gen?.slot?.title || ''}`}
+        open={!!gen}
+        closable={gen?.done || !!gen?.error}
+        maskClosable={false}
+        onCancel={() => setGen(null)}
+        footer={
+          <Space>
+            {gen?.url && (
+              <Button type="link" href={gen.url} target="_blank" rel="noopener noreferrer">
+                Xem bài viết
+              </Button>
+            )}
+            <Button onClick={() => setGen(null)} disabled={!gen?.done && !gen?.error}>
+              Đóng
+            </Button>
+          </Space>
+        }
+      >
+        {gen && (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Steps
+              size="small"
+              current={gen.done ? 4 : gen.step}
+              status={gen.error ? 'error' : undefined}
+              items={[
+                { title: 'Giữ lịch' },
+                { title: 'Viết bài' },
+                { title: 'Tạo hình' },
+                { title: 'Xuất bản' },
+              ]}
+            />
+            <Card size="small" style={{ background: 'rgba(0,0,0,0.02)', maxHeight: 200, overflowY: 'auto' }}>
+              {gen.log.map((line) => (
+                <Text key={line} style={{ display: 'block', fontSize: 12, fontFamily: 'monospace' }}>{line}</Text>
+              ))}
+            </Card>
+            {gen.error && <Text type="danger">Thất bại: {gen.error}</Text>}
+          </Space>
+        )}
+      </Modal>
+
+      {/* Create / Edit modal */}      <Modal
         title={editing ? 'Sửa lịch' : 'Tạo lịch mới'}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
