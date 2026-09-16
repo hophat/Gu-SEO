@@ -665,6 +665,14 @@ ALTER TABLE users ADD COLUMN post_limit INTEGER DEFAULT 100;
 ALTER TABLE users ADD COLUMN email_canonical TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_canonical ON users(email_canonical);
 
+-- Custom-domain approval queue, see migration 006. `custom_domain` is the
+-- live value; pending requests wait in `pending_custom_domain` until a
+-- super_admin approves. The runner tolerates `duplicate column name`, so
+-- baseline + 006 converge on old and new DBs.
+ALTER TABLE projects ADD COLUMN pending_custom_domain TEXT;
+ALTER TABLE projects ADD COLUMN custom_domain_status TEXT;
+ALTER TABLE projects ADD COLUMN pending_requested_at INTEGER;
+
 -- Registration OTP verifications table:
 CREATE TABLE IF NOT EXISTS email_verifications (
   email       TEXT PRIMARY KEY COLLATE NOCASE,

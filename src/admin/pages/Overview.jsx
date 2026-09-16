@@ -119,7 +119,7 @@ export default function Overview() {
     // Domain
     const dres = await apiGet('/api/admin/projects/domain');
     if (dres.status === 200 && dres.body?.ok) {
-      setDomain({ current: dres.body.custom_domain || '', target: dres.body.cname_target || 'gu-seo.pages.dev', input: dres.body.custom_domain || '', cfManaged: dres.body.cf_managed !== false, cfAttached: !!dres.body.cf_attached, cfStatus: dres.body.cf_status || '' });
+      setDomain({ current: dres.body.custom_domain || '', target: dres.body.cname_target || 'gu-seo.pages.dev', input: dres.body.pending_custom_domain || dres.body.custom_domain || '', pending: dres.body.pending_custom_domain || '', pendingStatus: dres.body.custom_domain_status || '', cfManaged: dres.body.cf_managed !== false, cfAttached: !!dres.body.cf_attached, cfStatus: dres.body.cf_status || '' });
     }
     setLoading(false);
   }, []);
@@ -132,15 +132,13 @@ export default function Overview() {
     setDomainMsg({ type: 'info', text: remove ? 'Đang xóa...' : 'Đang lưu...' });
     const res = await apiPost('/api/admin/projects/domain', { custom_domain: val });
     if (res.status === 200 && res.body?.ok) {
-      setDomain((d) => ({ ...d, current: res.body.custom_domain || '', input: res.body.custom_domain || '', target: res.body.cname_target || d.target, cfManaged: res.body.cf_managed !== false, cfAttached: !!res.body.cf_attached, cfStatus: res.body.cf_status || '' }));
-      if (!res.body.custom_domain) {
+      if (!val) {
+        setDomain((d) => ({ ...d, current: '', input: '', pending: '', pendingStatus: '' }));
         setDomainMsg({ type: 'success', text: 'Đã xóa tên miền.' });
-      } else if (res.body.cf_attached) {
-        setDomainMsg({ type: 'success', text: `Đã lưu và tự gắn lên Cloudflare: ${res.body.custom_domain}. Tạo bản ghi CNAME tại DNS là domain sẽ chạy.` });
-      } else if (res.body.cf_managed === false) {
-        setDomainMsg({ type: 'success', text: `Đã lưu: ${res.body.custom_domain}. Site này chưa có quyền tự gắn domain — vào Cloudflare dashboard → Pages → Custom domains để thêm tay, rồi tạo bản ghi CNAME tại DNS.` });
       } else {
-        setDomainMsg({ type: 'error', text: `Đã lưu nhưng chưa tự gắn được lên Cloudflare (${res.body.cf_error || 'lỗi không rõ'}). Vào Cloudflare dashboard → Pages → Custom domains để thêm tay ${res.body.custom_domain}.` });
+        setDomain((d) => ({ ...d, input: val, pending: res.body.pending_custom_domain || val, pendingStatus: res.body.custom_domain_status || 'pending', target: res.body.cname_target || d.target }));
+        const target = res.body.cname_target || domain.target;
+        setDomainMsg({ type: 'success', text: `Đã gửi yêu cầu ${val} — đợi admin duyệt. TRONG LÚC CHỜ: tạo ngay bản ghi CNAME (Name: ${val} → Target: ${target}) tại DNS, vì domain chỉ chạy khi vừa được duyệt vừa có CNAME.` });
       }
     } else {
       setDomainMsg({ type: 'error', text: res.body?.detail || res.body?.error || 'Lưu thất bại' });
@@ -587,6 +585,45 @@ export default function Overview() {
 
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
           {/* Status box */}
+          {domain.pendingStatus === 'pending' && domain.pending ? (
+            <Alert
+              type="warning"
+              showIcon
+              message={
+                <Space>
+                  <Text strong>Đang chờ admin duyệt: </Text>
+                  <Text code>{domain.pending}</Text>
+                </Space>
+              }
+              description={
+                <div>
+                  <div style={{ marginBottom: 8 }}>
+                    Yêu cầu đã được gửi. Trong lúc chờ, <Text strong>tạo ngay bản ghi CNAME này tại DNS</Text> —{' '}
+                    domain chỉ hoạt động khi <Text strong>vừa được duyệt vừa có CNAME</Text>:
+                  </div>
+                  <Card size="small" style={{ background: '#fafafa' }}>
+                    <Row gutter={[8, 8]}>
+                      <Col xs={24} sm={8}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Loại (Type):</Text>
+                        <br />
+                        <Text code strong>CNAME</Text>
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Tên (Name/Host):</Text>
+                        <br />
+                        <Text code strong>{domain.pending}</Text>
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Giá trị (Value/Target):</Text>
+                        <br />
+                        <Text code strong>{domain.target}</Text>
+                      </Col>
+                    </Row>
+                  </Card>
+                </div>
+              }
+            />
+          ) : null}
           {domain.current ? (
             <Alert
               type={domain.cfAttached ? 'success' : 'warning'}

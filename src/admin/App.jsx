@@ -39,6 +39,7 @@ const UsagePage = lazy(() => import('./pages/Usage.jsx'));
 const SettingsPage = lazy(() => import('./pages/Settings.jsx'));
 const UsersPage = lazy(() => import('./pages/Users.jsx'));
 const ProjectsPage = lazy(() => import('./pages/Projects.jsx'));
+const DomainsPage = lazy(() => import('./pages/Domains.jsx'));
 
 // Menu structure — mirrors the old data-children hierarchy.
 const MENU_ITEMS = [
@@ -74,6 +75,7 @@ const MENU_ITEMS = [
     key: 'system', icon: <SafetyOutlined />, label: 'Hệ thống',
     children: [
       { key: 'status', icon: <DashboardOutlined />, label: 'Trạng thái' },
+      { key: 'domains', icon: <LinkOutlined />, label: 'Duyệt domain' },
       { key: 'updates', icon: <SyncOutlined />, label: 'Cập nhật' },
       { key: 'usage', icon: <BarChartOutlined />, label: 'Sử dụng' },
       { key: 'insights', icon: <RiseOutlined />, label: 'Tăng trưởng' },
@@ -92,12 +94,12 @@ const PAGE_COMPONENTS = {
   seo: SeoPage, embeds: EmbedsPage, publishing: PublishingPage, social: SocialPage, status: StatusPage,
   insights: InsightsPage,
   updates: UpdatesPage, usage: UsagePage, settings: SettingsPage,
-  users: UsersPage, projects: ProjectsPage,
+  users: UsersPage, projects: ProjectsPage, domains: DomainsPage,
 };
 
 // Pages hidden from project_admin (non-super_admin) users.
 // Mirrors SUPER_ADMIN_ONLY_TABS + PROJECT_ADMIN_HIDDEN_PAGES from admin.js.
-const SUPER_ADMIN_ONLY = new Set(['settings', 'users', 'projects', 'status', 'updates', 'usage', 'insights']);
+const SUPER_ADMIN_ONLY = new Set(['settings', 'users', 'projects', 'status', 'updates', 'usage', 'insights', 'domains']);
 
 function filterMenuByRole(items, role) {
   const isSuper = role === 'super_admin';

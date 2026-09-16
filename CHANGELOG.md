@@ -7,6 +7,21 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.18.4 — 2026-09-16
+
+Duyệt custom domain + misc UI.
+
+### Added
+- **Luồng duyệt custom domain.** Tenant lưu domain chỉ tạo yêu cầu pending
+  (kèm notice cho admin + hướng dẫn CNAME ngay lúc submit, nhấn mạnh domain
+  chỉ chạy khi vừa được duyệt vừa có CNAME). Page **Duyệt domain**
+  (super_admin) liệt kê hàng chờ — Duyệt thì hệ thống tự gắn hostname lên
+  Pages project bằng key global rồi flip live, Từ chối thì hủy. Migration 006.
+- **Tab API keys trong Cài đặt** (bị sót ở bản trước, gộp vào release này).
+
+### Fixed
+- **Page Người dùng hiện tên project** thay vì id thô.
+
 ## 1.18.3 — 2026-09-16
 
 Tự gắn domain trên production + tab API keys.
