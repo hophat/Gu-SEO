@@ -86,11 +86,17 @@ export const onRequestPost = async ({ env, request }) => {
   }
 
   const creds = cfCreds(env);
-  const cfProject = creds ? await resolveCfProject(creds, request) : null;
-  if (!cfProject) {
+  if (!creds) {
     return json(503, {
       error: 'missing_cf_secrets',
       detail: 'Thiếu credentials Cloudflare (CF_API_TOKEN/CF_ACCOUNT_ID hoặc CLOUDFLARE_*). Không gắn được — yêu cầu vẫn giữ pending.',
+    });
+  }
+  const cfProject = await resolveCfProject(creds, request);
+  if (!cfProject) {
+    return json(503, {
+      error: 'cf_project_unresolved',
+      detail: 'Đã có credentials Cloudflare nhưng không xác định được Pages project (CF_PROJECT chưa set và không suy ra được từ hostname). Không gắn được — yêu cầu vẫn giữ pending.',
     });
   }
 
