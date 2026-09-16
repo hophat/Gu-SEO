@@ -1,0 +1,32 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md", "LOOP.md", "loop-budget.md"],
+  "skills": {
+    "paths": ["patterns", ".opencode/skills"]
+  },
+  "permission": {
+    "edit": {
+      "*": "allow",
+      "schema/init.sql": "deny",
+      "functions/_lib/schema.js": "deny",
+      "functions/_lib/auth.js": "deny",
+      "wrangler.toml": "deny",
+      ".env": "deny",
+      ".env.local": "deny",
+      "node_modules/**": "deny"
+    },
+    "bash": {
+      "git status": "allow",
+      "git diff": "allow",
+      "git log*": "allow",
+      "npm run build:functions": "allow",
+      "npm test": "allow",
+      "node scripts/*": "allow",
+      "rm *": "deny",
+      "git push*": "ask",
+      "wrangler d1 delete*": "deny",
+      "wrangler deploy*": "ask",
+      "*": "ask"
+    }
+  }
+}
