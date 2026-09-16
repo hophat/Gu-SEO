@@ -696,8 +696,8 @@
     </ul>
     <div class="nav-actions">
       <button id="lang-switcher" class="lang-toggle-btn" type="button" aria-label="Toggle language">
-        <span id="lang-flag" class="lang-icon"><svg class="flag-icon" width="16" height="12" viewBox="0 0 30 20" style="border-radius:2px;display:inline-block;vertical-align:middle;"><rect width="30" height="20" fill="#da251d"/><polygon points="15,4 17.5,11.5 10,7 20,7 12.5,11.5" fill="#ff0"/></svg></span>
-        <span id="lang-current">VI</span>
+<span id="lang-flag" class="lang-icon"><svg class="flag-icon" width="16" height="12" viewBox="0 0 60 30" style="border-radius:2px;display:inline-block;vertical-align:middle;"><clipPath id="s"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="t"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#s)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#t)" stroke="#c8102e" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#c8102e" stroke-width="6"/></g></svg></span>
+<span id="lang-current">EN</span>
       </button>
       <a class="btn-ghost" href="/admin" data-i18n="nav_signin">Sign in</a>
       <a class="btn-primary" href="/admin#register" data-i18n="nav_start">Đăng Ký Free</a>
@@ -1214,14 +1214,14 @@
     }
   };
 
-  let curLang = localStorage.getItem('ps_home_lang') || 'vi';
+  let curLang = localStorage.getItem('ps_home_lang') || 'en';
 
   function apply(lang) {
     curLang = lang;
     try { localStorage.setItem('ps_home_lang', lang); } catch {}
     document.documentElement.lang = lang;
 
-    const data = dict[lang] || dict.vi;
+    const data = dict[lang] || dict.en;
     document.title = data.page_title;
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) metaDesc.setAttribute('content', data.page_desc);
