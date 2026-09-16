@@ -30,7 +30,9 @@ export async function resolveCfProject(creds, request) {
     if (parts.length === 3) return parts[0];
     if (parts.length > 3) return parts[1];
   }
-  const list = await cfFetch(creds, `/accounts/${creds.accountId}/pages/projects?per_page=50`).catch(() => null);
+  // The list endpoint rejects `per_page` on some accounts (8000024),
+  // so call it bare — default paging covers typical installs.
+  const list = await cfFetch(creds, `/accounts/${creds.accountId}/pages/projects`).catch(() => null);
   if (!list || !list.ok || !Array.isArray(list.body?.result)) return null;
   const hit = list.body.result.find((p) => (p?.domains || []).some((d) => String(d).toLowerCase() === host));
   return hit?.name || null;
