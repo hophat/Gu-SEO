@@ -102,6 +102,7 @@ export const onRequestPost = async ({ env, request }) => {
 
   const r = await attachDomain(creds, cfProject, pending);
   if (!r.attached) {
+    console.warn('domain_attach_failed', { project: cfProject, hostname: pending, error: r.error || 'unknown' });
     return json(502, {
       error: 'cf_attach_failed',
       detail: `Cloudflare từ chối gắn ${pending}: ${r.error || 'lỗi không rõ'}. Yêu cầu vẫn giữ pending.`,
