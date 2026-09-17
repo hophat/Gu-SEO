@@ -1,6 +1,6 @@
 // Brand page — antd Form, Input, Button, Card, Alert, message.
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, Form, Input, Button, Space, Typography, Alert, message, Divider, Row, Col, Tag } from 'antd';
+import { Card, Form, Input, Button, Space, Typography, Alert, message, Divider, Row, Col, Tag, Select } from 'antd';
 import { SaveOutlined, ThunderboltOutlined, FilterOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, api } from '../api.js';
@@ -10,6 +10,29 @@ const { TextArea } = Input;
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 const DEFAULT_THEME = '#e05a2b';
+
+const LANGUAGE_OPTIONS = [
+  { value: 'vi', label: 'Tiếng Việt' },
+  { value: 'en', label: 'English' },
+  { value: 'ja', label: '日本語' },
+  { value: 'ko', label: '한국어' },
+  { value: 'zh', label: '中文' },
+  { value: 'th', label: 'ไทย' },
+  { value: 'id', label: 'Bahasa Indonesia' },
+  { value: 'ms', label: 'Bahasa Melayu' },
+  { value: 'fr', label: 'Français' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'es', label: 'Español' },
+  { value: 'pt', label: 'Português' },
+  { value: 'it', label: 'Italiano' },
+  { value: 'nl', label: 'Nederlands' },
+  { value: 'ru', label: 'Русский' },
+  { value: 'ar', label: 'العربية' },
+  { value: 'hi', label: 'हिन्दी' },
+  { value: 'tr', label: 'Türkçe' },
+  { value: 'pl', label: 'Polski' },
+  { value: 'sv', label: 'Svenska' },
+];
 
 // The GET endpoint returns canonical keys (voice_tone, target_audience)
 // but older saves may have stored the aliases (tone, audience). Normalise
@@ -26,6 +49,7 @@ function normaliseBrand(raw = {}) {
     source_url: raw.source_url || '',
     theme_color: String(raw.theme_color || '').toLowerCase(),
     logo_url: raw.logo_url || '',
+    language: String(raw.language || 'vi').toLowerCase(),
   };
 }
 
@@ -225,6 +249,16 @@ export default function Brand() {
               <Form.Item label="Khu vực phục vụ"><Input value={brand.service_area || ''} onChange={(e) => set('service_area', e.target.value)} /></Form.Item>
             </Col>
           </Row>
+          <Form.Item label="Ngôn ngữ bài viết" extra="AI viết toàn bộ tiêu đề, nội dung, FAQ và alt text bằng ngôn ngữ này.">
+            <Select
+              style={{ maxWidth: 280 }}
+              value={brand.language || 'vi'}
+              onChange={(v) => set('language', v)}
+              options={LANGUAGE_OPTIONS}
+              showSearch
+              optionFilterProp="label"
+            />
+          </Form.Item>
           <Form.Item label="Giọng văn & tone"><TextArea rows={2} value={brand.voice_tone || ''} onChange={(e) => set('voice_tone', e.target.value)} /></Form.Item>
           <Form.Item label="Đối tượng mục tiêu"><TextArea rows={2} value={brand.target_audience || ''} onChange={(e) => set('target_audience', e.target.value)} /></Form.Item>
           <Form.Item label="Chủ đề chính"><TextArea rows={3} value={brand.key_themes || ''} onChange={(e) => set('key_themes', e.target.value)} placeholder="Mỗi dòng một chủ đề" /></Form.Item>

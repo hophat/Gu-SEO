@@ -34,6 +34,14 @@ const BRAND_DNA_KEYS = [
   'brand_service_area',
 ];
 
+// `language` is written verbatim into the article prompt, so it is an
+// allowlist rather than free text — otherwise the field is a prompt-injection
+// vector that could also silently override the other prompt sections.
+const CONTENT_LANGUAGES = new Set([
+  'vi', 'en', 'ja', 'ko', 'zh', 'th', 'id', 'ms', 'fr', 'de', 'es', 'pt',
+  'it', 'nl', 'ru', 'ar', 'hi', 'tr', 'pl', 'sv',
+]);
+
 function buildBrandPrompt(scrapeBlock, hints) {
   const serviceAreaHint = hints?.service_area
     ? `The operator has specified service area: "${hints.service_area}" — keep that exactly.`
@@ -186,12 +194,13 @@ export const onRequestGet = async ({ env, request }) => {
   // separately and merged into both response shapes below.
   const projectRow = env?.DB?.prepare
     ? await env.DB.prepare(
-        `SELECT logo_url, theme_color FROM projects WHERE id = ? LIMIT 1`
+        `SELECT logo_url, theme_color, language FROM projects WHERE id = ? LIMIT 1`
       ).bind(tenant.activeProjectId).first().catch(() => null)
     : null;
   const identity = {
     logo_url: projectRow?.logo_url || '',
     theme_color: projectRow?.theme_color || '',
+    language: projectRow?.language || 'vi',
   };
 
   if (brandRow) {
@@ -354,6 +363,7 @@ export const onRequestPut = async ({ env, request, waitUntil }) => {
   // brand save must never clear the logo or the theme colour.
   const hasLogo = Object.prototype.hasOwnProperty.call(body, 'logo_url');
   const hasColor = Object.prototype.hasOwnProperty.call(body, 'theme_color');
+  const hasLanguage = Object.prototype.hasOwnProperty.call(body, 'language');
   // The only accepted logo_url is an empty one (clear). A real logo always
   // comes from /api/admin/projects/logo after the bytes are in R2, so this
   // endpoint is never a way to point the <img src> at an arbitrary URL.
@@ -366,11 +376,20 @@ export const onRequestPut = async ({ env, request, waitUntil }) => {
       themeColor = raw;
     }
   }
-  if (env?.DB?.prepare && (hasLogo || hasColor)) {
+  let language = null;
+  if (hasLanguage) {
+    const raw = String(body.language || '').trim().toLowerCase();
+    if (!CONTENT_LANGUAGES.has(raw)) {
+      return json(400, { error: 'invalid_language', allowed: [...CONTENT_LANGUAGES] });
+    }
+    language = raw;
+  }
+  if (env?.DB?.prepare && (hasLogo || hasColor || hasLanguage)) {
     const sets = [];
     const binds = [];
     if (hasLogo) { sets.push('logo_url = ?'); binds.push(null); }
     if (hasColor) { sets.push('theme_color = ?'); binds.push(themeColor); }
+    if (hasLanguage) { sets.push('language = ?'); binds.push(language); }
     sets.push('updated_at = ?');
     binds.push(t, tenant.activeProjectId);
     await env.DB.prepare(

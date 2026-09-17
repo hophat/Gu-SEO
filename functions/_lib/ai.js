@@ -987,9 +987,21 @@ export async function generateContent(env, { kind, seed, provider, brand, source
   // of long-tail queries pages-seo targets.
   const minWords = Math.max(300, parseInt(settings.article_min_words, 10) || 2500);
   const maxWords = Math.max(minWords + 100, parseInt(settings.article_max_words, 10) || 4000);
+
+  // Language: an explicit brand.language wins; otherwise fall back to the
+  // tenant's projects.language. Resolving it here (not in each caller) means
+  // every path — blog, programmatic, refresh — obeys the operator's choice.
+  let resolvedBrand = brand;
+  if (!brand?.language && projectId && env?.DB?.prepare) {
+    const langRow = await env.DB.prepare(
+      'SELECT language FROM projects WHERE id = ? LIMIT 1'
+    ).bind(projectId).first().catch(() => null);
+    if (langRow?.language) resolvedBrand = { ...(brand || {}), language: langRow.language };
+  }
+
   const prompt = kind === 'programmatic'
-    ? buildProgrammaticPrompt(seed, brand)
-    : buildArticlePrompt(seed, brand, { minWords, maxWords });
+    ? buildProgrammaticPrompt(seed, resolvedBrand)
+    : buildArticlePrompt(seed, resolvedBrand, { minWords, maxWords });
 
   // An explicit provider wins; otherwise the operator's default; otherwise
   // registration order. Reading the setting HERE means a caller that forgets

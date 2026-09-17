@@ -48,12 +48,16 @@ export const onRequestPost = async ({ request, env }) => {
     key_themes:      body.brand?.key_themes      || settings.brand_key_themes      || undefined,
     topics_to_avoid: body.brand?.topics_to_avoid || settings.brand_topics_to_avoid || undefined,
     service_area:    body.brand?.service_area    || settings.brand_service_area    || undefined,
+    language:        body.brand?.language        || undefined,
     aliases: await buildAliasMap(env, tenant?.activeProjectId || null),
   };
 
   let content;
   try {
-    content = await generateContent(env, { kind, seed, provider, brand, source: 'preview' });
+    content = await generateContent(env, {
+      kind, seed, provider, brand, source: 'preview',
+      projectId: tenant?.activeProjectId || null,
+    });
   } catch (e) {
     return json(502, { error: 'text_failed', detail: String(e?.message || e).slice(0, 400) });
   }
