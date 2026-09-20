@@ -11,9 +11,10 @@ import {
 import {
   ReloadOutlined, VideoCameraOutlined, CheckCircleOutlined,
   ClockCircleOutlined, WarningOutlined, DownloadOutlined, FacebookOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
-import { apiGet, apiPost } from '../api.js';
+import { apiGet, apiPost, getActiveProject } from '../api.js';
 
 const { Text } = Typography;
 
@@ -59,9 +60,28 @@ export default function Video() {
     }
   };
 
-  const statusTag = (s) => {
+  const statusTag = (s, kind) => {
     const m = STATUS_META[s] || { color: 'default', text: s };
-    return <Tag color={m.color}>{m.text}</Tag>;
+    return (
+      <Space size={4}>
+        <Tag color={m.color}>{m.text}</Tag>
+        {kind === 'business' && <Tag color="gold">Doanh nghiệp</Tag>}
+      </Space>
+    );
+  };
+
+  const createBusiness = async () => {
+    setBusyId('__biz__');
+    const { status, body } = await apiPost('/api/admin/video/business', { project_id: getActiveProject() });
+    setBusyId(null);
+    if (status === 200 && body?.ok) {
+      message.success('Đã tạo job video doanh nghiệp — agent sẽ render trong chu kỳ 15 phút');
+      load();
+    } else if (status === 409) {
+      message.info('Video doanh nghiệp đang được render — tải lại sau vài phút');
+    } else {
+      message.error(body?.error || 'Không tạo được job');
+    }
   };
 
   const columns = [
@@ -69,7 +89,7 @@ export default function Video() {
       title: 'Bài viết', dataIndex: 'title', ellipsis: true,
       render: (t, r) => <Text strong={false} ellipsis={{ tooltip: t }} style={{ maxWidth: 320 }}>{t || r.slug}</Text>,
     },
-    { title: 'Trạng thái', dataIndex: 'status', width: 130, render: statusTag },
+    { title: 'Trạng thái', dataIndex: 'status', width: 170, render: (s, r) => statusTag(s, r.kind) },
     {
       title: 'Video', dataIndex: 'video_url', width: 240,
       render: (url, r) => url ? (
@@ -121,7 +141,14 @@ export default function Video() {
       </Row>
       <Card
         title={<Space><VideoCameraOutlined /> Hàng chờ video</Space>}
-        extra={<Button icon={<ReloadOutlined />} onClick={load}>Tải lại</Button>}
+        extra={
+          <Space>
+            <Button icon={<AppstoreOutlined />} loading={busyId === '__biz__'} onClick={createBusiness}>
+              Tạo video doanh nghiệp
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={load}>Tải lại</Button>
+          </Space>
+        }
       >
         <Table
           rowKey="id"

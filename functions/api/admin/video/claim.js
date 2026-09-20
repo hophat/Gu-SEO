@@ -27,6 +27,110 @@ export const onRequestPost = async ({ env, request }) => {
   const slug = body?.slug ? String(body.slug) : null;
   const now = nowSec();
 
+  // ── business promo claim ─────────────────────────────────────────
+  // The admin "Tạo video doanh nghiệp" button creates a PENDING job
+  // (blog_post_id carries a 'project:<id>' sentinel so the UNIQUE index
+  // holds). The agent claims the oldest pending/failed business job —
+  // same conditional-claim semantics as the post path.
+  if (body?.type === 'business') {
+    const bizSql = projectId
+      ? `SELECT id, project_id FROM video_jobs
+          WHERE kind = 'business' AND project_id = ? AND status IN ('pending','failed')
+          ORDER BY created_at ASC LIMIT 1`
+      : `SELECT id, project_id FROM video_jobs
+          WHERE kind = 'business' AND status IN ('pending','failed')
+          ORDER BY created_at ASC LIMIT 1`;
+    const bizRows = projectId
+      ? await env.DB.prepare(bizSql).bind(projectId).all().catch(() => ({ results: [] }))
+      : await env.DB.prepare(bizSql).all().catch(() => ({ results: [] }));
+    const pendingJob = (bizRows?.results || [])[0] || null;
+    if (!pendingJob) {
+      return json(200, { ok: true, job: null, hint: 'no business video queued' });
+    }
+
+    await env.DB.prepare(
+      `UPDATE video_jobs SET status='claimed', attempts=attempts+1, claimed_at=?, updated_at=? WHERE id=?`
+    ).bind(now, now, pendingJob.id).run();
+
+    const pid = pendingJob.project_id;
+    const project = await env.DB.prepare(
+      `SELECT id, slug, name, description, logo_url, theme_color, brand_accent,
+              video_tagline, address, phone, publishing_url, custom_domain
+       FROM projects WHERE id = ? LIMIT 1`
+    ).bind(pid).first();
+    if (!project) {
+      await env.DB.prepare(
+        `UPDATE video_jobs SET status='failed', error='project_missing', updated_at=? WHERE id=?`
+      ).bind(now, pendingJob.id).run();
+      return json(200, { ok: true, job: null, hint: 'project missing for business job' });
+    }
+
+    const brand = await env.DB.prepare(
+      'SELECT business_type, tone, audience, key_themes, service_area, cta FROM project_brands WHERE project_id = ? LIMIT 1'
+    ).bind(pid).first().catch(() => null);
+
+    // Latest post hero doubles as the food/storefront shot.
+    const hero = await env.DB.prepare(
+      `SELECT hero_image_key FROM blog_posts
+       WHERE project_id = ? AND hero_image_key IS NOT NULL AND status = 'published'
+       ORDER BY published_at DESC LIMIT 1`
+    ).bind(pid).first().catch(() => null);
+
+    // Brand kit — the frame.md payload. The agent renders THESE tokens,
+    // it never invents brand visuals per video. key_themes double as the
+    // 3 highlight lines (menu items / selling points).
+    const highlights = String(brand?.key_themes || '')
+      .split(/[\n,]/).map((s) => s.trim()).filter(Boolean).slice(0, 3);
+
+    let heroBase64 = null;
+    if (hero?.hero_image_key && env.IMAGES) {
+      try {
+        const obj = await env.IMAGES.get(hero.hero_image_key);
+        if (obj) {
+          const bytes = new Uint8Array(await obj.arrayBuffer());
+          let s = '';
+          for (let i = 0; i < bytes.length; i += 0x8000) {
+            s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+          }
+          heroBase64 = btoa(s);
+        }
+      } catch { /* gradient fallback */ }
+    }
+
+    await audit(env, 'video-agent', 'video.business_claim', pid, { job_id: pendingJob.id });
+
+    return json(200, {
+      ok: true,
+      job: {
+        id: pendingJob.id,
+        kind: 'business',
+        slug: project.slug,
+        title: project.name,
+        highlights,
+        project: {
+          name: project.name,
+          description: project.description || '',
+          tagline: project.video_tagline || '',
+          accent: project.brand_accent || project.theme_color || '',
+          address: project.address || '',
+          phone: project.phone || '',
+          logo_url: project.logo_url || null,
+          publishing_url: project.publishing_url || null,
+          brand: {
+            business_type: brand?.business_type || '',
+            tone: brand?.tone || '',
+            audience: brand?.audience || '',
+            service_area: brand?.service_area || '',
+            cta: brand?.cta || '',
+          },
+          hero_image_base64: heroBase64,
+        },
+        body_markdown: project.description || '',
+      },
+    });
+  }
+
+  // ── post video claim (existing path) ─────────────────────────────
   // Resolve the target post. Explicit slug wins (manual/testing path);
   // otherwise newest published post in the window with no active job.
   let post;

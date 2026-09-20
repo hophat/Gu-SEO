@@ -710,4 +710,16 @@ CREATE TABLE IF NOT EXISTS video_jobs (
 );
 CREATE INDEX IF NOT EXISTS idx_video_jobs_status ON video_jobs(status, updated_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_video_jobs_post ON video_jobs(blog_post_id);
+
+-- Video brand kit + business video jobs, see migration 008. The brand
+-- tokens (accent, tagline, address, phone) are what every video
+-- composition renders — the frame.md idea: the AI never invents brand
+-- visuals per video, it reads the DNA. \`video_jobs.kind\` distinguishes
+-- per-post videos from per-project business promos (blog_post_id then
+-- carries a 'project:<id>' sentinel so the UNIQUE index holds).
+ALTER TABLE projects ADD COLUMN video_tagline TEXT;
+ALTER TABLE projects ADD COLUMN brand_accent TEXT;
+ALTER TABLE projects ADD COLUMN address TEXT;
+ALTER TABLE projects ADD COLUMN phone TEXT;
+ALTER TABLE video_jobs ADD COLUMN kind TEXT NOT NULL DEFAULT 'post';  -- post | business
 `;
