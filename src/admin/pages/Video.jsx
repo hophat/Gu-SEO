@@ -6,12 +6,12 @@
 // what failed and why, and links the MP4 for download / social posting.
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Card, Table, Button, Space, Typography, Tag, message, Row, Col, Statistic, Tooltip, Alert, Popconfirm,
+  Card, Table, Button, Space, Typography, Tag, message, Row, Col, Statistic, Tooltip, Alert, Popconfirm, Input,
 } from 'antd';
 import {
   ReloadOutlined, VideoCameraOutlined, CheckCircleOutlined,
   ClockCircleOutlined, WarningOutlined, DownloadOutlined, FacebookOutlined,
-  AppstoreOutlined, DeleteOutlined,
+  AppstoreOutlined, DeleteOutlined, GlobalOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, getActiveProject } from '../api.js';
@@ -35,6 +35,7 @@ export default function Video() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  const [siteUrl, setSiteUrl] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,12 +76,29 @@ export default function Video() {
     const { status, body } = await apiPost('/api/admin/video/business', { project_id: getActiveProject() });
     setBusyId(null);
     if (status === 200 && body?.ok) {
-      message.success('Đã tạo job video doanh nghiệp — agent sẽ render trong chu kỳ 15 phút');
+      message.success('Đã tạo job video doanh nghiệp — agent sẽ render trong chu kỳ 5 phút');
       load();
     } else if (status === 409) {
       message.info('Video doanh nghiệp đang được render — tải lại sau vài phút');
     } else {
       message.error(body?.error || 'Không tạo được job');
+    }
+  };
+
+  const createWebsite = async () => {
+    const url = (siteUrl || '').trim();
+    if (!url) { message.warning('Nhập URL website trước'); return; }
+    setBusyId('__site__');
+    const { status, body } = await apiPost('/api/admin/video/website', { project_id: getActiveProject(), url });
+    setBusyId(null);
+    if (status === 200 && body?.ok) {
+      message.success('Đã tạo job — agent sẽ chụp trang, viết storyboard và render');
+      setSiteUrl('');
+      load();
+    } else if (status === 409) {
+      message.info('URL này đang được render — tải lại sau vài phút');
+    } else {
+      message.error(body?.hint || body?.error || 'Không tạo được job');
     }
   };
 
@@ -163,8 +181,19 @@ export default function Video() {
         title={<Space><VideoCameraOutlined /> Hàng chờ video</Space>}
         extra={
           <Space>
+            <Input
+              placeholder="https://website-khach.com — tạo video giới thiệu"
+              value={siteUrl}
+              onChange={(e) => setSiteUrl(e.target.value)}
+              onPressEnter={createWebsite}
+              style={{ width: 260 }}
+              allowClear
+            />
+            <Button icon={<GlobalOutlined />} loading={busyId === '__site__'} onClick={createWebsite}>
+              Video từ URL
+            </Button>
             <Button icon={<AppstoreOutlined />} loading={busyId === '__biz__'} onClick={createBusiness}>
-              Tạo video doanh nghiệp
+              Video doanh nghiệp
             </Button>
             <Button icon={<ReloadOutlined />} onClick={load}>Tải lại</Button>
           </Space>

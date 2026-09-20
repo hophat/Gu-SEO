@@ -16,7 +16,7 @@
 //
 // Config in video-agent/.env (0600): BASE_URL, ADMIN_TOKEN,
 // GUROUTER_API_KEY, VIDEO_VOICE, VIDEO_PROJECT_ID, VIDEO_BATCH, ACCENT.
-import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, statSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, statSync, readdirSync, copyFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -52,26 +52,49 @@ const die = (m) => { console.error(`[video-agent] FAIL: ${m}`); process.exit(1);
 if (!BASE_URL || !TOKEN) die('BASE_URL / ADMIN_TOKEN missing — configure video-agent/.env');
 
 const WORK = join(ROOT, 'workspace');
+
+// Brand logo — downloaded once per job, overlaid on every scene. The
+// extension is preserved (SVG/PNG/JPG all render inside <img> in Chrome).
+async function downloadLogo(logoUrl) {
+  if (!logoUrl) return null;
+  const ext = (String(logoUrl).match(/\.(svg|png|jpe?g|webp)(\?|$)/i)?.[1] || 'png').toLowerCase();
+  const out = join(WORK, 'assets', `logo.${ext}`);
+  try {
+    const r = await fetch(String(logoUrl).trim(), {
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) return null;
+    const type = (r.headers.get('content-type') || '').toLowerCase();
+    if (!type.startsWith('image/')) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length < 100) return null;
+    writeFileSync(out, buf);
+    return `assets/logo.${ext}`;
+  } catch { return null; }
+}
 const api = (path, opts = {}) => fetch(`${BASE_URL}${path}`, {
   ...opts,
   headers: { authorization: `Bearer ${TOKEN}`, ...(opts.headers || {}) },
 });
 
 // ── 1. claim ──────────────────────────────────────────────────────────
-// Default sweep: business promos first (admin-created, one per project),
-// then the newest queued post. Explicit --type/--slug overrides that.
+// Default sweep: business promos first, then website promos, then the
+// newest queued post. Explicit --type/--slug overrides that.
 async function claim() {
   const body = {};
   if (SLUG) body.slug = SLUG;
   if (TYPE) body.type = TYPE;
   else if (PROJECT_ID || PROJECT_ARG) body.project_id = PROJECT_ID || PROJECT_ARG;
   if (!TYPE) {
-    const biz = await api('/api/admin/video/claim', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...body, type: 'business' }),
-    });
-    const bdata = await biz.json().catch(() => ({}));
-    if (bdata?.job) return bdata.job;
+    for (const t of ['business', 'website']) {
+      const r = await api('/api/admin/video/claim', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...body, type: t }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (d?.job) return d.job;
+    }
   }
   const r = await api('/api/admin/video/claim', {
     method: 'POST', headers: { 'content-type': 'application/json' },
@@ -250,7 +273,7 @@ function shade(hex, amt) {
 }
 
 // Post composition — hook → points → outro, scenes timed to TTS.
-function composeHtml(job, script, segs) {
+function composeHtml(job, script, segs, logoSrc = null) {
   const brand = job.project?.name || 'Blog';
   const outroUrl = (job.project?.publishing_url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
   const accent = job.project?.accent || ACCENT;
@@ -285,7 +308,7 @@ function composeHtml(job, script, segs) {
     `<audio class="clip" data-start="${s.start.toFixed(2)}" data-duration="${s.seg.toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
   ).join('\n  ');
 
-  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: scenes });
+  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: scenes, logoSrc });
 }
 
 // Business composition — the operator's storyboard:
@@ -296,7 +319,7 @@ function composeHtml(job, script, segs) {
 // project's website (media[]), one image per scene, R2 hero as fallback.
 // The contact scene is text-only on a fixed beat; every other scene is
 // voiced by its own TTS segment.
-function composeBusinessHtml(job, script, segs, media = []) {
+function composeBusinessHtml(job, script, segs, media = [], logoSrc = null) {
   const p = job.project || {};
   const brand = p.name || 'Doanh nghiệp';
   const accent = p.accent || ACCENT;
@@ -349,12 +372,12 @@ function composeBusinessHtml(job, script, segs, media = []) {
     `<audio class="clip" data-start="${s.start.toFixed(2)}" data-duration="${s.seg.toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
   ).join('\n  ');
 
-  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: sceneDefs });
+  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: sceneDefs, logoSrc });
 }
 
 // Shared HTML shell — both compositions render inside the same brand
 // frame so post videos and business promos stay visually consistent.
-function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta }) {
+function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, logoSrc }) {
   const A = accent || ACCENT;
   const meta = sceneMeta || [];
   return `<!doctype html>
@@ -386,11 +409,14 @@ function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta }
   .bgi img { width:100%; height:100%; object-fit:cover; opacity:0.32; }
   .bgi::after { content:''; position:absolute; inset:0;
     background:linear-gradient(180deg, rgba(10,12,16,0.25), rgba(10,12,16,0.88)); }
+  .brandlogo { position:absolute; top:36px; right:40px; height:56px; max-width:220px;
+    object-fit:contain; z-index:6; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
 </style></head>
 <body><div id="root" data-composition-id="main" data-start="0"
   data-duration="${total.toFixed(2)}" data-width="720" data-height="1280">
 ${sceneHtml.join('\n')}
 ${audioHtml}
+${logoSrc ? `<img class="clip brandlogo" data-start="0" data-duration="${total.toFixed(2)}" data-track-index="9" src="${logoSrc}"/>` : ''}
 </div>
 <script>
   const tl = gsap.timeline({ paused: true });
@@ -456,16 +482,97 @@ async function collectMedia(job) {
   }
 }
 
+// ── 4b. website promos — screenshot the live site, scrape its text ───
+// chrome-headless-shell (already provisioned by the renderer) captures
+// the homepage plus up to two nav pages; the page text feeds the LLM
+// storyboard. Falls back to og:image/<img> scraping when a shot fails.
+const CHROME_DIR = '/root/.cache/hyperframes/chrome/chrome-headless-shell';
+
+function findChrome() {
+  try {
+    for (const v of readdirSync(CHROME_DIR)) {
+      const p = join(CHROME_DIR, v, 'chrome-headless-shell-linux64', 'chrome-headless-shell');
+      if (existsSync(p)) return p;
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
+function capturePage(url, outPath) {
+  const chrome = findChrome();
+  if (!chrome) return false;
+  const r = spawnSync(chrome, [
+    '--headless', '--no-sandbox', '--disable-gpu', '--hide-scrollbars',
+    '--window-size=720,1280', '--virtual-time-budget=9000',
+    '--screenshot=' + outPath, url,
+  ], { encoding: 'utf8', timeout: 45000 });
+  return r.status === 0 && existsSync(outPath) && statSync(outPath).size > 5000;
+}
+
+// Homepage + up to two same-origin nav pages, text scraped for the LLM.
+async function captureSite(siteUrl) {
+  const outDir = join(WORK, 'assets', 'media');
+  mkdirSync(outDir, { recursive: true });
+  const shots = [];
+  let html = '';
+  try {
+    const res = await fetch(siteUrl, {
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
+      redirect: 'follow', signal: AbortSignal.timeout(20000),
+    });
+    html = await res.text().catch(() => '');
+  } catch { /* screenshots below still attempted */ }
+
+  if (findChrome()) {
+    if (capturePage(siteUrl, join(outDir, 'shot0.png'))) shots.push(join(outDir, 'shot0.png'));
+    // Two same-origin nav links as extra scenes.
+    const links = [...html.matchAll(/href=["']([^"']+)["']/gi)]
+      .map((m) => { try { return new URL(m[1], siteUrl).href; } catch { return null; } })
+      .filter((u) => u && u.startsWith(siteUrl.replace(/\/+$/, '')) && u !== siteUrl)
+      .filter((u) => !/\.(pdf|jpg|png|zip)$/i.test(u));
+    for (const u of [...new Set(links)]) {
+      if (shots.length >= 3) break;
+      const f = join(outDir, `shot${shots.length}.png`);
+      if (capturePage(u, f)) shots.push(f);
+    }
+  }
+  // Text material for the storyboard: title + meta + headings.
+  const title = (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || '').trim();
+  const desc = (html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)?.[1] || '');
+  const headings = [...html.matchAll(/<h[12][^>]*>([^<]{4,90})<\/h[12]>/gi)]
+    .map((m) => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean).slice(0, 8);
+  return { shots, text: [title, desc, ...headings].filter(Boolean).join('\n') };
+}
+
 // ── 5. render + deliver one job ───────────────────────────────────────
 async function renderOne(job) {
   log(`claimed ${job.slug} (${job.kind}, job ${job.id})`);
   rmSync(join(WORK, 'renders'), { recursive: true, force: true });
   mkdirSync(join(WORK, 'assets'), { recursive: true });
 
-  const isBusiness = job.kind === 'business';
-  log(`writing script via GuRouter…`);
-  const script = isBusiness ? await writeBusinessScript(job) : await writeScript(job);
-  log(`script ok (${isBusiness ? 'business' : 'post'})`);
+  const isBusiness = job.kind === 'business' || job.kind === 'website';
+  let siteText = null;
+
+  // Website promos: screenshot the live site + scrape its text as the
+  // storyboard source. Shots become the scene backgrounds.
+  let media = [];
+  if (job.kind === 'website' && job.source_url) {
+    log(`capturing ${job.source_url}…`);
+    const site = await captureSite(job.source_url);
+    if (site.text) siteText = site.text;
+    // Screenshots double as the media pool (img{n}.jpg naming).
+    let n = 0;
+    for (const shot of site.shots) {
+      copyFileSync(shot, join(WORK, 'assets', 'media', `img${n}.jpg`));
+      n++;
+    }
+    log(`captured ${site.shots.length} screenshot(s)`);
+  }
+
+  log('writing script via GuRouter…');
+  const scriptSource = siteText ? { ...job, body_markdown: siteText } : job;
+  const script = isBusiness ? await writeBusinessScript(scriptSource) : await writeScript(job);
+  log(`script ok (${job.kind})`);
 
   // TTS per segment. Business scenes: intro, hero, highlights, outro —
   // the contact scene is silent on a fixed beat. edge-tts occasionally
@@ -494,17 +601,21 @@ async function renderOne(job) {
 
   // Real imagery: scrape the project's website for scene backgrounds,
   // falling back to the R2 hero the claim payload carries.
-  let media = [];
-  if (isBusiness) media = await collectMedia(job);
+  if (!isBusiness) {
+    media = await collectMedia(job);
+  }
   const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
   if (!media.length && heroB64) {
     writeFileSync(join(WORK, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
   }
 
+  // Brand logo — downloaded once, overlaid on every scene by the shell.
+  const logoSrc = await downloadLogo(job.project?.logo_url);
+
   log('composing…');
   const html = isBusiness
-    ? composeBusinessHtml(job, script, segs, media)
-    : composeHtml(job, script, segs);
+    ? composeBusinessHtml(job, script, segs, media, logoSrc)
+    : composeHtml(job, script, segs, logoSrc);
   writeFileSync(join(WORK, 'index.html'), html);
 
   log('rendering (hyperframes)…');

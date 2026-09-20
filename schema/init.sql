@@ -716,3 +716,7 @@ ALTER TABLE projects ADD COLUMN brand_accent TEXT;
 ALTER TABLE projects ADD COLUMN address TEXT;
 ALTER TABLE projects ADD COLUMN phone TEXT;
 ALTER TABLE video_jobs ADD COLUMN kind TEXT NOT NULL DEFAULT 'post';  -- post | business
+
+-- Website promo jobs, see migration 009. kind='website' renders a promo
+-- from a live URL; source_url records where the material came from.
+ALTER TABLE video_jobs ADD COLUMN source_url TEXT;

@@ -32,20 +32,32 @@ export const onRequestPost = async ({ env, request }) => {
   // (blog_post_id carries a 'project:<id>' sentinel so the UNIQUE index
   // holds). The agent claims the oldest pending/failed business job —
   // same conditional-claim semantics as the post path.
-  if (body?.type === 'business') {
+  if (body?.type === 'business' || body?.type === 'website') {
+    const kind = body.type;
     const bizSql = projectId
-      ? `SELECT id, project_id FROM video_jobs
-          WHERE kind = 'business' AND project_id = ? AND status IN ('pending','failed')
+      ? `SELECT id, project_id, source_url FROM video_jobs
+          WHERE kind = ? AND project_id = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`
-      : `SELECT id, project_id FROM video_jobs
-          WHERE kind = 'business' AND status IN ('pending','failed')
-          ORDER BY created_at ASC LIMIT 1`;
-    const bizRows = projectId
-      ? await env.DB.prepare(bizSql).bind(projectId).all().catch(() => ({ results: [] }))
-      : await env.DB.prepare(bizSql).all().catch(() => ({ results: [] }));
-    const pendingJob = (bizRows?.results || [])[0] || null;
+      : `SELECT id, project_id, source_url FROM video_jobs
+          WHERE kind = 'business' OR kind = 'website'`;
+    let pendingJob;
+    if (projectId) {
+      const r = await env.DB.prepare(
+        `SELECT id, project_id, source_url FROM video_jobs
+          WHERE kind = ? AND project_id = ? AND status IN ('pending','failed')
+          ORDER BY created_at ASC LIMIT 1`
+      ).bind(kind, projectId).all().catch(() => ({ results: [] }));
+      pendingJob = (r?.results || [])[0] || null;
+    } else {
+      const r = await env.DB.prepare(
+        `SELECT id, project_id, source_url FROM video_jobs
+          WHERE kind = ? AND status IN ('pending','failed')
+          ORDER BY created_at ASC LIMIT 1`
+      ).bind(kind).all().catch(() => ({ results: [] }));
+      pendingJob = (r?.results || [])[0] || null;
+    }
     if (!pendingJob) {
-      return json(200, { ok: true, job: null, hint: 'no business video queued' });
+      return json(200, { ok: true, job: null, hint: `no ${kind} video queued` });
     }
 
     await env.DB.prepare(
@@ -97,13 +109,14 @@ export const onRequestPost = async ({ env, request }) => {
       } catch { /* gradient fallback */ }
     }
 
-    await audit(env, 'video-agent', 'video.business_claim', pid, { job_id: pendingJob.id });
+    await audit(env, 'video-agent', `video.${kind}_claim`, pid, { job_id: pendingJob.id });
 
     return json(200, {
       ok: true,
       job: {
         id: pendingJob.id,
-        kind: 'business',
+        kind,
+        source_url: pendingJob.source_url || null,
         slug: project.slug,
         title: project.name,
         highlights,
