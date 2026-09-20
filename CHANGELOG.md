@@ -7,6 +7,35 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.19.0 — 2026-09-21
+
+Video 9:16 cho bài blog — render HyperFrames trên VPS riêng.
+
+### Added
+- **Pipeline video 9:16 tự động.** Mỗi bài mới xuất bản được tạo job trong
+  bảng `video_jobs` (migration 007, additive). Agent trên VPS render
+  (Node 22 + HyperFrames + FFmpeg + headless Chrome) claim bài qua
+  `POST /api/admin/video/claim` (atomic, job failed tự hồi phục ở tick
+  sau), viết kịch bản tiếng Việt qua GuRouter, lồng tiếng bằng edge-tts
+  (free, không key), dựng composition 720×1280 với ảnh hero làm nền rồi
+  trả MP4 về R2 qua `POST /api/admin/video/deliver`.
+- **Tab Video 9:16 trong admin** — hàng chờ video: trạng thái, xem/tải
+  MP4, lỗi render, thống kê. Backend `GET /api/admin/video/list`.
+- **Đăng video lên Facebook.** Kênh Facebook có cờ cấu hình `as_video`:
+  khi bài đã có video, social queue upload MP4 lên `/{page-id}/videos`
+  (URL bài viết nằm trong description). Mặc định tắt — không bật thì
+  vẫn đăng link như cũ.
+- **systemd timer trên VPS** — agent poll mỗi 15 phút, không cần chạy tay.
+
+### Fixed
+- Kịch bản JSON bị model cắt cụt (max_tokens) không còn giết job —
+  agent tự vá chuỗi hở rồi fallback regex theo schema 3 trường.
+
+### Vận hành
+- VPS cần: Node 22 + FFmpeg + Chromium deps + `pip3 install edge-tts`
+  (xem `video-agent/setup.sh`). Agent auth bằng ADMIN_TOKEN trong
+  `video-agent/.env` (0600).
+
 ## 1.18.5 — 2026-09-20
 
 Tạo ảnh hero miễn phí vĩnh viễn.
