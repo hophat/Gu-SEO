@@ -1,0 +1,9 @@
+{
+  "name": "pages-seo-video-agent",
+  "private": true,
+  "type": "module",
+  "description": "Renders 9:16 social videos for published blog posts via HyperFrames. Runs on the render VPS; talks to the pages-seo admin API.",
+  "scripts": {
+    "render": "node render-video.mjs"
+  }
+}

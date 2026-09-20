@@ -687,4 +687,27 @@ CREATE TABLE IF NOT EXISTS email_verifications (
   expires_at  INTEGER NOT NULL,
   verified_at INTEGER
 );
+
+-- Video jobs, see migration 007. One row per (blog post) 9:16 social
+-- video, rendered OFF-platform by the HyperFrames agent on a VPS —
+-- Chrome + FFmpeg cannot run inside Pages Functions. The agent claims
+-- pending work, renders, and delivers the MP4 back through
+-- /api/admin/video/deliver. UNIQUE(blog_post_id) keeps the claim
+-- race-free and caps one video per post.
+CREATE TABLE IF NOT EXISTS video_jobs (
+  id              TEXT PRIMARY KEY,
+  project_id      TEXT,
+  blog_post_id    TEXT NOT NULL,
+  slug            TEXT,
+  status          TEXT NOT NULL DEFAULT 'pending',  -- pending | claimed | rendering | done | failed
+  script          TEXT,                             -- AI voiceover script (JSON), kept for re-renders
+  video_key       TEXT,                             -- R2 object key once done
+  error           TEXT,
+  attempts        INTEGER NOT NULL DEFAULT 0,
+  claimed_at      INTEGER,
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_video_jobs_status ON video_jobs(status, updated_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_video_jobs_post ON video_jobs(blog_post_id);
 `;
