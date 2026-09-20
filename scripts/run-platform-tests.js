@@ -1270,6 +1270,38 @@ async function testProviderDispatch() {
   assert.match(brandSrc, /runTextProvider\(/, 'brand-dna must dispatch through the registry');
   ok('brand DNA dispatches through the shared registry, not a local switch');
 
+  // ── image providers ──────────────────────────────────────────────
+  // Pollinations is the zero-key free fallback: it must report available on a
+  // completely bare env (no AI binding, no keys) so the image chain can never
+  // die with `no_image_providers_configured`, and it must stay LAST so the
+  // keyed providers keep priority when they are configured.
+  const { generateImage } = await import('../functions/_lib/ai.js');
+  const { image } = await listProviders({});
+  assert.deepEqual(image, ['pollinations'],
+    'on a bare env pollinations must still be offered — the image chain never runs out of providers');
+  const fullImage = (await listProviders(env)).image;
+  assert.equal(fullImage[0], 'workers-ai', 'workers-ai stays the default image provider');
+  assert.equal(fullImage[fullImage.length - 1], 'pollinations', 'pollinations must be the last-resort fallback');
+  ok('pollinations is registered as the always-available free image fallback');
+
+  const realFetchImg = globalThis.fetch;
+  try {
+    globalThis.fetch = async (u) => {
+      assert.match(String(u), /^https:\/\/image\.pollinations\.ai\/prompt\//,
+        'pollinations must be called via its GET endpoint');
+      return new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]),
+        { status: 200, headers: { 'content-type': 'image/jpeg' } });
+    };
+    const out = await generateImage({}, {
+      prompt: 'a test hero image', provider: 'pollinations', source: 'platform-test',
+    });
+    assert.ok(out.bytes instanceof Uint8Array && out.bytes.length === 4, 'pollinations must return image bytes');
+    assert.equal(out.ai_provider, 'pollinations');
+    ok('generateImage dispatches to pollinations and returns bytes');
+  } finally {
+    globalThis.fetch = realFetchImg;
+  }
+
   // ── provider preference order ────────────────────────────────────
   // The operator sets `default_ai_provider` precisely when the registry's
   // first choice stops working (Workers AI's free quota runs out). brand DNA

@@ -459,6 +459,30 @@ async function workersAIImage(env, prompt) {
   throw new Error('workers_ai_image_unexpected_shape');
 }
 
+// Pollinations.ai — zero-cost, zero-key image fallback. A plain GET
+// returns the rendered image bytes; no account or API key required
+// (anonymous tier: 1 request / 15s — ample for the daily cron). The
+// `nologo` flag is ignored without a free account, so anonymous images
+// may carry a small watermark; acceptable for a last-resort provider.
+// Registered last in IMAGE_PROVIDERS so it only fires when every keyed
+// provider above it failed — a permanently-available free safety net.
+async function pollinationsImage(env, prompt) {
+  const model = env?.POLLINATIONS_IMAGE_MODEL || 'flux';
+  const seed = Date.now() % 1e7;
+  const url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) +
+    `?width=1200&height=630&model=${encodeURIComponent(model)}&nologo=true&seed=${seed}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`pollinations_http_${res.status}`);
+  const type = String(res.headers.get('content-type') || '');
+  if (!type.startsWith('image/')) throw new Error('pollinations_non_image_response: ' + type.slice(0, 60));
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (!bytes.length) throw new Error('pollinations_empty_response');
+  return {
+    bytes,
+    usage: { provider: 'pollinations', model, prompt_tokens: 0, completion_tokens: 0, estimated: true },
+  };
+}
+
 function b64ToBytes(b64) {
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
@@ -885,9 +909,10 @@ const TEXT_PROVIDERS = [
 // Image providers — Anthropic, Groq, DeepSeek etc. don't do image gen,
 // so they don't appear here.
 const IMAGE_PROVIDERS = [
-  { name: 'workers-ai', available: (e) => !!e?.AI,                call: workersAIImage },
-  { name: 'openai',     available: (e) => !!e?.OPENAI_API_KEY,    call: openAIImage    },
-  { name: 'gemini',     available: (e) => !!e?.GEMINI_API_KEY,    call: geminiImage    },
+  { name: 'workers-ai',   available: (e) => !!e?.AI,             call: workersAIImage    },
+  { name: 'openai',       available: (e) => !!e?.OPENAI_API_KEY, call: openAIImage       },
+  { name: 'gemini',       available: (e) => !!e?.GEMINI_API_KEY, call: geminiImage       },
+  { name: 'pollinations', available: () => true,                 call: pollinationsImage },
 ];
 
 // Exported so the preference rules can be tested directly. The bug that

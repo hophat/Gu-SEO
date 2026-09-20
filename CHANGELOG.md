@@ -7,6 +7,27 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.18.5 — 2026-09-20
+
+Tạo ảnh hero miễn phí vĩnh viễn.
+
+### Added
+- **Provider ảnh Pollinations.ai — free, không cần API key.** Đăng ký cuối
+  trong `IMAGE_PROVIDERS` làm lưới an toàn vĩnh viễn: khi Workers AI lỗi hoặc
+  thiếu binding, ảnh hero vẫn được tạo qua GET thuần đến
+  `image.pollinations.ai` (model Flux, 1200×630), không cần key nào cả.
+  Chi phí ghi vào `ai_usage` là 0. Lưu ý: tier ẩn danh có watermark nhỏ —
+  đăng ký free Pollinations để bỏ.
+- **Platform tests: 154 checks** (thêm 2). Bất biến mới: `pollinations` phải
+  luôn có mặt trong `listProviders().image` kể cả trên env rỗng (chuỗi image
+  provider không bao giờ cạn), và phải đứng cuối để provider có key giữ ưu
+  tiên.
+
+### Không cần làm gì
+- Đường chính vẫn là Workers AI free tier (10.000 Neurons/ngày ≈ 57–170 ảnh).
+- Muốn chi phí 0 tuyệt đối + hero mang brand: Settings → `hero_image_mode`
+  = `cover` và thiết kế 1 template mặc định trong tab Covers.
+
 ## 1.18.4 — 2026-09-16
 
 Duyệt custom domain + misc UI.
