@@ -50,7 +50,13 @@ export default {
     const topOfHour = minute === 0;
 
     // Every 15 minutes: retry anything the queue says is due.
-    ctx.waitUntil(safe('social', runTask(env, 'social', { source: 'tick' })));
+    //
+    // ONE call, not one per project: the Workers free plan caps an
+    // invocation at 50 subrequests, and a per-project sweep spends ~30 of
+    // them (1 dry_run + 1 per active project) — which left only ~19 for the
+    // blog hour's own fan-out and silently starved the oldest projects.
+    // The tick endpoint loops every active project itself (60s budget).
+    ctx.waitUntil(safe('social', runTask(env, 'social', { source: 'tick', all: true })));
 
     // Top of the hour only, so a delayed/duplicate invocation at :15/:30/:45
     // can't run the daily chain twice.
@@ -96,7 +102,17 @@ function tickUrl(env) {
 // Discover active projects (dry_run lists them without generating), then
 // call tick once per project. Falls back to the legacy single-call shape
 // when the Pages side predates per-project support.
-async function runTask(env, task, { source = 'cron', limit = 0, projectId = '' } = {}) {
+async function runTask(env, task, { source = 'cron', limit = 0, projectId = '', all = false } = {}) {
+  // One unfiltered call = 1 subrequest instead of 1 + N. Used for social,
+  // which is cheap and usually a no-op.
+  if (all) {
+    const r = await tick(env, task, { source, limit });
+    return {
+      ok: r.ok, task, source, single_call: true, status: r.status,
+      projects_processed: r.body?.projects_processed,
+      results: r.body?.results || [],
+    };
+  }
   let projects;
   if (projectId) {
     projects = [{ id: projectId, slug: projectId }];

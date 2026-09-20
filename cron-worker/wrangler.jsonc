@@ -22,5 +22,16 @@
     "crons": [
       "*/15 * * * *"
     ]
+  },
+
+  // Keep a queryable log of each run. Without it a fan-out that only
+  // processed part of the project list looks identical to a healthy run —
+  // which is how a 3-day outage went unnoticed.
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "invocation_logs": true,
+      "head_sampling_rate": 1
+    }
   }
 }
