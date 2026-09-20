@@ -17,7 +17,7 @@
 // It is never written to project_publishing_configs, which is plaintext.
 
 import { getVaultSecret } from '../secret_vault.js';
-import { getApiVersion } from './facebook_oauth.js';
+import { getApiVersion, resolveTokenPage } from './facebook_oauth.js';
 
 const GRAPH = 'https://graph.facebook.com';
 
@@ -107,7 +107,16 @@ export function describeGraphError(error) {
   if (code === 190) {
     if (sub === 463) return `Token Facebook đã hết hạn (${msg}). Tạo lại Page Access Token trong Graph API Explorer rồi lưu lại.`;
     if (sub === 467) return `Token Facebook không hợp lệ hoặc đã bị thu hồi (${msg}). Kiểm tra bạn còn là admin của Page.`;
+    // Meta documents 492 as "user associated with the Page access token does
+    // not have an appropriate role on the Page" — a role change, not a stale
+    // token, so telling the operator to mint a new one wastes their time.
+    if (sub === 492) return `Tài khoản gắn với token không còn vai trò phù hợp trên Page (${msg}). Khôi phục quyền quản trị/đăng bài trên Page rồi Kết nối lại.`;
     return `Token Facebook không hợp lệ (${msg}). Tạo Page Access Token mới và lưu lại.`;
+  }
+  // 100/33 has no published meaning; in practice it is the same "this token
+  // cannot load this object" class as 190 — wrong Page, or a reduced grant.
+  if (code === 100 && sub === 33) {
+    return `Facebook không cho token hiện tại truy cập đối tượng này (${msg}). Kiểm tra token có đúng Page đang cấu hình không.`;
   }
   // 200/10 = missing permission.
   if (code === 200 || code === 10) {
@@ -118,8 +127,41 @@ export function describeGraphError(error) {
   return `Facebook lỗi (code ${code}): ${msg}`;
 }
 
+// Same wording as describeGraphError, except for code 190: Meta uses that code
+// for an expired token, a revoked token, AND for a token that simply belongs to
+// a different Page than the one being posted to. /me with the Page token
+// resolves to that Page, so one extra call tells the three apart and the
+// operator gets the real cause instead of "create a new token".
+async function explainTokenFailure({ pageId, token, error }) {
+  const base = describeGraphError(error);
+  // 190 is the documented code, but this failure also surfaces as 100/33.
+  const ambiguous = error?.code === 190 || (error?.code === 100 && error?.error_subcode === 33);
+  if (!ambiguous || !token) return base;
+  try {
+    const own = await resolveTokenPage(token);
+    if (!own?.id) return `${base} Token không truy cập được Page nào — khả năng đã bị thu hồi.`;
+    if (String(own.id) !== String(pageId)) {
+      return `Token này thuộc Page "${own.name || own.id}" (${own.id}), nhưng cấu hình đang trỏ Page ${pageId}. Dán token của đúng Page, hoặc sửa Page ID cho khớp.`;
+    }
+    return `Token đúng Page "${own.name || own.id}" nhưng Facebook vẫn từ chối (${error.message}). Kiểm tra quyền pages_manage_posts của app và vai trò của bạn trên Page.`;
+  } catch {
+    return `${base} Không đọc được Page từ token — token có thể đã hết hạn hoặc bị thu hồi.`;
+  }
+}
+
 export async function publishToFacebook({ project, article, configJson, env }) {
   const cfg = parseFacebookConfig(configJson);
+
+  // A rejected Page token reports code 190 for several different causes; ask
+  // /me with the token itself so the operator is told which Page it belongs to
+  // instead of being sent to make a new token that was never the problem.
+  const post = async (path, params) => {
+    try {
+      return await graphFetch(path, params);
+    } catch (err) {
+      throw new Error(await explainTokenFailure({ pageId: cfg.pageId, token: params.access_token, error: err.graph || {} }));
+    }
+  };
   if (!cfg.pageId) throw new Error('Thiếu Page ID trong cấu hình kênh Facebook.');
 
   const token = await resolveFacebookToken(env, project?.id);
@@ -134,7 +176,7 @@ export async function publishToFacebook({ project, article, configJson, env }) {
   const version = cfg.apiVersion || await getApiVersion(env);
 
   if (cfg.asPhoto && imageUrl) {
-    const data = await graphFetch(`${version}/${cfg.pageId}/photos`, {
+    const data = await post(`${version}/${cfg.pageId}/photos`, {
       url: imageUrl,
       caption: message,
       access_token: token,
@@ -149,7 +191,7 @@ export async function publishToFacebook({ project, article, configJson, env }) {
     };
   }
 
-  const data = await graphFetch(`${version}/${cfg.pageId}/feed`, {
+  const data = await post(`${version}/${cfg.pageId}/feed`, {
     message,
     link,
     access_token: token,
@@ -178,7 +220,7 @@ export async function verifyFacebookPage({ env, projectId, pageId, token }) {
   const res = await fetch(url);
   const data = await res.json().catch(() => ({}));
   if (data?.error) {
-    const err = new Error(describeGraphError(data.error));
+    const err = new Error(await explainTokenFailure({ pageId: cfgPageId, token: tok, error: data.error }));
     err.graph = data.error;
     throw err;
   }

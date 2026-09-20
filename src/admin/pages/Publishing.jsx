@@ -49,6 +49,7 @@ export default function Publishing() {
 
   const [pagePickerOpen, setPagePickerOpen] = useState(false);
   const [pages, setPages] = useState([]);
+  const [pagesExpired, setPagesExpired] = useState(false);
   const [loadingPages, setLoadingPages] = useState(false);
 
   const load = useCallback(async () => {
@@ -80,7 +81,10 @@ export default function Publishing() {
     if (!pagePickerOpen) return;
     setLoadingPages(true);
     apiPost('/api/admin/projects/publishing', { action: 'pages' }).then((r) => {
-      if (r.status === 200) setPages(r.body?.pages || []);
+      if (r.status === 200) {
+        setPages(r.body?.pages || []);
+        setPagesExpired(r.body?.expired === true);
+      }
       setLoadingPages(false);
     });
   }, [pagePickerOpen]);
@@ -335,11 +339,26 @@ export default function Publishing() {
         footer={null}
         width={520}
       >
-        {loadingPages ? <Spin /> : pages.length === 0 ? (
-          <Alert type="warning" showIcon message="Danh sách Page đã hết hạn" description="Bấm Kết nối Facebook lại để lấy danh sách mới." />
-        ) : (
+        {loadingPages ? <Spin /> : (
           <Space direction="vertical" style={{ width: '100%' }}>
-            {pages.map((p) => (
+            {cfg?.configured_page_seen === false && (
+              <Alert
+                type="warning"
+                showIcon
+                message="Page đang kết nối không có trong danh sách Meta trả về"
+                description={`Meta không liệt kê Page "${cfg?.config?.page_name || cfg?.config?.page_id}" cho tài khoản Facebook vừa đăng nhập — tài khoản đó không còn vai trò trên Page, hoặc bạn đăng nhập nhầm tài khoản. Kiểm tra lại quyền trên Page rồi Kết nối lại, hoặc dùng "Cách khác: dán token thủ công".`}
+              />
+            )}
+            {pages.length === 0 ? (
+              <Alert
+                type="warning"
+                showIcon
+                message={pagesExpired ? 'Danh sách Page đã hết hạn' : 'Meta không trả về Page nào'}
+                description={pagesExpired
+                  ? 'Bấm Kết nối Facebook lại để lấy danh sách mới.'
+                  : 'Tài khoản Facebook vừa dùng không quản trị Page nào, hoặc chưa cấp quyền pages_show_list.'}
+              />
+            ) : pages.map((p) => (
               <Card key={p.id} size="small" hoverable onClick={() => selectPage(p.id)}>
                 <Space>
                   {p.picture ? <Avatar src={p.picture} /> : <Avatar icon={<ApiOutlined />} />}

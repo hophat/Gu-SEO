@@ -17,9 +17,9 @@ import {
   retrySocialPost, cancelSocialPost, backoffSec, isCredentialError,
 } from '../functions/_lib/publishing/social_queue.js';
 import {
-  describeGraphError, buildFacebookMessage, parseFacebookConfig, projectPublicBase,
+  describeGraphError, buildFacebookMessage, parseFacebookConfig, projectPublicBase, verifyFacebookPage,
 } from '../functions/_lib/publishing/facebook.js';
-import { signState, verifyState, buildAuthUrl } from '../functions/_lib/publishing/facebook_oauth.js';
+import { signState, verifyState, buildAuthUrl, listManagedPages } from '../functions/_lib/publishing/facebook_oauth.js';
 import { sanitizeEmbedSettings, snippetFor, embedWidgetOptions } from '../functions/_lib/embed_settings.js';
 import { buildAliasMap, syncSitemapAliases } from '../functions/_lib/links/aliases.js';
 import { onRequestGet as attention } from '../functions/api/admin/attention.js';
@@ -474,7 +474,9 @@ async function testCronRouting() {
     assert.ok(!tuesday.includes('refresh'), 'refresh must not run on other days');
     ok('weekly refresh is Monday-only');
 
-    // The fan-out must be per project, not one all-projects call.
+    // Social is ONE unfiltered call: a per-project sweep spent ~30 of the
+    // Workers free plan's 50 subrequests per invocation, which starved the tail
+    // of the blog fan-out. The tick endpoint fans out internally instead.
     tasks.length = 0;
     globalThis.fetch = async (u, init) => {
       const payload = init?.body ? JSON.parse(init.body) : {};
@@ -489,10 +491,24 @@ async function testCronRouting() {
       { waitUntil: (p) => pending.push(p) }
     );
     await Promise.allSettled(pending);
-    const perProject = tasks.filter((p) => !p.dry_run);
-    assert.equal(perProject.length, 2, 'one tick call per project');
+    assert.equal(tasks.length, 1, 'social must be a single call');
+    assert.equal(tasks[0].project_id, undefined, 'the social call must not be project-scoped');
+    ok('social drains with one unfiltered tick call');
+
+    // The blog chain still fans out per project: no single HTTP response can
+    // hold a chain for every project inside the edge timeout.
+    tasks.length = 0;
+    const pendingBlog = [];
+    await worker.scheduled(
+      { scheduledTime: new Date('2026-09-15T01:00:00Z').getTime() },
+      { ADMIN_TOKEN: 't', BLOG_URL: 'https://x/api/admin/blog' },
+      { waitUntil: (p) => pendingBlog.push(p) }
+    );
+    await Promise.allSettled(pendingBlog);
+    const perProject = tasks.filter((p) => p.task === 'blog' && !p.dry_run);
+    assert.equal(perProject.length, 2, 'one blog tick call per project');
     assert.deepEqual(perProject.map((p) => p.project_id).sort(), ['p1', 'p2']);
-    ok('fan-out issues one tick call per project');
+    ok('blog fan-out issues one tick call per project');
   } finally {
     globalThis.fetch = realFetch;
     console.log = realLog;
@@ -1793,11 +1809,87 @@ async function testEmailPolicy() {
   ok('every door that creates a user applies the shared policy');
 }
 
+// Code 190 covers several different token causes, and a Page whose token Meta
+// withholds used to vanish from the connect picker. Both misled the operator.
+async function testFacebookPageRecovery() {
+  console.log('\nF. Facebook Page token recovery');
+  const realFetch = globalThis.fetch;
+  const res = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
+
+  try {
+    globalThis.fetch = async () => res({ data: [
+      { id: '111', name: 'Page A', access_token: 'EAAG-page-a' },
+      { id: '222', name: 'Page B' },
+    ] });
+    const pages = await listManagedPages('user-token', 'v23.0');
+    assert.equal(pages.length, 2, 'a Page without a per-Page token must not be dropped');
+    assert.equal(pages.find((p) => p.id === '111').has_token, true);
+    assert.equal(pages.find((p) => p.id === '222').has_token, false);
+    ok('listManagedPages keeps token-less Pages and flags them');
+
+    const calls = [];
+    globalThis.fetch = async (u) => {
+      calls.push(String(u));
+      if (String(u).includes('/222?')) {
+        return res({ error: { message: 'This Page access token belongs to a Page that is not accessible.', code: 190, error_subcode: 460 } });
+      }
+      return res({ id: '111', name: 'Page A' });
+    };
+    await assert.rejects(
+      () => verifyFacebookPage({ env: {}, projectId: PROJECT, pageId: '222', token: 'EAAG-page-a' }),
+      (err) => {
+        assert.match(err.message, /thuộc Page "Page A" \(111\)/, 'must name the Page the token belongs to');
+        assert.match(err.message, /đang trỏ Page 222/, 'must name the configured Page');
+        return true;
+      },
+    );
+    assert.equal(calls.length, 2, 'diagnosis costs exactly one extra Graph call');
+    ok('a 190 from another Page names both Pages');
+
+    globalThis.fetch = async (u) => {
+      if (String(u).includes('/222?')) return res({ error: { message: 'Invalid OAuth access token.', code: 190 } });
+      throw new Error('graph unreachable');
+    };
+    await assert.rejects(
+      () => verifyFacebookPage({ env: {}, projectId: PROJECT, pageId: '222', token: 'EAAG-stale' }),
+      (err) => {
+        assert.match(err.message, /Không đọc được Page từ token/);
+        return true;
+      },
+    );
+    ok('a 190 whose token cannot be read says so instead of guessing');
+
+    assert.match(
+      describeGraphError({ message: 'x', code: 190, error_subcode: 492 }),
+      /không còn vai trò phù hợp trên Page/,
+    );
+    ok('subcode 492 is reported as a lost Page role, not a stale token');
+
+    globalThis.fetch = async (u) => {
+      if (String(u).includes('/222?')) {
+        return res({ error: { message: 'Unsupported get request.', code: 100, error_subcode: 33 } });
+      }
+      return res({ id: '111', name: 'Page A' });
+    };
+    await assert.rejects(
+      () => verifyFacebookPage({ env: {}, projectId: PROJECT, pageId: '222', token: 'EAAG-page-a' }),
+      (err) => {
+        assert.match(err.message, /đang trỏ Page 222/, 'the 100/33 variant must get the same diagnosis');
+        return true;
+      },
+    );
+    ok('a 100/33 failure is diagnosed the same way');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 async function main() {
   console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
+  await testFacebookPageRecovery();
   await testCronRouting();
   await testAliasScoping();
   await testAttentionAndActivation();

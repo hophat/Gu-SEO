@@ -90,6 +90,16 @@ export const onRequestGet = async ({ env, request }) => {
       return done('no_pages', 'Tài khoản này không quản trị Page nào (hoặc chưa cấp quyền pages_show_list).');
     }
 
+    // Meta answers /me/accounts without an access_token when the login lacks the
+    // Page task that mints one (role downgraded, Page moved into a Business the
+    // app is not linked to). Say which Pages those are instead of reporting
+    // "no Pages", which sent operators looking for a Page that was right there.
+    const withToken = pages.filter((p) => p.access_token);
+    if (!withToken.length) {
+      const names = pages.map((p) => p.name || p.id).slice(0, 5).join(', ');
+      return done('error', `Meta không trả về Page token cho: ${names}. Kiểm tra bạn còn quyền đăng bài trên Page và app còn pages_show_list + pages_manage_posts, rồi Kết nối lại.`);
+    }
+
     await savePendingPages(env, pid, pages);
 
     // Single Page → connect it now, no picker needed.

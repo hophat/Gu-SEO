@@ -96,13 +96,20 @@ export async function exchangeForLongLived({ appId, appSecret, shortToken, versi
 }
 
 // Pages the token holder can act on, with per-Page tokens and tasks.
+//
+// Pages Meta withholds a per-Page token for are kept, flagged `has_token`.
+// Dropping them made the picker come back empty for an operator whose Page
+// permissions had changed — indistinguishable from "this login manages no
+// Pages", and it left the already-connected Page invisible on reconnect.
 export async function listManagedPages(userToken, version) {
   const data = await graphGet('me/accounts', {
     access_token: userToken,
     fields: 'id,name,access_token,tasks,fan_count,link,picture{url}',
     limit: 100,
   }, version);
-  return (data?.data || []).filter((p) => p?.id && p?.access_token);
+  return (data?.data || [])
+    .filter((p) => p?.id)
+    .map((p) => ({ ...p, has_token: !!p.access_token }));
 }
 
 // A Page token used as `access_token` makes /me resolve to the Page, so

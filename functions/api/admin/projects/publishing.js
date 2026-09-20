@@ -93,6 +93,13 @@ export const onRequestGet = async ({ env, request }) => {
     // Meta app credentials.
     can_manage_app: auth?.via === 'bearer' || auth?.role === 'super_admin',
     pending_pages: pending ? pending.length : 0,
+    // Null when there is no live list to compare against. False is the case
+    // that matters: the operator's own Page was not in what Meta returned for
+    // the login they just used, so the picker cannot offer it and "no Pages
+    // found" would be the wrong explanation.
+    configured_page_seen: pending && config.page_id
+      ? pending.some((p) => String(p.id) === String(config.page_id))
+      : null,
     last_result: lastResult,
     allowed_types: PUBLISHER_TYPES,
   });
@@ -146,7 +153,7 @@ export const onRequestPost = async ({ env, request }) => {
     // Strip the tokens — the browser only needs enough to render a choice.
     return json(200, {
       ok: true,
-      pages: pages.map(({ token, ...rest }) => rest),
+      pages: pages.map(({ token, ...rest }) => ({ ...rest, has_token: !!token })),
     });
   }
 
@@ -157,6 +164,12 @@ export const onRequestPost = async ({ env, request }) => {
     if (!pages) return json(400, { error: 'pending_expired', detail: 'Danh sách Page đã hết hạn. Bấm Kết nối Facebook lại.' });
     const chosen = pages.find((p) => p.id === pageId);
     if (!chosen) return json(404, { error: 'page_not_found' });
+    if (!chosen.token) {
+      return json(400, {
+        error: 'page_without_token',
+        detail: `Meta không cấp Page token cho "${chosen.name || chosen.id}". Kiểm tra bạn còn quyền đăng bài trên Page, rồi bấm "Kết nối lại".`,
+      });
+    }
 
     await setVaultSecret(env, facebookTokenName(pid), chosen.token);
     const t = Math.floor(Date.now() / 1000);
