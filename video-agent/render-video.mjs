@@ -292,14 +292,18 @@ function composeHtml(job, script, segs) {
 //   [0-2s]  tên + tagline   [2-6s]  hero zoom + 2 câu ngắn
 //   [6-10s] 3 điểm nổi bật  [10-14s] 📍 địa chỉ ☎ điện thoại
 //   [14-16s] CTA
+// Scene backgrounds come from the real imagery collected off the
+// project's website (media[]), one image per scene, R2 hero as fallback.
 // The contact scene is text-only on a fixed beat; every other scene is
 // voiced by its own TTS segment.
-function composeBusinessHtml(job, script, segs) {
+function composeBusinessHtml(job, script, segs, media = []) {
   const p = job.project || {};
   const brand = p.name || 'Doanh nghiệp';
   const accent = p.accent || ACCENT;
   const outroUrl = (p.publishing_url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
   const hasHero = existsSync(join(WORK, 'assets', 'hero.jpg'));
+  // Which scenes get a photo background, and which collected image.
+  const bgFor = { intro: 0, hero: 0, highlights: 1, contact: 2, outro: 3 };
 
   const sceneDefs = [
     { kind: 'intro', seg: segs[0] },
@@ -328,10 +332,14 @@ function composeBusinessHtml(job, script, segs) {
       inner = `<p class="hook">${esc(script.lines[0] || '')}</p>${script.lines[1] ? `<p class="point">${esc(script.lines[1])}</p>` : ''}`;
     }
     sceneHtml.push(`<div id="s${i}" class="clip scene" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="0">${inner}</div>`);
-    if (hasHero && (s.kind === 'hero' || s.kind === 'highlights')) {
+    // Background: a real site image for this scene, else the R2 hero.
+    const siteImg = media[bgFor[s.kind]];
+    const bgSrc = siteImg ? `assets/media/img${bgFor[s.kind]}.jpg`
+      : (hasHero ? 'assets/hero.jpg' : null);
+    if (bgSrc && s.kind !== 'intro') {
       s.bgId = `bg${bgEls.length}`;
       bgEls.push(s);
-      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img src="assets/hero.jpg" alt=""/></div>`);
+      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img src="${bgSrc}" alt=""/></div>`);
     }
     t += s.dur;
   }
@@ -398,6 +406,56 @@ ${audioHtml}
 </script></body></html>`;
 }
 
+// ── 4. media collection — real images from the project's website ──────
+// The site is the raw material: homepage HTML → og:image + <img> candidates
+// → download the largest few raster images as scene backgrounds. Falls
+// back to the R2 hero when the site yields nothing usable.
+const MAX_MEDIA = 4;
+async function collectMedia(job) {
+  const site = job.project?.website_url || job.project?.publishing_url || '';
+  const outDir = join(WORK, 'assets', 'media');
+  mkdirSync(outDir, { recursive: true });
+  if (!site) return [];
+  try {
+    const res = await fetch(site, {
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(20000),
+    });
+    const html = await res.text().catch(() => '');
+    const srcs = new Set();
+    // og:image first — it is the curated visual.
+    for (const m of html.matchAll(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/gi)) srcs.add(m[1]);
+    for (const m of html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) srcs.add(m[1]);
+    // Absolute-ise and filter to raster URLs worth downloading.
+    const candidates = [...srcs]
+      .map((u) => { try { return new URL(u, site).href; } catch { return null; } })
+      .filter((u) => /^https?:/.test(u))
+      .filter((u) => /\.(jpe?g|png|webp)(\?|$)/i.test(u))
+      .filter((u) => !/logo|icon|sprite|avatar|favicon/i.test(u));
+    const picked = [];
+    for (const u of candidates.slice(0, 12)) {
+      if (picked.length >= MAX_MEDIA) break;
+      try {
+        const r = await fetch(u, { signal: AbortSignal.timeout(15000) });
+        if (!r.ok) continue;
+        const type = (r.headers.get('content-type') || '').toLowerCase();
+        if (!type.startsWith('image/')) continue;
+        const buf = Buffer.from(await r.arrayBuffer());
+        if (buf.length < 8000) continue; // icons/sprites — not scene material
+        const f = join(outDir, `img${picked.length}.jpg`);
+        writeFileSync(f, buf);
+        picked.push(f);
+      } catch { /* skip broken asset */ }
+    }
+    log(`media: ${picked.length} image(s) from ${site}`);
+    return picked;
+  } catch (e) {
+    log(`media collect failed (${e.message}) — using gradient/R2 hero only`);
+    return [];
+  }
+}
+
 // ── 5. render + deliver one job ───────────────────────────────────────
 async function renderOne(job) {
   log(`claimed ${job.slug} (${job.kind}, job ${job.id})`);
@@ -434,12 +492,18 @@ async function renderOne(job) {
   }
   log(`tts: ${segs.map((d) => d.toFixed(1) + 's').join(' + ')}`);
 
+  // Real imagery: scrape the project's website for scene backgrounds,
+  // falling back to the R2 hero the claim payload carries.
+  let media = [];
+  if (isBusiness) media = await collectMedia(job);
   const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
-  if (heroB64) writeFileSync(join(WORK, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
+  if (!media.length && heroB64) {
+    writeFileSync(join(WORK, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
+  }
 
   log('composing…');
   const html = isBusiness
-    ? composeBusinessHtml(job, script, segs)
+    ? composeBusinessHtml(job, script, segs, media)
     : composeHtml(job, script, segs);
   writeFileSync(join(WORK, 'index.html'), html);
 

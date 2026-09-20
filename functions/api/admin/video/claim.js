@@ -116,6 +116,7 @@ export const onRequestPost = async ({ env, request }) => {
           phone: project.phone || '',
           logo_url: project.logo_url || null,
           publishing_url: project.publishing_url || null,
+          website_url: project.website_url || null,
           brand: {
             business_type: brand?.business_type || '',
             tone: brand?.tone || '',
