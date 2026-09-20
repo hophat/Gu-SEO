@@ -1,8 +1,15 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": ["AGENTS.md", "LOOP.md", "loop-budget.md"],
+  "instructions": ["AGENTS.md", "LOOP.md", "loop-budget.md", "JEV.md"],
   "skills": {
     "paths": ["skills", "patterns", ".opencode/skills"]
+  },
+  "mcp": {
+    "typesafe": {
+      "type": "local",
+      "command": ["node", "scripts/typesafe-mcp.js"],
+      "enabled": true
+    }
   },
   "agent": {
     "implementer": {
