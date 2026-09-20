@@ -93,16 +93,53 @@ Yêu cầu: tiếng Việt tự nhiên, mỗi point là 1 câu hoàn chỉnh, kh
     body: JSON.stringify({
       model: GUROUTER_MODEL,
       messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
-      temperature: 0.6, max_tokens: 500, response_format: { type: 'json_object' },
+      temperature: 0.6, max_tokens: 1500, response_format: { type: 'json_object' },
     }),
   }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
   if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
   const data = await r.json();
   const raw = data?.choices?.[0]?.message?.content || '';
-  const parsed = JSON.parse(raw.replace(/^```json\s*|```\s*$/g, '').trim());
+  const parsed = parseScript(raw);
   const points = (parsed.points || []).slice(0, 3).map((p) => String(p).trim()).filter(Boolean);
   if (!parsed.hook || !points.length || !parsed.cta) throw new Error('script_schema_bad: ' + raw.slice(0, 150));
   return { hook: String(parsed.hook).trim(), points, cta: String(parsed.cta).trim() };
+}
+
+// Small models truncate mid-string at the token cap ("Unterminated string").
+// Repair by closing whatever is still open — good enough for this fixed
+// 3-field schema, and a regex fallback recovers the fields individually.
+function parseScript(raw) {
+  let s = String(raw || '').trim().replace(/^```(?:json)?/i, '').replace(/```\s*$/, '').trim();
+  const first = s.indexOf('{');
+  if (first > 0) s = s.slice(first);
+  const tryParse = (txt) => { try { return JSON.parse(txt); } catch { return null; } };
+
+  const direct = tryParse(s);
+  if (direct) return direct;
+
+  // Repair: walk the string tracking string/escape state, then close
+  // whatever the truncation left open, in reverse order.
+  let inStr = false, esc = false, curly = 0, bracket = 0;
+  for (const ch of s) {
+    if (esc) { esc = false; continue; }
+    if (ch === '\\') { esc = true; continue; }
+    if (ch === '"') inStr = !inStr;
+    if (!inStr) { if (ch === '{') curly++; else if (ch === '}') curly--; else if (ch === '[') bracket++; else if (ch === ']') bracket--; }
+  }
+  let fixed = s.replace(/,\s*$/, '');
+  if (inStr) fixed += '"';
+  fixed += ']'.repeat(Math.max(0, bracket)) + '}'.repeat(Math.max(0, curly));
+  const repaired = tryParse(fixed);
+  if (repaired) return repaired;
+
+  // Last resort: regex out the three fields independently.
+  const str = (name) => {
+    const m = s.match(new RegExp(`"${name}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)`));
+    return m ? m[1] : '';
+  };
+  const pts = s.match(/"points"\s*:\s*\[([\s\S]*?)(?:\]|$)/);
+  const items = pts ? [...pts[1].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]) : [];
+  return { hook: str('hook'), points: items, cta: str('cta') };
 }
 
 // ── 3. tts — edge-tts per segment, duration via ffprobe ──────────────

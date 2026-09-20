@@ -62,7 +62,10 @@ async function loadJobContext(env, id) {
   const row = await env.DB.prepare(
     `SELECT s.id, s.project_id, s.channel, s.attempts, s.max_attempts,
             b.id AS post_id, b.slug, b.title, b.meta_description,
-            b.body_markdown, b.hero_image_key, b.keywords, b.published_at
+            b.body_markdown, b.hero_image_key, b.keywords, b.published_at,
+            (SELECT v.video_key FROM video_jobs v
+              WHERE v.blog_post_id = b.id AND v.status = 'done'
+              ORDER BY v.updated_at DESC LIMIT 1) AS video_key
        FROM social_posts s
        JOIN blog_posts b ON b.id = s.blog_post_id
       WHERE s.id = ? LIMIT 1`
@@ -110,6 +113,7 @@ export async function runSocialJob(env, id, { dispatch = dispatchPublication } =
         meta_description: job.meta_description,
         body_markdown: job.body_markdown,
         hero_image_key: job.hero_image_key,
+        video_key: job.video_key,
         keywords: job.keywords,
         published_at: job.published_at,
       },

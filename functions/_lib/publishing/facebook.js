@@ -46,6 +46,10 @@ export function parseFacebookConfig(configJson) {
     // the page's OG tags. Link posts are the safe default because they
     // also carry the title/description without us re-sending them.
     asPhoto: cfg.as_photo === true,
+    // When the post has a rendered 9:16 video (video_jobs done), as_video
+    // uploads it to /{page-id}/videos instead of a plain link post. The
+    // article URL goes into the description — video posts don't unfurl.
+    asVideo: cfg.as_video === true,
     messageTemplate: String(cfg.message_template || '').trim(),
   };
 }
@@ -174,6 +178,36 @@ export async function publishToFacebook({ project, article, configJson, env }) {
 
   const imageUrl = article.hero_image_key ? `${projectOrigin(project)}/image/${article.hero_image_key}` : '';
   const version = cfg.apiVersion || await getApiVersion(env);
+
+  // Video post — the 9:16 MP4 the video agent delivered into R2. Fetched
+  // from R2 (not over HTTP) so the upload works even before DNS/CDN warm.
+  // Facebook does not unfurl links on video posts, so the article URL is
+  // appended to the description explicitly.
+  if (cfg.asVideo && article.video_key && env?.IMAGES) {
+    const obj = await env.IMAGES.get(article.video_key);
+    if (!obj) throw new Error(`Video ${article.video_key} không còn trong R2 — render lại trước khi đăng.`);
+    const bytes = await obj.arrayBuffer();
+    const form = new FormData();
+    form.append('description', message ? `${message}\n\n${link}` : link);
+    form.append('access_token', token);
+    form.append('source', new Blob([bytes], { type: 'video/mp4' }), 'video.mp4');
+    const res = await fetch(`${GRAPH}/${version}/${cfg.pageId}/videos`, { method: 'POST', body: form });
+    const data = await res.json().catch(() => ({}));
+    if (data?.error) {
+      const err = new Error(await explainTokenFailure({ pageId: cfg.pageId, token, error: data.error }));
+      err.graph = data.error;
+      throw err;
+    }
+    if (!res.ok) throw new Error(`Facebook HTTP ${res.status}`);
+    return {
+      ok: true,
+      type: 'facebook',
+      format: 'video',
+      post_id: data.id,
+      post_url: data.id ? `https://www.facebook.com/${data.id}` : null,
+      link,
+    };
+  }
 
   if (cfg.asPhoto && imageUrl) {
     const data = await post(`${version}/${cfg.pageId}/photos`, {
