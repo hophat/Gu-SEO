@@ -11,7 +11,7 @@ import {
 import {
   ReloadOutlined, VideoCameraOutlined, CheckCircleOutlined,
   ClockCircleOutlined, WarningOutlined, DownloadOutlined, FacebookOutlined,
-  AppstoreOutlined,
+  AppstoreOutlined, DeleteOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, getActiveProject } from '../api.js';
@@ -84,6 +84,18 @@ export default function Video() {
     }
   };
 
+  const deleteVideo = async (id) => {
+    setBusyId(id);
+    const { status, body } = await apiPost('/api/admin/video/delete', { id });
+    setBusyId(null);
+    if (status === 200 && body?.ok) {
+      message.success('Đã xóa video (cả file trên R2)');
+      load();
+    } else {
+      message.error(body?.detail || body?.error || 'Xóa thất bại');
+    }
+  };
+
   const columns = [
     {
       title: 'Bài viết', dataIndex: 'title', ellipsis: true,
@@ -104,6 +116,14 @@ export default function Video() {
             onConfirm={() => publishFb(r.id)}
           >
             <Button size="small" icon={<FacebookOutlined />} loading={busyId === r.id}>Đăng FB</Button>
+          </Popconfirm>
+          <Popconfirm
+            title="Xóa video này?"
+            description="Xóa cả file MP4 trên R2 — không thể hoàn tác."
+            okButtonProps={{ danger: true }}
+            onConfirm={() => deleteVideo(r.id)}
+          >
+            <Button size="small" danger icon={<DeleteOutlined />} loading={busyId === r.id} />
           </Popconfirm>
         </Space>
       ) : <Text type="secondary">—</Text>,
