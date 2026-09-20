@@ -1,0 +1,46 @@
+{
+  "type": {
+    "type": "choice",
+    "instructions": "Classify this GitHub issue or pull request for the pages-seo repo (Cloudflare Pages SEO/blog toolkit).",
+    "criteria": {
+      "bug": "Broken behaviour, build/CI failure, deploy breakage",
+      "feature": "New capability, provider, endpoint or UI",
+      "task": "Chore, docs, dependency or cleanup",
+      "noise": "Not actionable for this repo (support request, spam, wrong project)"
+    }
+  },
+  "area": {
+    "type": "choice",
+    "instructions": "Which part of the codebase does this touch first?",
+    "criteria": {
+      "blog": "Blog chain, posts, calendar, topics",
+      "prog": "Programmatic SEO pages and keyword queue",
+      "admin": "Admin UI or admin API endpoints",
+      "installer": "CLI installer, setup, update, repair flows",
+      "cron": "cron-worker, schedules, fan-out",
+      "infra": "D1, R2, Cloudflare config, deploys, CI"
+    }
+  },
+  "priority": {
+    "type": "score",
+    "instructions": "What priority is this, from the signals in the issue?",
+    "criteria": [
+      "P3: nice-to-have, docs, polish",
+      "P2: valid bug or feature, not urgent",
+      "P1: high impact with a clear repro, or a blocked deploy",
+      "P0: security, production breakage, data loss (D1/R2), auth bypass"
+    ]
+  },
+  "escalate": {
+    "type": "noul",
+    "instructions": "Does acting on this require human approval under the repo rules? Answer yes for anything touching schema/init.sql, functions/_lib/auth.js, wrangler.toml, production deploys, security, payments, or the public API contract (/api/version, /api/health)."
+  },
+  "needs_info": {
+    "type": "noul",
+    "instructions": "Is the report missing the information needed to act on it (no repro, no environment, no expected behaviour)?"
+  },
+  "duplicate": {
+    "type": "noul",
+    "instructions": "Compared with the OPEN ITEMS list included at the end of the state, does this overlap an existing item closely enough that a human should confirm it as a duplicate?"
+  }
+}

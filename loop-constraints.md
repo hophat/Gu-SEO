@@ -32,6 +32,20 @@ mode: report-only
 - IDs are 32-char hex via `newId()` — no UUIDs.
 - One fix per run. Minimal diff. Run `npm test` + `npm run build:functions` as evidence.
 
+## Decisions (Jev)
+
+- A reversible, in-repo decision — classification, priority, dedupe, which of
+  several implementation options to take — may be settled by `scripts/jev.js`
+  (operating manual: `JEV.md`) without asking the human first.
+- Act on that answer only when its confidence clears the threshold (default 0.6)
+  and the answer does not escalate. Otherwise list the item under "needs human"
+  and say which dimension failed and at what confidence.
+- Jev never satisfies the approval requirements above: deploys, D1 writes, schema,
+  auth, secrets, merges, deletions, and security/payments items stay human-gated
+  however confident the answer is.
+- Record the score and confidence in the run output. Never cite a Jev answer as
+  evidence that something works — run the test, read the file, query D1.
+
 ## Push & Merge
 
 - Never push without telling the human first. Always run tests first.

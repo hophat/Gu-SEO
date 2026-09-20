@@ -58,6 +58,36 @@ Needs human: H
 | needs-info | Unclear spec, missing repro or environment |
 | duplicate? | Title/body overlap — conservative, human confirms |
 
+## Classify and score with Jev
+
+One call per issue replaces deliberating over type, area, priority and duplicates
+(`scripts/jev.js`, see `JEV.md`). The rubric lives in `jev-questions.json` so it
+stays identical between runs:
+
+```bash
+{ gh issue view <N> --json number,title,body,labels,createdAt,comments;
+  printf '\nOPEN ITEMS:\n'; gh issue list --state open --limit 30 --json number,title,labels \
+    --jq '.[] | "#\(.number) (\(.labels|map(.name)|join(","))) — \(.title)"';
+} | node scripts/jev.js ask --state - --min-confidence 0.6 \
+    --questions "$(cat skills/issue-triage/jev-questions.json)"
+```
+
+Read the answer with the gate:
+
+- `type`, `area`, `priority`, `duplicate` — settle the classification when their
+  `act` is true (confidence ≥ 0.6). Use the answer's `choice` / `score` directly
+  in the state file instead of re-deciding it yourself.
+- `priority` not settled → put the issue in "needs human" and quote the score and
+  confidence; do not pick P1 vs P2 by hand.
+- `escalate` ≥ 0.5 → needs human (auth/schema/prod-deploy/security path).
+- `needs_info` ≥ 0.5 → suggest `needs-info`.
+- `duplicate` ≥ 0.5 → "possible duplicate of #NNN (human confirm)", never auto-close.
+- Always record the confidence next to the priority. A P1 with 0.5 confidence is a
+  question for the human, not a decision.
+
+This changes nothing about L1: labels stay proposals, and no comment, close, or
+edit happens.
+
 ## Rules
 
 - **L1 (mode report-only):** Propose labels and priority only. Never apply labels, comment, close, or edit code.
