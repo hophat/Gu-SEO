@@ -7,6 +7,9 @@
 // with the agent's error text so the operator can see why nothing shipped.
 import { json, nowSec, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
+import { getProject } from '../../../_lib/projects.js';
+import { enqueueSocialPost } from '../../../_lib/publishing/social_queue.js';
+import { parseFacebookConfig } from '../../../_lib/publishing/facebook.js';
 
 // Social platforms cap uploads well below this; anything larger is a
 // render bug, not something we should store.
@@ -69,6 +72,25 @@ export const onRequestPost = async ({ env, request }) => {
   ).bind(key, nowSec(), jobId).run();
 
   await audit(env, 'video-agent', 'video.deliver', job.blog_post_id, { slug: job.slug, key, bytes: bytes.length });
+
+  // Automatic Facebook posting: when the project's Facebook channel is
+  // configured with as_video, a finished video enqueues its own
+  // facebook_video social job (drained by the cron with retry/backoff).
+  // Fire-and-forget semantics are fine — enqueueSocialPost is INSERT OR
+  // IGNORE and a missed enqueue is recoverable via the manual button.
+  try {
+    const project = job.project_id ? await getProject(env, job.project_id).catch(() => null) : null;
+    const pubCfg = project?.publishing_config || {};
+    const fbCfg = pubCfg.publisher_type === 'facebook'
+      ? parseFacebookConfig(pubCfg.config_json)
+      : {};
+    if (fbCfg.asVideo && job.project_id) {
+      const q = await enqueueSocialPost(env, {
+        projectId: job.project_id, blogPostId: job.blog_post_id, channel: 'facebook_video',
+      });
+      if (q.enqueued) audit(env, 'video-agent', 'video.social_enqueued', job.blog_post_id, { channel: 'facebook_video' });
+    }
+  } catch { /* auto-post is best-effort — the manual button covers misses */ }
 
   return json(200, { ok: true, status: 'done', video_key: key, bytes: bytes.length });
 };

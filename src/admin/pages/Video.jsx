@@ -6,14 +6,14 @@
 // what failed and why, and links the MP4 for download / social posting.
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Card, Table, Button, Space, Typography, Tag, message, Row, Col, Statistic, Tooltip, Alert,
+  Card, Table, Button, Space, Typography, Tag, message, Row, Col, Statistic, Tooltip, Alert, Popconfirm,
 } from 'antd';
 import {
   ReloadOutlined, VideoCameraOutlined, CheckCircleOutlined,
-  ClockCircleOutlined, WarningOutlined, DownloadOutlined,
+  ClockCircleOutlined, WarningOutlined, DownloadOutlined, FacebookOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
-import { apiGet } from '../api.js';
+import { apiGet, apiPost } from '../api.js';
 
 const { Text } = Typography;
 
@@ -33,6 +33,7 @@ function fmtDate(sec) {
 export default function Video() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,6 +44,20 @@ export default function Video() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const publishFb = async (id) => {
+    setBusyId(id);
+    const { status, body } = await apiPost('/api/admin/video/publish', { id });
+    setBusyId(null);
+    if (status === 200 && body?.ok) {
+      message.success(body.posted ? 'Đã đăng video lên Facebook' : 'Đã vào hàng chờ — cron sẽ đăng trong ít phút');
+      load();
+    } else {
+      message.error(body?.error === 'already_enqueued'
+        ? 'Bài này đã có job đăng video — xem tab Bài đăng mạng xã hội'
+        : body?.error || 'Đăng thất bại');
+    }
+  };
 
   const statusTag = (s) => {
     const m = STATUS_META[s] || { color: 'default', text: s };
@@ -56,13 +71,20 @@ export default function Video() {
     },
     { title: 'Trạng thái', dataIndex: 'status', width: 130, render: statusTag },
     {
-      title: 'Video', dataIndex: 'video_url', width: 170,
+      title: 'Video', dataIndex: 'video_url', width: 240,
       render: (url, r) => url ? (
         <Space>
           <a href={url} target="_blank" rel="noopener"><Button size="small" icon={<VideoCameraOutlined />}>Xem</Button></a>
           <Tooltip title="Tải MP4 (9:16)">
             <Button size="small" icon={<DownloadOutlined />} href={url} download={`${r.slug}.mp4`} />
           </Tooltip>
+          <Popconfirm
+            title="Đăng video này lên Facebook Page?"
+            description="Tạo video post kèm link bài viết trong mô tả."
+            onConfirm={() => publishFb(r.id)}
+          >
+            <Button size="small" icon={<FacebookOutlined />} loading={busyId === r.id}>Đăng FB</Button>
+          </Popconfirm>
         </Space>
       ) : <Text type="secondary">—</Text>,
     },

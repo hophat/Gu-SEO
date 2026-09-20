@@ -184,29 +184,7 @@ export async function publishToFacebook({ project, article, configJson, env }) {
   // Facebook does not unfurl links on video posts, so the article URL is
   // appended to the description explicitly.
   if (cfg.asVideo && article.video_key && env?.IMAGES) {
-    const obj = await env.IMAGES.get(article.video_key);
-    if (!obj) throw new Error(`Video ${article.video_key} không còn trong R2 — render lại trước khi đăng.`);
-    const bytes = await obj.arrayBuffer();
-    const form = new FormData();
-    form.append('description', message ? `${message}\n\n${link}` : link);
-    form.append('access_token', token);
-    form.append('source', new Blob([bytes], { type: 'video/mp4' }), 'video.mp4');
-    const res = await fetch(`${GRAPH}/${version}/${cfg.pageId}/videos`, { method: 'POST', body: form });
-    const data = await res.json().catch(() => ({}));
-    if (data?.error) {
-      const err = new Error(await explainTokenFailure({ pageId: cfg.pageId, token, error: data.error }));
-      err.graph = data.error;
-      throw err;
-    }
-    if (!res.ok) throw new Error(`Facebook HTTP ${res.status}`);
-    return {
-      ok: true,
-      type: 'facebook',
-      format: 'video',
-      post_id: data.id,
-      post_url: data.id ? `https://www.facebook.com/${data.id}` : null,
-      link,
-    };
+    return publishFacebookVideo({ project, article, configJson, env });
   }
 
   if (cfg.asPhoto && imageUrl) {
@@ -234,6 +212,52 @@ export async function publishToFacebook({ project, article, configJson, env }) {
     ok: true,
     type: 'facebook',
     format: 'link',
+    post_id: data.id,
+    post_url: data.id ? `https://www.facebook.com/${data.id}` : null,
+    link,
+  };
+}
+
+// Upload the rendered 9:16 MP4 to the Page as a video post. Used by the
+// `facebook_video` social channel (auto-enqueued when a video finishes
+// rendering and the channel config has as_video, and by the manual
+// "Đăng Facebook" button on the Video page). Requires the article to
+// carry video_key; the article URL rides in the description because
+// video posts do not unfurl links.
+export async function publishFacebookVideo({ project, article, configJson, env }) {
+  const cfg = parseFacebookConfig(configJson);
+  if (!cfg.pageId) throw new Error('Thiếu Page ID trong cấu hình kênh Facebook.');
+  if (!article?.video_key) throw new Error('Bài viết chưa có video đã render (video_key trống).');
+
+  const token = await resolveFacebookToken(env, project?.id);
+  if (!token) throw new Error('Chưa lưu Page Access Token cho dự án này.');
+
+  const base = projectPublicBase(project);
+  if (!base) throw new Error('Dự án chưa có URL xuất bản để tạo link bài viết.');
+  const link = `${base}/blog/${article.slug}`;
+  const message = buildFacebookMessage(article, cfg);
+
+  const obj = await env.IMAGES.get(article.video_key);
+  if (!obj) throw new Error(`Video ${article.video_key} không còn trong R2 — render lại trước khi đăng.`);
+  const bytes = await obj.arrayBuffer();
+
+  const version = cfg.apiVersion || await getApiVersion(env);
+  const form = new FormData();
+  form.append('description', message ? `${message}\n\n${link}` : link);
+  form.append('access_token', token);
+  form.append('source', new Blob([bytes], { type: 'video/mp4' }), 'video.mp4');
+  const res = await fetch(`${GRAPH}/${version}/${cfg.pageId}/videos`, { method: 'POST', body: form });
+  const data = await res.json().catch(() => ({}));
+  if (data?.error) {
+    const err = new Error(await explainTokenFailure({ pageId: cfg.pageId, token, error: data.error }));
+    err.graph = data.error;
+    throw err;
+  }
+  if (!res.ok) throw new Error(`Facebook HTTP ${res.status}`);
+  return {
+    ok: true,
+    type: 'facebook',
+    format: 'video',
     post_id: data.id,
     post_url: data.id ? `https://www.facebook.com/${data.id}` : null,
     link,

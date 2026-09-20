@@ -118,6 +118,7 @@ export async function runSocialJob(env, id, { dispatch = dispatchPublication } =
         published_at: job.published_at,
       },
       env,
+      channel: job.channel,
     });
 
     if (res?.ok === false) throw new Error(res.error || 'dispatch_failed');

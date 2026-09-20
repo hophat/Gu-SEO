@@ -36,6 +36,7 @@ const STATUS_META = {
 
 const CHANNEL_META = {
   facebook:  { color: 'blue',   text: 'Facebook' },
+  facebook_video: { color: 'geekblue', text: 'Facebook Video' },
   instagram: { color: 'magenta', text: 'Instagram' },
   threads:   { color: 'purple', text: 'Threads' },
   wordpress: { color: 'cyan',   text: 'WordPress' },

@@ -1,8 +1,14 @@
-import { publishToFacebook } from './facebook.js';
+import { publishToFacebook, publishFacebookVideo } from './facebook.js';
 
-export async function dispatchPublication({ project, article, env }) {
+export async function dispatchPublication({ project, article, env, channel = null }) {
   const pubCfg = project?.publishing_config || {};
   const publisherType = pubCfg.publisher_type || 'internal_d1';
+
+  // The facebook_video channel is a sibling of the link post — same Page
+  // credentials, but the payload is the rendered 9:16 MP4, not a link.
+  if (channel === 'facebook_video') {
+    return publishFacebookVideo({ project, article, configJson: pubCfg.config_json, env });
+  }
 
   switch (publisherType) {
     case 'webhook':
