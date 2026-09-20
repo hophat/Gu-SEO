@@ -194,57 +194,99 @@ function parseScript(raw) {
 }
 
 // ── 2b. business script — per-project promo (AI Video Post) ──────────
-// The brand kit from the claim payload constrains everything: the LLM
-// writes within the DNA (tone/audience), the template renders the brand
-// tokens (accent/tagline/address) — never invented per video.
+// Creator-grade prompt: the LLM writes as a short-form video director,
+// not a brochure. Rules: hook on the pain (never the brand name),
+// concrete numbers over adjectives, banned corporate vocabulary, CTA
+// with urgency. The Brand DNA sets the voice; the template sets the
+// visuals; the LLM only supplies the words.
+const BANNED_WORDS = ['chuyên nghiệp', 'giải pháp', 'tối ưu', 'uy tín', 'chất lượng cao', 'nâng tầm', 'đẳng cấp', 'trải nghiệm khách hàng'];
+
+function scriptQuality(script) {
+  const text = [script.hook, script.reveal, ...(script.points || []), script.cta].join(' ').toLowerCase();
+  const bad = BANNED_WORDS.filter((w) => text.includes(w));
+  if (bad.length) return `contains clichéd wording: ${bad.join(', ')}`;
+  if (!script.hook || script.hook.length < 8) return 'hook too weak';
+  if ((script.points || []).length < 3) return 'needs 3 points';
+  return null;
+}
+
 async function writeBusinessScript(job) {
   if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
   const p = job.project || {};
-  const sys = 'Bạn là biên kịch video ngắn 9:16 cho mạng xã hội. Chỉ trả JSON thuần, không markdown.';
-  const user = `Viết kịch bản video giới thiệu doanh nghiệp ~16 giây.
+  const sys = `Bạn là đạo diễn video ngắn (TikTok/Reels) chuyên về doanh nghiệp địa phương. Bạn viết kịch bản khiến người xem DỪNG LƯỚT trong 1.5 giây đầu. Chỉ trả JSON thuần, không markdown, không giải thích.`;
+  const brief = (attempt) => `Viết kịch bản video 20 giây cho doanh nghiệp này.
 
-Tên: ${p.name || job.title}
-Mô tả: ${(p.description || job.body_markdown || '').slice(0, 800)}
-Loại hình: ${p.brand?.business_type || 'không rõ'}
-Giọng thương hiệu: ${p.brand?.tone || 'thân thiện'}
-Khách hàng: ${p.brand?.audience || ''}
-3 điểm nổi bật gợi ý: ${(job.highlights || []).join('; ') || '(tự chọn từ mô tả)'}
+Doanh nghiệp: ${p.name || job.title}
+Loại hình: ${p.brand?.business_type || '(xem mô tả)'}
+Mô tả: ${(p.description || job.body_markdown || '').slice(0, 600)}
+Khách hàng: ${p.brand?.audience || 'khách địa phương'}
 Khu vực: ${p.brand?.service_area || ''}
+Điểm mạnh gợi ý (tham khảo, phải viết lại bằng ngôn ngữ người bán): ${(job.highlights || []).join('; ') || '(tự rút từ mô tả)'}
 
-Trả JSON đúng schema:
-{"tagline":"khẩu hiệu 4-6 từ","line1":"cần kéo khách, tối đa 7 từ","line2":"câu đôi với line1, tối đa 7 từ","highlights":["điểm 1, tối đa 9 từ","điểm 2, tối đa 9 từ","điểm 3, tối đa 9 từ"],"cta":"lời mời hành động, tối đa 8 từ"}
-Yêu cầu: tiếng Việt tự nhiên theo giọng thương hiệu, không emoji, không markdown.`;
-  const r = await fetch(`${GUROUTER_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${GUROUTER_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: GUROUTER_MODEL,
-      messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
-      temperature: 0.6, max_tokens: 800, response_format: { type: 'json_object' },
-    }),
-  }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
-  if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  const data = await r.json();
-  const raw = data?.choices?.[0]?.message?.content || '';
-  const parsed = parseScript(raw);
-  // The model may emit `lines` as an array OR `line1`/`line2` as separate
-  // fields (and truncation drops trailing ones) — normalise to 2 lines,
-  // falling back to the highlights so the voice track is never empty.
-  const lines = (parsed.lines?.length ? parsed.lines : [parsed.line1, parsed.line2])
-    .map((s) => String(s || '').trim()).filter(Boolean);
-  const highlights = (job.highlights?.length ? job.highlights : (parsed.highlights || []))
-    .slice(0, 3).map((s) => String(s || '').trim()).filter(Boolean);
-  // Truncated completions lose trailing fields — degrade gracefully:
-  // cta falls back to the Brand DNA's CTA, then a neutral invite.
-  if (!parsed.tagline || (!lines.length && !highlights.length)) {
-    throw new Error('business_script_schema_bad: ' + raw.slice(0, 150));
-  }
-  return {
-    tagline: String(parsed.tagline).trim(),
-    lines: lines.length ? lines : highlights.slice(0, 1),
-    highlights,
-    cta: String(parsed.cta || p.brand?.cta || 'Xem thêm tại website của chúng tôi').trim(),
+CẤU TRÚC (mỗi dòng 1 scene, ≤ 9 từ/dòng):
+- hook: 1 con số bất ngờ HOẶC câu hỏi đánh thẳng vào nỗi đau khách. CẤM mở đầu bằng tên thương hiệu.
+- reveal: tên thương hiệu + 1 câu định vị (tên sẽ do video tự hiển thị, câu này để GIỌNG ĐỌC: "tên — tagline").
+- points: đúng 3 lý do chọn quán/shop. Mỗi lý do phải CỤ THỂ (con số, chi tiết cảm quan, thời gian) — không phải tính từ chung chung.
+- cta: hành động ngay (ghé thử / gọi / nhắn tin), có lý do.
+
+QUY TẮC:
+1. Nghe như người bán nói với khách quen, KHÔNG nghe như tờ rơi quảng cáo.
+2. Cấm các từ: ${BANNED_WORDS.join(', ')}.
+3. Tiếng Việt tự nhiên theo giọng: ${p.brand?.tone || 'thân thiện, gần gũi'}.
+4. Không emoji, không markdown, không dấu chấm than quá 1 cái.
+
+VÍ DỤ ĐÚNG CHUẨN (quán bánh xèo):
+{"hook":"78% khách tìm quán ăn trên Google trước khi đến","reveal":"Bánh Xèo ABC — giòn rụm đúng điệu miền Tây","points":["Bánh chiên tại chỗ, bột nhào mỗi sáng","Nước mắm pha riêng theo công thức 20 năm","No căng chỉ với 25 nghìn một cái"],"cta":"Ghé 123 Nguyễn Văn A trước 9 giờ tối"}
+
+VÍ DỤ DỞ (cấm): "Chúng tôi cung cấp giải pháp chuyên nghiệp tối ưu trải nghiệm khách hàng"
+
+Trả JSON: {"hook":"...","reveal":"...","points":["...","...","..."],"cta":"..."}`;
+  const call = async (nudge) => {
+    const r = await fetch(`${GUROUTER_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${GUROUTER_KEY}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: GUROUTER_MODEL,
+        messages: [{ role: 'system', content: sys }, { role: 'user', content: brief() + (nudge ? '\n\nBẢN TRƯỚC bị loại vì sáo rỗng. Viết lại: cụ thể hơn, người bán hơn, có con số thật.' : '') }],
+        temperature: nudge ? 0.9 : 0.7, max_tokens: 800, response_format: { type: 'json_object' },
+      }),
+    }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
+    if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    const data = await r.json();
+    return data?.choices?.[0]?.message?.content || '';
   };
+  // Two attempts: the first pass, then a punchier retry if the quality
+  // gate flags clichés or a weak hook. Best effort — a passing script
+  // wins; if both fail the gate, the second one still ships (a mediocre
+  // video beats no video for the operator).
+  let script = null, lastParsed = null;
+  for (const nudge of [false, true]) {
+    const raw = await call(nudge);
+    const parsed = parseScript(raw);
+    lastParsed = parsed;
+    const reveal = String(parsed.reveal || parsed.tagline || '').trim();
+    const points = (parsed.points || parsed.highlights || [])
+      .map((s) => String(s || '').trim()).filter(Boolean).slice(0, 3);
+    const candidate = {
+      hook: String(parsed.hook || '').trim(),
+      reveal,
+      points,
+      cta: String(parsed.cta || p.brand?.cta || 'Ghé thăm chúng tôi hôm nay').trim(),
+    };
+    const problem = scriptQuality(candidate);
+    if (!problem) { script = candidate; break; }
+    log(`script rejected (${problem}) — retrying punchier`);
+  }
+  if (!script) {
+    // Both attempts flagged — ship the retry anyway with DNA fallbacks.
+    script = {
+      hook: String(lastParsed?.hook || '').trim() || `${p.name || 'Chúng tôi'} đang chờ bạn`,
+      reveal: String(lastParsed?.reveal || lastParsed?.tagline || p.name || '').trim(),
+      points: (lastParsed?.points || job.highlights || []).slice(0, 3).map((s) => String(s).trim()).filter(Boolean),
+      cta: String(lastParsed?.cta || p.brand?.cta || 'Ghé thăm chúng tôi hôm nay').trim(),
+    };
+  }
+  return script;
 }
 
 // ── 3. tts — edge-tts per segment, duration via ffprobe ──────────────
@@ -311,14 +353,14 @@ function composeHtml(job, script, segs, logoSrc = null) {
   return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: scenes, logoSrc });
 }
 
-// Business composition — the operator's storyboard:
-//   [0-2s]  tên + tagline   [2-6s]  hero zoom + 2 câu ngắn
-//   [6-10s] 3 điểm nổi bật  [10-14s] 📍 địa chỉ ☎ điện thoại
+// Business composition — the creator storyboard:
+//   [0-2s]  HOOK — số bất ngờ / nỗi đau (chưa có tên brand)
+//   [2-6s]  REVEAL — badge + tên + tagline trên ảnh thật
+//   [6-11s] 3 lý do cụ thể (số / chi tiết cảm quan)
+//   [11-14s] 📍 địa chỉ ☎ điện thoại (im lặng, fixed beat)
 //   [14-16s] CTA
 // Scene backgrounds come from the real imagery collected off the
 // project's website (media[]), one image per scene, R2 hero as fallback.
-// The contact scene is text-only on a fixed beat; every other scene is
-// voiced by its own TTS segment.
 function composeBusinessHtml(job, script, segs, media = [], logoSrc = null) {
   const p = job.project || {};
   const brand = p.name || 'Doanh nghiệp';
@@ -326,14 +368,14 @@ function composeBusinessHtml(job, script, segs, media = [], logoSrc = null) {
   const outroUrl = (p.publishing_url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
   const hasHero = existsSync(join(WORK, 'assets', 'hero.jpg'));
   // Which scenes get a photo background, and which collected image.
-  const bgFor = { intro: 0, hero: 0, highlights: 1, contact: 2, outro: 3 };
+  const bgFor = { hook: -1, reveal: 0, points: 1, contact: 2, outro: 3 };
 
   const sceneDefs = [
-    { kind: 'intro', seg: segs[0] },
-    { kind: 'hero', seg: segs[1] },
-    { kind: 'highlights', seg: segs[2] },
+    { kind: 'hook', seg: segs[0] },
+    { kind: 'reveal', seg: segs[1] },
+    { kind: 'points', seg: segs[2] },
     { kind: 'contact', seg: 3.0, silent: true },
-    { kind: 'outro', seg: segs[segs.length - 1] },
+    { kind: 'cta', seg: segs[segs.length - 1] },
   ];
   const GAP = 0.4;
   let t = 0;
@@ -343,23 +385,26 @@ function composeBusinessHtml(job, script, segs, media = [], logoSrc = null) {
     s.start = t;
     s.dur = s.seg + GAP;
     let inner = '';
-    if (s.kind === 'intro') {
-      inner = `<div class="badge">${esc(p.name || brand)}</div><h1 class="hook">${esc(p.name || '')}</h1><p class="tagline">${esc(script.tagline)}</p>`;
-    } else if (s.kind === 'highlights') {
-      inner = script.highlights.map((h, n) => `<p class="hl"><span class="hn">${n + 1}</span>${esc(h)}</p>`).join('');
+    if (s.kind === 'hook') {
+      // The scroll-stopper: big, alone, no branding yet.
+      inner = `<h1 class="hook">${esc(script.hook)}</h1>`;
+    } else if (s.kind === 'reveal') {
+      inner = `<div class="badge">${esc(brand)}</div><h1 class="hook">${esc(p.name || brand)}</h1><p class="tagline">${esc(script.reveal)}</p>`;
+    } else if (s.kind === 'points') {
+      inner = script.points.map((h, n) => `<p class="hl"><span class="hn">${n + 1}</span>${esc(h)}</p>`).join('');
     } else if (s.kind === 'contact') {
       inner = `${p.address ? `<p class="contact">📍 ${esc(p.address)}</p>` : ''}${p.phone ? `<p class="contact">☎ ${esc(p.phone)}</p>` : ''}`;
-    } else if (s.kind === 'outro') {
-      inner = `<p class="outro">${esc(script.cta)}</p><p class="sub">${esc(outroUrl)}</p>`;
     } else {
-      inner = `<p class="hook">${esc(script.lines[0] || '')}</p>${script.lines[1] ? `<p class="point">${esc(script.lines[1])}</p>` : ''}`;
+      inner = `<p class="outro">${esc(script.cta)}</p><p class="sub">${esc(outroUrl)}</p>`;
     }
     sceneHtml.push(`<div id="s${i}" class="clip scene" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="0">${inner}</div>`);
     // Background: a real site image for this scene, else the R2 hero.
+    // The hook scene stays on the pure brand gradient — it must read
+    // clean before the brand reveal.
     const siteImg = media[bgFor[s.kind]];
     const bgSrc = siteImg ? `assets/media/img${bgFor[s.kind]}.jpg`
-      : (hasHero ? 'assets/hero.jpg' : null);
-    if (bgSrc && s.kind !== 'intro') {
+      : (hasHero && s.kind !== 'hook' ? 'assets/hero.jpg' : null);
+    if (bgSrc && s.kind !== 'hook') {
       s.bgId = `bg${bgEls.length}`;
       bgEls.push(s);
       sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img src="${bgSrc}" alt=""/></div>`);
@@ -574,12 +619,12 @@ async function renderOne(job) {
   const script = isBusiness ? await writeBusinessScript(scriptSource) : await writeScript(job);
   log(`script ok (${job.kind})`);
 
-  // TTS per segment. Business scenes: intro, hero, highlights, outro —
-  // the contact scene is silent on a fixed beat. edge-tts occasionally
-  // returns an empty file (network hiccup) — retry once, then fall back
-  // to the companion voice before giving up.
+  // TTS per scene. Business: hook → reveal → 3 points → cta (contact
+  // scene is silent on a fixed beat). edge-tts occasionally returns an
+  // empty file (network hiccup) — retry, then fall back to the
+  // companion voice before giving up.
   const segTexts = isBusiness
-    ? [`${job.project?.name || ''}. ${script.tagline}`, script.lines.join(' '), script.highlights.join(' '), script.cta]
+    ? [script.hook, `${job.project?.name || ''}. ${script.reveal}`, script.points.join(' '), script.cta]
     : [script.hook, ...script.points, script.cta];
   const segs = [];
   for (const [i, text] of segTexts.entries()) {
