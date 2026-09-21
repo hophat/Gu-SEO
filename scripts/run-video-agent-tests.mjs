@@ -10,9 +10,12 @@
 // input producing the same HTML (what makes a snapshot at any --at time
 // deterministic).
 //
-// For the post video it measures the real music bed with ffmpeg: a bed
+// For the post video it measures with ffmpeg: the real music bed (a bed
 // nobody can hear is indistinguishable from no music at all, and the first
-// version rendered 17 dB too quiet to notice.
+// version rendered 17 dB too quiet to notice) and the loudness of the
+// finished mix (a real render measured -29 LUFS, ~15 LU under what social
+// expects, and the master that fixes it must be one constant gain — a
+// dynamic normalizer lifts the bed through every pause in the voice).
 //
 //   node --no-warnings scripts/run-video-agent-tests.mjs
 import assert from 'node:assert/strict';
@@ -27,7 +30,7 @@ process.env.BASE_URL = 'https://agent.test';
 process.env.ADMIN_TOKEN = 'test-token';
 process.env.GUROUTER_API_KEY = '';
 
-const { composeCarouselSlideHtml, composeHtml, makeBgm, renderCarousel, slideQueries } =
+const { composeCarouselSlideHtml, composeHtml, LOUDNESS, makeBgm, masterLoudness, renderCarousel, slideQueries } =
   await import('../video-agent/render-video.mjs');
 const { carouselPrefix, carouselSlideKey } = await import('../functions/_lib/video_jobs.js');
 
@@ -296,6 +299,82 @@ if (spawnSync('ffmpeg', ['-version'], { encoding: 'utf8' }).status !== 0) {
   assert.ok(Math.abs(dur - TOTAL) < 0.2, `the bed must span the video (${dur}s for ${TOTAL}s)`);
   ok('the bed spans the whole video');
   rmSync(dir, { recursive: true, force: true });
+
+  // ── the finished mix at social loudness ────────────────────────────
+  // The composition is deliberately restrained (voice + bed at the gain
+  // above), which is why a real render lands around -29 LUFS. Delivered
+  // as-is it plays back faint in-feed, so the mixed file is mastered to
+  // -14 LUFS. And mastered by *one* gain: ffmpeg's loudnorm only honours
+  // `linear=true` while the source's measured LRA is non-zero and the gain
+  // fits under the TP ceiling, silently going dynamic — and pumping the
+  // bed through every pause in the voice — otherwise.
+  const mixDir = mkdtempSync(join(tmpdir(), 'loudness-'));
+  const mix = join(mixDir, 'mix.m4a');
+  // Narration with pauses, over the real bed at its documented gain — the
+  // structure a dynamic normalizer would pump, starting ~15 LU too quiet.
+  spawnSync('ffmpeg', ['-y', '-f', 'lavfi', '-i',
+    `aevalsrc=0.06*sin(2*PI*220*t)*lt(mod(t\\,1.5)\\,0.9):d=${TOTAL}:s=48000`,
+    '-i', makeBgm(TOTAL, 'alpha-post-post', join(mixDir, 'bed.mp3')),
+    '-filter_complex', '[0]aformat=channel_layouts=mono[v];[1]volume=0.12[m];[v][m]amix=inputs=2:normalize=0[a]',
+    '-map', '[a]', '-c:a', 'aac', '-b:a', '192k', mix], { encoding: 'utf8' });
+
+  // Measured with ebur128 — not the filter that did the mastering.
+  const integrated = (file) => {
+    const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-af', 'ebur128=peak=true:framelog=quiet', '-f', 'null', '-'], { encoding: 'utf8' });
+    const s = r.stderr.split('Summary:')[1] || '';
+    const num = (re) => Number((s.match(re) || [])[1]);
+    return { i: num(/I:\s+(-?[\d.]+) LUFS/), tp: num(/Peak:\s+(-?[\d.]+) dBFS/) };
+  };
+  // The dB each window of the file moved by. One gain is a flat line here;
+  // a dynamic normalizer diverges wherever the voice is not talking.
+  const gainSpread = (before, after, winSec = 0.4) => {
+    const rms = (file) => {
+      const { stdout } = spawnSync('ffmpeg', ['-v', 'error', '-i', file, '-ac', '1', '-ar', '48000', '-f', 'f32le', '-'], { maxBuffer: 1 << 28 });
+      const w = Math.round(winSec * 48000), out = [];
+      for (let s = 0; s + w <= stdout.length / 4; s += w) {
+        let acc = 0;
+        for (let n = s; n < s + w; n++) { const v = stdout.readFloatLE(4 * n); acc += v * v; }
+        out.push(Math.sqrt(acc / w));
+      }
+      return out;
+    };
+    const a = rms(before), b = rms(after);
+    const gains = a.map((v, n) => (v > 1e-4 && b[n] > 1e-4 ? 20 * Math.log10(b[n] / v) : null)).filter((g) => g !== null);
+    return { windows: gains.length, spread: Math.max(...gains) - Math.min(...gains) };
+  };
+
+  const raw = integrated(mix);
+  const master = masterLoudness(mix, join(mixDir, 'master.m4a'));
+  assert.ok(master && existsSync(master), 'the finished mix must be mastered, not delivered as rendered');
+  const done = integrated(master);
+  assert.ok(raw.i < LOUDNESS.i - 10, `the mix as rendered is quiet (${raw.i} LUFS)`);
+  assert.ok(Math.abs(done.i - LOUDNESS.i) <= 1, `the master must hit ${LOUDNESS.i} LUFS (measured ${done.i})`);
+  assert.ok(done.tp <= LOUDNESS.tp + 0.1, `the master must stay under ${LOUDNESS.tp} dBTP (measured ${done.tp})`);
+  ok('the finished mix is mastered to social loudness');
+
+  const gains = gainSpread(mix, master);
+  assert.ok(gains.windows >= 10, 'enough windows to see a gain that moves');
+  assert.ok(gains.spread <= 0.3, `one gain across the whole mix — a spread of ${gains.spread.toFixed(2)} dB means the bed was pumped`);
+  ok('the master is one constant gain, so the voice-to-bed balance is untouched');
+
+  // A mix whose peaks already sit near full scale cannot reach -14 without
+  // clipping, so the gain is capped below the ceiling: the waveform is
+  // never sacrificed to the loudness number.
+  const peaky = join(mixDir, 'peaky.m4a');
+  spawnSync('ffmpeg', ['-y', '-f', 'lavfi', '-i',
+    `aevalsrc=0.95*sin(2*PI*220*t)*lt(mod(t\\,3)\\,0.05):d=${TOTAL}:s=48000`,
+    '-c:a', 'aac', '-b:a', '192k', peaky], { encoding: 'utf8' });
+  const capped = integrated(masterLoudness(peaky, join(mixDir, 'peaky-master.m4a')));
+  assert.ok(capped.tp <= LOUDNESS.tp + 0.1, `never above ${LOUDNESS.tp} dBTP (measured ${capped.tp})`);
+  assert.ok(capped.i <= LOUDNESS.i, `left under target rather than clipped (measured ${capped.i} LUFS)`);
+  ok('a mix with no headroom is capped at the ceiling, never clipped past it');
+
+  const silent = join(mixDir, 'silent.m4a');
+  spawnSync('ffmpeg', ['-y', '-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=mono', '-t', '1', silent], { encoding: 'utf8' });
+  assert.equal(masterLoudness(silent, join(mixDir, 'silent-master.m4a')), null,
+    'a mix with nothing to measure is left alone instead of failing the job');
+  ok('an unmeasurable mix is passed through, not mastered into silence');
+  rmSync(mixDir, { recursive: true, force: true });
 }
 
 // The composition is what puts the bed under the voice — at the gain the

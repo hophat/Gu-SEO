@@ -657,6 +657,53 @@ export function makeBgm(totalSec, seedStr, out = join(WORK, 'assets', 'bgm.mp3')
   return r.status === 0 && existsSync(out) && statSync(out).size > 5000 ? out : null;
 }
 
+// ── 4d. loudness master — the finished mix at social loudness ────────
+// A real render of the composition measures ≈ -29 LUFS integrated: the
+// visuals, the voice and the bed are each fine, but the delivered file is
+// ~15 LU quieter than what social platforms expect, so it plays back faint
+// in-feed. So the mixed MP4 is measured (EBU R128) and the whole mix is
+// scaled by one static gain to -14 LUFS, capped so a true peak never
+// lands above -1.5 dBTP.
+//
+// One gain, not ffmpeg's `loudnorm=...:linear=true`: loudnorm honours
+// linear mode only while the source's measured LRA is non-zero and the
+// gain fits under the TP ceiling, and otherwise falls back to *dynamic*
+// normalization without saying so — a time-varying gain that lifts the bed
+// through every pause in the voice, which would move the voice-to-bed
+// balance. `volume` cannot: voice and bed are multiplied by the same
+// number, so the balance the composition sets with data-volume is fixed by
+// construction. (Measured on a narration that pauses every 1.5s: one gain
+// keeps a gain spread of 0.03 dB across the file, the dynamic fallback
+// 1.1 dB.)
+//
+// A file we cannot measure (no audio stream, ffmpeg missing) is delivered
+// untouched rather than failing the job, but the caller logs the skip: a
+// silent one is how the quiet-mix bug survived this long.
+//
+// Exported, with an injectable `out`, for scripts/run-video-agent-tests.mjs:
+// the claim is a number, so the test re-measures the master with ebur128
+// and checks the gain is one constant across the file.
+export const LOUDNESS = { i: -14, tp: -1.5 };
+
+export function masterLoudness(src, out = join(WORK, 'renders', 'master.mp4')) {
+  const meas = spawnSync('ffmpeg', [
+    '-hide_banner', '-nostats', '-i', src,
+    '-af', 'ebur128=peak=true:framelog=quiet', '-f', 'null', '-',
+  ], { encoding: 'utf8', timeout: 5 * 60 * 1000 });
+  const summary = (meas.stderr || '').split('Summary:')[1];
+  const num = (re) => Number((summary?.match(re) || [])[1]);
+  const i = num(/I:\s+(-?[\d.]+) LUFS/);
+  const tp = num(/Peak:\s+(-?[\d.]+) dBFS/);
+  // Digital silence measures -inf, which parses to NaN, so one guard does.
+  if (!(i > -70) || !Number.isFinite(tp)) return null;
+  const gain = Math.min(LOUDNESS.i - i, LOUDNESS.tp - tp);
+  const r = spawnSync('ffmpeg', [
+    '-y', '-i', src, '-af', `volume=${gain.toFixed(2)}dB`,
+    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', out,
+  ], { encoding: 'utf8', timeout: 10 * 60 * 1000 });
+  return r.status === 0 && existsSync(out) && statSync(out).size > 5000 ? out : null;
+}
+
 // ── free slide imagery (Openverse) ────────────────────────────────────
 // Openverse aggregates CC0 / public-domain photos: no API key, no
 // watermark, and no attribution obligation, so a slide can carry one
@@ -1021,8 +1068,11 @@ async function renderOne(job) {
     .map((f) => ({ f, m: statSync(join(renders, f)).mtimeMs }))
     .sort((a, b) => b.m - a.m)[0]?.f;
   if (!mp4) throw new Error('render produced no mp4');
-  const bytes = readFileSync(join(renders, mp4));
-  log(`rendered ${(bytes.length / 1024).toFixed(0)}KB → delivering`);
+  const raw = join(renders, mp4);
+  const mastered = masterLoudness(raw);
+  const bytes = readFileSync(mastered || raw);
+  log(`${mastered ? `mastered to ${LOUDNESS.i} LUFS` : 'loudness master skipped'} ` +
+    `(${(bytes.length / 1024).toFixed(0)}KB) → delivering`);
 
   const up = await api('/api/admin/video/deliver', {
     method: 'POST',
