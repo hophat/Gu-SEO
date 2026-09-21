@@ -7,7 +7,7 @@
 // where it would sit next to an unrelated product.
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Card, Table, Button, Space, Typography, Tag, message, Row, Col, Statistic,
+  Card, Table, Button, Space, Typography, message, Row, Col, Statistic,
   Tooltip, Alert, Popconfirm, Select, Modal,
 } from 'antd';
 import {
@@ -16,24 +16,11 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
+import VideoStatusTag from '../components/VideoStatusTag.jsx';
 import { apiGet, apiPost, getActiveProject } from '../api.js';
+import { CAROUSEL_KIND, IN_PROGRESS, statusMeta, useVideoJobs, fmtDateTime } from '../lib/videoQueue.js';
 
 const { Text, Paragraph } = Typography;
-
-const STATUS_META = {
-  pending:   { color: 'default',    text: 'Chờ tạo slide' },
-  claimed:   { color: 'processing', text: 'Đang tạo slide' },
-  rendering: { color: 'processing', text: 'Đang tạo slide' },
-  done:      { color: 'success',    text: 'Sẵn sàng đăng' },
-  failed:    { color: 'error',      text: 'Lỗi' },
-};
-
-const IN_PROGRESS = ['pending', 'claimed', 'rendering'];
-
-function fmtDate(sec) {
-  if (!sec) return '—';
-  return new Date(sec * 1000).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
-}
 
 // Slide 1 = bìa, slides giữa = ý chính, slide cuối = kêu gọi — khớp với
 // mẫu mà agent dựng (cover / 3 points / CTA).
@@ -44,39 +31,21 @@ function slideRole(index, total) {
 }
 
 export default function Carousel() {
-  const [jobs, setJobs] = useState([]);
+  // The shared queue hook owns loading, polling, publish and delete; this
+  // page keeps only its create flow and its presentation.
+  const { jobs: allJobs, loading, reload: load, publish, remove } = useVideoJobs({ noun: 'carousel' });
+  const jobs = allJobs.filter((j) => j.kind === CAROUSEL_KIND);
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [selectedSlug, setSelectedSlug] = useState(undefined);
   const [viewing, setViewing] = useState(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { status, body } = await apiGet('/api/admin/video/list');
-    if (status === 200 && body?.ok) {
-      // The queue carries videos and carousels; this page owns carousels only.
-      setJobs((body.jobs || []).filter((j) => j.kind === 'carousel'));
-    } else {
-      message.error(body?.error || 'Không tải được danh sách carousel');
-    }
-    setLoading(false);
-  }, []);
 
   const loadPosts = useCallback(async () => {
     const { status, body } = await apiGet('/api/admin/blog/list');
     if (status === 200) setPosts((body?.posts || []).filter((p) => p.status === 'published'));
   }, []);
 
-  useEffect(() => { load(); loadPosts(); }, [load, loadPosts]);
-
-  // Slides are produced on the render VPS within a ~5 minute cycle — poll
-  // while anything is still cooking so the operator doesn't have to refresh.
-  useEffect(() => {
-    if (!jobs.some((j) => IN_PROGRESS.includes(j.status))) return;
-    const t = setInterval(load, 20000);
-    return () => clearInterval(t);
-  }, [jobs, load]);
+  useEffect(() => { loadPosts(); }, [loadPosts]);
 
   const postOptions = useMemo(
     () => posts.map((p) => ({ value: p.slug, label: p.title || p.slug })),
@@ -103,31 +72,10 @@ export default function Carousel() {
     }
   };
 
-  const publishFb = async (id) => {
-    setBusyId(id);
-    const { status, body } = await apiPost('/api/admin/video/publish', { id });
-    setBusyId(null);
-    if (status === 200 && body?.ok) {
-      message.success(body.posted ? 'Đã đăng carousel lên Facebook' : 'Đã vào hàng chờ — cron sẽ đăng trong ít phút');
-      load();
-    } else {
-      message.error(body?.error === 'already_enqueued'
-        ? 'Carousel này đã có job đăng — xem tab Bài đăng mạng xã hội'
-        : body?.error || 'Đăng thất bại');
-    }
-  };
-
-  const deleteJob = async (id) => {
-    setBusyId(id);
-    const { status, body } = await apiPost('/api/admin/video/delete', { id });
-    setBusyId(null);
-    if (status === 200 && body?.ok) {
-      message.success('Đã xóa carousel (cả các slide trên R2)');
-      load();
-    } else {
-      message.error(body?.detail || body?.error || 'Xóa thất bại');
-    }
-  };
+  // Row actions: the page owns the per-row spinner, the shared hook owns
+  // the request and the copy.
+  const publishFb = async (id) => { setBusyId(id); await publish(id); setBusyId(null); };
+  const deleteJob = async (id) => { setBusyId(id); await remove(id); setBusyId(null); };
 
   const counts = {
     rendering: jobs.filter((j) => IN_PROGRESS.includes(j.status)).length,
@@ -148,7 +96,7 @@ export default function Carousel() {
           );
         }
         return (
-          <Tooltip title={(STATUS_META[r.status] || {}).text || r.status}>
+          <Tooltip title={statusMeta(CAROUSEL_KIND, r.status).text}>
             <div style={{ width: 64, height: 80, borderRadius: 6, border: '1px dashed #555', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
               <FileImageOutlined />
             </div>
@@ -168,14 +116,13 @@ export default function Carousel() {
     {
       title: 'Trạng thái', dataIndex: 'status', width: 170,
       render: (s, r) => {
-        const m = STATUS_META[s] || { color: 'default', text: s };
-        const tag = <Tag color={m.color}>{m.text}</Tag>;
+        const tag = <VideoStatusTag status={s} kind={CAROUSEL_KIND} />;
         return s === 'failed' && r.error ? <Tooltip title={r.error}>{tag}</Tooltip> : tag;
       },
     },
     {
       title: 'Cập nhật', dataIndex: 'updated_at', width: 140, responsive: ['lg'],
-      render: (v) => <Text type="secondary">{fmtDate(v)}</Text>,
+      render: (v) => <Text type="secondary">{fmtDateTime(v)}</Text>,
     },
     {
       title: 'Hành động', key: 'actions', width: 280,

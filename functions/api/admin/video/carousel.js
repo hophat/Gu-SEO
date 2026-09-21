@@ -4,6 +4,7 @@
 // multi-photo post. One carousel per post at a time.
 import { json, nowSec, newId, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
+import { carouselRef } from '../../../_lib/video_jobs.js';
 
 export const onRequestPost = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -22,13 +23,13 @@ export const onRequestPost = async ({ env, request }) => {
   if (!post) return json(404, { error: 'post_not_found', slug });
 
   // video_jobs has a UNIQUE index on blog_post_id — the post video for
-  // this article already occupies it. Carousels use a sentinel id the
-  // same way business jobs do (business:<project_id>), and the claim
-  // path strips the prefix back off when loading the post.
-  const sentinel = `carousel:${post.id}`;
+  // this article already occupies it. Carousels use a sentinel ref the
+  // same way business jobs do; the queue readers strip it back off (see
+  // functions/_lib/video_jobs.js).
+  const ref = carouselRef(post.id);
   const existing = await env.DB.prepare(
     `SELECT id, status FROM video_jobs WHERE kind = 'carousel' AND blog_post_id = ? ORDER BY updated_at DESC LIMIT 1`
-  ).bind(sentinel).first();
+  ).bind(ref).first();
   if (existing && ['pending', 'claimed', 'rendering'].includes(existing.status)) {
     return json(409, { error: 'already_rendering', job_id: existing.id });
   }
@@ -42,7 +43,7 @@ export const onRequestPost = async ({ env, request }) => {
   await env.DB.prepare(
     `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, attempts, created_at, updated_at)
      VALUES (?, ?, ?, ?, 'carousel', 'pending', 0, ?, ?)`
-  ).bind(id, post.project_id || projectId, sentinel, post.slug, t, t).run();
+  ).bind(id, post.project_id || projectId, ref, post.slug, t, t).run();
 
   audit(env, 'admin', 'video.carousel_create', post.id, { job_id: id });
   return json(200, { ok: true, job_id: id, hint: 'Agent sẽ xuất 5 slide PNG trong chu kỳ 5 phút tới.' });

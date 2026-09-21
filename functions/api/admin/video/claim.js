@@ -15,6 +15,7 @@
 // never trips the unique index.
 import { json, nowSec, newId, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
+import { postIdFromRef } from '../../../_lib/video_jobs.js';
 
 // How far back the auto-queue looks for post videos. Videos are
 // enrichment for fresh posts — without a window, the first agent run
@@ -169,11 +170,9 @@ export const onRequestPost = async ({ env, request }) => {
       await env.DB.prepare(
         `UPDATE video_jobs SET status='claimed', attempts=attempts+1, claimed_at=?, updated_at=?, error=NULL WHERE id=?`
       ).bind(now, now, pendingJob.id).run();
-      // Carousel jobs carry a sentinel blog_post_id (carousel:<id>) — the
-      // UNIQUE index on blog_post_id already belongs to the post video.
-      const postId = pendingJob.kind === 'carousel'
-        ? pendingJob.blog_post_id.replace(/^carousel:/, '')
-        : pendingJob.blog_post_id;
+      // Carousel jobs carry a sentinel blog_post_id — resolve it back to the
+      // real post id (the policy lives in functions/_lib/video_jobs.js).
+      const postId = postIdFromRef(pendingJob.blog_post_id);
       const p = await env.DB.prepare(
         `SELECT id, slug, title, meta_description, body_markdown,
                 hero_image_key, project_id

@@ -6,7 +6,7 @@
 // what failed and why, and links the MP4 for download / social posting.
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Card, Table, Button, Space, Typography, Tag, message, Row, Col, Tooltip, Alert, Popconfirm, Input, Modal,
+  Card, Table, Button, Space, Typography, message, Row, Col, Tooltip, Alert, Popconfirm, Input, Modal,
 } from 'antd';
 import {
   ReloadOutlined, VideoCameraOutlined, CheckCircleOutlined,
@@ -14,42 +14,22 @@ import {
   AppstoreOutlined, DeleteOutlined, GlobalOutlined, PlayCircleOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
+import VideoStatusTag from '../components/VideoStatusTag.jsx';
 import { apiGet, apiPost, getActiveProject } from '../api.js';
+import { CAROUSEL_KIND, useVideoJobs, fmtDateTime } from '../lib/videoQueue.js';
 
 const { Text } = Typography;
 
-const STATUS_META = {
-  done:      { color: 'success',    text: 'Đã có video' },
-  claimed:   { color: 'processing', text: 'Đang render' },
-  rendering: { color: 'processing', text: 'Đang render' },
-  pending:   { color: 'default',    text: 'Chờ render' },
-  failed:    { color: 'error',      text: 'Lỗi render' },
-};
-
-function fmtDate(sec) {
-  if (!sec) return '—';
-  return new Date(sec * 1000).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
-}
-
 export default function Video() {
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // The shared queue hook owns loading, polling, publish and delete. This
+  // page shows only videos — carousels are a post format on their own page.
+  const { jobs: allJobs, loading, reload: load, publish, remove } = useVideoJobs({ poll: false });
+  const jobs = allJobs.filter((j) => j.kind !== CAROUSEL_KIND);
   const [busyId, setBusyId] = useState(null);
   const [siteUrl, setSiteUrl] = useState('');
   const [viewing, setViewing] = useState(null);
   const [brandForm, setBrandForm] = useState({ video_tagline: '', brand_accent: '', address: '', phone: '' });
   const [brandOpen, setBrandOpen] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { status, body } = await apiGet('/api/admin/video/list');
-    // Carousels are a post format — they live on the Carousel page.
-    if (status === 200 && body?.ok) setJobs((body.jobs || []).filter((j) => j.kind !== 'carousel'));
-    else message.error(body?.error || 'Không tải được danh sách video');
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   const loadBrand = useCallback(async () => {
     const pid = getActiveProject();
@@ -90,29 +70,9 @@ export default function Video() {
     }
   };
 
-  const publishFb = async (id) => {
-    setBusyId(id);
-    const { status, body } = await apiPost('/api/admin/video/publish', { id });
-    setBusyId(null);
-    if (status === 200 && body?.ok) {
-      message.success(body.posted ? 'Đã đăng video lên Facebook' : 'Đã vào hàng chờ — cron sẽ đăng trong ít phút');
-      load();
-    } else {
-      message.error(body?.error === 'already_enqueued'
-        ? 'Bài này đã có job đăng video — xem tab Bài đăng mạng xã hội'
-        : body?.error || 'Đăng thất bại');
-    }
-  };
-
-  const statusTag = (s, kind) => {
-    const m = STATUS_META[s] || { color: 'default', text: s };
-    return (
-      <Space size={4}>
-        <Tag color={m.color}>{m.text}</Tag>
-        {kind === 'business' && <Tag color="gold">Doanh nghiệp</Tag>}
-      </Space>
-    );
-  };
+  // Row actions: the page owns the per-row spinner, the shared hook owns
+  // the request and the copy.
+  const publishFb = async (id) => { setBusyId(id); await publish(id); setBusyId(null); };
 
   const createBusiness = async () => {
     setBusyId('__biz__');
@@ -145,17 +105,7 @@ export default function Video() {
     }
   };
 
-  const deleteVideo = async (id) => {
-    setBusyId(id);
-    const { status, body } = await apiPost('/api/admin/video/delete', { id });
-    setBusyId(null);
-    if (status === 200 && body?.ok) {
-      message.success('Đã xóa video (cả file trên R2)');
-      load();
-    } else {
-      message.error(body?.detail || body?.error || 'Xóa thất bại');
-    }
-  };
+  const deleteVideo = async (id) => { setBusyId(id); await remove(id); setBusyId(null); };
 
   const columns = [
     {
@@ -179,7 +129,7 @@ export default function Video() {
       title: 'Bài viết', dataIndex: 'title', ellipsis: true,
       render: (t, r) => <Text strong={false} ellipsis={{ tooltip: t }} style={{ maxWidth: 320 }}>{t || r.slug}</Text>,
     },
-    { title: 'Trạng thái', dataIndex: 'status', width: 170, render: (s, r) => statusTag(s, r.kind) },
+    { title: 'Trạng thái', dataIndex: 'status', width: 170, render: (s, r) => <VideoStatusTag status={s} kind={r.kind} /> },
     {
       title: 'Hành động', dataIndex: 'video_url', width: 220,
       render: (url, r) => {
@@ -214,7 +164,7 @@ export default function Video() {
     },
     {
       title: 'Cập nhật', dataIndex: 'updated_at', width: 140, responsive: ['lg'],
-      render: (v) => <Text type="secondary">{fmtDate(v)}</Text>,
+      render: (v) => <Text type="secondary">{fmtDateTime(v)}</Text>,
     },
   ];
 
@@ -331,7 +281,7 @@ export default function Video() {
         )}
         <Space style={{ marginTop: 12 }} direction="vertical" size={0}>
           <Text strong>{viewing?.title || viewing?.slug}</Text>
-          <Text type="secondary">{viewing?.slug} · {statusTag(viewing?.status, viewing?.kind)}</Text>
+          <Text type="secondary">{viewing?.slug} · <VideoStatusTag status={viewing?.status} kind={viewing?.kind} /></Text>
         </Space>
       </Modal>
     </PageContainer>

@@ -3,6 +3,7 @@
 // /image/ route that serves hero images (one R2 bucket).
 import { json } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
+import { CAROUSEL_KIND, isCarouselKey, postIdFromRefSql, carouselSlideKeys } from '../../../_lib/video_jobs.js';
 
 export const onRequestGet = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -16,8 +17,7 @@ export const onRequestGet = async ({ env, request }) => {
         `SELECT v.id, v.slug, v.kind, v.status, v.video_key, v.error, v.attempts, v.updated_at,
                 p.title, p.project_id
          FROM video_jobs v LEFT JOIN blog_posts p
-           ON p.id = CASE WHEN v.blog_post_id LIKE 'carousel:%'
-                          THEN substr(v.blog_post_id, 10) ELSE v.blog_post_id END
+           ON p.id = ${postIdFromRefSql('v.blog_post_id')}
          WHERE v.project_id = ?
          ORDER BY v.updated_at DESC LIMIT ?`
       ).bind(projectId, limit).all()
@@ -25,8 +25,7 @@ export const onRequestGet = async ({ env, request }) => {
         `SELECT v.id, v.slug, v.kind, v.status, v.video_key, v.error, v.attempts, v.updated_at,
                 p.title, p.project_id
          FROM video_jobs v LEFT JOIN blog_posts p
-           ON p.id = CASE WHEN v.blog_post_id LIKE 'carousel:%'
-                          THEN substr(v.blog_post_id, 10) ELSE v.blog_post_id END
+           ON p.id = ${postIdFromRefSql('v.blog_post_id')}
          ORDER BY v.updated_at DESC LIMIT ?`
       ).bind(limit).all();
 
@@ -37,9 +36,9 @@ export const onRequestGet = async ({ env, request }) => {
       ...r,
       kind: r.kind || 'post',
       title: r.title || (r.slug ? r.slug : 'Video doanh nghiệp'),
-      video_url: r.video_key && !r.video_key.startsWith('carousel/') ? `/image/${r.video_key}` : null,
-      slides: r.kind === 'carousel' && r.video_key
-        ? [1, 2, 3, 4, 5].map((n) => `/image/${r.video_key}-${n}.png`)
+      video_url: r.video_key && !isCarouselKey(r.video_key) ? `/image/${r.video_key}` : null,
+      slides: r.kind === CAROUSEL_KIND && r.video_key
+        ? carouselSlideKeys(r.video_key).map((k) => `/image/${k}`)
         : null,
     };
   });

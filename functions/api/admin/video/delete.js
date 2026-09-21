@@ -5,6 +5,7 @@
 // of our hands once shipped.
 import { json, nowSec, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
+import { isCarouselKey, carouselSlideRegex } from '../../../_lib/video_jobs.js';
 
 export const onRequestPost = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -28,11 +29,11 @@ export const onRequestPost = async ({ env, request }) => {
   // miss every slide and silently leak them, so remove the whole set.
   if (job.video_key && env.IMAGES) {
     try {
-      if (job.video_key.startsWith('carousel/')) {
-        // Only <prefix>-N.png is a slide: a bare prefix list would also
-        // match a slug that is a prefix of this one (carousel/foo-X.png).
+      if (isCarouselKey(job.video_key)) {
+        // Only <prefix>-N.png is a slide — carouselSlideRegex rules out a
+        // slug that is a prefix of this one (carousel/foo-X.png).
         const prefix = job.video_key;
-        const slideRe = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d+\\.png$`);
+        const slideRe = carouselSlideRegex(prefix);
         const listed = await env.IMAGES.list({ prefix });
         for (const o of listed?.objects || []) if (slideRe.test(o.key)) await env.IMAGES.delete(o.key);
       } else {

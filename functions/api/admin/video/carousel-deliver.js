@@ -1,9 +1,10 @@
 // Carousel slide delivery — the agent POSTs the exported slide PNGs as
-// base64 JSON. Slides land in R2 under carousel/<slug>-<n>.jpg and the
+// base64 JSON. Slides land in R2 under carousel/<slug>-<n>.png and the
 // job flips to done with video_key = the carousel/<slug> prefix; the
-// admin UI derives the slide URLs from that prefix (fixed 5 slides).
+// admin UI derives the slide URLs from that prefix.
 import { json, nowSec, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
+import { carouselPrefix, carouselSlideKey } from '../../../_lib/video_jobs.js';
 
 const MAX_SLIDES = 8;
 
@@ -42,10 +43,10 @@ export const onRequestPost = async ({ env, request }) => {
     }
   }
 
-  const prefix = `carousel/${job.slug || job.blog_post_id}`;
+  const prefix = carouselPrefix(job.slug || job.blog_post_id);
   const keys = [];
   for (const [n, buf] of decoded.entries()) {
-    const key = `${prefix}-${n + 1}.png`;
+    const key = carouselSlideKey(prefix, n + 1);
     await env.IMAGES.put(key, buf, {
       httpMetadata: { contentType: 'image/png', cacheControl: 'public, max-age=31536000, immutable' },
     });
