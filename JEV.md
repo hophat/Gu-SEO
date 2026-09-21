@@ -42,13 +42,32 @@ node scripts/jev.js verdict --question "Does this change break the daily fan-out
 node scripts/jev.js score   --question "How risky?" --level low --level mid --level high --state "…"
 ```
 
+`--file` only accepts the extensions listed in `DOC_EXT`; a diff on a path with
+no extension (a `mktemp` file, a process substitution) is dropped silently, so
+pipe it through `--state -` instead.
+
 `evaluate` scores each document on the dev dimensions in `DIMENSIONS`
 (`scripts/jev.js`): `correctness, safety, rule_fit, security, scope, evidence,
 clarity, reuse`, plus one `overall` choice of `proceed | review | stop`.
 
 Output is a markdown table followed by one JSON line. Exit code is the decision:
 **0 = proceed (act without a human), 1 = review (escalate), 2 = stop or error.**
-A shell `&&` chain therefore stops on anything that is not `proceed`.
+A shell `&&` chain therefore stops on anything that is not `proceed` — but that
+holds for `evaluate` only. `decide`, `verdict`, `score` and `ask` exit 0 whenever
+the API answered at all: their answer is the `gate` object in the JSON, which
+exists only when you pass `--min-confidence`. Read `gate.<key>.act` there and
+never treat those modes' exit code as a green light.
+
+`--summary` replaces the table with one line — every score with its confidence,
+and `!` after an answer the gate did not clear — printed *before* the JSON line
+(so `tail -n 1` is still the JSON). It is what `scripts/loop-run.sh` records in
+the run log:
+
+```bash
+git diff | node scripts/jev.js evaluate --label "uncommitted change" --state - --summary
+printf '%s\n' "$top" | node scripts/jev.js ask --state - --min-confidence 0.6 \
+  --questions skills/issue-triage/jev-questions.json --summary
+```
 
 ## How to act on an answer
 
@@ -70,6 +89,35 @@ operator's explicit approval, whatever `scripts/jev.js` returns.
 
 ## Keeping it cheap
 
-One call per document, all dimensions in that one request. Trim the input with
-`--max-chars` (default 12000), send only the relevant slice (a diff, the changed
-function), and use `--dimensions` when only a couple of dimensions matter.
+**You are billed for input tokens only** ($0.042 per Mtok; output is free, per
+`docs.typesafe.ai/models`). There is one model — `jev-1.13.0`, alias
+`jev-latest` — so there is no cheaper tier to switch to. Every lever is about
+input: send less, or do not call at all.
+
+Where the input actually goes, measured on this repo:
+
+- **The question block costs ~0.7–1k tokens on every call** (9 questions, each
+  with its 3-level `criteria`). For a 600-character document that is most of the
+  bill — a 613-char file scored in 975 tokens.
+- **A real diff dominates.** The autofix gate on an actual working-tree diff
+  measured ~4.5k tokens; the state is ~80% of it. `--max-chars` and
+  `--dimensions` are the only knobs that matter there.
+- **Batching several documents saves time, not tokens.** `evaluate` sends one
+  document per call and N documents in one call (state = `documents[]` with
+  named fields, question keys prefixed `d<i>_`) — the fan-out shape the docs
+  recommend. Measured on 4 real files (613–9804 chars): 4 calls → 1 call,
+  7271 → 7289 input tokens, **4.67 s → 1.40 s wall clock (3.3×)**. The docs'
+  12.2× figure is for *one* state asked across many calls, which is what
+  `--state -` plus several questions already does — do not expect it from
+  disjoint documents.
+
+Limits to respect when batching (same models page): 64k tokens per request,
+**32k for the state plus the longest question**, and accuracy drifts as the state
+grows. Keep a batch to a handful of documents — the loop never needs more than
+the single diff it is gating.
+
+Do not buy a judgement there is nothing to judge: with no documents `evaluate`
+exits 2 and makes no request, and `scripts/loop-run.sh` skips the gate entirely
+when the branch changes no files (the row says `nothing to judge`). Every
+`--summary` line ends with `in=<tokens>`, so what each gate cost is in
+`loop-run-log.md` next to the decision it produced.

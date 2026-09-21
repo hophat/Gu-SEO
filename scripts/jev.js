@@ -190,6 +190,70 @@ function renderTable(label, gate) {
   return lines.join('\n');
 }
 
+// `--summary` swaps the markdown table for one line per answer, for shell
+// callers: scripts/loop-run.sh records it in the run log, which wants the
+// numbers, not a table. The JSON line still follows, so anything parsing
+// the last line keeps working.
+const SUMMARY = process.argv.includes('--summary');
+
+function summarizeAnswers(answers, gate) {
+  return Object.entries(answers).map(([key, a]) => {
+    const conf = a?.type === 'noul' ? a.noul : a?.confidence;
+    const value = a?.type === 'choice' ? a.choice
+      : a?.type === 'noul' ? (a.noul >= 0.5 ? 'yes' : 'no')
+      : a?.type === 'score' ? `${a.legend ? String(a.legend[Math.round(a.score)]).split(':')[0] : 'level'}(${a.score})`
+      : '?';
+    const act = gate?.[key]?.act;
+    return `${key}=${value}@${typeof conf === 'number' ? conf.toFixed(2) : '?'}${act === false ? '!' : ''}`;
+  }).join(' ');
+}
+
+// An API error arrives as a raw body (`{"error_type":…,"message":…}`), which
+// makes for unreadable log lines — pull the message out when there is one.
+function shortError(raw) {
+  const text = String(raw ?? '').trim();
+  try {
+    const parsed = JSON.parse(text);
+    return String(parsed.message || parsed.detail || parsed.error || text).slice(0, 200);
+  } catch { return text.slice(0, 200); }
+}
+
+// Same idea for `evaluate`: every dimension's score and confidence, so the
+// log carries the whole answer rather than just the verdict.
+function summarizeGate(label, gate, error, tokens) {
+  if (error) return `${label}: error=${shortError(error)}`;
+  const pct = (n) => (typeof n === 'number' ? n.toFixed(2) : '?');
+  const dims = gate.dimensions.map((d) => `${d.name}=${d.score === null ? '?' : d.score.toFixed(2)}@${pct(d.confidence)}`).join(' ');
+  const reasons = gate.reasons.length ? ` — ${gate.reasons.join('; ')}` : '';
+  const cost = typeof tokens === 'number' ? ` in=${tokens}` : '';
+  return `${label}: ${gate.decision} overall=${gate.overall_pick}@${pct(gate.overall_confidence)} ${dims}${cost}${reasons}`;
+}
+
+// One document needs no namespacing: its state goes in once and the dimensions
+// are the questions. Several documents share a single call — state as named
+// fields, every question prefixed `d<i>_` — which is the docs' fan-out shape:
+// the same per-question answers in one round trip instead of N.
+async function askDocs(key, docs, { names, model, timeout }) {
+  const questions = dimensionQuestions(names);
+  if (docs.length === 1) {
+    const res = await askSystemOne(key, { state: docs[0].text, questions, model, timeout });
+    return { res, answers: () => res.answers, batched: false };
+  }
+  const perDoc = {};
+  docs.forEach((doc, i) => {
+    for (const [name, q] of Object.entries(questions)) {
+      perDoc[`d${i}_${name}`] = { ...q, instructions: `${q.instructions} — document ${i + 1} ("${doc.name}")` };
+    }
+  });
+  const state = { documents: docs.map((doc, i) => ({ index: i, name: doc.name, text: doc.text })) };
+  const res = await askSystemOne(key, { state, questions: perDoc, model, timeout });
+  return {
+    res,
+    batched: true,
+    answers: (i) => Object.fromEntries(Object.keys(questions).map((name) => [name, res.answers[`d${i}_${name}`]])),
+  };
+}
+
 async function evaluate(key) {
   const names = flag('dimensions') ? flag('dimensions').split(',').map((s) => s.trim()).filter(Boolean) : Object.keys(DIMENSIONS);
   const opts = {
@@ -199,30 +263,35 @@ async function evaluate(key) {
   };
   const model = flag('model') || 'jev-latest';
   const timeout = Number(flag('timeout') || 45);
-  const docs = loadDocs();
-  const questions = dimensionQuestions(names);
+  const docs = loadDocs(); // exits on its own if there is nothing to read
 
+  const { res, answers, batched } = await askDocs(key, docs, { names, model, timeout });
   const results = [];
   const blocks = [];
-  for (const doc of docs) {
-    const res = await askSystemOne(key, { state: doc.text, questions, model, timeout });
+  for (let i = 0; i < docs.length; i++) {
+    const doc = docs[i];
     if (!res.ok) {
       results.push({ document: doc.name, error: res.error || `http ${res.status}` });
-      blocks.push(`### ${doc.name}\n\n**ERROR** — ${res.error || `http ${res.status}`}`);
+      blocks.push(SUMMARY
+        ? summarizeGate(doc.name, null, res.error || `http ${res.status}`)
+        : `### ${doc.name}\n\n**ERROR** — ${res.error || `http ${res.status}`}`);
       continue;
     }
-    const gate = gateFor(res.answers, names, opts);
+    const gate = gateFor(answers(i), names, opts);
     results.push({
       document: doc.name, chars: doc.text.length, decision: gate.decision,
       act_without_human: gate.act_without_human, reasons: gate.reasons,
       overall: { pick: gate.overall_pick, confidence: gate.overall_confidence },
-      dimensions: gate.dimensions, usage: res.usage,
+      dimensions: gate.dimensions,
+      // A batched call is billed once, so its token count belongs to the batch
+      // (reported at the top level), not to each document it asked about.
+      ...(batched ? {} : { usage: res.usage }),
     });
-    blocks.push(renderTable(doc.name, gate));
+    blocks.push(SUMMARY ? summarizeGate(doc.name, gate, null, res.usage?.input_tokens) : renderTable(doc.name, gate));
   }
 
   process.stdout.write(`${blocks.join('\n\n')}\n\n`);
-  process.stdout.write(`${JSON.stringify({ ok: true, model, gate: opts, documents: results })}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: true, model, gate: opts, documents: results, ...(batched ? { batched: docs.length, usage: res.usage } : {}) })}\n`);
 
   const worst = results.some((r) => r.error || r.decision === 'stop') ? 2
     : results.some((r) => r.decision === 'review') ? 1 : 0;
@@ -280,7 +349,10 @@ if (mode === 'evaluate') {
 
   const res = await askSystemOne(key, { state, questions, model: flag('model') || 'jev-latest', timeout: Number(flag('timeout') || 45) });
   if (!res.ok) {
-    process.stdout.write(`${JSON.stringify({ ok: false, status: res.status, error: res.error })}\n`);
+    // The same `error=` marker the summary mode uses, so a shell caller can tell
+    // a failed call (nothing to act on) from a real judgement that says stop.
+    const line = SUMMARY ? `error=${shortError(res.error || `http ${res.status}`)}\n` : '';
+    process.stdout.write(`${line}${JSON.stringify({ ok: false, status: res.status, error: res.error })}\n`);
     process.exit(2);
   }
   const threshold = parseFloat(flag('min-confidence')) || 0;
@@ -288,5 +360,6 @@ if (mode === 'evaluate') {
     const certainty = a?.type === 'noul' ? a.noul : a?.confidence;
     return [k, { certainty, act: typeof certainty === 'number' ? certainty >= threshold : null }];
   })) : undefined;
-  process.stdout.write(`${JSON.stringify({ ok: true, model: res.model, answers: res.answers, usage: res.usage, gate })}\n`);
+  const line = SUMMARY ? `${summarizeAnswers(res.answers, gate)}\n` : '';
+  process.stdout.write(`${line}${JSON.stringify({ ok: true, model: res.model, answers: res.answers, usage: res.usage, gate })}\n`);
 }

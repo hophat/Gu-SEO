@@ -44,6 +44,11 @@ mode: auto-fix
 - Jev never satisfies the approval requirements above: deploys, D1 writes, schema,
   auth, secrets, merges, deletions, and security/payments items stay human-gated
   however confident the answer is.
+- The runner consults Jev itself: `autofix` merges only on `evaluate`'s
+  `proceed` (a review/stop escalates and keeps the branch), and both triage paths
+  log the rubric's answer with its score and confidence in `loop-run-log.md`.
+- An unavailable Jev (no key, no network) is logged as unavailable and does not
+  block — it never replaces a gate above it (verifier, tests, denylist).
 - Record the score and confidence in the run output. Never cite a Jev answer as
   evidence that something works — run the test, read the file, query D1.
 
