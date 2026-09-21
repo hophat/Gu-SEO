@@ -18,6 +18,7 @@ repo.
 |---|---|
 | `functions/api/**.js` | Cloudflare Pages Functions (HTTP routes) |
 | `functions/_lib/**.js` | Shared helpers — auth, util, settings, schema, dedup, etc. |
+| `functions/_lib/cover_spec.js` | The cover policy in one place: what counts as a paintable template (`isRenderableSpec`), the canvas size, spec normalisation and the branded starter card (`fallbackCoverSpec`). Server callers import it; the browser clients receive it from `/api/admin/cover/templates` (each row carries `renderable` + a normalised `spec`, the payload carries `starter_spec`). |
 | `public/**` | Static assets (HTML, CSS, JS for /install, /admin, /ai-setup, /repair, /docs) |
 | `schema/init.sql` | Authoritative D1 schema. **Must stay additive.** |
 | `functions/_lib/schema.js` | Bundled output of `schema/init.sql`. Regenerate with `node scripts/bundle-schema.js`. Never edit by hand. |
@@ -58,6 +59,12 @@ repo.
 - IDs are 32-char hex (`newId()` in util.js). Don't introduce UUIDs.
 - Use `audit(env, actor, action, targetId, details)` from util.js
   for any admin write. Fire-and-forget (don't await).
+- Cover policy — "can this template paint anything?" and the branded
+  card used when it can't — lives only in
+  `functions/_lib/cover_spec.js`. Server code imports it; the React
+  Covers page and the unbundled `public/cover-editor.js` (no bundler,
+  so it cannot import) read the same rule and card from the templates
+  API payload. Never paste the card or the rule into a client.
 
 ## Common change patterns
 

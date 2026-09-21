@@ -448,15 +448,23 @@
   }
 
   // ── editor state ─────────────────────────────────────────────────
+  // Empty canvas of the size covers render at. Used until a template
+  // loads; the branded starter design is NOT defined here — the server
+  // owns it (functions/_lib/cover_spec.js) and hands it over as
+  // `starter_spec` in the templates payload.
   function defaultTemplate() {
     return { width: 1200, height: 630, background: null, layers: [] };
   }
+
   function makeState() {
     return {
       template: defaultTemplate(),
       selectedIds: new Set(),
       assets: { background: [], logo: [] },
       templates: [],
+      // Canonical starter card from the templates API. Kept for seeding
+      // a template whose stored spec can't paint anything.
+      starterSpec: null,
       posts: [],
       previewCtx: null,
       zoom: 1,            // 0.25–4
@@ -947,15 +955,21 @@
 
     // ── canvas rendering ──────────────────────────────────────────
     async function drawCanvas() {
-      const { width, height } = state.template;
+      // state.template only ever arrives through loadTemplateSpec(),
+      // which stores the shape the server guarantees
+      // (functions/_lib/cover_spec.js normalises every spec first).
+      const spec = state.template;
+      const width  = spec.width;
+      const height = spec.height;
+      const layers = spec.layers;
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width; canvas.height = height;
       }
       const c = ctx2d;
       c.clearRect(0, 0, width, height);
 
-      if (state.template.background?.url) {
-        const img = await loadImage(state.template.background.url);
+      if (spec.background?.url) {
+        const img = await loadImage(spec.background.url);
         if (img) {
           const r = Math.max(width / img.width, height / img.height);
           const w = img.width * r, h = img.height * r;
@@ -966,7 +980,7 @@
         c.fillRect(0, 0, width, height);
       }
 
-      for (const layer of state.template.layers) {
+      for (const layer of layers) {
         await drawLayer(c, layer, state.previewCtx);
       }
     }
@@ -2160,14 +2174,27 @@
     }
 
     function loadTemplateSpec(t) {
-      if (!t.spec) return;
+      // A template that can't paint — no background and no layers, or a
+      // spec_json that wouldn't even parse (the API sends `spec: null`)
+      // — opens on the server's starter card instead of a black, textless
+      // canvas. The warning below covers both, so clicking Load on a
+      // broken row always tells the operator something.
+      //
+      // Both `renderable` and `starter_spec` come from the templates API,
+      // so this file holds no copy of the rule or of the design
+      // (functions/_lib/cover_spec.js owns both).
+      const empty = t.renderable === false || !t.spec;
       cmd('load-template', () => {
-        state.template = JSON.parse(JSON.stringify(t.spec));
+        const src = empty && state.starterSpec ? state.starterSpec : (t.spec || defaultTemplate());
+        state.template = JSON.parse(JSON.stringify(src));
         for (const l of state.template.layers) l.id = l.id || uid();
         state.selectedIds.clear();
         updateSizeLabel(); syncPresetSelect();
         fitToContainer();
       });
+      if (empty) {
+        notify(`“${t.name}” chưa có thiết kế — đã mở bố cục mẫu để bạn chỉnh rồi lưu lại.`, 'warn');
+      }
       // Pre-warm any custom fonts referenced by text layers in this
       // template. The curated set is already loaded via injectFont-
       // Stylesheet(); anything else (a font the user typed into the
@@ -2450,6 +2477,7 @@
     async function loadTemplates() {
       const { body } = await api('/api/admin/cover/templates');
       state.templates = body?.templates || [];
+      state.starterSpec = body?.starter_spec || null;
       if (activeRail === 'templates') renderRailPanel('templates');
     }
     async function loadPosts() {
@@ -2798,9 +2826,12 @@
     // ── public-ish: load + apply default template from server ──
     async function bootstrap() {
       await Promise.all([loadAssets(), loadTemplates(), loadPosts()]);
-      // Auto-load default template if one exists.
+      // Auto-load default template if one exists. loadTemplateSpec()
+      // copes with a row that has no usable spec (it opens the starter
+      // card and warns), so an unusable default explains itself instead
+      // of leaving a black canvas behind.
       const def = state.templates.find((t) => t.is_default);
-      if (def && def.spec) loadTemplateSpec(def);
+      if (def) loadTemplateSpec(def);
       else redraw();
     }
 
