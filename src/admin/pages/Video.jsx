@@ -12,6 +12,7 @@ import {
   ReloadOutlined, VideoCameraOutlined, CheckCircleOutlined,
   ClockCircleOutlined, WarningOutlined, DownloadOutlined, FacebookOutlined,
   AppstoreOutlined, DeleteOutlined, GlobalOutlined, PlayCircleOutlined,
+  FileImageOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, getActiveProject } from '../api.js';
@@ -36,6 +37,7 @@ export default function Video() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [siteUrl, setSiteUrl] = useState('');
+  const [carouselSlug, setCarouselSlug] = useState('');
   const [viewing, setViewing] = useState(null);
   const [brandForm, setBrandForm] = useState({ video_tagline: '', brand_accent: '', address: '', phone: '' });
   const [brandOpen, setBrandOpen] = useState(false);
@@ -144,6 +146,23 @@ export default function Video() {
     }
   };
 
+  const createCarousel = async () => {
+    const slug = (carouselSlug || '').trim();
+    if (!slug) { message.warning('Nhập slug bài viết trước (vd: 5-dia-diem-an-sang-lagi)'); return; }
+    setBusyId('__car__');
+    const { status, body } = await apiPost('/api/admin/video/carousel', { project_id: getActiveProject(), slug });
+    setBusyId(null);
+    if (status === 200 && body?.ok) {
+      message.success('Đã tạo job carousel — agent sẽ xuất 5 slide PNG');
+      setCarouselSlug('');
+      load();
+    } else if (status === 409) {
+      message.info('Carousel cho bài này đang được render');
+    } else {
+      message.error(body?.hint || body?.error || 'Không tạo được job');
+    }
+  };
+
   const deleteVideo = async (id) => {
     setBusyId(id);
     const { status, body } = await apiPost('/api/admin/video/delete', { id });
@@ -159,18 +178,28 @@ export default function Video() {
   const columns = [
     {
       title: 'Thumbnail', dataIndex: 'video_url', width: 76,
-      render: (url, r) => url ? (
-        <Tooltip title="Bấm để xem video">
-          <video
-            src={`${url}#t=2`}
-            preload="metadata"
-            muted
-            playsInline
-            onClick={() => setViewing(r)}
-            style={{ width: 64, height: 114, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', background: '#000', display: 'block' }}
-          />
-        </Tooltip>
-      ) : <Text type="secondary">—</Text>,
+      render: (url, r) => {
+        if (r.slides?.length) {
+          return (
+            <Tooltip title="Bấm để xem bộ slide">
+              <img src={r.slides[0]} onClick={() => setViewing(r)}
+                style={{ width: 64, height: 80, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', display: 'block', border: '1px solid #333' }} />
+            </Tooltip>
+          );
+        }
+        return url ? (
+          <Tooltip title="Bấm để xem video">
+            <video
+              src={`${url}#t=2`}
+              preload="metadata"
+              muted
+              playsInline
+              onClick={() => setViewing(r)}
+              style={{ width: 64, height: 114, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', background: '#000', display: 'block' }}
+            />
+          </Tooltip>
+        ) : <Text type="secondary">—</Text>;
+      },
     },
     {
       title: 'Bài viết', dataIndex: 'title', ellipsis: true,
@@ -179,28 +208,54 @@ export default function Video() {
     { title: 'Trạng thái', dataIndex: 'status', width: 170, render: (s, r) => statusTag(s, r.kind) },
     {
       title: 'Hành động', dataIndex: 'video_url', width: 220,
-      render: (url, r) => url ? (
-        <Space>
-          <Tooltip title="Tải MP4 (9:16)">
-            <Button size="small" icon={<DownloadOutlined />} href={url} download={`${r.slug}.mp4`} />
-          </Tooltip>
-          <Popconfirm
-            title="Đăng video này lên Facebook Page?"
-            description="Tạo video post kèm link bài viết trong mô tả."
-            onConfirm={() => publishFb(r.id)}
-          >
-            <Button size="small" icon={<FacebookOutlined />} loading={busyId === r.id}>Đăng FB</Button>
-          </Popconfirm>
-          <Popconfirm
-            title="Xóa video này?"
-            description="Xóa cả file MP4 trên R2 — không thể hoàn tác."
-            okButtonProps={{ danger: true }}
-            onConfirm={() => deleteVideo(r.id)}
-          >
-            <Button size="small" danger icon={<DeleteOutlined />} loading={busyId === r.id} />
-          </Popconfirm>
-        </Space>
-      ) : <Text type="secondary">—</Text>,
+      render: (url, r) => {
+        const isCarousel = !!r.slides?.length;
+        if (isCarousel) {
+          return (
+            <Space>
+              <Button size="small" icon={<FileImageOutlined />} onClick={() => setViewing(r)}>Xem slide</Button>
+              <Popconfirm
+                title="Đăng carousel lên Facebook Page?"
+                description="Đăng 5 slide dưới dạng multi-photo post kèm link bài viết."
+                onConfirm={() => publishFb(r.id)}
+              >
+                <Button size="small" icon={<FacebookOutlined />} loading={busyId === r.id}>Đăng FB</Button>
+              </Popconfirm>
+              <Popconfirm
+                title="Xóa carousel này?"
+                description="Xóa cả các slide trên R2 — không thể hoàn tác."
+                okButtonProps={{ danger: true }}
+                onConfirm={() => deleteVideo(r.id)}
+              >
+                <Button size="small" danger icon={<DeleteOutlined />} loading={busyId === r.id} />
+              </Popconfirm>
+            </Space>
+          );
+        }
+        return url ? (
+          <Space>
+            <Button size="small" icon={<PlayCircleOutlined />} onClick={() => setViewing(r)}>Xem</Button>
+            <Tooltip title="Tải MP4 (9:16)">
+              <Button size="small" icon={<DownloadOutlined />} href={url} download={`${r.slug}.mp4`} />
+            </Tooltip>
+            <Popconfirm
+              title="Đăng video này lên Facebook Page?"
+              description="Tạo video post kèm link bài viết trong mô tả."
+              onConfirm={() => publishFb(r.id)}
+            >
+              <Button size="small" icon={<FacebookOutlined />} loading={busyId === r.id}>Đăng FB</Button>
+            </Popconfirm>
+            <Popconfirm
+              title="Xóa video này?"
+              description="Xóa cả file MP4 trên R2 — không thể hoàn tác."
+              okButtonProps={{ danger: true }}
+              onConfirm={() => deleteVideo(r.id)}
+            >
+              <Button size="small" danger icon={<DeleteOutlined />} loading={busyId === r.id} />
+            </Popconfirm>
+          </Space>
+        ) : <Text type="secondary">—</Text>;
+      },
     },
     {
       title: 'Lỗi render', dataIndex: 'error', ellipsis: true, responsive: ['lg'],
@@ -235,6 +290,17 @@ export default function Video() {
             />
             <Button icon={<GlobalOutlined />} loading={busyId === '__site__'} onClick={createWebsite}>
               Video từ URL
+            </Button>
+            <Input
+              placeholder="slug-bài-viết — tạo carousel 5 slide"
+              value={carouselSlug}
+              onChange={(e) => setCarouselSlug(e.target.value)}
+              onPressEnter={createCarousel}
+              style={{ width: 220 }}
+              allowClear
+            />
+            <Button icon={<FileImageOutlined />} loading={busyId === '__car__'} onClick={createCarousel}>
+              Carousel
             </Button>
             <Button icon={<AppstoreOutlined />} loading={busyId === '__biz__'} onClick={createBusiness}>
               Video doanh nghiệp
@@ -305,7 +371,14 @@ export default function Video() {
         width={420}
         destroyOnClose
       >
-        {viewing?.video_url && (
+        {viewing?.slides?.length ? (
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
+            {viewing.slides.map((s, n) => (
+              <img key={n} src={s} alt={`Slide ${n + 1}`}
+                style={{ height: 280, borderRadius: 6, border: '1px solid #333' }} />
+            ))}
+          </div>
+        ) : viewing?.video_url && (
           <video
             src={viewing.video_url}
             controls

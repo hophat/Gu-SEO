@@ -187,6 +187,53 @@ export async function publishToFacebook({ project, article, configJson, env }) {
     return publishFacebookVideo({ project, article, configJson, env });
   }
 
+  // Carousel post — the video_key is a carousel/<slug> prefix; every R2
+  // object under it is a slide. Upload each unpublished (media_fbid),
+  // then attach them all to one feed post. Facebook does not unfurl
+  // links on photo posts, so the article URL rides in the message.
+  if (article.video_key && String(article.video_key).startsWith('carousel/') && env?.IMAGES) {
+    const prefix = article.video_key;
+    const listed = await env.IMAGES.list({ prefix }).catch(() => ({ objects: [] }));
+    const keys = (listed?.objects || []).map((o) => o.key).sort();
+    if (!keys.length) throw new Error(`Carousel ${prefix} không còn trong R2 — render lại trước khi đăng.`);
+    const v2 = cfg.apiVersion || await getApiVersion(env);
+
+    // Upload each slide unpublished, collect media_fbids.
+    const attached = [];
+    for (const [n, key] of keys.entries()) {
+      const obj = await env.IMAGES.get(key);
+      if (!obj) continue;
+      const buf = await obj.arrayBuffer();
+      const form = new FormData();
+      form.append('access_token', token);
+      form.append('published', 'false');
+      form.append('source', new Blob([buf], { type: 'image/png' }), `slide-${n + 1}.png`);
+      const up = await fetch(`${GRAPH}/${v2}/${cfg.pageId}/photos`, { method: 'POST', body: form });
+      const d = await up.json().catch(() => ({}));
+      if (d?.error) {
+        const err = new Error(await explainTokenFailure({ pageId: cfg.pageId, token, error: d.error }));
+        err.graph = d.error;
+        throw err;
+      }
+      if (d.id) attached.push({ media_fbid: d.id });
+    }
+    if (!attached.length) throw new Error('Không upload được slide nào lên Facebook.');
+
+    const feed = await post(`${version}/${cfg.pageId}/feed`, {
+      message: message ? `${message}\n\n${link}` : link,
+      access_token: token,
+      attached_media: JSON.stringify(attached),
+    });
+    return {
+      ok: true,
+      type: 'facebook',
+      format: 'carousel',
+      post_id: feed.id,
+      post_url: feed.id ? `https://www.facebook.com/${feed.id}` : null,
+      link,
+    };
+  }
+
   if (cfg.asPhoto && imageUrl) {
     const data = await post(`${version}/${cfg.pageId}/photos`, {
       url: imageUrl,

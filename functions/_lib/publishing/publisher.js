@@ -4,9 +4,13 @@ export async function dispatchPublication({ project, article, env, channel = nul
   const pubCfg = project?.publishing_config || {};
   const publisherType = pubCfg.publisher_type || 'internal_d1';
 
-  // The facebook_video channel is a sibling of the link post — same Page
-  // credentials, but the payload is the rendered 9:16 MP4, not a link.
+  // The facebook_video channel handles both payloads: a carousel prefix
+  // uploads the slide PNGs as a multi-photo post; a video_key MP4 goes
+  // through publishFacebookVideo.
   if (channel === 'facebook_video') {
+    if (article.video_key && String(article.video_key).startsWith('carousel/')) {
+      return publishToFacebook({ project, article, configJson: pubCfg.config_json, env });
+    }
     return publishFacebookVideo({ project, article, configJson: pubCfg.config_json, env });
   }
 

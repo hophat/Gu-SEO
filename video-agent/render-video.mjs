@@ -644,11 +644,137 @@ function makeBgm(totalSec, seedStr) {
   return r.status === 0 && existsSync(out) && statSync(out).size > 5000 ? out : null;
 }
 
+// ── 5b. carousel — 5 static slides 1080×1350 via hyperframes snapshot ─
+// Slide 1: hook (brand badge). 2-4: the three takeaways. Slide 5: the
+// open question + "đọc bài viết". Same script as the post teaser; the
+// hero image backs the point slides.
+function composeCarouselHtml(job, script) {
+  const p = job.project || {};
+  const brand = p.name || 'Blog';
+  const accent = p.accent || ACCENT;
+  const outroUrl = (p.publishing_url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  const hasHero = existsSync(join(WORK, 'assets', 'hero.jpg'));
+  const W = 1080, H = 1350;
+  const A = accent;
+
+  // One scene per slide, 1s each; snapshot grabs the middle of each.
+  const scenes = [
+    { kind: 'hook', seg: 1 },
+    ...script.points.slice(0, 3).map((pt, n) => ({ kind: 'point', text: pt, n: n + 1, seg: 1 })),
+    { kind: 'cta', seg: 1 },
+  ];
+  const sceneHtml = [];
+  const bgEls = [];
+  for (const [i, s] of scenes.entries()) {
+    s.start = i; s.dur = 1;
+    const inner = s.kind === 'cover'
+      ? `<div class="badge">${esc(brand)}</div><h1 class="hook">${esc(script.hook)}</h1>`
+      : s.kind === 'point'
+        ? `<div class="num">${s.n}</div><p class="point">${esc(s.text)}</p>`
+        : `<p class="question">${esc(script.question)}</p><p class="sub">Đọc bài viết đầy đủ ↓</p><p class="url">${esc(outroUrl)}</p>`;
+    sceneHtml.push(`<div id="s${i}" class="clip scene" data-start="${i}" data-duration="1" data-track-index="0">${inner}</div>`);
+    if (hasHero && s.kind !== 'cover') {
+      s.bgId = `bg${bgEls.length}`;
+      bgEls.push(s);
+      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${i}" data-duration="1" data-track-index="1"><img src="assets/hero.jpg" alt=""/></div>`);
+    }
+  }
+  const total = scenes.length;
+  const logoSrc = ['png', 'svg', 'jpg', 'jpeg', 'webp'].map((e) => `assets/logo.${e}`).find((f) => existsSync(join(WORK, f))) || null;
+
+  return `<!doctype html>
+<html lang="vi"><head><meta charset="UTF-8"/>
+<meta name="viewport" content="width=${W}, height=${H}"/>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:${W}px; height:${H}px; overflow:hidden; background:#0a0c10;
+    font-family: Inter, "Noto Sans", ui-sans-serif, sans-serif; }
+  #root { width:100%; height:100%; position:relative;
+    background:linear-gradient(160deg,${shade(accent, -0.5)} 0%,${shade(accent, -0.2)} 100%); }
+  .scene { position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:72px; text-align:center; z-index:2; }
+  .badge { background:${A}; color:#fff; font-size:34px; font-weight:700;
+    padding:14px 40px; border-radius:999px; margin-bottom:48px; letter-spacing:0.04em; }
+  .hook { color:#fff; font-size:76px; font-weight:700; line-height:1.25; letter-spacing:-0.02em; }
+  .point { color:#f4f6f8; font-size:56px; font-weight:600; line-height:1.35;
+    text-shadow:0 2px 18px rgba(0,0,0,0.75); }
+  .num { color:${A}; font-size:150px; font-weight:800; opacity:0.35; margin-bottom:12px; }
+  .question { color:#fff; font-size:60px; font-weight:700; line-height:1.3;
+    text-shadow:0 2px 18px rgba(0,0,0,0.75); }
+  .sub { color:#c9d6e2; font-size:32px; margin-top:28px; }
+  .url { color:${A}; font-size:30px; font-weight:600; margin-top:12px; }
+  .bgi { position:absolute; inset:0; }
+  .bgi img { width:100%; height:100%; object-fit:cover; opacity:0.3; }
+  .bgi::after { content:''; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(10,12,16,0.3), rgba(10,12,16,0.85)); }
+  .brandlogo { position:absolute; top:48px; right:56px; height:72px; max-width:280px;
+    object-fit:contain; z-index:6; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
+</style></head>
+<body><div id="root" data-composition-id="main" data-start="0"
+  data-duration="${scenes.length}" data-width="${W}" data-height="${H}">
+${sceneHtml.join('\n')}
+${existsSync(join(WORK, 'assets', 'logo.png')) ? `<img class="clip brandlogo" data-start="0" data-duration="${scenes.length}" data-track-index="9" src="assets/logo.png"/>` : ''}
+</div>
+<script>
+  const tl = gsap.timeline({ paused: true });
+  ${scenes.map((s, i) => `tl.fromTo("#s${i}", { opacity: 0 }, { opacity: 1, duration: 0.3 }, ${(s.start + 0.05).toFixed(2)});`).join('\n  ')}
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main"] = tl;
+  tl.seek(0);
+</script></body></html>`;
+}
+
+// Render the carousel: compose → snapshot at each slide's midpoint →
+// upload the PNGs. No TTS, no video encode.
+async function renderCarousel(job) {
+  log(`carousel for ${job.slug} (job ${job.id})`);
+  rmSync(join(WORK, 'snapshots'), { recursive: true, force: true });
+  mkdirSync(join(WORK, 'assets'), { recursive: true });
+
+  const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
+  if (heroB64) writeFileSync(join(WORK, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
+
+  log('writing script via GuRouter…');
+  const script = await writeScript(job);
+  log(`script ok: hook + ${script.points.length} points + question`);
+
+  writeFileSync(join(WORK, 'index.html'), composeCarouselHtml(job, script));
+
+  log('snapshotting 5 slides…');
+  const at = [0.5, 1.5, 2.5, 3.5, 4.5].join(',');
+  const ren = spawnSync('npx', ['-y', `hyperframes@${HF_VERSION}`, 'snapshot', '--at', '0.5,1.5,2.5,3.5,4.5', '--timeout', '9000'],
+    { cwd: WORK, encoding: 'utf8', timeout: 5 * 60 * 1000 });
+  if (ren.status !== 0) throw new Error('snapshot failed: ' + ((ren.stderr || ren.stdout || '').slice(-300)));
+  const shots = readdirSync(join(WORK, 'snapshots'))
+    .filter((f) => f.startsWith('frame-') && f.endsWith('.png'))
+    .sort();
+  if (shots.length < 5) throw new Error(`snapshot produced ${shots.length}/5 slides`);
+  const slides = shots.slice(0, 5).map((f) => readFileSync(join(WORK, 'snapshots', f)).toString('base64'));
+  log(`slides: ${slides.length} PNG(s) → delivering`);
+
+  const up = await api('/api/admin/video/carousel-deliver', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ job_id: job.id, slides }),
+  });
+  const out = await up.json().catch(() => ({}));
+  if (!up.ok || out.status !== 'done') throw new Error(`carousel deliver failed: HTTP ${up.status} ${JSON.stringify(out).slice(0, 200)}`);
+  log(`done → ${out.prefix} (${out.slides?.length || slides.length} slides)`);
+}
+
 // ── 5. render + deliver one job ───────────────────────────────────────
 async function renderOne(job) {
   log(`claimed ${job.slug} (${job.kind}, job ${job.id})`);
   rmSync(join(WORK, 'renders'), { recursive: true, force: true });
+  rmSync(join(WORK, 'snapshots'), { recursive: true, force: true });
   mkdirSync(join(WORK, 'assets'), { recursive: true });
+
+  // Carousel: static 4:5 slides (1080×1350) exported with hyperframes
+  // snapshot — no TTS, no video. Same script as the post teaser.
+  if (job.kind === 'carousel') {
+    await renderCarousel(job);
+    return;
+  }
 
   const isBusiness = job.kind === 'business' || job.kind === 'website';
   let siteText = null;

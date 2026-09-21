@@ -141,6 +141,7 @@ export const onRequestPost = async ({ env, request }) => {
   // discover the newest published post in the window with no job.
   let post = null;
   let jobId = null;
+  let pendingKind = null;
 
   if (slug) {
     post = await env.DB.prepare(
@@ -151,12 +152,13 @@ export const onRequestPost = async ({ env, request }) => {
     if (!post) return json(404, { error: 'post_not_found', slug });
   } else {
     // 1. Drain the batch queue: oldest pending/failed post job first.
+    // Carousels ride the same queue — they need the same post payload.
     const pendSql = projectId
-      ? `SELECT id, blog_post_id FROM video_jobs
-          WHERE kind = 'post' AND project_id = ? AND status IN ('pending','failed')
+      ? `SELECT id, kind, blog_post_id FROM video_jobs
+          WHERE kind IN ('post','carousel') AND project_id = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`
-      : `SELECT id, project_id, blog_post_id FROM video_jobs
-          WHERE kind = 'post' AND status IN ('pending','failed')
+      : `SELECT id, kind, project_id, blog_post_id FROM video_jobs
+          WHERE kind IN ('post','carousel') AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`;
     const pendRows = projectId
       ? await env.DB.prepare(pendSql).bind(projectId).all().catch(() => ({ results: [] }))
@@ -182,6 +184,7 @@ export const onRequestPost = async ({ env, request }) => {
       }
       post = p;
       jobId = pendingJob.id;
+      pendingKind = pendingJob.kind || 'post';
     }
   }
 
@@ -271,7 +274,7 @@ export const onRequestPost = async ({ env, request }) => {
     ok: true,
     job: {
       id: jobId,
-      kind: 'post',
+      kind: pendingKind || 'post',
       slug: post.slug,
       title: post.title,
       meta_description: post.meta_description,

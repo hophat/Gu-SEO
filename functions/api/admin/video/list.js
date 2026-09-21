@@ -26,11 +26,20 @@ export const onRequestGet = async ({ env, request }) => {
          ORDER BY v.updated_at DESC LIMIT ?`
       ).bind(limit).all();
 
-  const jobs = (rows?.results || []).map((r) => ({
-    ...r,
-    kind: r.kind || 'post',
-    title: r.title || (r.slug ? r.slug : 'Video doanh nghiệp'),
-    video_url: r.video_key ? `/image/${r.video_key}` : null,
-  }));
+  const jobs = (rows?.results || []).map((r) => {
+    const kind = r.kind || 'post';
+    // Carousel jobs store the slide prefix in video_key — derive the
+    // fixed 5 slide URLs for the grid view.
+    const isCarousel = r.kind === 'carousel' && r.video_key;
+    return {
+      ...r,
+      kind: r.kind || 'post',
+      title: r.title || (r.slug ? r.slug : 'Video doanh nghiệp'),
+      video_url: r.video_key && !r.video_key.startsWith('carousel/') ? `/image/${r.video_key}` : null,
+      slides: r.kind === 'carousel' && r.video_key
+        ? [1, 2, 3, 4, 5].map((n) => `/image/${r.video_key}-${n}.png`)
+        : null,
+    };
+  });
   return json(200, { ok: true, jobs });
 };
