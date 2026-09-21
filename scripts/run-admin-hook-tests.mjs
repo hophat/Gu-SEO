@@ -75,6 +75,19 @@ console.log('--- Admin queue hook (polling · status copy) ---\n');
   const src = readFileSync(join(ROOT, 'src/admin/pages/Video.jsx'), 'utf8');
   assert.match(src, /useVideoJobs\(\{\s*poll:\s*false\s*\}\)/, 'Video.jsx must opt out of polling');
   ok('Video page is wired to poll:false');
+
+  // The delete button used to vanish on row hover. Cause, measured in Chrome
+  // against this exact column set: "Bài viết" and "Lỗi render" carry
+  // `ellipsis`, which makes @rc-component/table force `table-layout: fixed`;
+  // the four action buttons need 232px plus 32px of cell padding = 264px, so
+  // at the old width of 220 they spilled into the next cell — and that cell's
+  // background, painted on hover, covered the delete button. A narrower cell
+  // than this brings the bug back, so pin it.
+  const actions = src.match(/title: 'Hành động',\s*key: 'actions',\s*width: (\d+)/);
+  assert.ok(actions, 'the Video actions column must be keyed `actions` and carry an explicit width');
+  assert.ok(Number(actions[1]) >= 264,
+    `the Video actions cell needs >= 264px for its four buttons, got ${actions[1]}`);
+  ok('the Video actions cell is wide enough for its buttons (delete survives hover)');
   v.unmount();
 }
 

@@ -131,7 +131,13 @@ export default function Video() {
     },
     { title: 'Trạng thái', dataIndex: 'status', width: 170, render: (s, r) => <VideoStatusTag status={s} kind={r.kind} /> },
     {
-      title: 'Hành động', dataIndex: 'video_url', width: 220,
+      // 300px, not 220: the "Bài viết" and "Lỗi render" columns carry
+      // `ellipsis`, which makes @rc-component/table force the whole table to
+      // `table-layout: fixed`. The four buttons need 232px + 32px of cell
+      // padding = 264px, so at 220px the delete button spills into the next
+      // cell — and that cell's background, painted on row hover, covers it.
+      // The button looked like it vanished on hover; it was always overflowing.
+      title: 'Hành động', key: 'actions', width: 300,
       render: (url, r) => {
         return url ? (
           <Space>
