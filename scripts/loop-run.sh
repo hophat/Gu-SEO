@@ -25,6 +25,16 @@ fi
 DRY_TAG=""
 if [ "$DRY_RUN" = "1" ]; then DRY_TAG=" (dry-run)"; fi
 
+# A hung model provider must not hang the loop forever. `timeout` is GNU
+# (Linux), `gtimeout` is its Homebrew name (macOS); without either we run
+# unguarded rather than fail. Override the budget with LOOP_AGENT_TIMEOUT.
+AGENT_TIMEOUT="${LOOP_AGENT_TIMEOUT:-900}"
+with_timeout() {
+  if command -v timeout >/dev/null 2>&1; then timeout "$AGENT_TIMEOUT" "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then gtimeout "$AGENT_TIMEOUT" "$@"
+  else "$@"; fi
+}
+
 pause_check() {
   # Match a directive LINE, not a prose mention — both files document the
   # token inline, so a bare substring grep would always arm the kill switch.
@@ -77,15 +87,15 @@ case "$MODE" in
     WORKTREE="../wt-loop-fix-$FIX_ID"
     BRANCH="loop/fix-$FIX_ID"
     git worktree add "$WORKTREE" -b "$BRANCH"
-    if ! opencode run \
+    if ! with_timeout opencode run \
       "Run skills/loop-constraints/SKILL.md. Then read issue-triage-state.md and pick ONE top single-file bugfix. Implement the minimal fix, run npm test and npm run build:functions, write a summary plus diff path. Escalate ambiguous or denylisted paths." \
       --agent implementer --dir "$WORKTREE" --title "Loop autofix $FIX_ID"; then
-      log_run "autofix $FIX_ID" "failed" "implementer run failed; branch $BRANCH kept at $WORKTREE"
+      log_run "autofix $FIX_ID$DRY_TAG" "failed" "implementer failed or timed out (${AGENT_TIMEOUT}s); branch $BRANCH kept at $WORKTREE"
       exit 1
     fi
     DIFF_FILE="$(mktemp "${TMPDIR:-/tmp}/loop-diff.XXXXXX")"
     git -C "$WORKTREE" diff > "$DIFF_FILE"
-    VERDICT="$(opencode run "Review this diff against AGENTS.md and loop-constraints.md denylist plus test evidence. APPROVE or REJECT only." \
+    VERDICT="$(with_timeout opencode run "Review this diff against AGENTS.md and loop-constraints.md denylist plus test evidence. APPROVE or REJECT only." \
       --agent verifier --file "$DIFF_FILE" --title "Verify loop fix $FIX_ID" || true)"
     if ! grep -qi "APPROVE" <<<"$VERDICT" || grep -qi "REJECT" <<<"$VERDICT"; then
       if [ "$DRY_RUN" = "1" ]; then print_diff; fi

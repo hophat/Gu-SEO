@@ -5,7 +5,8 @@ New since last run: unknown
 Needs human: 0
 
 ## Top 5 (by loop score)
-- (empty — populated by the first `loop-issue-triage` run)
+- [bug][P1][single-file] Carousel publish fails when the Facebook channel has `as_video: true`: `functions/_lib/publishing/facebook.js` checks `cfg.asVideo` (line ~186) BEFORE the carousel branch, so a `carousel/<slug>` video_key goes to `publishFacebookVideo`, which does `env.IMAGES.get('carousel/<slug>')` → null → throws "Video carousel/<slug> không còn trong R2". Fix: route `carousel/…` video_keys to the carousel branch before the as_video branch.
+- (remaining slots empty — populated by the next `loop-issue-triage` run)
 
 ## Proposed Labels (not applied in L1)
 - (none yet)
