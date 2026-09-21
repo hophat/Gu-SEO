@@ -15,22 +15,24 @@ export const onRequestGet = async ({ env, request }) => {
     ? await env.DB.prepare(
         `SELECT v.id, v.slug, v.kind, v.status, v.video_key, v.error, v.attempts, v.updated_at,
                 p.title, p.project_id
-         FROM video_jobs v LEFT JOIN blog_posts p ON p.id = v.blog_post_id
+         FROM video_jobs v LEFT JOIN blog_posts p
+           ON p.id = CASE WHEN v.blog_post_id LIKE 'carousel:%'
+                          THEN substr(v.blog_post_id, 10) ELSE v.blog_post_id END
          WHERE v.project_id = ?
          ORDER BY v.updated_at DESC LIMIT ?`
       ).bind(projectId, limit).all()
     : await env.DB.prepare(
         `SELECT v.id, v.slug, v.kind, v.status, v.video_key, v.error, v.attempts, v.updated_at,
                 p.title, p.project_id
-         FROM video_jobs v LEFT JOIN blog_posts p ON p.id = v.blog_post_id
+         FROM video_jobs v LEFT JOIN blog_posts p
+           ON p.id = CASE WHEN v.blog_post_id LIKE 'carousel:%'
+                          THEN substr(v.blog_post_id, 10) ELSE v.blog_post_id END
          ORDER BY v.updated_at DESC LIMIT ?`
       ).bind(limit).all();
 
   const jobs = (rows?.results || []).map((r) => {
-    const kind = r.kind || 'post';
     // Carousel jobs store the slide prefix in video_key — derive the
     // fixed 5 slide URLs for the grid view.
-    const isCarousel = r.kind === 'carousel' && r.video_key;
     return {
       ...r,
       kind: r.kind || 'post',

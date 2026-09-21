@@ -22,8 +22,23 @@ export const onRequestPost = async ({ env, request }) => {
   // R2 first: if the DB delete then fails, the job row still points at a
   // missing object and the operator can retry the delete. The reverse
   // order would strand an orphaned MP4 with no row pointing at it.
+  //
+  // A carousel's video_key is only the slide prefix (carousel/<slug>); the
+  // pixels live at carousel/<slug>-1..N.png. Deleting the bare key would
+  // miss every slide and silently leak them, so remove the whole set.
   if (job.video_key && env.IMAGES) {
-    try { await env.IMAGES.delete(job.video_key); } catch (e) {
+    try {
+      if (job.video_key.startsWith('carousel/')) {
+        // Only <prefix>-N.png is a slide: a bare prefix list would also
+        // match a slug that is a prefix of this one (carousel/foo-X.png).
+        const prefix = job.video_key;
+        const slideRe = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d+\\.png$`);
+        const listed = await env.IMAGES.list({ prefix });
+        for (const o of listed?.objects || []) if (slideRe.test(o.key)) await env.IMAGES.delete(o.key);
+      } else {
+        await env.IMAGES.delete(job.video_key);
+      }
+    } catch (e) {
       return json(500, { error: 'r2_delete_failed', detail: String(e?.message || e).slice(0, 200) });
     }
   }
