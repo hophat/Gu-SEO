@@ -686,12 +686,22 @@ export function makeBgm(totalSec, seedStr, out = join(WORK, 'assets', 'bgm.mp3')
 export const LOUDNESS = { i: -14, tp: -1.5 };
 
 export function masterLoudness(src, out = join(WORK, 'renders', 'master.mp4')) {
+  // Plain `ebur128=peak=true` only. `framelog=quiet` is not a value ffmpeg
+  // 4.4 (Ubuntu 22.04, i.e. the render VPS) accepts: it aborts with
+  // "Error reinitializing filters!" and never prints a Summary, so every
+  // real render fell through to "master skipped". The frame log it was
+  // suppressing is stderr noise, nothing more.
   const meas = spawnSync('ffmpeg', [
     '-hide_banner', '-nostats', '-i', src,
-    '-af', 'ebur128=peak=true:framelog=quiet', '-f', 'null', '-',
+    '-af', 'ebur128=peak=true', '-f', 'null', '-',
   ], { encoding: 'utf8', timeout: 5 * 60 * 1000 });
   const summary = (meas.stderr || '').split('Summary:')[1];
-  const num = (re) => Number((summary?.match(re) || [])[1]);
+  if (!summary) {
+    log(`loudness: no ebur128 summary (ffmpeg exit ${meas.status}) — ` +
+      (meas.stderr || '').trim().split('\n').slice(-2).join(' ').slice(-160));
+    return null;
+  }
+  const num = (re) => Number((summary.match(re) || [])[1]);
   const i = num(/I:\s+(-?[\d.]+) LUFS/);
   const tp = num(/Peak:\s+(-?[\d.]+) dBFS/);
   // Digital silence measures -inf, which parses to NaN, so one guard does.
