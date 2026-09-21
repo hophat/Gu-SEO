@@ -103,10 +103,21 @@ Where the input actually goes, measured on this repo:
 
 - **The question block costs ~0.7–1k tokens on every call** (9 questions, each
   with its 3-level `criteria`). For a 600-character document that is most of the
-  bill — a 613-char file scored in 975 tokens.
+  bill — a 613-char file scored in 975 tokens. The levels are therefore kept
+  terse on purpose: rewriting the prose wording as short phrases took the block
+  from **1868 to 1577 characters (−15.6 %)**, paid on *every* call, without
+  changing the three-step shape or its meaning.
 - **A real diff dominates.** The autofix gate on an actual working-tree diff
   measured ~4.5k tokens; the state is ~80% of it. `--max-chars` and
   `--dimensions` are the only knobs that matter there.
+- **Never pay to judge a build artifact.** `functions_dist/`, `package-lock.json`,
+  `node_modules/`, `dist/` and `build/` are derived from source that is in the
+  same diff, so `evaluate` drops them — from a `--file` walk and, for a piped
+  `git diff`, section by section before the state is sent. Measured on this
+  repo's multi-platform branch: **381 700 → 118 651 characters (−68.9 %)**, with
+  every source file still judged. Asking `--file` for a generated path alone
+  therefore exits 2 with `no documents` — correct, since there is nothing there
+  that is not already in the source it was built from.
 - **Batching several documents saves time, not tokens.** `evaluate` sends one
   document per call and N documents in one call (state = `documents[]` with
   named fields, question keys prefixed `d<i>_`) — the fan-out shape the docs

@@ -127,12 +127,16 @@ function run(args, extra = {}) {
 // process, so spawnSync would stall 45 s on the client's timeout and then fail
 // as a network error — the one way this suite can silently stop testing.
 function execAsync(command, args, extra = {}) {
+  // `input` is fed to stdin and kept out of the environment; everything else is
+  // an env var for the child.
+  const { input, ...vars } = extra;
   return new Promise((resolve) => {
-    const child = spawn(command, args, { cwd: CLONE, env: env(extra) });
+    const child = spawn(command, args, { cwd: CLONE, env: env(vars) });
     let out = '';
     child.stdout.on('data', (chunk) => { out += chunk; });
     child.stderr.on('data', (chunk) => { out += chunk; });
     child.on('close', (status) => resolve({ status, out }));
+    if (input !== undefined) child.stdin.end(input);
   });
 }
 
@@ -297,6 +301,36 @@ const answerAll = (body, score = 2, choice = 'proceed') => Object.fromEntries(Ob
     ok('a reply with no usage still reports the cost it could not read');
   } finally {
     quiet.close();
+  }
+}
+
+// ── the state is source, not the artifacts rebuilt from it ───────────
+// Generated files are derived from source in the same diff, so paying to judge
+// them is pure input cost — a rebuilt functions_dist/index.js alone is
+// thousands of lines. The client drops those sections before the request, which
+// is invisible unless a stub looks at what was actually sent.
+{
+  const stub = stubServer((body) => ({ model: 'jev-1.13.0', answers: answerAll(body), usage: { input_tokens: 7, output_tokens: 1 } }));
+  await stub.listen();
+  try {
+    const diff = [
+      'diff --git a/functions_dist/index.js b/functions_dist/index.js',
+      '--- a/functions_dist/index.js', '+++ b/functions_dist/index.js', '+generated bundle',
+      'diff --git a/package-lock.json b/package-lock.json',
+      '--- a/package-lock.json', '+++ b/package-lock.json', '+lockfile churn',
+      'diff --git a/src/admin/components/ChannelCards.jsx b/src/admin/components/ChannelCards.jsx',
+      '--- a/src/admin/components/ChannelCards.jsx', '+++ b/src/admin/components/ChannelCards.jsx', '+real change',
+    ].join('\n');
+    const r = await execAsync(REAL_NODE, [join(CLONE, 'scripts', 'jev.js'), 'evaluate', '--state', '-', '--summary'],
+      { JEV_REAL: '1', TYPESAFE_API_KEY: 'test-key', TYPESAFE_API_URL: stub.url(), input: diff });
+    assert.equal(r.status, 0, `a source-only diff should still pass: ${r.out}`);
+    const state = JSON.stringify(stub.seen[0].body.state);
+    assert.doesNotMatch(state, /functions_dist/, 'a generated bundle must not be paid for');
+    assert.doesNotMatch(state, /package-lock/, 'lockfile churn must not be paid for');
+    assert.match(state, /ChannelCards/, 'source in the same diff must still be judged');
+    ok('a diff is judged on its source, never on the generated files it rebuilt');
+  } finally {
+    stub.close();
   }
 }
 

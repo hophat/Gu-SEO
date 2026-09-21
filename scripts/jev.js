@@ -38,26 +38,54 @@ const DOC_EXT = new Set(['.md', '.txt', '.js', '.mjs', '.cjs', '.json', '.sql', 
 
 // Higher score = better in every dimension, so the gate is a plain floor.
 // Levels run worst -> best; the API answers with a fractional index.
+//
+// Wording is deliberately terse: this block is resent on every call and it is
+// the whole bill when the document is small, so the levels say the same thing
+// in fewer characters rather than carrying prose. The three-step shape and its
+// meaning are the gate — do not drop a level to save more.
 const DIMENSIONS = {
-  correctness: ['Does not work or contradicts itself', 'Works, but with caveats or gaps', 'Does what it claims, no gaps found'],
-  safety:      ['Could lose data, break prod, or is hard to undo', 'Recoverable, but needs care', 'Safe and easily reversible'],
-  rule_fit:    ['Violates a hard rule or a denylisted path', 'Drifts from repo conventions', 'Follows the repo rules and conventions'],
-  security:    ['Leaks secrets or weakens auth/authorisation', 'Risky pattern, unclear impact', 'No security impact'],
-  scope:       ['Unrelated changes bundled in', 'Slightly wider than asked', 'Exactly the requested scope, nothing speculative'],
-  evidence:    ['No verification of any kind', 'Partially verified', 'Verified by tests, logs, or real command output'],
-  clarity:     ['Ambiguous, cannot tell what is intended', 'Mostly clear, some gaps', 'Unambiguous and decision-complete'],
-  reuse:       ['Reinvents something the repo already has', 'Partially duplicated', 'Reuses existing helpers and patterns'],
+  correctness: ['Broken or self-contradictory', 'Works, with caveats or gaps', 'Does what it claims, no gaps found'],
+  safety:      ['Risks data loss, prod, or is hard to undo', 'Recoverable, but needs care', 'Safe and easily reversible'],
+  rule_fit:    ['Violates a hard rule or denylisted path', 'Drifts from repo conventions', 'Follows repo rules and conventions'],
+  security:    ['Leaks secrets or weakens auth', 'Risky pattern, unclear impact', 'No security impact'],
+  scope:       ['Unrelated changes bundled in', 'Wider than asked', 'Exactly the requested scope'],
+  evidence:    ['No verification', 'Partially verified', 'Verified by tests, logs, or real output'],
+  clarity:     ['Ambiguous; intent unclear', 'Mostly clear, some gaps', 'Unambiguous and decision-complete'],
+  reuse:       ['Reinvents an existing helper', 'Partially duplicated', 'Reuses existing helpers and patterns'],
 };
 
 const OVERALL = {
   type: 'choice',
-  instructions: 'Acting as a staff engineer reviewing this document, what should the operator do with it?',
+  instructions: 'As a staff engineer, what should the operator do with this document?',
   criteria: {
-    proceed: 'Good enough to act on as-is; no human review needed',
-    review: 'Needs a human decision before acting on it',
-    stop: 'Do not act on it; rework required first',
+    proceed: 'Good to act on as-is; no human review needed',
+    review: 'Needs a human decision first',
+    stop: 'Do not act on it; rework first',
   },
 };
+
+// Build artifacts and lockfiles are derived from source that is in the same
+// diff, so judging them costs input tokens for no signal — and a generated
+// `functions_dist/index.js` alone is thousands of lines. Skip them by path.
+const GENERATED = [/^functions_dist\//, /^package-lock\.json$/, /^node_modules\//, /^dist\//, /^build\//];
+const isGenerated = (p) => GENERATED.some((re) => re.test(p));
+
+// `--state -` is usually a whole `git diff`, which the API cannot filter: drop
+// the sections for generated paths before the text is sent. Anything that is
+// not a diff (a log, a plan) is returned untouched.
+function stripGeneratedDiff(text) {
+  if (!/(^|\n)diff --git /.test(text)) return text;
+  const kept = [];
+  let keep = true;
+  for (const line of text.split('\n')) {
+    if (line.startsWith('diff --git ')) {
+      const m = line.match(/^diff --git a\/(.+?) b\//);
+      keep = !(m && isGenerated(m[1]));
+    }
+    if (keep) kept.push(line);
+  }
+  return kept.join('\n');
+}
 
 const CRITICAL = ['security', 'rule_fit'];
 
@@ -84,6 +112,8 @@ function fail(msg) {
 }
 
 function walk(path, out = []) {
+  const rel = path.replace(`${ROOT}/`, '');
+  if (rel !== path && isGenerated(rel)) return out;
   const st = statSync(path);
   if (st.isDirectory()) {
     for (const entry of readdirSync(path)) {
@@ -125,7 +155,10 @@ function loadDocs() {
   if (!docs.length) fail('no documents. Pass --file <path|dir>, --state - (stdin), or --d1 "<sql>"');
 
   const max = parseInt(flag('max-chars') || '12000', 10);
-  return docs.map((d) => ({ name: d.name, text: d.text.length > max ? `${d.text.slice(0, max)}\n…[truncated]` : d.text }));
+  return docs.map((d) => {
+    const text = stripGeneratedDiff(d.text);
+    return { name: d.name, text: text.length > max ? `${text.slice(0, max)}\n…[truncated]` : text };
+  });
 }
 
 function dimensionQuestions(names) {
@@ -135,7 +168,7 @@ function dimensionQuestions(names) {
     if (!levels) fail(`unknown dimension "${name}" — known: ${Object.keys(DIMENSIONS).join(', ')}`);
     // Wire field is `criteria` (ordered levels), not `levels` — the docs'
     // interactive examples differ from the API contract.
-    questions[name] = { type: 'score', instructions: `Rate the document on ${name}.`, criteria: levels };
+    questions[name] = { type: 'score', instructions: `Rate ${name}.`, criteria: levels };
   }
   questions.overall = OVERALL;
   return questions;
@@ -244,7 +277,9 @@ async function askDocs(key, docs, { names, model, timeout }) {
   const perDoc = {};
   docs.forEach((doc, i) => {
     for (const [name, q] of Object.entries(questions)) {
-      perDoc[`d${i}_${name}`] = { ...q, instructions: `${q.instructions} — document ${i + 1} ("${doc.name}")` };
+      // The document's name and index already travel in `state.documents`, so
+      // the instruction only has to name the key it is answering.
+      perDoc[`d${i}_${name}`] = { ...q, instructions: `Rate ${name} of document d${i}.` };
     }
   });
   const state = { documents: docs.map((doc, i) => ({ index: i, name: doc.name, text: doc.text })) };
