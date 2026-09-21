@@ -25,7 +25,7 @@
 // moment the edge cache expires (within ~1h). To force-bust earlier,
 // admin can trigger a deploy or hit the URL with ?v=<timestamp>.
 
-import { renderCoverSvg } from '../_lib/cover_svg.js';
+import { renderCoverSvg, isRenderableSpec, fallbackCoverSpec } from '../_lib/cover_svg.js';
 import { buildBrandContext } from '../_lib/template.js';
 import { loadSettings } from '../_lib/settings.js';
 import { recordNotice, clearNotice } from '../_lib/notices.js';
@@ -86,6 +86,26 @@ export const onRequestGet = async ({ env, request, params }) => {
   let spec;
   try { spec = JSON.parse(template.spec_json); }
   catch { return new Response('Template spec corrupt', { status: 500, headers: { 'content-type': 'text/plain' } }); }
+
+  // The row exists but its spec can't paint anything (no background,
+  // no layers) — the signature of a template created with `spec: {}`.
+  // page_render.js only checks that a default ROW exists, so it will
+  // still point the hero <img> at this endpoint; returning black here
+  // is what users saw. Render the built-in branded card instead and
+  // surface the problem to the admin so the template gets fixed.
+  if (!isRenderableSpec(spec)) {
+    recordNotice(env, {
+      kind: 'cover_template_empty',
+      severity: 'warn',
+      title: 'Default cover template is empty',
+      detail: 'The default cover template has no layers, so covers render as a plain card. Open Covers and give it a design (or mark a designed template as default).',
+      action_url: '/admin#covers',
+      action_label: 'Open Covers',
+    });
+    spec = fallbackCoverSpec();
+  } else {
+    clearNotice(env, 'cover_template_empty');
+  }
 
   const settings = await loadSettings(env).catch(() => ({}));
 

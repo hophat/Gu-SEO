@@ -39,6 +39,9 @@ import { onRequestPost as providersTest } from '../functions/api/admin/providers
 import { signSession } from '../functions/_lib/passwords.js';
 import { setVaultSecret } from '../functions/_lib/secret_vault.js';
 import { carouselRef, carouselPrefix, carouselSlideKey } from '../functions/_lib/video_jobs.js';
+import { renderCoverSvg, isRenderableSpec, fallbackCoverSpec } from '../functions/_lib/cover_svg.js';
+import { onRequestGet as coverSvgRoute } from '../functions/cover/[slug].svg.js';
+import { onRequestGet as ogSvgRoute } from '../functions/og/[slug].svg.js';
 import { onRequestPost as deleteVideoJob } from '../functions/api/admin/video/delete.js';
 import { recipientsFor, isScheduledPost, sendPublishReport, renderReport } from '../functions/_lib/publishing/report.js';
 import { onRequestPost as sendOtp } from '../functions/api/public/send-otp.js';
@@ -2022,8 +2025,71 @@ async function testCarouselVideoJobs() {
   }
 }
 
+// ── Q. cover template renderability ─────────────────────────────────
+// A default cover template saved as `{}` (the React Covers "Tạo template"
+// form used to POST exactly that) rendered a 262-byte SVG: one black
+// <rect> and no text. Every cover on the site went black. Guard against
+// that at the spec, endpoint, and renderer levels.
+async function testCoverSpecFallback() {
+  console.log('\nQ. Cover template reliability');
+
+  assert.equal(isRenderableSpec({}), false, 'empty spec is not renderable');
+  assert.equal(isRenderableSpec({ layers: [] }), false, 'no layers is not renderable');
+  assert.equal(isRenderableSpec(null), false, 'null spec is not renderable');
+  assert.equal(isRenderableSpec({ background: { url: '/image/x.png' } }), true, 'background alone is renderable');
+  assert.equal(isRenderableSpec({ layers: [{ kind: 'text', text: 'x' }] }), true, 'one layer is renderable');
+  ok('isRenderableSpec rejects specs that would paint nothing');
+
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+  // The exact row that broke the live site: default template, spec `{}`.
+  await env.DB.prepare(
+    `INSERT INTO cover_templates (id, name, is_default, spec_json, created_at, updated_at)
+     VALUES ('tpl_empty', 'Hoàng Lê', 1, '{}', ?, ?)`
+  ).bind(t, t).run();
+
+  const request = { url: 'https://seo.test/blog/alpha-post' };
+  const params = { slug: 'alpha-post' };
+
+  const coverRes = await coverSvgRoute({ env, request, params });
+  assert.equal(coverRes.status, 200, 'cover endpoint still renders with an empty default template');
+  const coverSvg = await coverRes.text();
+  assert.match(coverSvg, /<tspan[^>]*>[^<]+<\/tspan>/, 'cover SVG contains rendered text');
+  assert.match(coverSvg, /Tiêu đề/, 'cover SVG contains the post title');
+  assert.ok((coverSvg.match(/<rect/g) || []).length >= 2, 'cover SVG has the card background + accent rule');
+  assert.ok(coverSvg.length > 400, 'cover SVG is more than a bare black rectangle');
+  ok('GET /cover/<slug>.svg falls back to the branded card for an empty default template');
+
+  const ogRes = await ogSvgRoute({ env, request, params });
+  assert.equal(ogRes.status, 200);
+  const ogSvg = await ogRes.text();
+  assert.match(ogSvg, /<tspan[^>]*>[^<]+<\/tspan>/, 'og SVG contains rendered text');
+  ok('GET /og/<slug>.svg never serves a black, textless card');
+
+  // Renderer-level guard: any caller, present or future, is covered.
+  assert.ok(fallbackCoverSpec().layers.length > 0, 'built-in fallback card has layers');
+  const direct = await renderCoverSvg({}, { brand: { name: 'Alpha' }, title: 'Tiêu đề' }, {});
+  assert.match(direct, /<tspan[^>]*>Tiêu đề<\/tspan>/, 'renderer substitutes the fallback for an empty spec');
+  ok('renderCoverSvg substitutes the fallback spec for any unusable spec');
+
+  // A real design must still win over the fallback.
+  await env.DB.prepare(
+    `UPDATE cover_templates SET name = 'Designed', spec_json = ? WHERE id = 'tpl_empty'`
+  ).bind(JSON.stringify({
+    width: 1200, height: 630, background: null,
+    layers: [
+      { kind: 'box', x: 0, y: 0, w: 1200, h: 630, fill: '#123456' },
+      { kind: 'text', x: 10, y: 10, w: 800, h: 60, text: 'DESIGNED-{title}', size: 40, color: '#ffffff' },
+    ],
+  })).run();
+  const designedSvg = await (await coverSvgRoute({ env, request, params })).text();
+  assert.match(designedSvg, /DESIGNED-Tiêu đề/, 'a designed template renders as authored');
+  assert.doesNotMatch(designedSvg, /#d4af62/, 'the fallback card accent is not used when a real design exists');
+  ok('a designed template still renders instead of the fallback');
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · carousel · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy) ---');
+  console.log('--- Platform tests (migrations · queue · carousel · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy · cover) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -2042,6 +2108,7 @@ async function main() {
   await testMailCredentials();
   await testEmailPolicy();
   await testCarouselVideoJobs();
+  await testCoverSpecFallback();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

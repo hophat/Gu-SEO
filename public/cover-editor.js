@@ -451,6 +451,47 @@
   function defaultTemplate() {
     return { width: 1200, height: 630, background: null, layers: [] };
   }
+
+  // A spec can only paint if it has a background or at least one
+  // layer. Mirrors isRenderableSpec() in the server renderer: a
+  // template stored as `{}` renders as a black rectangle with no
+  // text, which also left this editor's canvas blank.
+  function isRenderableSpec(spec) {
+    if (!spec || typeof spec !== 'object') return false;
+    if (spec.background && spec.background.url) return true;
+    return Array.isArray(spec.layers) && spec.layers.length > 0;
+  }
+
+  // Editorial starter design. Used when the operator opens (or creates)
+  // a template whose saved spec can't paint anything, so the canvas
+  // shows a real cover to work from instead of a black rectangle.
+  function starterTemplate() {
+    return {
+      width: 1200, height: 630, background: null,
+      layers: [
+        { id: 'bg',    kind: 'box',  x: 0,  y: 0,   w: 1200, h: 630, fill: '#0a0c10', radius: 0 },
+        { id: 'rule',  kind: 'box',  x: 80, y: 60,  w: 200,  h: 2,   fill: '#d4af62', radius: 0 },
+        { id: 'eyebrow', kind: 'text', x: 80, y: 80,  w: 700,  h: 30,  text: '{brand.name|upper}',
+          size: 22, family: '"JetBrains Mono", monospace', weight: '600', align: 'left', color: '#d4af62' },
+        { id: 'title', kind: 'text', x: 80, y: 280, w: 1040, h: 240, text: '{title}',
+          size: 76, family: '"Playfair Display", Georgia, serif', weight: '700', align: 'left', color: '#f5f0e6' },
+        { id: 'sig',   kind: 'text', x: 80, y: 560, w: 600,  h: 30,  text: '{pub_date|date:long} · {reading_time}',
+          size: 16, family: '"JetBrains Mono", monospace', weight: '400', align: 'left', color: 'rgba(245,245,230,0.55)' },
+      ],
+    };
+  }
+
+  // Normalise a stored spec so a half-written one can't blank the
+  // canvas: missing/invalid dimensions fall back to OG size and a
+  // missing layers array becomes an empty one.
+  function normalizeSpec(spec) {
+    const s = JSON.parse(JSON.stringify(spec || {}));
+    if (!Number.isFinite(s.width)  || s.width  <= 0) s.width  = 1200;
+    if (!Number.isFinite(s.height) || s.height <= 0) s.height = 630;
+    if (!Array.isArray(s.layers)) s.layers = [];
+    if (!('background' in s)) s.background = null;
+    return s;
+  }
   function makeState() {
     return {
       template: defaultTemplate(),
@@ -947,15 +988,21 @@
 
     // ── canvas rendering ──────────────────────────────────────────
     async function drawCanvas() {
-      const { width, height } = state.template;
+      // Never trust the stored spec here: a template saved as `{}` would
+      // otherwise leave the canvas black (0×0 → invisible, or an empty
+      // layer list) with no text and no error shown.
+      const spec = state.template || {};
+      const width  = Number.isFinite(spec.width)  && spec.width  > 0 ? spec.width  : 1200;
+      const height = Number.isFinite(spec.height) && spec.height > 0 ? spec.height : 630;
+      const layers = Array.isArray(spec.layers) ? spec.layers : [];
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width; canvas.height = height;
       }
       const c = ctx2d;
       c.clearRect(0, 0, width, height);
 
-      if (state.template.background?.url) {
-        const img = await loadImage(state.template.background.url);
+      if (spec.background?.url) {
+        const img = await loadImage(spec.background.url);
         if (img) {
           const r = Math.max(width / img.width, height / img.height);
           const w = img.width * r, h = img.height * r;
@@ -966,7 +1013,7 @@
         c.fillRect(0, 0, width, height);
       }
 
-      for (const layer of state.template.layers) {
+      for (const layer of layers) {
         await drawLayer(c, layer, state.previewCtx);
       }
     }
@@ -2161,13 +2208,21 @@
 
     function loadTemplateSpec(t) {
       if (!t.spec) return;
+      // A stored template with no background and no layers paints
+      // nothing. Seed the starter design instead of showing a black,
+      // textless canvas — the operator can then save it back over the
+      // empty template.
+      const empty = !isRenderableSpec(t.spec);
       cmd('load-template', () => {
-        state.template = JSON.parse(JSON.stringify(t.spec));
+        state.template = empty ? starterTemplate() : normalizeSpec(t.spec);
         for (const l of state.template.layers) l.id = l.id || uid();
         state.selectedIds.clear();
         updateSizeLabel(); syncPresetSelect();
         fitToContainer();
       });
+      if (empty) {
+        notify(`“${t.name}” chưa có thiết kế — đã mở bố cục mẫu để bạn chỉnh rồi lưu lại.`, 'warn');
+      }
       // Pre-warm any custom fonts referenced by text layers in this
       // template. The curated set is already loaded via injectFont-
       // Stylesheet(); anything else (a font the user typed into the
