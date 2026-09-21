@@ -118,25 +118,39 @@ async function reportFailure(job, message) {
 }
 
 // ── 2. script — GuRouter chat completion, strict JSON ────────────────
+// Post videos are a TEASER, not a replacement: hook on the most
+// interesting bit, 3 concrete takeaways, then an open question whose
+// answer lives in the article — the video sells the read.
 async function writeScript(job) {
   if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
-  const sys = 'Bạn là biên kịch video ngắn 9:16 cho mạng xã hội. Chỉ trả JSON thuần, không markdown.';
-  const user = `Viết kịch bản video ~40 giây cho bài blog sau.
+  const sys = `Bạn là creator video ngắn tóm tắt bài blog (TikTok/Reels). Mục tiêu: khiến người xem MUỐN ĐỌC bài gốc. Chỉ trả JSON thuần, không markdown.`;
+  const user = `Viết kịch bản video ~30 giây tóm tắt bài blog sau.
 
 Tiêu đề: ${job.title}
 Mô tả: ${job.meta_description || ''}
 Nội dung (rút gọn): ${(job.body_markdown || '').slice(0, 3500)}
 
-Trả JSON đúng schema:
-{"hook":"câu mở đầu gây tò mò, tối đa 18 từ","points":["điểm 1, tối đa 20 từ","điểm 2, tối đa 20 từ","điểm 3, tối đa 20 từ"],"cta":"lời kêu gọi hành động kèm lý do, tối đa 15 từ"}
-Yêu cầu: tiếng Việt tự nhiên, mỗi point là 1 câu hoàn chỉnh, không emoji, không markdown.`;
+CẤU TRÚC:
+- hook: câu mở đầu đánh vào điểm thú vị/nhất của bài — con số, sự thật lạ hoặc câu hỏi. Tối đa 14 từ.
+- points: đúng 3 ý chính của bài, mỗi ý 1 câu ≤ 16 từ, có chi tiết cụ thể (số/tên/địa danh) — không phải câu tổng quát.
+- question: 1 câu hỏi mở kết video — câu trả lời nằm TRONG bài viết, buộc người xem phải đọc. Tối đa 14 từ.
+
+QUY TẮC:
+1. Nghe như một người bạn kể lại bài hay vừa đọc, không như bản tóm tắt máy móc.
+2. Tiếng Việt tự nhiên, không emoji, không markdown.
+3. Không tiết lộ hết — câu hỏi cuối phải khiến người xem tò mò.
+
+VÍ DỤ ĐÚNG (bài "5 địa điểm ăn sáng ngon ở Lagi"):
+{"hook":"5 quán ăn sáng ở Lagi mà khách du lịch tìm mãi không ra","points":["Quán đầu chỉ người Lagi mới biết, 25k no căng","Bánh căn nướng than hoa, chờ 15 phút vẫn đáng","Địa chỉ chính xác từng quán — lưu lại là tới nơi"],"question":"Bạn đã thử quán số mấy rồi?"}
+
+Trả JSON: {"hook":"...","points":["...","...","..."],"question":"..."}`;
   const r = await fetch(`${GUROUTER_BASE}/chat/completions`, {
     method: 'POST',
     headers: { authorization: `Bearer ${GUROUTER_KEY}`, 'content-type': 'application/json' },
     body: JSON.stringify({
       model: GUROUTER_MODEL,
       messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
-      temperature: 0.6, max_tokens: 1500, response_format: { type: 'json_object' },
+      temperature: 0.7, max_tokens: 1200, response_format: { type: 'json_object' },
     }),
   }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
   if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
@@ -144,8 +158,9 @@ Yêu cầu: tiếng Việt tự nhiên, mỗi point là 1 câu hoàn chỉnh, kh
   const raw = data?.choices?.[0]?.message?.content || '';
   const parsed = parseScript(raw);
   const points = (parsed.points || []).slice(0, 3).map((p) => String(p).trim()).filter(Boolean);
-  if (!parsed.hook || !points.length || !parsed.cta) throw new Error('script_schema_bad: ' + raw.slice(0, 150));
-  return { hook: String(parsed.hook).trim(), points, cta: String(parsed.cta).trim() };
+  const question = String(parsed.question || parsed.cta || '').trim();
+  if (!parsed.hook || !points.length || !question) throw new Error('script_schema_bad: ' + raw.slice(0, 150));
+  return { hook: String(parsed.hook).trim(), points, question };
 }
 
 // Small models truncate mid-string at the token cap ("Unterminated string").
@@ -188,6 +203,7 @@ function parseScript(raw) {
     points: items,
     lines,
     cta: str('cta'),
+    question: str('question'),
     tagline: str('tagline'),
     highlights: items,
   };
@@ -314,17 +330,21 @@ function shade(hex, amt) {
   return '#' + [f((n >> 16) & 255), f((n >> 8) & 255), f(n & 255)].map((v) => v.toString(16).padStart(2, '0')).join('');
 }
 
-// Post composition — hook → points → outro, scenes timed to TTS.
+// Post composition — the teaser arc: hook → 3 takeaways → open
+// question → "đọc bài viết" outro. Scenes timed to TTS; the question
+// scene is the curiosity gap that sells the read.
 function composeHtml(job, script, segs, logoSrc = null) {
   const brand = job.project?.name || 'Blog';
   const outroUrl = (job.project?.publishing_url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
   const accent = job.project?.accent || ACCENT;
   const hasHero = existsSync(join(WORK, 'assets', 'hero.jpg'));
   const GAP = 0.4;
+  const READ_CTA = 'Đọc bài viết để biết thêm chi tiết';
   const scenes = [
-    { kind: 'intro', seg: segs[0] },
-    ...script.points.map((p, i) => ({ kind: 'point', text: p, n: i + 1, seg: segs[i + 1] })),
-    { kind: 'outro', text: script.cta, seg: segs[segs.length - 1] },
+    { kind: 'hook', seg: segs[0] },
+    { kind: 'points', seg: segs[1] },
+    { kind: 'question', seg: segs[2] },
+    { kind: 'outro', seg: segs[3] },
   ];
   let t = 0;
   const sceneHtml = [];
@@ -332,13 +352,15 @@ function composeHtml(job, script, segs, logoSrc = null) {
   for (const [i, s] of scenes.entries()) {
     s.start = t;
     s.dur = s.seg + GAP;
-    const inner = s.kind === 'intro'
+    const inner = s.kind === 'hook'
       ? `<div class="badge">${esc(brand)}</div><h1 class="hook">${esc(script.hook)}</h1>`
-      : s.kind === 'point'
-        ? `<div class="num">${i}</div><p class="point">${esc(s.text)}</p>`
-        : `<p class="outro">${esc(s.text)}</p><p class="sub">${esc(outroUrl)}</p>`;
+      : s.kind === 'points'
+        ? script.points.map((pt, n) => `<p class="hl"><span class="hn">${n + 1}</span>${esc(pt)}</p>`).join('')
+        : s.kind === 'question'
+          ? `<p class="question">${esc(script.question)}</p>`
+          : `<p class="outro">${esc(READ_CTA)}</p><p class="sub">${esc(outroUrl)}</p>`;
     sceneHtml.push(`<div id="s${i}" class="clip scene" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="0">${inner}</div>`);
-    if (hasHero && s.kind === 'point') {
+    if (hasHero && (s.kind === 'points' || s.kind === 'question')) {
       s.bgId = `bg${bgEls.length}`;
       bgEls.push(s);
       sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img src="assets/hero.jpg" alt=""/></div>`);
@@ -449,6 +471,8 @@ function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, 
   .hn { color:${A}; font-weight:800; margin-right:14px; }
   .contact { color:#fff; font-size:40px; font-weight:600; line-height:1.5; margin:10px 0; }
   .outro { color:#fff; font-size:44px; font-weight:700; line-height:1.3; }
+  .question { color:#fff; font-size:52px; font-weight:700; line-height:1.3;
+    text-shadow:0 2px 18px rgba(0,0,0,0.75); }
   .sub { color:#9fb3c8; font-size:26px; margin-top:24px; }
   .bgi { position:absolute; inset:0; }
   .bgi img { width:100%; height:100%; object-fit:cover; opacity:0.32; }
@@ -619,13 +643,15 @@ async function renderOne(job) {
   const script = isBusiness ? await writeBusinessScript(scriptSource) : await writeScript(job);
   log(`script ok (${job.kind})`);
 
-  // TTS per scene. Business: hook → reveal → 3 points → cta (contact
-  // scene is silent on a fixed beat). edge-tts occasionally returns an
-  // empty file (network hiccup) — retry, then fall back to the
-  // companion voice before giving up.
+  // TTS per scene. Post: hook → 3 takeaways → the open question → the
+  // read-the-article invite. Business: hook → reveal → 3 points → cta
+  // (contact scene is silent on a fixed beat). edge-tts occasionally
+  // returns an empty file (network hiccup) — retry, then fall back to
+  // the companion voice before giving up.
+  const READ_CTA = 'Đọc bài viết để biết thêm chi tiết';
   const segTexts = isBusiness
     ? [script.hook, `${job.project?.name || ''}. ${script.reveal}`, script.points.join(' '), script.cta]
-    : [script.hook, ...script.points, script.cta];
+    : [script.hook, script.points.join(' '), script.question, 'Đọc bài viết để biết thêm chi tiết'];
   const segs = [];
   for (const [i, text] of segTexts.entries()) {
     const mp3 = join(WORK, 'assets', `seg${i}.mp3`);
