@@ -648,7 +648,11 @@ function makeBgm(totalSec, seedStr) {
 // Slide 1: hook (brand badge). 2-4: the three takeaways. Slide 5: the
 // open question + "đọc bài viết". Same script as the post teaser; the
 // hero image backs the point slides.
-function composeCarouselHtml(job, script) {
+// One slide per HTML file, fully static (no GSAP timeline). Hyperframes
+// snapshot then returns exactly that slide at any --at time, which makes
+// the deck deterministic — a single animated composition mis-mapped the
+// first frame in practice (cover came out as the CTA scene).
+function composeCarouselSlideHtml(job, script, slideIdx) {
   const p = job.project || {};
   const brand = p.name || 'Blog';
   const accent = p.accent || ACCENT;
@@ -657,35 +661,29 @@ function composeCarouselHtml(job, script) {
   const W = 1080, H = 1350;
   const A = accent;
 
-  // One scene per slide, 1s each; snapshot grabs the middle of each.
+  // Pad to exactly 3 points so the deck is always 5 slides — the deliver
+  // writes carousel/<slug>-1..5.png and the UI derives those URLs.
+  const points = [...script.points.slice(0, 3)];
+  while (points.length < 3) points.push('Đọc bài viết để xem đầy đủ');
   const scenes = [
-    { kind: 'hook', seg: 1 },
-    ...script.points.slice(0, 3).map((pt, n) => ({ kind: 'point', text: pt, n: n + 1, seg: 1 })),
-    { kind: 'cta', seg: 1 },
+    { kind: 'cover' },
+    ...points.map((pt, n) => ({ kind: 'point', text: pt, n: n + 1 })),
+    { kind: 'cta' },
   ];
-  const sceneHtml = [];
-  const bgEls = [];
-  for (const [i, s] of scenes.entries()) {
-    s.start = i; s.dur = 1;
-    const inner = s.kind === 'cover'
-      ? `<div class="badge">${esc(brand)}</div><h1 class="hook">${esc(script.hook)}</h1>`
-      : s.kind === 'point'
-        ? `<div class="num">${s.n}</div><p class="point">${esc(s.text)}</p>`
-        : `<p class="question">${esc(script.question)}</p><p class="sub">Đọc bài viết đầy đủ ↓</p><p class="url">${esc(outroUrl)}</p>`;
-    sceneHtml.push(`<div id="s${i}" class="clip scene" data-start="${i}" data-duration="1" data-track-index="0">${inner}</div>`);
-    if (hasHero && s.kind !== 'cover') {
-      s.bgId = `bg${bgEls.length}`;
-      bgEls.push(s);
-      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${i}" data-duration="1" data-track-index="1"><img src="assets/hero.jpg" alt=""/></div>`);
-    }
-  }
-  const total = scenes.length;
-  const logoSrc = ['png', 'svg', 'jpg', 'jpeg', 'webp'].map((e) => `assets/logo.${e}`).find((f) => existsSync(join(WORK, f))) || null;
+  const s = scenes[slideIdx] || scenes[0];
+  const inner = s.kind === 'cover'
+    ? `<div class="badge">${esc(brand)}</div><h1 class="hook">${esc(script.hook)}</h1>`
+    : s.kind === 'point'
+      ? `<div class="num">${s.n}</div><p class="point">${esc(s.text)}</p>`
+      : `<p class="question">${esc(script.question)}</p><p class="sub">Đọc bài viết đầy đủ ↓</p><p class="url">${esc(outroUrl)}</p>`;
+  const bg = hasHero && s.kind !== 'cover'
+    ? `<div class="bgi"><img src="assets/hero.jpg" alt=""/></div>` : '';
+  const logo = existsSync(join(WORK, 'assets', 'logo.png'))
+    ? `<img class="brandlogo" src="assets/logo.png"/>` : '';
 
   return `<!doctype html>
 <html lang="vi"><head><meta charset="UTF-8"/>
 <meta name="viewport" content="width=${W}, height=${H}"/>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body { width:${W}px; height:${H}px; overflow:hidden; background:#0a0c10;
@@ -712,17 +710,11 @@ function composeCarouselHtml(job, script) {
     object-fit:contain; z-index:6; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
 </style></head>
 <body><div id="root" data-composition-id="main" data-start="0"
-  data-duration="${scenes.length}" data-width="${W}" data-height="${H}">
-${sceneHtml.join('\n')}
-${existsSync(join(WORK, 'assets', 'logo.png')) ? `<img class="clip brandlogo" data-start="0" data-duration="${scenes.length}" data-track-index="9" src="assets/logo.png"/>` : ''}
-</div>
-<script>
-  const tl = gsap.timeline({ paused: true });
-  ${scenes.map((s, i) => `tl.fromTo("#s${i}", { opacity: 0 }, { opacity: 1, duration: 0.3 }, ${(s.start + 0.05).toFixed(2)});`).join('\n  ')}
-  window.__timelines = window.__timelines || {};
-  window.__timelines["main"] = tl;
-  tl.seek(0);
-</script></body></html>`;
+  data-duration="1" data-width="${W}" data-height="${H}">
+${bg}
+<div class="scene">${inner}</div>
+${logo}
+</div></body></html>`;
 }
 
 // Render the carousel: compose → snapshot at each slide's midpoint →
@@ -736,21 +728,41 @@ async function renderCarousel(job) {
   if (heroB64) writeFileSync(join(WORK, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
 
   log('writing script via GuRouter…');
-  const script = await writeScript(job);
+  let script;
+  try {
+    script = await writeScript(job);
+  } catch (e) {
+    // LLM down (429/quota) — derive the slides from the article itself
+    // instead of failing the job. Hook = title, points = the first 3
+    // H2 headings (or meta sentences), question = a generic teaser.
+    log(`GuRouter failed (${String(e?.message || e).slice(0, 80)}) — deriving slides from the post`);
+    const heads = (job.body_markdown || '').match(/^##+\s+(.+)$/gm)?.map((h) => h.replace(/^#+\s+/, '').trim()).filter((h) => h.length > 5) || [];
+    const pts = heads.slice(0, 3);
+    script = {
+      hook: job.title || 'Bài viết mới',
+      points: pts.length >= 2 ? pts : [job.meta_description || job.title || 'Chi tiết trong bài viết'],
+      question: 'Bạn đã thử cách nào chưa?',
+    };
+    // Pad to 3 points so the deck always has 5 slides.
+    while (script.points.length < 3) script.points.push(job.meta_description || 'Đọc bài viết để xem đầy đủ');
+  }
   log(`script ok: hook + ${script.points.length} points + question`);
 
-  writeFileSync(join(WORK, 'index.html'), composeCarouselHtml(job, script));
-
+  // One static HTML per slide → one snapshot each. Deterministic: the
+  // snapshot time does not matter because nothing animates.
   log('snapshotting 5 slides…');
-  const at = [0.5, 1.5, 2.5, 3.5, 4.5].join(',');
-  const ren = spawnSync('npx', ['-y', `hyperframes@${HF_VERSION}`, 'snapshot', '--at', '0.5,1.5,2.5,3.5,4.5', '--timeout', '9000'],
-    { cwd: WORK, encoding: 'utf8', timeout: 5 * 60 * 1000 });
-  if (ren.status !== 0) throw new Error('snapshot failed: ' + ((ren.stderr || ren.stdout || '').slice(-300)));
-  const shots = readdirSync(join(WORK, 'snapshots'))
-    .filter((f) => f.startsWith('frame-') && f.endsWith('.png'))
-    .sort();
-  if (shots.length < 5) throw new Error(`snapshot produced ${shots.length}/5 slides`);
-  const slides = shots.slice(0, 5).map((f) => readFileSync(join(WORK, 'snapshots', f)).toString('base64'));
+  const slides = [];
+  for (let i = 0; i < 5; i++) {
+    writeFileSync(join(WORK, 'index.html'), composeCarouselSlideHtml(job, script, i));
+    rmSync(join(WORK, 'snapshots'), { recursive: true, force: true });
+    const ren = spawnSync('npx', ['-y', `hyperframes@${HF_VERSION}`, 'snapshot', '--at', '0.5', '--timeout', '9000'],
+      { cwd: WORK, encoding: 'utf8', timeout: 3 * 60 * 1000 });
+    if (ren.status !== 0) throw new Error(`snapshot slide ${i + 1} failed: ` + ((ren.stderr || ren.stdout || '').slice(-300)));
+    const frame = readdirSync(join(WORK, 'snapshots'))
+      .filter((f) => f.startsWith('frame-') && f.endsWith('.png')).sort()[0];
+    if (!frame) throw new Error(`snapshot produced no PNG for slide ${i + 1}`);
+    slides.push(readFileSync(join(WORK, 'snapshots', frame)).toString('base64'));
+  }
   log(`slides: ${slides.length} PNG(s) → delivering`);
 
   const up = await api('/api/admin/video/carousel-deliver', {

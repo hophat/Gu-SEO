@@ -25,13 +25,15 @@ export const onRequestPost = async ({ env, request }) => {
   }
 
   // Decode + validate every slide before writing anything — a partial
-  // carousel in R2 is worse than a failed delivery.
+  // carousel in R2 is worse than a failed delivery. Workers have no
+  // Node Buffer — decode base64 via atob into a Uint8Array.
   const decoded = [];
   for (const [n, s] of slides.entries()) {
     try {
-      const buf = Buffer.from(String(s), 'base64');
-      // PNG magic: 89 50 4E 47. JPG would also be fine but the agent
-      // exports PNGs from hyperframes snapshot.
+      const bin = atob(String(s));
+      const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      // PNG magic: 89 50 4E 47 — the agent exports PNGs from snapshot.
       const isPng = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
       if (!isPng || buf.length < 5000) throw new Error(`slide ${n + 1} không phải PNG hợp lệ`);
       decoded.push(buf);
@@ -44,7 +46,7 @@ export const onRequestPost = async ({ env, request }) => {
   const keys = [];
   for (const [n, buf] of decoded.entries()) {
     const key = `${prefix}-${n + 1}.png`;
-    await env.IMAGES.put(key, new Uint8Array(buf), {
+    await env.IMAGES.put(key, buf, {
       httpMetadata: { contentType: 'image/png', cacheControl: 'public, max-age=31536000, immutable' },
     });
     keys.push(key);

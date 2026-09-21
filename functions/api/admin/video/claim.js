@@ -155,10 +155,10 @@ export const onRequestPost = async ({ env, request }) => {
     // Carousels ride the same queue — they need the same post payload.
     const pendSql = projectId
       ? `SELECT id, kind, blog_post_id FROM video_jobs
-          WHERE kind IN ('post','carousel') AND project_id = ? AND status IN ('pending','failed')
+          WHERE COALESCE(kind, 'post') IN ('post','carousel') AND project_id = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`
       : `SELECT id, kind, project_id, blog_post_id FROM video_jobs
-          WHERE kind IN ('post','carousel') AND status IN ('pending','failed')
+          WHERE COALESCE(kind, 'post') IN ('post','carousel') AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`;
     const pendRows = projectId
       ? await env.DB.prepare(pendSql).bind(projectId).all().catch(() => ({ results: [] }))
@@ -169,11 +169,16 @@ export const onRequestPost = async ({ env, request }) => {
       await env.DB.prepare(
         `UPDATE video_jobs SET status='claimed', attempts=attempts+1, claimed_at=?, updated_at=?, error=NULL WHERE id=?`
       ).bind(now, now, pendingJob.id).run();
+      // Carousel jobs carry a sentinel blog_post_id (carousel:<id>) — the
+      // UNIQUE index on blog_post_id already belongs to the post video.
+      const postId = pendingJob.kind === 'carousel'
+        ? pendingJob.blog_post_id.replace(/^carousel:/, '')
+        : pendingJob.blog_post_id;
       const p = await env.DB.prepare(
         `SELECT id, slug, title, meta_description, body_markdown,
                 hero_image_key, project_id
          FROM blog_posts WHERE id = ? AND status = 'published' LIMIT 1`
-      ).bind(pendingJob.blog_post_id).first().catch(() => null);
+      ).bind(postId).first().catch(() => null);
       if (!p) {
         // The queued post vanished (unpublished/deleted) — park the job
         // and let the next claim move on to other work.
@@ -209,8 +214,8 @@ export const onRequestPost = async ({ env, request }) => {
                              AND v.status IN ('pending','claimed','rendering','done'))
          ORDER BY p.published_at DESC LIMIT 1`;
     const rows = projectId
-      ? await env.DB.prepare(discSql(projectId)).bind(now - QUEUE_WINDOW, projectId).all().catch(() => ({ results: [] }))
-      : await env.DB.prepare(discSql(null)).bind(now - QUEUE_WINDOW).all().catch(() => ({ results: [] }));
+      ? await env.DB.prepare(discSql).bind(now - QUEUE_WINDOW, projectId).all().catch(() => ({ results: [] }))
+      : await env.DB.prepare(discSql).bind(now - QUEUE_WINDOW).all().catch(() => ({ results: [] }));
     post = (rows?.results || [])[0] || null;
     if (!post) {
       return json(200, { ok: true, job: null, hint: 'no published post in the last 48h is missing a video' });
