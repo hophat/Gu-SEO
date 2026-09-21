@@ -333,7 +333,7 @@ function shade(hex, amt) {
 // Post composition — the teaser arc: hook → 3 takeaways → open
 // question → "đọc bài viết" outro. Scenes timed to TTS; the question
 // scene is the curiosity gap that sells the read.
-function composeHtml(job, script, segs, logoSrc = null) {
+function composeHtml(job, script, segs, logoSrc = null, bgmSrc = null) {
   const brand = job.project?.name || 'Blog';
   const outroUrl = (job.project?.publishing_url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
   const accent = job.project?.accent || ACCENT;
@@ -372,7 +372,7 @@ function composeHtml(job, script, segs, logoSrc = null) {
     `<audio class="clip" data-start="${s.start.toFixed(2)}" data-duration="${s.seg.toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
   ).join('\n  ');
 
-  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: scenes, logoSrc });
+  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: scenes, logoSrc, bgmSrc });
 }
 
 // Business composition — the creator storyboard:
@@ -383,7 +383,7 @@ function composeHtml(job, script, segs, logoSrc = null) {
 //   [14-16s] CTA
 // Scene backgrounds come from the real imagery collected off the
 // project's website (media[]), one image per scene, R2 hero as fallback.
-function composeBusinessHtml(job, script, segs, media = [], logoSrc = null) {
+function composeBusinessHtml(job, script, segs, media = [], logoSrc = null, bgmSrc = null) {
   const p = job.project || {};
   const brand = p.name || 'Doanh nghiệp';
   const accent = p.accent || ACCENT;
@@ -439,12 +439,12 @@ function composeBusinessHtml(job, script, segs, media = [], logoSrc = null) {
     `<audio class="clip" data-start="${s.start.toFixed(2)}" data-duration="${s.seg.toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
   ).join('\n  ');
 
-  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: sceneDefs, logoSrc });
+  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: sceneDefs, logoSrc, bgmSrc });
 }
 
 // Shared HTML shell — both compositions render inside the same brand
 // frame so post videos and business promos stay visually consistent.
-function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, logoSrc }) {
+function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, logoSrc, bgmSrc }) {
   const A = accent || ACCENT;
   const meta = sceneMeta || [];
   return `<!doctype html>
@@ -485,6 +485,7 @@ function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, 
   data-duration="${total.toFixed(2)}" data-width="720" data-height="1280">
 ${sceneHtml.join('\n')}
 ${audioHtml}
+${bgmSrc ? `<audio class="clip" data-start="0" data-duration="${total.toFixed(2)}" data-volume="0.12" data-track-index="6" src="assets/bgm.mp3"></audio>` : ''}
 ${logoSrc ? `<img class="clip brandlogo" data-start="0" data-duration="${total.toFixed(2)}" data-track-index="9" src="${logoSrc}"/>` : ''}
 </div>
 <script>
@@ -613,6 +614,36 @@ async function captureSite(siteUrl) {
   return { shots, text: [title, desc, ...headings].filter(Boolean).join('\n') };
 }
 
+// ── 4c. background music — synthesised ambient pad, licence-free ─────
+// A soft major-chord pad generated with ffmpeg (no third-party service,
+// no licensing questions). The chord set is picked by the job slug so a
+// project keeps the same bed across renders, and the pad is trimmed to
+// the video length with fades. Set VIDEO_MUSIC=off to disable.
+function makeBgm(totalSec, seedStr) {
+  if (String(E('VIDEO_MUSIC') || '').toLowerCase() === 'off') return null;
+  const chords = [
+    [220.0, 277.2, 329.6],  // A major — warm
+    [174.6, 220.0, 261.6],  // F major — calm
+    [196.0, 246.9, 293.7],  // G major — open
+    [164.8, 207.7, 261.6],  // E minor — soft
+  ];
+  // The chord set is picked by the job slug so a project keeps the same
+  // bed across renders.
+  const seed = String(seedStr || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const ch = chords[seed % chords.length];
+  const out = join(WORK, 'assets', 'bgm.mp3');
+  const fadeOut = Math.max(1, totalSec - 3).toFixed(1);
+  const r = spawnSync('ffmpeg', [
+    '-y', '-f', 'lavfi', '-i', `sine=frequency=${ch[0]}:duration=${totalSec.toFixed(1)}`,
+    '-f', 'lavfi', '-i', `sine=frequency=${ch[1]}:duration=${totalSec.toFixed(1)}`,
+    '-f', 'lavfi', '-i', `sine=frequency=${ch[2]}:duration=${totalSec.toFixed(1)}`,
+    '-filter_complex',
+    `[0]volume=0.16[a];[1]volume=0.22[b];[2]volume=0.18[c];[a][b][c]amix=3,tremolo=f=0.4:d=0.6,lowpass=f=900,afade=t=in:d=2,afade=t=out:st=${fadeOut}:d=3[out]`,
+    '-map', '[out]', '-b:a', '128k', out,
+  ], { encoding: 'utf8', timeout: 60000 });
+  return r.status === 0 && existsSync(out) && statSync(out).size > 5000 ? out : null;
+}
+
 // ── 5. render + deliver one job ───────────────────────────────────────
 async function renderOne(job) {
   log(`claimed ${job.slug} (${job.kind}, job ${job.id})`);
@@ -674,8 +705,8 @@ async function renderOne(job) {
   }
   log(`tts: ${segs.map((d) => d.toFixed(1) + 's').join(' + ')}`);
 
-  // Real imagery: scrape the project's website for scene backgrounds,
-  // falling back to the R2 hero the claim payload carries.
+  // Real imagery: post videos scrape the project's website for scene
+  // backgrounds, falling back to the R2 hero the claim payload carries.
   if (!isBusiness) {
     media = await collectMedia(job);
   }
@@ -687,10 +718,18 @@ async function renderOne(job) {
   // Brand logo — downloaded once, overlaid on every scene by the shell.
   const logoSrc = await downloadLogo(job.project?.logo_url);
 
+  // Background music — synthesised ambient pad trimmed to the video
+  // length, mixed well under the voice (data-volume in the composition).
+  const bgmSrc = makeBgm(
+    segs.reduce((a, s) => a + s + 0.4, 0),
+    `${job.slug}-${job.kind}`
+  );
+  if (bgmSrc) log('bgm: ambient pad mixed in');
+
   log('composing…');
   const html = isBusiness
-    ? composeBusinessHtml(job, script, segs, media, logoSrc)
-    : composeHtml(job, script, segs, logoSrc);
+    ? composeBusinessHtml(job, script, segs, media, logoSrc, bgmSrc)
+    : composeHtml(job, script, segs, logoSrc, bgmSrc);
   writeFileSync(join(WORK, 'index.html'), html);
 
   log('rendering (hyperframes)…');
