@@ -10,7 +10,7 @@ import {
   LogoutOutlined, LockOutlined, BellOutlined, CheckCircleOutlined,
   CalendarOutlined, RiseOutlined, PictureOutlined, LinkOutlined,
   CodeOutlined, RocketOutlined, ApiOutlined, SendOutlined,
-  VideoCameraOutlined,
+  VideoCameraOutlined, FileImageOutlined,
 } from '@ant-design/icons';
 import { lightTheme, darkTheme } from './theme.js';
 import { useTheme, useAuth, AuthProvider, useProjects, ProjectsProvider } from './hooks/useTheme.jsx';
@@ -42,6 +42,7 @@ const UsersPage = lazy(() => import('./pages/Users.jsx'));
 const ProjectsPage = lazy(() => import('./pages/Projects.jsx'));
 const DomainsPage = lazy(() => import('./pages/Domains.jsx'));
 const VideoPage = lazy(() => import('./pages/Video.jsx'));
+const CarouselPage = lazy(() => import('./pages/Carousel.jsx'));
 
 // Menu structure — mirrors the old data-children hierarchy.
 const MENU_ITEMS = [
@@ -54,6 +55,7 @@ const MENU_ITEMS = [
       { key: 'trends', icon: <RiseOutlined />, label: 'Xu hướng' },
       { key: 'social', icon: <SendOutlined />, label: 'Bài đăng mạng xã hội' },
       { key: 'video', icon: <VideoCameraOutlined />, label: 'Video 9:16' },
+      { key: 'carousel', icon: <FileImageOutlined />, label: 'Carousel ảnh' },
     ],
   },
   {
@@ -96,6 +98,7 @@ const PAGE_COMPONENTS = {
   prog: ProgPage, links: LinksPage, analytics: AnalyticsPage,
   seo: SeoPage, embeds: EmbedsPage, publishing: PublishingPage, social: SocialPage, status: StatusPage,
   video: VideoPage,
+  carousel: CarouselPage,
   insights: InsightsPage,
   updates: UpdatesPage, usage: UsagePage, settings: SettingsPage,
   users: UsersPage, projects: ProjectsPage, domains: DomainsPage,

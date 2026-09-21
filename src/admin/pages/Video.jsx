@@ -6,13 +6,12 @@
 // what failed and why, and links the MP4 for download / social posting.
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Card, Table, Button, Space, Typography, Tag, message, Row, Col, Statistic, Tooltip, Alert, Popconfirm, Input, Modal,
+  Card, Table, Button, Space, Typography, Tag, message, Row, Col, Tooltip, Alert, Popconfirm, Input, Modal,
 } from 'antd';
 import {
   ReloadOutlined, VideoCameraOutlined, CheckCircleOutlined,
   ClockCircleOutlined, WarningOutlined, DownloadOutlined, FacebookOutlined,
   AppstoreOutlined, DeleteOutlined, GlobalOutlined, PlayCircleOutlined,
-  FileImageOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, getActiveProject } from '../api.js';
@@ -37,7 +36,6 @@ export default function Video() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [siteUrl, setSiteUrl] = useState('');
-  const [carouselSlug, setCarouselSlug] = useState('');
   const [viewing, setViewing] = useState(null);
   const [brandForm, setBrandForm] = useState({ video_tagline: '', brand_accent: '', address: '', phone: '' });
   const [brandOpen, setBrandOpen] = useState(false);
@@ -45,7 +43,8 @@ export default function Video() {
   const load = useCallback(async () => {
     setLoading(true);
     const { status, body } = await apiGet('/api/admin/video/list');
-    if (status === 200 && body?.ok) setJobs(body.jobs || []);
+    // Carousels are a post format — they live on the Carousel page.
+    if (status === 200 && body?.ok) setJobs((body.jobs || []).filter((j) => j.kind !== 'carousel'));
     else message.error(body?.error || 'Không tải được danh sách video');
     setLoading(false);
   }, []);
@@ -146,23 +145,6 @@ export default function Video() {
     }
   };
 
-  const createCarousel = async () => {
-    const slug = (carouselSlug || '').trim();
-    if (!slug) { message.warning('Nhập slug bài viết trước (vd: 5-dia-diem-an-sang-lagi)'); return; }
-    setBusyId('__car__');
-    const { status, body } = await apiPost('/api/admin/video/carousel', { project_id: getActiveProject(), slug });
-    setBusyId(null);
-    if (status === 200 && body?.ok) {
-      message.success('Đã tạo job carousel — agent sẽ xuất 5 slide PNG');
-      setCarouselSlug('');
-      load();
-    } else if (status === 409) {
-      message.info('Carousel cho bài này đang được render');
-    } else {
-      message.error(body?.hint || body?.error || 'Không tạo được job');
-    }
-  };
-
   const deleteVideo = async (id) => {
     setBusyId(id);
     const { status, body } = await apiPost('/api/admin/video/delete', { id });
@@ -179,14 +161,6 @@ export default function Video() {
     {
       title: 'Thumbnail', dataIndex: 'video_url', width: 76,
       render: (url, r) => {
-        if (r.slides?.length) {
-          return (
-            <Tooltip title="Bấm để xem bộ slide">
-              <img src={r.slides[0]} onClick={() => setViewing(r)}
-                style={{ width: 64, height: 80, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', display: 'block', border: '1px solid #333' }} />
-            </Tooltip>
-          );
-        }
         return url ? (
           <Tooltip title="Bấm để xem video">
             <video
@@ -209,29 +183,6 @@ export default function Video() {
     {
       title: 'Hành động', dataIndex: 'video_url', width: 220,
       render: (url, r) => {
-        const isCarousel = !!r.slides?.length;
-        if (isCarousel) {
-          return (
-            <Space>
-              <Button size="small" icon={<FileImageOutlined />} onClick={() => setViewing(r)}>Xem slide</Button>
-              <Popconfirm
-                title="Đăng carousel lên Facebook Page?"
-                description="Đăng 5 slide dưới dạng multi-photo post kèm link bài viết."
-                onConfirm={() => publishFb(r.id)}
-              >
-                <Button size="small" icon={<FacebookOutlined />} loading={busyId === r.id}>Đăng FB</Button>
-              </Popconfirm>
-              <Popconfirm
-                title="Xóa carousel này?"
-                description="Xóa cả các slide trên R2 — không thể hoàn tác."
-                okButtonProps={{ danger: true }}
-                onConfirm={() => deleteVideo(r.id)}
-              >
-                <Button size="small" danger icon={<DeleteOutlined />} loading={busyId === r.id} />
-              </Popconfirm>
-            </Space>
-          );
-        }
         return url ? (
           <Space>
             <Button size="small" icon={<PlayCircleOutlined />} onClick={() => setViewing(r)}>Xem</Button>
@@ -267,15 +218,24 @@ export default function Video() {
     },
   ];
 
-  const done = jobs.filter((j) => j.status === 'done').length;
-  const rendering = jobs.filter((j) => j.status === 'claimed' || j.status === 'rendering').length;
-  const failed = jobs.filter((j) => j.status === 'failed').length;
-
   return (
     <PageContainer
       title="Video 9:16"
       description="Video dọc cho mạng xã hội — render tự động trên VPS bằng HyperFrames + giọng đọc AI."
     >
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message={
+          <Space>
+            <span>Đăng carousel 5 slide ảnh? Đây là một dạng bài đăng, không phải video —</span>
+            <Button type="link" style={{ padding: 0 }} onClick={() => { window.location.hash = 'carousel'; }}>
+              mở trang Carousel ảnh
+            </Button>
+          </Space>
+        }
+      />
       <Card
         title={<Space><VideoCameraOutlined /> Hàng chờ video</Space>}
         extra={
@@ -290,17 +250,6 @@ export default function Video() {
             />
             <Button icon={<GlobalOutlined />} loading={busyId === '__site__'} onClick={createWebsite}>
               Video từ URL
-            </Button>
-            <Input
-              placeholder="slug-bài-viết — tạo carousel 5 slide"
-              value={carouselSlug}
-              onChange={(e) => setCarouselSlug(e.target.value)}
-              onPressEnter={createCarousel}
-              style={{ width: 220 }}
-              allowClear
-            />
-            <Button icon={<FileImageOutlined />} loading={busyId === '__car__'} onClick={createCarousel}>
-              Carousel
             </Button>
             <Button icon={<AppstoreOutlined />} loading={busyId === '__biz__'} onClick={createBusiness}>
               Video doanh nghiệp
@@ -371,14 +320,7 @@ export default function Video() {
         width={420}
         destroyOnClose
       >
-        {viewing?.slides?.length ? (
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-            {viewing.slides.map((s, n) => (
-              <img key={n} src={s} alt={`Slide ${n + 1}`}
-                style={{ height: 280, borderRadius: 6, border: '1px solid #333' }} />
-            ))}
-          </div>
-        ) : viewing?.video_url && (
+        {viewing?.video_url && (
           <video
             src={viewing.video_url}
             controls
