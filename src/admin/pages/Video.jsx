@@ -144,15 +144,29 @@ export default function Video() {
 
   const columns = [
     {
+      title: 'Thumbnail', dataIndex: 'video_url', width: 76,
+      render: (url, r) => url ? (
+        <Tooltip title="Bấm để xem video">
+          <video
+            src={`${url}#t=2`}
+            preload="metadata"
+            muted
+            playsInline
+            onClick={() => setViewing(r)}
+            style={{ width: 64, height: 114, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', background: '#000', display: 'block' }}
+          />
+        </Tooltip>
+      ) : <Text type="secondary">—</Text>,
+    },
+    {
       title: 'Bài viết', dataIndex: 'title', ellipsis: true,
       render: (t, r) => <Text strong={false} ellipsis={{ tooltip: t }} style={{ maxWidth: 320 }}>{t || r.slug}</Text>,
     },
     { title: 'Trạng thái', dataIndex: 'status', width: 170, render: (s, r) => statusTag(s, r.kind) },
     {
-      title: 'Video', dataIndex: 'video_url', width: 240,
+      title: 'Hành động', dataIndex: 'video_url', width: 220,
       render: (url, r) => url ? (
         <Space>
-          <Button size="small" icon={<PlayCircleOutlined />} onClick={() => setViewing(r)}>Xem</Button>
           <Tooltip title="Tải MP4 (9:16)">
             <Button size="small" icon={<DownloadOutlined />} href={url} download={`${r.slug}.mp4`} />
           </Tooltip>
