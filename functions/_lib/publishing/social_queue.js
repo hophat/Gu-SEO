@@ -19,6 +19,7 @@ import { newId, nowSec } from '../util.js';
 import { getProject } from '../projects.js';
 import { dispatchPublication } from './publisher.js';
 import { track } from '../events.js';
+import { postIdFromRefSql, videoJobRefSql } from '../video_jobs.js';
 
 const BASE_DELAY_SEC = 60;
 const MAX_DELAY_SEC = 3600;
@@ -59,22 +60,20 @@ async function claimJob(env, id) {
 }
 
 async function loadJobContext(env, id) {
-  // Carousel jobs carry a sentinel blog_post_id (carousel:<post_id>) so the
-  // UNIQUE index on video_jobs(blog_post_id) stays with the post video. The
-  // social row inherits that sentinel; strip it to reach the real post and to
-  // pick the carousel's own video_key (the slides prefix).
+  // Carousel jobs carry a sentinel blog_post_id so the UNIQUE index on
+  // video_jobs(blog_post_id) stays with the post video; the social row
+  // inherits it. Resolve the real post and the exact job ref via the shared
+  // policy in functions/_lib/video_jobs.js.
   const row = await env.DB.prepare(
     `SELECT s.id, s.project_id, s.channel, s.attempts, s.max_attempts,
             b.id AS post_id, b.slug, b.title, b.meta_description,
             b.body_markdown, b.hero_image_key, b.keywords, b.published_at,
             (SELECT v.video_key FROM video_jobs v
-              WHERE v.blog_post_id = CASE WHEN s.blog_post_id LIKE 'carousel:%'
-                                          THEN s.blog_post_id ELSE b.id END
+              WHERE v.blog_post_id = ${videoJobRefSql('s.blog_post_id', 'b.id')}
                 AND v.status = 'done'
               ORDER BY v.updated_at DESC LIMIT 1) AS video_key
        FROM social_posts s
-       JOIN blog_posts b ON b.id = CASE WHEN s.blog_post_id LIKE 'carousel:%'
-                                        THEN substr(s.blog_post_id, 10) ELSE s.blog_post_id END
+       JOIN blog_posts b ON b.id = ${postIdFromRefSql('s.blog_post_id')}
       WHERE s.id = ? LIMIT 1`
   ).bind(id).first().catch(() => null);
   return row;
@@ -207,7 +206,7 @@ export async function listSocialPosts(env, { projectId = null, status = null, li
             s.needs_reconnect, s.created_at, s.updated_at, s.published_at,
             b.slug AS post_slug, b.title AS post_title, b.hero_image_key
        FROM social_posts s
-       LEFT JOIN blog_posts b ON b.id = s.blog_post_id
+       LEFT JOIN blog_posts b ON b.id = ${postIdFromRefSql('s.blog_post_id')}
        ${where}
       ORDER BY s.created_at DESC LIMIT ?`
   ).bind(...binds).all().catch(() => ({ results: [] }));

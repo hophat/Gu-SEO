@@ -1,4 +1,5 @@
 import { publishToFacebook, publishFacebookVideo } from './facebook.js';
+import { isCarouselKey } from '../video_jobs.js';
 
 export async function dispatchPublication({ project, article, env, channel = null }) {
   const pubCfg = project?.publishing_config || {};
@@ -8,7 +9,7 @@ export async function dispatchPublication({ project, article, env, channel = nul
   // uploads the slide PNGs as a multi-photo post; a video_key MP4 goes
   // through publishFacebookVideo.
   if (channel === 'facebook_video') {
-    if (article.video_key && String(article.video_key).startsWith('carousel/')) {
+    if (article.video_key && isCarouselKey(article.video_key)) {
       return publishToFacebook({ project, article, configJson: pubCfg.config_json, env });
     }
     return publishFacebookVideo({ project, article, configJson: pubCfg.config_json, env });

@@ -18,6 +18,7 @@
 
 import { getVaultSecret } from '../secret_vault.js';
 import { getApiVersion, resolveTokenPage } from './facebook_oauth.js';
+import { isCarouselKey, carouselSlideRegex } from '../video_jobs.js';
 
 const GRAPH = 'https://graph.facebook.com';
 
@@ -179,22 +180,19 @@ export async function publishToFacebook({ project, article, configJson, env }) {
   const imageUrl = article.hero_image_key ? `${projectOrigin(project)}/image/${article.hero_image_key}` : '';
   const version = cfg.apiVersion || await getApiVersion(env);
 
-  // Video post — the 9:16 MP4 the video agent delivered into R2. Fetched
-  // from R2 (not over HTTP) so the upload works even before DNS/CDN warm.
-  // Facebook does not unfurl links on video posts, so the article URL is
-  // appended to the description explicitly.
-  if (cfg.asVideo && article.video_key && env?.IMAGES) {
-    return publishFacebookVideo({ project, article, configJson, env });
-  }
-
   // Carousel post — the video_key is a carousel/<slug> prefix; every R2
   // object under it is a slide. Upload each unpublished (media_fbid),
   // then attach them all to one feed post. Facebook does not unfurl
   // links on photo posts, so the article URL rides in the message.
-  if (article.video_key && String(article.video_key).startsWith('carousel/') && env?.IMAGES) {
+  //
+  // This is checked BEFORE as_video: a carousel/<slug> prefix is never an
+  // MP4 (it names the slide set in R2), so a channel configured with
+  // as_video would otherwise hand the prefix to the video uploader and
+  // fail on a key that has no object behind it.
+  if (article.video_key && isCarouselKey(article.video_key) && env?.IMAGES) {
     const prefix = article.video_key;
     const listed = await env.IMAGES.list({ prefix }).catch(() => ({ objects: [] }));
-    const slideRe = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d+\\.png$`);
+    const slideRe = carouselSlideRegex(prefix);
     const keys = (listed?.objects || []).map((o) => o.key).filter((k) => slideRe.test(k)).sort();
     if (!keys.length) throw new Error(`Carousel ${prefix} không còn trong R2 — render lại trước khi đăng.`);
     const v2 = cfg.apiVersion || await getApiVersion(env);
@@ -233,6 +231,14 @@ export async function publishToFacebook({ project, article, configJson, env }) {
       post_url: feed.id ? `https://www.facebook.com/${feed.id}` : null,
       link,
     };
+  }
+
+  // Video post — the 9:16 MP4 the video agent delivered into R2. Fetched
+  // from R2 (not over HTTP) so the upload works even before DNS/CDN warm.
+  // Facebook does not unfurl links on video posts, so the article URL is
+  // appended to the description explicitly.
+  if (cfg.asVideo && article.video_key && env?.IMAGES) {
+    return publishFacebookVideo({ project, article, configJson, env });
   }
 
   if (cfg.asPhoto && imageUrl) {
