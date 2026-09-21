@@ -43,7 +43,10 @@ function ok(label) { passed++; console.log(`✓ ${label}`); }
 // edit to loop-run.sh is what gets tested.
 mkdirSync(BIN, { recursive: true });
 {
-  const r = spawnSync('git', ['clone', '--quiet', '--local', ROOT, CLONE], { encoding: 'utf8' });
+  // --shared borrows this repository's object store instead of copying it:
+  // the whole clone is a few hundred KB, which matters because the suite runs
+  // from `npm test` on machines whose temp volume can be nearly full.
+  const r = spawnSync('git', ['clone', '--quiet', '--shared', ROOT, CLONE], { encoding: 'utf8' });
   assert.equal(r.status, 0, `could not clone the repo: ${r.stderr}`);
   for (const rel of ['scripts', 'skills', 'loop-constraints.md', 'STATE.md', 'loop-run-log.md', 'issue-triage-state.md']) {
     rmSync(join(CLONE, rel), { recursive: true, force: true });
@@ -120,17 +123,22 @@ function run(args, extra = {}) {
   return { status: r.status, out: `${r.stdout}${r.stderr}` };
 }
 
-// Same, without blocking the event loop: the loopback stub below answers from
-// this process, and spawnSync would deadlock against it.
-function runAsync(args, extra = {}) {
-  reset();
+// Without blocking the event loop. The loopback stub below answers from this
+// process, so spawnSync would stall 45 s on the client's timeout and then fail
+// as a network error — the one way this suite can silently stop testing.
+function execAsync(command, args, extra = {}) {
   return new Promise((resolve) => {
-    const child = spawn('bash', [join(CLONE, 'scripts', 'loop-run.sh'), ...args], { cwd: CLONE, env: env(extra) });
+    const child = spawn(command, args, { cwd: CLONE, env: env(extra) });
     let out = '';
     child.stdout.on('data', (chunk) => { out += chunk; });
     child.stderr.on('data', (chunk) => { out += chunk; });
     child.on('close', (status) => resolve({ status, out }));
   });
+}
+
+function runAsync(args, extra = {}) {
+  reset();
+  return execAsync('bash', [join(CLONE, 'scripts', 'loop-run.sh'), ...args], extra);
 }
 const calls = () => (existsSync(CALLS) ? readFileSync(CALLS, 'utf8').split('\n').filter(Boolean).length : 0);
 const verifierSaw = () => (existsSync(VERIFIER_DIFF) ? readFileSync(VERIFIER_DIFF, 'utf8') : '');
@@ -228,7 +236,10 @@ for (const [fake, kind, evidence] of [
 // rubric as questions, and the reply read back into the `--summary` line the
 // runner acts on. That is the seam nothing else closes — change the summary
 // format or the token field and this fails, where the canned cases stay green.
-{
+// The shapes below are the ones a real call returns (checked against the live
+// API): `answers` keyed by question with `{type, score, confidence}` or
+// `{type, choice, confidence}`, and `usage: {input_tokens, output_tokens}`.
+function stubServer(reply) {
   const seen = [];
   const server = createServer((req, res) => {
     let raw = '';
@@ -236,31 +247,56 @@ for (const [fake, kind, evidence] of [
     req.on('end', () => {
       const body = JSON.parse(raw);
       seen.push({ path: req.url, auth: req.headers.authorization, body });
-      // Answer whatever was asked, so a change to the rubric does not have to
-      // change this stub with it.
-      const answers = Object.fromEntries(Object.entries(body.questions).map(([key, q]) => [key,
-        q.type === 'score' ? { type: 'score', score: 2, confidence: 0.9 } : { type: 'choice', choice: 'proceed', confidence: 0.95 }]));
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ model: 'jev-1.13.0', answers, usage: { input_tokens: 4242, output_tokens: 12 } }));
+      res.end(JSON.stringify(reply(body)));
     });
   });
-  await new Promise((listening) => server.listen(0, '127.0.0.1', listening));
+  return {
+    seen,
+    listen: () => new Promise((listening) => server.listen(0, '127.0.0.1', listening)),
+    url: () => `http://127.0.0.1:${server.address().port}/v1/systemone`,
+    close: () => server.close(),
+  };
+}
+// Answer whatever was asked, so a change to the rubric does not have to change
+// the stub with it.
+const answerAll = (body, score = 2, choice = 'proceed') => Object.fromEntries(Object.entries(body.questions).map(([key, q]) => [key,
+  q.type === 'score' ? { type: 'score', score, confidence: 0.9 } : { type: 'choice', choice, confidence: 0.95 }]));
+
+{
+  const stub = stubServer((body) => ({ model: 'jev-1.13.0', answers: answerAll(body), usage: { input_tokens: 4242, output_tokens: 12 } }));
+  await stub.listen();
   try {
     const r = await runAsync(['autofix'], {
-      IMPL: 'work', JEV_REAL: '1', TYPESAFE_API_KEY: 'test-key',
-      TYPESAFE_API_URL: `http://127.0.0.1:${server.address().port}/v1/systemone`,
+      IMPL: 'work', JEV_REAL: '1', TYPESAFE_API_KEY: 'test-key', TYPESAFE_API_URL: stub.url(),
     });
-    assert.equal(seen.length, 1, 'the real client should make exactly one request');
-    assert.equal(seen[0].auth, 'Bearer test-key', 'the key must travel in the auth header');
-    assert.equal(seen[0].path, '/v1/systemone', 'the endpoint path is part of the contract');
-    assert.match(JSON.stringify(seen[0].body.state), /loop-fix-probe/, 'the state must be the diff under judgement');
-    assert.ok(seen[0].body.questions.overall, 'the questions must carry the gate the runner reads');
+    assert.equal(stub.seen.length, 1, 'the real client should make exactly one request');
+    assert.equal(stub.seen[0].auth, 'Bearer test-key', 'the key must travel in the auth header');
+    assert.equal(stub.seen[0].path, '/v1/systemone', 'the endpoint path is part of the contract');
+    assert.match(JSON.stringify(stub.seen[0].body.state), /loop-fix-probe/, 'the state must be the diff under judgement');
+    assert.ok(stub.seen[0].body.questions.overall, 'the questions must carry the gate the runner reads');
     assert.equal(r.status, 0, `a proceeding answer still merges: ${r.out}`);
     assert.match(lastRow(), /proceed overall=proceed@0\.95/, 'the row must carry the answer the real client printed');
     assert.match(lastRow(), /in=4242/, 'the token count the API reported must reach the row');
     ok('the real client against a stub: one request, and its answer reaches the row and the merge');
   } finally {
-    server.close();
+    stub.close();
+  }
+}
+
+{
+  // The bill is read by field name; if the API stops sending it, the summary
+  // must show the hole instead of dropping the number without a word.
+  const quiet = stubServer((body) => ({ model: 'jev-1.13.0', answers: answerAll(body) }));
+  await quiet.listen();
+  try {
+    const r = await execAsync(REAL_NODE, [join(CLONE, 'scripts', 'jev.js'), 'evaluate', '--state', 'a tiny change', '--summary'],
+      { JEV_REAL: '1', TYPESAFE_API_KEY: 'test-key', TYPESAFE_API_URL: quiet.url() });
+    assert.equal(r.status, 0, `the answer itself is fine: ${r.out}`);
+    assert.match(r.out, / in=\?/, 'a missing token count must be visible in the row, not silently dropped');
+    ok('a reply with no usage still reports the cost it could not read');
+  } finally {
+    quiet.close();
   }
 }
 

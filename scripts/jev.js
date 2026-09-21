@@ -225,7 +225,9 @@ function summarizeGate(label, gate, error, tokens) {
   const pct = (n) => (typeof n === 'number' ? n.toFixed(2) : '?');
   const dims = gate.dimensions.map((d) => `${d.name}=${d.score === null ? '?' : d.score.toFixed(2)}@${pct(d.confidence)}`).join(' ');
   const reasons = gate.reasons.length ? ` — ${gate.reasons.join('; ')}` : '';
-  const cost = typeof tokens === 'number' ? ` in=${tokens}` : '';
+  // The API reports the bill as `usage.input_tokens`; if that ever changes, the
+  // row must show a hole rather than quietly lose the number.
+  const cost = typeof tokens === 'number' ? ` in=${tokens}` : ' in=?';
   return `${label}: ${gate.decision} overall=${gate.overall_pick}@${pct(gate.overall_confidence)} ${dims}${cost}${reasons}`;
 }
 
