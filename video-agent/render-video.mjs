@@ -656,17 +656,21 @@ async function renderOne(job) {
   for (const [i, text] of segTexts.entries()) {
     const mp3 = join(WORK, 'assets', `seg${i}.mp3`);
     const ok = (f) => existsSync(f) && statSync(f).size > 500;
-    let done = false;
+    let done = false, lastErr = '';
+    // The endpoint throttles bursts: space every attempt out, escalate
+    // the backoff, and keep the last stderr for the failure report.
     for (const voice of [VOICE, 'vi-VN-HoaiMyNeural']) {
-      for (let attempt = 0; attempt < 2 && !done; attempt++) {
-        spawnSync('edge-tts', ['--voice', voice, '--rate=+8%', '--text', text, '--write-media', mp3], { encoding: 'utf8' });
+      for (let attempt = 0; attempt < 3 && !done; attempt++) {
+        const r = spawnSync('edge-tts', ['--voice', voice, '--rate=+8%', '--text', text, '--write-media', mp3], { encoding: 'utf8' });
         if (ok(mp3)) { done = true; break; }
-        spawnSync('sleep', ['3']); // back off — the endpoint throttles bursts
+        lastErr = (r.stderr || r.stdout || '').toString().slice(-120);
+        spawnSync('sleep', [String(4 + attempt * 4)]);
       }
       if (done) break;
     }
-    if (!done) throw new Error(`edge-tts failed for segment ${i} (both voices)`);
+    if (!done) throw new Error(`edge-tts failed for segment ${i} (both voices): ${lastErr}`);
     segs.push(audioSeconds(mp3));
+    spawnSync('sleep', ['2']); // pace consecutive calls — no bursts
   }
   log(`tts: ${segs.map((d) => d.toFixed(1) + 's').join(' + ')}`);
 
