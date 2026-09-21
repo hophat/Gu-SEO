@@ -3,19 +3,24 @@
 // The agent POSTs the raw MP4 as the request body with the job id in the
 // X-Video-Job header. We sniff the bytes (never trust the extension),
 // store to R2 under video/<slug>-<ts>.mp4, and flip the job to done.
-// A failure report (JSON body, X-Video-Failure: 1) marks the job failed
-// with the agent's error text so the operator can see why nothing shipped.
+// A failure report (JSON body) marks the job failed with the agent's
+// error text so the operator can see why nothing shipped.
+//
+// After a successful delivery, two best-effort side effects run inside
+// waitUntil: the automatic facebook_video enqueue (when the channel
+// config has as_video) and the video-ready notification email.
 import { json, nowSec, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
 import { getProject } from '../../../_lib/projects.js';
 import { enqueueSocialPost } from '../../../_lib/publishing/social_queue.js';
 import { parseFacebookConfig } from '../../../_lib/publishing/facebook.js';
+import { sendVideoReadyEmail } from '../../../_lib/video_notify.js';
 
 // Social platforms cap uploads well below this; anything larger is a
 // render bug, not something we should store.
 const MAX_BYTES = 100 * 1024 * 1024;
 
-export const onRequestPost = async ({ env, request }) => {
+export const onRequestPost = async ({ env, request, context }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
 
   const jobId = (request.headers.get('X-Video-Job') || '').trim();
@@ -91,6 +96,15 @@ export const onRequestPost = async ({ env, request }) => {
       if (q.enqueued) audit(env, 'video-agent', 'video.social_enqueued', job.blog_post_id, { channel: 'facebook_video' });
     }
   } catch { /* auto-post is best-effort — the manual button covers misses */ }
+
+  // Video-ready email — same rules as the publish report: never fail the
+  // delivery, recipients are the project owners, runs inside waitUntil
+  // after the response has gone out.
+  try {
+    const origin = new URL(request.url).origin;
+    const mail = sendVideoReadyEmail(env, { jobId, origin });
+    if (context?.waitUntil) context.waitUntil(mail);
+  } catch { /* notification is best-effort */ }
 
   return json(200, { ok: true, status: 'done', video_key: key, bytes: bytes.length });
 };
