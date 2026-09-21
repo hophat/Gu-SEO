@@ -9,10 +9,11 @@ it — the loop never second-guesses.
 ## Mode
 
 - `mode: report-only` — propose and report only. Never edit source, never label/close/comment on issues. (Default. Week 1.)
-- `mode: auto-fix` — one minimal single-file fix per run, inside a git worktree, verifier must APPROVE, human merges. (Week 3+, only after 10 stable report-only runs.)
-- `loop-pause-all` — when present anywhere in this file or `STATE.md`, the loop exits immediately without acting.
+- `mode: auto-fix` — one minimal single-file fix per run, inside a git worktree on a `loop/fix-*` branch. The implementer runs `npm test` + `npm run build:functions`; a separate verifier must APPROVE; then the loop fast-forward merges the branch into `main` and logs the run. A REJECT, a failed test/build, or a diff touching a denylisted path escalates to the human instead of merging. (Week 3+, only after 10 stable report-only runs.)
+- `autofix --dry-run` — the same pipeline with no merge: implementer + verifier + tests run, the diff prints, the run logs, and the `loop/fix-*` branch/worktree are left for a human. Trial auto-fix with this before trusting the automatic merge.
+- `loop-pause-all` — a line BEGINNING with `loop-pause-all` in this file or `STATE.md` makes the loop exit immediately without acting. A prose mention does not arm it (both files document the token inline).
 
-mode: report-only
+mode: auto-fix
 
 ## Paths (never touch without human approval)
 
@@ -49,10 +50,11 @@ mode: report-only
 ## Push & Merge
 
 - Never push without telling the human first. Always run tests first.
-- Never auto-merge to main. Draft PR + explicit human review, especially on denylisted paths.
+- In `auto-fix`, auto-merge ONLY a `loop/fix-*` branch whose verifier APPROVEd and whose tests + build passed, fast-forward only. Any diff touching a denylisted path (`schema/init.sql`, `functions/_lib/schema.js`, `functions/_lib/auth.js`, `wrangler.toml`, `.env*`, `package.json`) or any REJECT escalates with the branch and diff left in place — never merged.
 - Never deploy to production (`wrangler pages deploy`, `wrangler deploy`) without human approval.
 - Never delete a D1 database, never roll back production without human approval.
 - Escalate after 3 failed fix attempts; escalate auth/security/payments-adjacent items immediately.
+- Every run appends one line to `loop-run-log.md` and one row to the Run log table in `STATE.md`: timestamp, pattern, status, and the commit hash + files changed.
 
 ## Budget (from loop-budget.md)
 

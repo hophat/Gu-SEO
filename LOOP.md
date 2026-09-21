@@ -11,7 +11,8 @@
 
 ## Gates
 - Safety policy: See `gate.yaml`
-- Auto-merge: disabled by default
+- Auto-merge: enabled in `auto-fix` mode for `loop/fix-*` (verifier APPROVE + `npm test` + `build:functions`, fast-forward only); denylisted paths and REJECTs escalate
+- Dry-run: `scripts/loop-run.sh autofix --dry-run` (or `LOOP_DRY_RUN=1`) runs implementer + verifier + tests, prints the diff, logs the run, and never merges
 - Human approval required for: database changes, auth changes, deployment to production
 
 ## Scheduling
