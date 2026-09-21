@@ -36,6 +36,8 @@ export default function Video() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [siteUrl, setSiteUrl] = useState('');
+  const [brandForm, setBrandForm] = useState({ video_tagline: '', brand_accent: '', address: '', phone: '' });
+  const [brandOpen, setBrandOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,17 +49,42 @@ export default function Video() {
 
   useEffect(() => { load(); }, [load]);
 
-  const publishFb = async (id) => {
-    setBusyId(id);
-    const { status, body } = await apiPost('/api/admin/video/publish', { id });
+  const loadBrand = useCallback(async () => {
+    const pid = getActiveProject();
+    if (!pid) return;
+    const { status, body } = await apiGet(`/api/admin/video/brand?project_id=${pid}`);
+    if (status === 200 && body?.ok) {
+      setBrandForm({
+        video_tagline: body.brand?.video_tagline || '',
+        brand_accent: body.brand.brand_accent || body.brand.theme_color || '',
+        address: body.brand.address || '',
+        phone: body.brand.phone || '',
+      });
+    }
+  }, []);
+
+  useEffect(() => { loadBrand(); }, [loadBrand]);
+
+  const saveBrand = async () => {
+    setBusyId('__brand__');
+    const { status, body } = await apiPost('/api/admin/video/brand', { project_id: getActiveProject(), ...brandForm });
     setBusyId(null);
     if (status === 200 && body?.ok) {
-      message.success(body.posted ? 'Đã đăng video lên Facebook' : 'Đã vào hàng chờ — cron sẽ đăng trong ít phút');
+      message.success('Đã lưu Brand video — video tiếp theo sẽ dùng DNA mới');
+    } else {
+      message.error(body?.error || 'Lưu thất bại');
+    }
+  };
+
+  const enqueueMissing = async () => {
+    setBusyId('__all__');
+    const { status, body } = await apiPost('/api/admin/video/enqueue-missing', { project_id: getActiveProject(), limit: 30 });
+    setBusyId(null);
+    if (status === 200 && body?.ok) {
+      message.success(body.enqueued ? `Đã thêm ${body.enqueued} bài vào hàng chờ` : 'Không có bài nào thiếu video');
       load();
     } else {
-      message.error(body?.error === 'already_enqueued'
-        ? 'Bài này đã có job đăng video — xem tab Bài đăng mạng xã hội'
-        : body?.error || 'Đăng thất bại');
+      message.error(body?.error || 'Không enqueue được');
     }
   };
 
@@ -165,18 +192,6 @@ export default function Video() {
       title="Video 9:16"
       description="Video dọc cho mạng xã hội — render tự động trên VPS bằng HyperFrames + giọng đọc AI."
     >
-      <Alert
-        style={{ marginBottom: 16 }}
-        type="info"
-        showIcon
-        message="Mỗi bài mới trong 48 giờ được agent claim theo chu kỳ 15 phút."
-        description="Bài cũ hơn 48 giờ: chạy tay trên VPS — node render-video.mjs --slug <slug>."
-      />
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}><Card size="small"><Statistic title="Đã có video" value={done} valueStyle={{ color: '#3f8600' }} /></Card></Col>
-        <Col span={6}><Card size="small"><Statistic title="Đang render" value={rendering} /></Card></Col>
-        <Col span={6}><Card size="small"><Statistic title="Lỗi" value={failed} valueStyle={{ color: done ? undefined : '#cf1322' }} /></Card></Col>
-      </Row>
       <Card
         title={<Space><VideoCameraOutlined /> Hàng chờ video</Space>}
         extra={
@@ -186,7 +201,7 @@ export default function Video() {
               value={siteUrl}
               onChange={(e) => setSiteUrl(e.target.value)}
               onPressEnter={createWebsite}
-              style={{ width: 260 }}
+              style={{ width: 240 }}
               allowClear
             />
             <Button icon={<GlobalOutlined />} loading={busyId === '__site__'} onClick={createWebsite}>
@@ -194,6 +209,9 @@ export default function Video() {
             </Button>
             <Button icon={<AppstoreOutlined />} loading={busyId === '__biz__'} onClick={createBusiness}>
               Video doanh nghiệp
+            </Button>
+            <Button icon={<ClockCircleOutlined />} loading={busyId === '__all__'} onClick={enqueueMissing}>
+              Render tất cả bài thiếu
             </Button>
             <Button icon={<ReloadOutlined />} onClick={load}>Tải lại</Button>
           </Space>
@@ -207,6 +225,41 @@ export default function Video() {
           pagination={{ pageSize: 10, hideOnSinglePage: true }}
           locale={{ emptyText: 'Chưa có video nào — agent sẽ tự render cho bài mới trong 48 giờ tới.' }}
         />
+      </Card>
+      <Card
+        title="Brand video (DNA hiển thị trên mọi video)"
+        style={{ marginTop: 16 }}
+        extra={
+          <Button type="link" onClick={() => setBrandOpen(!brandOpen)}>
+            {brandOpen ? 'Thu gọn' : 'Chỉnh sửa'}
+          </Button>
+        }
+      >
+        {brandOpen ? (
+          <Row gutter={16}>
+            <Col span={12}>
+              <Input addonBefore="Tagline" value={brandForm.video_tagline}
+                onChange={(e) => setBrandForm({ ...brandForm, video_tagline: e.target.value })}
+                placeholder="Khẩu hiệu hiện trên video" style={{ marginBottom: 12 }} />
+              <Input addonBefore="#" addonAfter="màu brand" value={brandForm.brand_accent}
+                onChange={(e) => setBrandForm({ ...brandForm, brand_accent: e.target.value })}
+                placeholder="1677ff" style={{ marginBottom: 12 }} />
+            </Col>
+            <Col span={12}>
+              <Input addonBefore="📍" value={brandForm.address}
+                onChange={(e) => setBrandForm({ ...brandForm, address: e.target.value })}
+                placeholder="Địa chỉ" style={{ marginBottom: 12 }} />
+              <Input addonBefore="☎" value={brandForm.phone}
+                onChange={(e) => setBrandForm({ ...brandForm, phone: e.target.value })}
+                placeholder="Số điện thoại" style={{ marginBottom: 16 }} />
+              <Button type="primary" loading={busyId === '__brand__'} onClick={saveBrand}>Lưu Brand video</Button>
+            </Col>
+          </Row>
+        ) : (
+          <Text type="secondary">
+            Tagline: {brandForm.video_tagline || '(chưa đặt)'} · Màu: {brandForm.brand_accent || '(mặc định)'} · Địa chỉ: {brandForm.address || '(trống)'} · ĐT: {brandForm.phone || '(trống)'}
+          </Text>
+        )}
       </Card>
     </PageContainer>
   );

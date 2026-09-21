@@ -63,7 +63,7 @@ async function audit(env, actor, action, targetId, details) {
 }
 var init_util = __esm({
   "_lib/util.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     __name(nowSec, "nowSec");
     __name(newId, "newId");
     __name(json, "json");
@@ -115,7 +115,7 @@ function listSettingKeys() {
 var FALLBACK, KEYS, SETTINGS_CACHE_KEY;
 var init_settings = __esm({
   "_lib/settings.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     FALLBACK = {
       site_cta: /* @__PURE__ */ __name((env) => env.SITE_CTA || "Sign up to get started.", "site_cta"),
@@ -292,7 +292,7 @@ async function getSiteIdentity(env) {
 var CACHE;
 var init_site_identity = __esm({
   "_lib/site_identity.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_settings();
     CACHE = "__ps_site_identity_cache";
     __name(getSiteIdentity, "getSiteIdentity");
@@ -328,7 +328,7 @@ async function getAdminToken(env) {
 var CACHE_KEY;
 var init_admin_token = __esm({
   "_lib/admin_token.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_settings();
     CACHE_KEY = "__ps_admin_token_cache";
     __name(getAdminToken, "getAdminToken");
@@ -354,7 +354,7 @@ function configError(missing) {
 }
 var init_config = __esm({
   "_lib/config.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_site_identity();
     init_admin_token();
     __name(missingConfig, "missingConfig");
@@ -472,7 +472,7 @@ function readCookie(req, name) {
 var PBKDF2_ITER, PASSWORD_HASH_BYTES, SALT_BYTES, SESSION_DAYS, SESSION_COOKIE;
 var init_passwords = __esm({
   "_lib/passwords.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     PBKDF2_ITER = 1e5;
     PASSWORD_HASH_BYTES = 32;
     SALT_BYTES = 16;
@@ -632,7 +632,7 @@ async function resolveTenantContext(env, request, auth) {
 var DENIED_PROJECT_SENTINEL;
 var init_auth = __esm({
   "_lib/auth.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_config();
     init_passwords();
@@ -675,7 +675,7 @@ function bytesToBase64(bytes) {
 var MAX_ASSETS, MAX_ASSET_BYTES, onRequestGet;
 var init_export = __esm({
   "api/admin/cover/templates/export.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_settings();
@@ -811,7 +811,7 @@ async function uniqueName(env, baseName) {
 var MAX_BYTES, MAX_ASSETS2, MAX_TOTAL_BYTES, ALLOWED_MIME, onRequestPost;
 var init_import = __esm({
   "api/admin/cover/templates/import.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     MAX_BYTES = 10 * 1024 * 1024;
@@ -1046,7 +1046,7 @@ async function syncSitemapAliases(env, projectId = null) {
 var RESERVED, RESERVED_NAMES;
 var init_aliases = __esm({
   "_lib/links/aliases.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     RESERVED = {
       blog: { url: "/blog", description: "The main blog index of this site." },
@@ -1066,7 +1066,7 @@ var init_aliases = __esm({
 var onRequestPost2;
 var init_sync = __esm({
   "api/admin/aliases/sync.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_aliases();
@@ -1087,7 +1087,7 @@ var init_sync = __esm({
 var onRequestPost3;
 var init_delete_job = __esm({
   "api/admin/blog/delete-job.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     onRequestPost3 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -1217,7 +1217,7 @@ ${body}`;
 var EMBED_MODEL, SIMILARITY_THRESHOLD, RECENT_POSTS_TO_CHECK, MAX_TEXT_FOR_EMBED;
 var init_dedup = __esm({
   "_lib/dedup.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     EMBED_MODEL = "@cf/baai/bge-base-en-v1.5";
     SIMILARITY_THRESHOLD = 0.8;
     RECENT_POSTS_TO_CHECK = 50;
@@ -1234,7 +1234,7 @@ var init_dedup = __esm({
 var BATCH_LIMIT, onRequestPost4;
 var init_embed_backfill = __esm({
   "api/admin/blog/embed-backfill.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_dedup();
@@ -1431,7 +1431,7 @@ function buildBrandContext({ env, settings, post, request, extras, kind } = {}) 
 var FILTERS;
 var init_template = __esm({
   "_lib/template.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     FILTERS = {
       upper: /* @__PURE__ */ __name((v) => String(v ?? "").toUpperCase(), "upper"),
       lower: /* @__PURE__ */ __name((v) => String(v ?? "").toLowerCase(), "lower"),
@@ -1618,7 +1618,7 @@ function priceFor(prices, provider, direction) {
 var BUNDLED_PRICES, MODELS_DEV_MAP, CACHE_STALENESS_SEC;
 var init_prices = __esm({
   "_lib/prices.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_settings();
     init_util();
     BUNDLED_PRICES = {
@@ -1750,7 +1750,7 @@ async function checkBudget(env, source = "admin") {
 var CHARS_PER_TOKEN;
 var init_usage = __esm({
   "_lib/usage.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_settings();
     init_prices();
@@ -1912,7 +1912,7 @@ function closeTruncated(s) {
 var DEFAULT_SYS;
 var init_raw_llm = __esm({
   "_lib/raw_llm.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_ai();
     init_settings();
     init_usage();
@@ -2038,7 +2038,7 @@ async function describeKeys(env, names) {
 var PBKDF2_SALT, PBKDF2_ITER2, IV_BYTES, cachedKey, cachedTokenHash;
 var init_secret_vault = __esm({
   "_lib/secret_vault.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_admin_token();
     PBKDF2_SALT = new TextEncoder().encode("pages-seo:vault:v1");
     PBKDF2_ITER2 = 1e5;
@@ -2879,7 +2879,7 @@ function providerEnvKey(name) {
 var BANNED_PHRASES_BLOCK, CONCRETENESS_BLOCK, AGENT_MARKUP_HINT, SYSTEM_JSON_ONLY, WORKERS_AI_TEXT_MODEL, WORKERS_AI_IMAGE_MODEL, OPENAI_RESPONSES_URL, OPENAI_IMAGES_URL, OPENAI_TEXT_MODEL, OPENAI_IMAGE_MODEL, ANTHROPIC_URL, ANTHROPIC_TEXT_MODEL, GEMINI_TEXT_MODELS, GEMINI_IMAGE_MODEL, TEXT_PROVIDERS, IMAGE_PROVIDERS, PROVIDER_SECRET_NAMES;
 var init_ai = __esm({
   "_lib/ai.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_template();
     init_raw_llm();
     init_usage();
@@ -3021,7 +3021,7 @@ function sniffImageFormat(bytes) {
 var onRequestPost5;
 var init_image = __esm({
   "api/admin/blog/image.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
@@ -3108,7 +3108,7 @@ var init_image = __esm({
 var onRequestGet2;
 var init_jobs = __esm({
   "api/admin/blog/jobs.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     onRequestGet2 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -3141,7 +3141,7 @@ var init_jobs = __esm({
 var onRequestGet3;
 var init_list = __esm({
   "api/admin/blog/list.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     onRequestGet3 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -3173,7 +3173,7 @@ var init_list = __esm({
 var onRequestPost6;
 var init_post = __esm({
   "api/admin/blog/post.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     onRequestPost6 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -3267,7 +3267,7 @@ async function markTopicUsed(env, topicKey) {
 var TOPICS;
 var init_topics = __esm({
   "_lib/topics.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     TOPICS = [
       // ── on-page (writing for readers + Google) ─────────────────────
       { key: "on-page-seo-2026", category: "on-page", angle: "On-page SEO basics in 2026 \u2014 what still matters, what doesn't, and a checklist a small site can actually use." },
@@ -3359,7 +3359,7 @@ async function getIndexNowKey(env) {
 var CACHE_KEY2;
 var init_indexnow_key = __esm({
   "_lib/indexnow_key.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_settings();
     CACHE_KEY2 = "__ps_indexnow_key_cache";
     __name(getIndexNowKey, "getIndexNowKey");
@@ -3402,7 +3402,7 @@ async function pingIndexNow(env, urls, request = null, hostOverride = null) {
 var INDEXNOW_URL;
 var init_indexnow = __esm({
   "_lib/indexnow.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_indexnow_key();
     init_site_identity();
     INDEXNOW_URL = "https://api.indexnow.org/indexnow";
@@ -3563,7 +3563,7 @@ async function describeConfig(env) {
 var SCOPE_SITEMAP, SCOPE_INDEXING, GOOGLE_TOKEN_URL, TOKEN_CACHE;
 var init_google_indexing = __esm({
   "_lib/google_indexing.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_secret_vault();
     init_settings();
     init_site_identity();
@@ -3712,7 +3712,7 @@ function statusForScore(verdict, { forcePublish = false } = {}) {
 }
 var init_quality = __esm({
   "_lib/quality.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     __name(wordCount, "wordCount");
     __name(countMatches, "countMatches");
     __name(internalLinkCount, "internalLinkCount");
@@ -3918,7 +3918,7 @@ async function upsertProject(env, projectData) {
 }
 var init_projects = __esm({
   "_lib/projects.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     __name(normalizeCustomDomain, "normalizeCustomDomain");
     __name(getProject, "getProject");
@@ -4080,7 +4080,7 @@ async function clearPendingPages(env, projectId) {
 var GRAPH, DIALOG, DEFAULT_VERSION, FB_SCOPES, FB_APP_SECRET_NAME, PENDING_TTL_SEC;
 var init_facebook_oauth = __esm({
   "_lib/publishing/facebook_oauth.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_secret_vault();
     GRAPH = "https://graph.facebook.com";
     DIALOG = "https://www.facebook.com";
@@ -4320,7 +4320,7 @@ async function verifyFacebookPage({ env, projectId, pageId, token }) {
 var GRAPH2;
 var init_facebook = __esm({
   "_lib/publishing/facebook.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_secret_vault();
     init_facebook_oauth();
     GRAPH2 = "https://graph.facebook.com";
@@ -4444,7 +4444,7 @@ async function publishToWordPress({ endpointUrl, authHeader, article }) {
 }
 var init_publisher = __esm({
   "_lib/publishing/publisher.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_facebook();
     __name(dispatchPublication, "dispatchPublication");
     __name(publishToWebhook, "publishToWebhook");
@@ -4487,7 +4487,7 @@ async function trackOnce(env, { event, projectId, userId = null, props = null } 
 var EVENTS, KNOWN;
 var init_events = __esm({
   "_lib/events.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     EVENTS = [
       "signup",
@@ -4706,7 +4706,7 @@ async function cancelSocialPost(env, { projectId = null, id }) {
 var BASE_DELAY_SEC, MAX_DELAY_SEC;
 var init_social_queue = __esm({
   "_lib/publishing/social_queue.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_projects();
     init_publisher();
@@ -4888,7 +4888,7 @@ async function publicPathFor(env, projectId, request) {
 var CACHE_KEY3, SLUG_CACHE_KEY;
 var init_project_scope = __esm({
   "_lib/project_scope.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     CACHE_KEY3 = "__ps_project_scope_cache__";
     __name(normalizeHost, "normalizeHost");
     __name(requestHost, "requestHost");
@@ -5024,7 +5024,7 @@ async function sendEmail(env, { to, subject, html: html2, replyTo = "" }) {
 var SmtpReader;
 var init_email_smtp = __esm({
   "_lib/email_smtp.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     __name(mailCredentials, "mailCredentials");
     __name(encodeSubject, "encodeSubject");
     SmtpReader = class {
@@ -5197,7 +5197,7 @@ async function sendPublishReport(env, { projectId, blogPostId, baseUrl = "" }) {
 var STATUS_LABEL, CHANNEL_LABEL;
 var init_report = __esm({
   "_lib/publishing/report.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_email_smtp();
     init_settings();
     STATUS_LABEL = {
@@ -5227,7 +5227,7 @@ var init_report = __esm({
 var onRequestPost7;
 var init_publish = __esm({
   "api/admin/blog/publish.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_topics();
@@ -5375,7 +5375,7 @@ async function ensureRedirectTable(env) {
 var onRequestPost8;
 var init_rename_slug = __esm({
   "api/admin/blog/rename-slug.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     __name(ensureRedirectTable, "ensureRedirectTable");
@@ -5426,7 +5426,7 @@ var init_rename_slug = __esm({
 var onRequestPost9;
 var init_retry_job = __esm({
   "api/admin/blog/retry-job.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     onRequestPost9 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -5518,7 +5518,7 @@ async function generateContent2({
 }
 var init_provider = __esm({
   "_lib/ai/provider.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_ai();
     init_util();
     __name(generateContent2, "generateContent");
@@ -5761,7 +5761,7 @@ async function scoreProjectTopics(env, project) {
 var COMMERCIAL_CUES;
 var init_project_topics = __esm({
   "_lib/project_topics.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_provider();
     __name(listProjectTopics, "listProjectTopics");
@@ -6020,7 +6020,7 @@ async function planSingleForToday(env, { preferredProvider = "", source = "cron-
 }
 var init_calendar_planner = __esm({
   "_lib/calendar_planner.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_settings();
     init_raw_llm();
@@ -6057,7 +6057,7 @@ async function nextDueSlot(env, projectId) {
 var onRequestPost10;
 var init_start = __esm({
   "api/admin/blog/start.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_topics();
@@ -6236,7 +6236,7 @@ function sanitiseMarkdownLinks(md, opts = {}) {
 var LINK_RX, BARE_URL_RX, SAFE_PROTOCOLS, DEFAULT_INTERNAL_PREFIXES;
 var init_sanitise = __esm({
   "_lib/links/sanitise.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     LINK_RX = /\[([^\]]+)\]\(([^)\s]+)\)/g;
     BARE_URL_RX = /(?<![("\w])(https?:\/\/[A-Za-z0-9._~:/?#@!$&'*+,;=%-]+)(?![\w"])/g;
     SAFE_PROTOCOLS = /^(https?:|mailto:|tel:)/i;
@@ -6356,7 +6356,7 @@ async function loadLinkTargets(env, selfSlug, { limit = TARGET_POOL_SIZE, pillar
 var MAX_LINKS_PER_POST, MAX_RELATED_LINKS, MIN_PHRASE_WORDS, MAX_PHRASE_WORDS, TARGET_POOL_SIZE;
 var init_internal_links = __esm({
   "_lib/internal_links.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     MAX_LINKS_PER_POST = 3;
     MAX_RELATED_LINKS = 3;
     MIN_PHRASE_WORDS = 3;
@@ -6376,7 +6376,7 @@ var init_internal_links = __esm({
 var onRequestPost11;
 var init_text = __esm({
   "api/admin/blog/text.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
@@ -6518,7 +6518,7 @@ var init_text = __esm({
 var onRequestPost12;
 var init_plan = __esm({
   "api/admin/calendar/plan.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_calendar_planner();
@@ -6599,7 +6599,7 @@ function measureHtml(html2) {
 var CACHE_TTL_SEC, MAX_URLS, MAX_HTML_CHARS, onRequestPost13;
 var init_scan = __esm({
   "api/admin/competitors/scan.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_projects();
@@ -6673,7 +6673,7 @@ function decodeBase64Png(b64) {
 var MAX_BYTES2, onRequestPost14;
 var init_apply = __esm({
   "api/admin/cover/apply.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     MAX_BYTES2 = 8 * 1024 * 1024;
@@ -6737,7 +6737,7 @@ var init_apply = __esm({
 var onRequestPost15;
 var init_render_server = __esm({
   "api/admin/cover/render-server.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     onRequestPost15 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -6762,7 +6762,7 @@ function shrinkSpec(spec) {
 var MAX_SPEC_BYTES, onRequestGet4, onRequestPost16, onRequestPut, onRequestDelete;
 var init_templates = __esm({
   "api/admin/cover/templates.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     MAX_SPEC_BYTES = 64 * 1024;
@@ -6903,7 +6903,7 @@ function decodeBase642(b64) {
 var MAX_BYTES3, ALLOWED_KINDS, ALLOWED_MIME2, onRequestPost17, onRequestGet5, onRequestDelete2;
 var init_upload = __esm({
   "api/admin/cover/upload.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     MAX_BYTES3 = 10 * 1024 * 1024;
@@ -7100,7 +7100,7 @@ async function refreshStep(call, proj, limit, overBudget) {
 var CHAIN_START_BUDGET_MS, STEP_BUDGET_MS, onRequestPost18;
 var init_tick = __esm({
   "api/admin/cron/tick.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_projects();
@@ -7205,7 +7205,7 @@ var init_tick = __esm({
 var onRequestPost19;
 var init_weekly_digest = __esm({
   "api/admin/cron/weekly-digest.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_email_smtp();
@@ -7308,7 +7308,7 @@ async function clearNotice(env, kind) {
 var VALID_SEVERITIES;
 var init_notices = __esm({
   "_lib/notices.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     VALID_SEVERITIES = /* @__PURE__ */ new Set(["info", "warn", "error"]);
     __name(recordNotice, "recordNotice");
@@ -7412,7 +7412,7 @@ async function cfAttachStatus(env, request, hostname) {
 var CF_API, FALLBACK_PAGES_HOST;
 var init_cloudflare_domains = __esm({
   "_lib/cloudflare_domains.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     CF_API = "https://api.cloudflare.com/client/v4";
     FALLBACK_PAGES_HOST = "gu-seo.pages.dev";
     __name(cfCreds, "cfCreds");
@@ -7432,7 +7432,7 @@ var init_cloudflare_domains = __esm({
 var onRequestGet6, onRequestPost20;
 var init_requests = __esm({
   "api/admin/domains/requests.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_projects();
@@ -7553,7 +7553,7 @@ var init_requests = __esm({
 var onRequestPost21;
 var init_test = __esm({
   "api/admin/google-search-console/test.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_google_indexing();
@@ -7577,7 +7577,7 @@ var init_test = __esm({
 var onRequestPost22;
 var init_dismiss = __esm({
   "api/admin/notices/dismiss.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     onRequestPost22 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -7612,7 +7612,7 @@ var init_dismiss = __esm({
 var onRequestPost23;
 var init_generate_next = __esm({
   "api/admin/prog/generate-next.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
@@ -7905,7 +7905,7 @@ function canonicaliseKeyword(kw) {
 var TRANSACTIONAL, COMMERCIAL, INFORMATIONAL, NAVIGATIONAL, JUNK_PATTERNS, SPECIFICITY_MODIFIERS, HIGH_CTR_MODIFIERS;
 var init_keyword_score = __esm({
   "_lib/keyword_score.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     TRANSACTIONAL = [
       "buy",
       "purchase",
@@ -8086,7 +8086,7 @@ async function pullKeywords(seed, { limit = 50, expand = true, minScore = 0 } = 
 var ENDPOINT, LETTERS, PREFIXES, SUFFIXES;
 var init_keyword_puller = __esm({
   "_lib/keyword_puller.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_keyword_score();
     ENDPOINT = "https://suggestqueries.google.com/complete/search";
     LETTERS = "abcdefghijklmnopqrstuvwxyz".split("");
@@ -8103,7 +8103,7 @@ var init_keyword_puller = __esm({
 var onRequestPost24;
 var init_pull_keywords = __esm({
   "api/admin/prog/pull-keywords.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_keyword_puller();
@@ -8172,7 +8172,7 @@ var init_pull_keywords = __esm({
 var onRequestGet7, onRequestPatch;
 var init_queue = __esm({
   "api/admin/prog/queue.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     onRequestGet7 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -8257,7 +8257,7 @@ var init_queue = __esm({
 var onRequestPost25;
 var init_upload2 = __esm({
   "api/admin/prog/upload.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_keyword_score();
@@ -8317,7 +8317,7 @@ var init_upload2 = __esm({
 var onRequestGet8, onRequestPost26;
 var init_domain = __esm({
   "api/admin/projects/domain.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_projects();
@@ -8473,7 +8473,7 @@ async function recordResult(env, projectId, status, detail) {
 var onRequestGet9;
 var init_fb_callback = __esm({
   "api/admin/projects/fb-callback.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_admin_token();
     init_facebook_oauth();
     init_secret_vault();
@@ -8550,7 +8550,7 @@ var init_fb_callback = __esm({
 var onRequestGet10;
 var init_fb_connect = __esm({
   "api/admin/projects/fb-connect.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_auth();
     init_admin_token();
     init_events();
@@ -8603,7 +8603,7 @@ function decodeBase643(b64) {
 var MAX_BYTES4, ALLOWED_MIME3, onRequestPost27;
 var init_logo = __esm({
   "api/admin/projects/logo.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     MAX_BYTES4 = 2 * 1024 * 1024;
@@ -8668,7 +8668,7 @@ var init_logo = __esm({
 var MAX_NAME, onRequestGet11, onRequestPatch2;
 var init_profile = __esm({
   "api/admin/projects/profile.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     MAX_NAME = 120;
@@ -8786,7 +8786,7 @@ async function loadRow(env, projectId) {
 var PUBLISHER_TYPES, onRequestGet12, onRequestPost28;
 var init_publishing = __esm({
   "api/admin/projects/publishing.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_secret_vault();
@@ -8997,7 +8997,7 @@ var init_publishing = __esm({
 var onRequestGet13;
 var init_gurouter_models = __esm({
   "api/admin/providers/gurouter-models.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
@@ -9061,7 +9061,7 @@ var init_gurouter_models = __esm({
 var onRequestPost29;
 var init_test2 = __esm({
   "api/admin/providers/test.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
@@ -9099,7 +9099,7 @@ var init_test2 = __esm({
 var onRequestPost30;
 var init_test_image = __esm({
   "api/admin/providers/test-image.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
@@ -9165,7 +9165,7 @@ async function weeklyRefreshCount(env, projectId) {
 var WEEKLY_CAP, onRequestPost31;
 var init_run = __esm({
   "api/admin/refresh/run.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
@@ -9345,7 +9345,7 @@ ${String(post.body_markdown || "").slice(0, 6e3)}`,
 var STALE_DAYS, REFRESH_COOLDOWN_DAYS, onRequestPost32;
 var init_scan2 = __esm({
   "api/admin/refresh/scan.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     STALE_DAYS = 90;
@@ -9403,7 +9403,7 @@ var init_scan2 = __esm({
 var onRequestPost33;
 var init_test3 = __esm({
   "api/admin/report/test.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_email_smtp();
@@ -9449,7 +9449,7 @@ var init_test3 = __esm({
 var onRequestPost34;
 var init_score = __esm({
   "api/admin/topics/score.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_projects();
@@ -9490,7 +9490,7 @@ async function fetchLatestSha() {
 var CF_API2, onRequestPost35;
 var init_apply2 = __esm({
   "api/admin/update/apply.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_settings();
@@ -9592,7 +9592,7 @@ function canonicalEmail(value) {
 var EMAIL_RX, MAX_EMAIL_LENGTH, GOOGLE_DOMAINS;
 var init_email_rules = __esm({
   "_lib/email_rules.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     EMAIL_RX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
     MAX_EMAIL_LENGTH = 254;
     __name(normalizeEmail, "normalizeEmail");
@@ -9608,7 +9608,7 @@ var init_email_rules = __esm({
 var onRequestPost36;
 var init_recanonicalize = __esm({
   "api/admin/users/recanonicalize.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_email_rules();
@@ -9649,11 +9649,77 @@ var init_recanonicalize = __esm({
   }
 });
 
+// api/admin/video/brand.js
+var onRequestGet14, onRequestPut2;
+var init_brand = __esm({
+  "api/admin/video/brand.js"() {
+    init_functionsRoutes_0_9734229960597824();
+    init_util();
+    init_auth();
+    onRequestGet14 = /* @__PURE__ */ __name(async ({ env, request }) => {
+      const gate = await adminGate(env, request);
+      if (gate) return gate;
+      const url = new URL(request.url);
+      const projectId = url.searchParams.get("project_id") || null;
+      if (!projectId) return json(400, { error: "missing_project_id" });
+      const row = await env.DB.prepare(
+        `SELECT video_tagline, brand_accent, address, phone, theme_color, logo_url, name
+     FROM projects WHERE id = ? LIMIT 1`
+      ).bind(projectId).first().catch(() => null);
+      if (!row) return json(404, { error: "project_not_found" });
+      return json(200, {
+        ok: true,
+        brand: {
+          video_tagline: row.video_tagline || "",
+          brand_accent: row.brand_accent || "",
+          address: row.address || "",
+          phone: row.phone || "",
+          theme_color: row.theme_color || "",
+          logo_url: row.logo_url || "",
+          name: row.name || ""
+        }
+      });
+    }, "onRequestGet");
+    onRequestPut2 = /* @__PURE__ */ __name(async ({ env, request }) => {
+      const gate = await adminGate(env, request);
+      if (gate) return gate;
+      let body = {};
+      try {
+        body = await request.json();
+      } catch {
+        return json(400, { error: "bad_json" });
+      }
+      const projectId = String(body?.project_id || "");
+      if (!projectId) return json(400, { error: "missing_project_id" });
+      const project = await env.DB.prepare("SELECT id FROM projects WHERE id = ? LIMIT 1").bind(projectId).first();
+      if (!project) return json(404, { error: "project_not_found" });
+      const fields = {};
+      for (const k of ["video_tagline", "brand_accent", "address", "phone"]) {
+        if (body[k] !== void 0) {
+          let v = String(body[k]).trim();
+          if (k === "brand_accent" && v && !v.startsWith("#")) v = "#" + v.replace(/[^0-9a-f]/gi, "");
+          if (k === "brand_accent" && v && !/^#[0-9a-f]{6}$/i.test(v)) {
+            return json(400, { error: "bad_accent", hint: "brand_accent ph\u1EA3i l\xE0 m\xE3 m\xE0u #RRGGBB" });
+          }
+          fields[k] = v || null;
+        }
+      }
+      if (!Object.keys(fields).length) return json(400, { error: "nothing_to_update" });
+      const sets = Object.keys(fields).map((k) => `${k} = ?`).join(", ");
+      await env.DB.prepare(
+        `UPDATE projects SET ${sets.join(", ")}, updated_at = ? WHERE id = ?`
+      ).bind(...Object.values(fields), nowSec(), projectId).run();
+      audit(env, "admin", "video.brand_update", projectId, { keys: Object.keys(fields) });
+      return json(200, { ok: true, saved: Object.keys(fields) });
+    }, "onRequestPut");
+  }
+});
+
 // api/admin/video/business.js
 var onRequestPost37;
 var init_business = __esm({
   "api/admin/video/business.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     onRequestPost37 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -9698,7 +9764,7 @@ var init_business = __esm({
 var QUEUE_WINDOW, onRequestPost38;
 var init_claim = __esm({
   "api/admin/video/claim.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     QUEUE_WINDOW = 48 * 3600;
@@ -9715,26 +9781,13 @@ var init_claim = __esm({
       const now = nowSec();
       if (body?.type === "business" || body?.type === "website") {
         const kind = body.type;
-        const bizSql = projectId ? `SELECT id, project_id, source_url FROM video_jobs
+        const pendSql = projectId ? `SELECT id, project_id, source_url FROM video_jobs
           WHERE kind = ? AND project_id = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1` : `SELECT id, project_id, source_url FROM video_jobs
-          WHERE kind = 'business' OR kind = 'website'`;
-        let pendingJob;
-        if (projectId) {
-          const r = await env.DB.prepare(
-            `SELECT id, project_id, source_url FROM video_jobs
-          WHERE kind = ? AND project_id = ? AND status IN ('pending','failed')
-          ORDER BY created_at ASC LIMIT 1`
-          ).bind(kind, projectId).all().catch(() => ({ results: [] }));
-          pendingJob = (r?.results || [])[0] || null;
-        } else {
-          const r = await env.DB.prepare(
-            `SELECT id, project_id, source_url FROM video_jobs
           WHERE kind = ? AND status IN ('pending','failed')
-          ORDER BY created_at ASC LIMIT 1`
-          ).bind(kind).all().catch(() => ({ results: [] }));
-          pendingJob = (r?.results || [])[0] || null;
-        }
+          ORDER BY created_at ASC LIMIT 1`;
+        const rows = projectId ? await env.DB.prepare(pendSql).bind(kind, projectId).all().catch(() => ({ results: [] })) : await env.DB.prepare(pendSql).bind(kind).all().catch(() => ({ results: [] }));
+        const pendingJob = (rows?.results || [])[0] || null;
         if (!pendingJob) {
           return json(200, { ok: true, job: null, hint: `no ${kind} video queued` });
         }
@@ -9744,14 +9797,14 @@ var init_claim = __esm({
         const pid = pendingJob.project_id;
         const project2 = await env.DB.prepare(
           `SELECT id, slug, name, description, logo_url, theme_color, brand_accent,
-              video_tagline, address, phone, publishing_url, custom_domain
+              video_tagline, address, phone, publishing_url, custom_domain, website_url
        FROM projects WHERE id = ? LIMIT 1`
         ).bind(pid).first();
         if (!project2) {
           await env.DB.prepare(
             `UPDATE video_jobs SET status='failed', error='project_missing', updated_at=? WHERE id=?`
           ).bind(now, pendingJob.id).run();
-          return json(200, { ok: true, job: null, hint: "project missing for business job" });
+          return json(200, { ok: true, job: null, hint: "project missing for promo job" });
         }
         const brand2 = await env.DB.prepare(
           "SELECT business_type, tone, audience, key_themes, service_area, cta FROM project_brands WHERE project_id = ? LIMIT 1"
@@ -9810,7 +9863,8 @@ var init_claim = __esm({
           }
         });
       }
-      let post;
+      let post = null;
+      let jobId = null;
       if (slug) {
         post = await env.DB.prepare(
           `SELECT id, slug, title, meta_description, body_markdown,
@@ -9819,50 +9873,74 @@ var init_claim = __esm({
         ).bind(slug).first();
         if (!post) return json(404, { error: "post_not_found", slug });
       } else {
-        const rows = projectId ? await env.DB.prepare(
-          `SELECT p.id, p.slug, p.title, p.meta_description, p.body_markdown,
-                  p.hero_image_key, p.project_id
-           FROM blog_posts p
-           WHERE p.status = 'published' AND p.published_at > ? AND p.project_id = ?
-             AND NOT EXISTS (SELECT 1 FROM video_jobs v
-                             WHERE v.blog_post_id = p.id
-                               AND v.status IN ('pending','claimed','rendering','done'))
-           ORDER BY p.published_at DESC LIMIT 1`
-        ).bind(now - QUEUE_WINDOW, projectId).all() : await env.DB.prepare(
-          `SELECT p.id, p.slug, p.title, p.meta_description, p.body_markdown,
-                  p.hero_image_key, p.project_id
-           FROM blog_posts p
-           WHERE p.status = 'published' AND p.published_at > ?
-             AND NOT EXISTS (
-               SELECT 1 FROM video_jobs v
-               WHERE v.blog_post_id = p.id
-                 AND v.status IN ('pending','claimed','rendering','done'))
-           ORDER BY p.published_at DESC LIMIT 1`
-        ).bind(now - QUEUE_WINDOW).all();
+        const pendSql = projectId ? `SELECT id, blog_post_id FROM video_jobs
+          WHERE kind = 'post' AND project_id = ? AND status IN ('pending','failed')
+          ORDER BY created_at ASC LIMIT 1` : `SELECT id, project_id, blog_post_id FROM video_jobs
+          WHERE kind = 'post' AND status IN ('pending','failed')
+          ORDER BY created_at ASC LIMIT 1`;
+        const pendRows = projectId ? await env.DB.prepare(pendSql).bind(projectId).all().catch(() => ({ results: [] })) : await env.DB.prepare(pendSql).all().catch(() => ({ results: [] }));
+        const pendingJob = (pendRows?.results || [])[0] || null;
+        if (pendingJob) {
+          await env.DB.prepare(
+            `UPDATE video_jobs SET status='claimed', attempts=attempts+1, claimed_at=?, updated_at=?, error=NULL WHERE id=?`
+          ).bind(now, now, pendingJob.id).run();
+          const p = await env.DB.prepare(
+            `SELECT id, slug, title, meta_description, body_markdown,
+                hero_image_key, project_id
+         FROM blog_posts WHERE id = ? AND status = 'published' LIMIT 1`
+          ).bind(pendingJob.blog_post_id).first().catch(() => null);
+          if (!p) {
+            await env.DB.prepare(
+              `UPDATE video_jobs SET status='failed', error='post_missing', updated_at=? WHERE id=?`
+            ).bind(now, pendingJob.id).run();
+            return json(200, { ok: true, job: null, hint: "queued post no longer exists" });
+          }
+          post = p;
+          jobId = pendingJob.id;
+        }
+      }
+      if (!post && !slug) {
+        const discSql = projectId ? `SELECT p.id, p.slug, p.title, p.meta_description, p.body_markdown,
+                p.hero_image_key, p.project_id
+         FROM blog_posts p
+         WHERE p.status = 'published' AND p.published_at > ? AND p.project_id = ?
+           AND NOT EXISTS (SELECT 1 FROM video_jobs v
+                           WHERE v.blog_post_id = p.id
+                             AND v.status IN ('pending','claimed','rendering','done'))
+         ORDER BY p.published_at DESC LIMIT 1` : `SELECT p.id, p.slug, p.title, p.meta_description, p.body_markdown,
+                p.hero_image_key, p.project_id
+         FROM blog_posts p
+         WHERE p.status = 'published' AND p.published_at > ?
+           AND NOT EXISTS (SELECT 1 FROM video_jobs v
+                           WHERE v.blog_post_id = p.id
+                             AND v.status IN ('pending','claimed','rendering','done'))
+         ORDER BY p.published_at DESC LIMIT 1`;
+        const rows = projectId ? await env.DB.prepare(discSql(projectId)).bind(now - QUEUE_WINDOW, projectId).all().catch(() => ({ results: [] })) : await env.DB.prepare(discSql(null)).bind(now - QUEUE_WINDOW).all().catch(() => ({ results: [] }));
         post = (rows?.results || [])[0] || null;
         if (!post) {
           return json(200, { ok: true, job: null, hint: "no published post in the last 48h is missing a video" });
         }
       }
-      const now2 = now;
-      let jobId = newId();
-      try {
-        await env.DB.prepare(
-          `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, status, attempts, claimed_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'claimed', 1, ?, ?, ?)`
-        ).bind(jobId, post.project_id || null, post.id, post.slug, now2, now2, now2).run();
-      } catch (e) {
-        if (!/UNIQUE|unique/i.test(String(e?.message || e))) throw e;
-        const existing = await env.DB.prepare(
-          "SELECT id, status FROM video_jobs WHERE blog_post_id = ? LIMIT 1"
-        ).bind(post.id).first();
-        if (!existing || existing.status !== "failed") {
-          return json(409, { error: "already_claimed", slug: post.slug });
+      if (!jobId) {
+        jobId = newId();
+        try {
+          await env.DB.prepare(
+            `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, status, attempts, claimed_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'claimed', 1, ?, ?, ?)`
+          ).bind(jobId, post.project_id || null, post.id, post.slug, now, now, now).run();
+        } catch (e) {
+          if (!/UNIQUE|unique/i.test(String(e?.message || e))) throw e;
+          const existing = await env.DB.prepare(
+            "SELECT id, status FROM video_jobs WHERE blog_post_id = ? LIMIT 1"
+          ).bind(post.id).first();
+          if (!existing || existing.status !== "failed") {
+            return json(409, { error: "already_claimed", slug: post.slug });
+          }
+          await env.DB.prepare(
+            `UPDATE video_jobs SET status='claimed', attempts=attempts+1, claimed_at=?, updated_at=?, error=NULL WHERE id=?`
+          ).bind(now, now, existing.id).run();
+          jobId = existing.id;
         }
-        await env.DB.prepare(
-          `UPDATE video_jobs SET status='claimed', attempts=attempts+1, claimed_at=?, updated_at=?, error=NULL WHERE id=?`
-        ).bind(now2, now2, existing.id).run();
-        jobId = existing.id;
       }
       const project = post.project_id ? await env.DB.prepare(
         "SELECT site_name, site_description, logo_url, publishing_url FROM projects WHERE id = ? LIMIT 1"
@@ -9888,6 +9966,7 @@ var init_claim = __esm({
         ok: true,
         job: {
           id: jobId,
+          kind: "post",
           slug: post.slug,
           title: post.title,
           meta_description: post.meta_description,
@@ -9909,7 +9988,7 @@ var init_claim = __esm({
 var onRequestPost39;
 var init_delete = __esm({
   "api/admin/video/delete.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     onRequestPost39 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -9950,7 +10029,7 @@ var init_delete = __esm({
 var MAX_BYTES5, onRequestPost40;
 var init_deliver = __esm({
   "api/admin/video/deliver.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_projects();
@@ -10023,14 +10102,60 @@ var init_deliver = __esm({
   }
 });
 
-// api/admin/video/list.js
-var onRequestGet14;
-var init_list2 = __esm({
-  "api/admin/video/list.js"() {
-    init_functionsRoutes_0_6365317468905451();
+// api/admin/video/enqueue-missing.js
+var onRequestPost41;
+var init_enqueue_missing = __esm({
+  "api/admin/video/enqueue-missing.js"() {
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
-    onRequestGet14 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost41 = /* @__PURE__ */ __name(async ({ env, request }) => {
+      const gate = await adminGate(env, request);
+      if (gate) return gate;
+      let body = {};
+      try {
+        body = await request.json();
+      } catch {
+        return json(400, { error: "bad_json" });
+      }
+      const projectId = body?.project_id ? String(body.project_id) : null;
+      const limit = Math.min(50, Math.max(1, parseInt(body?.limit, 10) || 30));
+      const sql = projectId ? `SELECT p.id, p.slug FROM blog_posts p
+        WHERE p.status = 'published' AND p.project_id = ?
+          AND NOT EXISTS (SELECT 1 FROM video_jobs v
+                          WHERE v.blog_post_id = p.id
+                            AND v.status IN ('pending','claimed','rendering','done'))
+        ORDER BY p.published_at DESC LIMIT ?` : `SELECT p.id, p.slug, p.project_id FROM blog_posts p
+        WHERE p.status = 'published'
+          AND NOT EXISTS (SELECT 1 FROM video_jobs v
+                          WHERE v.blog_post_id = p.id
+                            AND v.status IN ('pending','claimed','rendering','done'))
+        ORDER BY p.published_at DESC LIMIT ?`;
+      const rows = projectId ? await env.DB.prepare(sql).bind(projectId, limit).all().catch(() => ({ results: [] })) : await env.DB.prepare(sql).bind(limit).all().catch(() => ({ results: [] }));
+      const t = nowSec();
+      let enqueued = 0;
+      for (const post of rows?.results || []) {
+        const r = await env.DB.prepare(
+          `INSERT OR IGNORE INTO video_jobs
+         (id, project_id, blog_post_id, slug, kind, status, attempts, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'post', 'pending', 0, ?, ?)`
+        ).bind(newId(), projectId || post.project_id || null, post.id, post.slug, t, t).run().catch(() => null);
+        if (r?.meta?.changes) enqueued++;
+      }
+      audit(env, "admin", "video.enqueue_missing", projectId || "all", { enqueued, limit });
+      return json(200, { ok: true, enqueued, hint: `Agent s\u1EBD render ${enqueued} video qua c\xE1c tick 5 ph\xFAt (VIDEO_BATCH m\u1ED7i l\u1EA7n).` });
+    }, "onRequestPost");
+  }
+});
+
+// api/admin/video/list.js
+var onRequestGet15;
+var init_list2 = __esm({
+  "api/admin/video/list.js"() {
+    init_functionsRoutes_0_9734229960597824();
+    init_util();
+    init_auth();
+    onRequestGet15 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const url = new URL(request.url);
@@ -10060,14 +10185,14 @@ var init_list2 = __esm({
 });
 
 // api/admin/video/publish.js
-var onRequestPost41;
+var onRequestPost42;
 var init_publish2 = __esm({
   "api/admin/video/publish.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_social_queue();
-    onRequestPost41 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost42 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       let body = {};
@@ -10108,13 +10233,13 @@ var init_publish2 = __esm({
 });
 
 // api/admin/video/website.js
-var onRequestPost42;
+var onRequestPost43;
 var init_website = __esm({
   "api/admin/video/website.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
-    onRequestPost42 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost43 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       let body = {};
@@ -10183,15 +10308,15 @@ function firstError(body) {
   }
   return body?.error || null;
 }
-var CF_API3, onRequestPost43;
+var CF_API3, onRequestPost44;
 var init_delete2 = __esm({
   "api/install/d1/delete.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     CF_API3 = "https://api.cloudflare.com/client/v4";
     __name(cfFetch2, "cfFetch");
     __name(firstError, "firstError");
-    onRequestPost43 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestPost44 = /* @__PURE__ */ __name(async ({ request }) => {
       let payload;
       try {
         payload = await request.json();
@@ -10252,17 +10377,17 @@ async function resolveAccount(token, accountIdHint) {
   const a = accountsR.body.result[0];
   return { id: a.id, name: a.name };
 }
-var CF_API4, FREE_TIER_D1_CAP, onRequestPost44;
+var CF_API4, FREE_TIER_D1_CAP, onRequestPost45;
 var init_list3 = __esm({
   "api/install/d1/list.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     CF_API4 = "https://api.cloudflare.com/client/v4";
     FREE_TIER_D1_CAP = 10;
     __name(cfFetch3, "cfFetch");
     __name(firstError2, "firstError");
     __name(resolveAccount, "resolveAccount");
-    onRequestPost44 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestPost45 = /* @__PURE__ */ __name(async ({ request }) => {
       let payload;
       try {
         payload = await request.json();
@@ -10399,7 +10524,7 @@ async function readOAuthCookie(env, request) {
 var COOKIE_NAME, COOKIE_PATH, TTL_SEC, PBKDF2_ITER3, SALT;
 var init_oauth_cookie = __esm({
   "_lib/oauth_cookie.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     COOKIE_NAME = "ps_gh";
     COOKIE_PATH = "/api";
     TTL_SEC = 60 * 60;
@@ -10415,10 +10540,10 @@ var init_oauth_cookie = __esm({
 });
 
 // api/install/github/cf-app.js
-var CF_APP_SLUGS, onRequestGet15;
+var CF_APP_SLUGS, onRequestGet16;
 var init_cf_app = __esm({
   "api/install/github/cf-app.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_oauth_cookie();
     CF_APP_SLUGS = /* @__PURE__ */ new Set([
@@ -10426,7 +10551,7 @@ var init_cf_app = __esm({
       "cloudflare-pages"
       // legacy app name, just in case
     ]);
-    onRequestGet15 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet16 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const session = await readOAuthCookie(env, request);
       if (!session?.token) return json(401, { ok: false, error: "gh_not_connected" });
       const r = await fetch("https://api.github.com/user/installations?per_page=100", {
@@ -10532,10 +10657,10 @@ async function lookupRepo(token, fullName) {
     html_url: d?.html_url
   };
 }
-var UPSTREAM_OWNER, UPSTREAM_REPO, CF_APP_SLUG, onRequestPost45;
+var UPSTREAM_OWNER, UPSTREAM_REPO, CF_APP_SLUG, onRequestPost46;
 var init_fork = __esm({
   "api/install/github/fork.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_oauth_cookie();
     UPSTREAM_OWNER = "Benjamin-Bloch";
@@ -10546,7 +10671,7 @@ var init_fork = __esm({
     __name(addRepoToInstallation, "addRepoToInstallation");
     __name(ensureCfAppAccess, "ensureCfAppAccess");
     __name(lookupRepo, "lookupRepo");
-    onRequestPost45 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost46 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const session = await readOAuthCookie(env, request);
       if (!session?.token) return json(401, { ok: false, error: "gh_not_connected" });
       if (!session?.login) return json(401, { ok: false, error: "no_gh_login" });
@@ -10651,15 +10776,15 @@ function fail(url, flow, code, msg) {
   if (msg) u.searchParams.set("detail", msg.slice(0, 200));
   return Response.redirect(u.toString(), 302);
 }
-var VALID_FLOWS, onRequestGet16;
+var VALID_FLOWS, onRequestGet17;
 var init_callback = __esm({
   "api/update/github/callback.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_oauth_cookie();
     VALID_FLOWS = /* @__PURE__ */ new Set(["install", "update"]);
     __name(readCookie3, "readCookie");
     __name(fail, "fail");
-    onRequestGet16 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet17 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const url = new URL(request.url);
       if (!env?.GITHUB_OAUTH_CLIENT_ID || !env?.GITHUB_OAUTH_CLIENT_SECRET) {
         return fail(url, "update", "oauth_not_configured");
@@ -10762,10 +10887,10 @@ async function verifyFork(token, fullName) {
     updated_at: d.updated_at || null
   };
 }
-var UPSTREAM_FULL_NAME, DEFAULT_REPO_NAME, SCAN_PAGES, PER_PAGE, onRequestGet17;
+var UPSTREAM_FULL_NAME, DEFAULT_REPO_NAME, SCAN_PAGES, PER_PAGE, onRequestGet18;
 var init_repos = __esm({
   "api/update/github/repos.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_oauth_cookie();
     UPSTREAM_FULL_NAME = "Benjamin-Bloch/pages-seo";
@@ -10775,7 +10900,7 @@ var init_repos = __esm({
     __name(ghHeaders2, "ghHeaders");
     __name(isPagesSeoFork, "isPagesSeoFork");
     __name(verifyFork, "verifyFork");
-    onRequestGet17 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet18 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const session = await readOAuthCookie(env, request);
       if (!session?.token) return json(401, { ok: false, error: "gh_not_connected" });
       const token = session.token;
@@ -10841,13 +10966,13 @@ var init_repos = __esm({
 });
 
 // api/update/github/start.js
-var VALID_FLOWS2, onRequestGet18;
+var VALID_FLOWS2, onRequestGet19;
 var init_start2 = __esm({
   "api/update/github/start.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     VALID_FLOWS2 = /* @__PURE__ */ new Set(["install", "update"]);
-    onRequestGet18 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet19 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.GITHUB_OAUTH_CLIENT_ID) {
         return json(503, {
           error: "oauth_not_configured",
@@ -10891,13 +11016,13 @@ var init_start2 = __esm({
 });
 
 // api/update/github/status.js
-var onRequestGet19;
+var onRequestGet20;
 var init_status = __esm({
   "api/update/github/status.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_oauth_cookie();
-    onRequestGet19 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet20 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const c = await readOAuthCookie(env, request);
       if (c?.token) return json(200, { connected: true, login: c.login || null });
       return json(200, { connected: false });
@@ -10906,14 +11031,14 @@ var init_status = __esm({
 });
 
 // api/update/github/sync.js
-var NAME_RX, onRequestPost46;
+var NAME_RX, onRequestPost47;
 var init_sync2 = __esm({
   "api/update/github/sync.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_oauth_cookie();
     NAME_RX = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
-    onRequestPost46 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost47 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const session = await readOAuthCookie(env, request);
       if (!session?.token) return json(401, { ok: false, error: "gh_not_connected" });
       let body;
@@ -10985,16 +11110,16 @@ var init_sync2 = __esm({
 });
 
 // api/admin/projects/[id].js
-var onRequestGet20, onRequestPut2, onRequestDelete3;
+var onRequestGet21, onRequestPut3, onRequestDelete3;
 var init_id = __esm({
   "api/admin/projects/[id].js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_projects();
     init_notices();
     init_cloudflare_domains();
-    onRequestGet20 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+    onRequestGet21 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const idOrSlug = params.id;
@@ -11002,7 +11127,7 @@ var init_id = __esm({
       if (!project) return json(404, { error: "project_not_found" });
       return json(200, { ok: true, project });
     }, "onRequestGet");
-    onRequestPut2 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+    onRequestPut3 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       let body;
@@ -11253,7 +11378,7 @@ function restoreBlocks(html2, blocks) {
 var BLOCK_TAGS, BOX_VARIANTS, LIST_CONTAINERS;
 var init_agent_markup = __esm({
   "_lib/agent_markup.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_markdown();
     BLOCK_TAGS = {
       "h1": { tag: "h2" },
@@ -11501,7 +11626,7 @@ function renderList(listLines) {
 var inlineRender, LIST_RE;
 var init_markdown = __esm({
   "_lib/markdown.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_agent_markup();
     __name(escape, "escape");
     __name(inlineNonCode, "inlineNonCode");
@@ -11525,13 +11650,13 @@ function imageUrlFor4(key) {
   if (!key) return null;
   return "/image/" + key.split("/").map(encodeURIComponent).join("/");
 }
-var onRequestGet21;
+var onRequestGet22;
 var init_slug = __esm({
   "api/public/post/[slug].js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_markdown();
     __name(imageUrlFor4, "imageUrlFor");
-    onRequestGet21 = /* @__PURE__ */ __name(async ({ env, params }) => {
+    onRequestGet22 = /* @__PURE__ */ __name(async ({ env, params }) => {
       if (!env?.DB) {
         return new Response(JSON.stringify({ error: "no_db" }), {
           status: 500,
@@ -12047,7 +12172,7 @@ ${beaconScript}
 var HERO_W, HERO_H;
 var init_page_render = __esm({
   "_lib/page_render.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_markdown();
     init_util();
     init_project_scope();
@@ -12409,28 +12534,28 @@ ${themeStyle(project?.theme_color)}
     }
   });
 }
-var PAGE_SIZE, onRequestGet22;
+var PAGE_SIZE, onRequestGet23;
 var init_blog = __esm({
   "blog/index.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_settings();
     init_page_render();
     init_project_scope();
     PAGE_SIZE = 10;
     __name(renderBlogIndex, "renderBlogIndex");
-    onRequestGet22 = /* @__PURE__ */ __name((ctx) => renderBlogIndex({ env: ctx.env, request: ctx.request, page: 1 }), "onRequestGet");
+    onRequestGet23 = /* @__PURE__ */ __name((ctx) => renderBlogIndex({ env: ctx.env, request: ctx.request, page: 1 }), "onRequestGet");
   }
 });
 
 // [project]/blog/page/[page].js
-var onRequestGet23;
+var onRequestGet24;
 var init_page = __esm({
   "[project]/blog/page/[page].js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_blog();
     init_project_scope();
-    onRequestGet23 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet24 = /* @__PURE__ */ __name(async (ctx) => {
       const slug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -12447,16 +12572,16 @@ var init_page = __esm({
 });
 
 // api/admin/activation.js
-var SITE_ORIGIN, onRequestGet24;
+var SITE_ORIGIN, onRequestGet25;
 var init_activation = __esm({
   "api/admin/activation.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_settings();
     init_ai();
     SITE_ORIGIN = "https://seo.gulagi.com";
-    onRequestGet24 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet25 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -12585,17 +12710,17 @@ async function tenantOf(env, request) {
   const tenant = await resolveTenantContext(env, request, auth);
   return tenant?.activeProjectId || null;
 }
-var NAME_RX2, onRequestGet25, onRequestPost47, onRequestPatch3, onRequestDelete4;
+var NAME_RX2, onRequestGet26, onRequestPost48, onRequestPatch3, onRequestDelete4;
 var init_aliases2 = __esm({
   "api/admin/aliases/index.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_aliases();
     NAME_RX2 = /^[a-z0-9][a-z0-9_-]{0,40}$/;
     __name(validUrl, "validUrl");
     __name(tenantOf, "tenantOf");
-    onRequestGet25 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet26 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const pid = await tenantOf(env, request);
@@ -12616,7 +12741,7 @@ var init_aliases2 = __esm({
       }
       return json(200, { ok: true, project_id: pid, aliases: items, reserved: RESERVED_NAMES, counts: { owned, shared } });
     }, "onRequestGet");
-    onRequestPost47 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost48 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const pid = await tenantOf(env, request);
@@ -12697,13 +12822,13 @@ var init_aliases2 = __esm({
 });
 
 // api/admin/analytics.js
-var onRequestGet26;
+var onRequestGet27;
 var init_analytics = __esm({
   "api/admin/analytics.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
-    onRequestGet26 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet27 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -12745,10 +12870,10 @@ var init_analytics = __esm({
 function item(id, severity, title, detail, action, count = null) {
   return { id, severity, title, detail, count, action };
 }
-var CRON_STALE_HOURS, STUCK_JOB_HOURS, BUDGET_WARN_PCT, onRequestGet27;
+var CRON_STALE_HOURS, STUCK_JOB_HOURS, BUDGET_WARN_PCT, onRequestGet28;
 var init_attention = __esm({
   "api/admin/attention.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_settings();
@@ -12758,7 +12883,7 @@ var init_attention = __esm({
     STUCK_JOB_HOURS = 1;
     BUDGET_WARN_PCT = 80;
     __name(item, "item");
-    onRequestGet27 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet28 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -12963,13 +13088,13 @@ var init_attention = __esm({
 });
 
 // api/admin/audit.js
-var onRequestGet28;
+var onRequestGet29;
 var init_audit = __esm({
   "api/admin/audit.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
-    onRequestGet28 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet29 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       if (!env.DB) return json(503, { error: "no_db_binding" });
@@ -13161,7 +13286,7 @@ function scrapeToPromptInput(scrape) {
 var MAX_HTML_BYTES, MAX_BODY_TEXT, SKIP_TAG_RE, COMMENT_RE, TAG_RE, WS_RE, ENTITY_MAP, ENTITY_RE;
 var init_scrape = __esm({
   "_lib/scrape.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     MAX_HTML_BYTES = 8e5;
     MAX_BODY_TEXT = 6e3;
     SKIP_TAG_RE = /<(script|style|template|noscript|svg|iframe|object|embed)\b[^>]*>[\s\S]*?<\/\1>/gi;
@@ -13266,10 +13391,10 @@ async function callForBrandDNA(env, prompt, preferredProvider) {
 function sanitiseField(s, max) {
   return String(s || "").trim().slice(0, max);
 }
-var BRAND_DNA_KEYS, CONTENT_LANGUAGES, onRequestGet29, onRequestPost48, onRequestPut3;
+var BRAND_DNA_KEYS, CONTENT_LANGUAGES, onRequestGet30, onRequestPost49, onRequestPut4;
 var init_brand_dna = __esm({
   "api/admin/brand-dna.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_events();
@@ -13310,7 +13435,7 @@ var init_brand_dna = __esm({
     __name(buildBrandPrompt, "buildBrandPrompt");
     __name(callForBrandDNA, "callForBrandDNA");
     __name(sanitiseField, "sanitiseField");
-    onRequestGet29 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet30 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -13368,7 +13493,7 @@ var init_brand_dna = __esm({
         project_slug: tenant.activeProjectSlug
       });
     }, "onRequestGet");
-    onRequestPost48 = /* @__PURE__ */ __name(async ({ env, request, waitUntil }) => {
+    onRequestPost49 = /* @__PURE__ */ __name(async ({ env, request, waitUntil }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -13432,7 +13557,7 @@ var init_brand_dna = __esm({
         }
       });
     }, "onRequestPost");
-    onRequestPut3 = /* @__PURE__ */ __name(async ({ env, request, waitUntil }) => {
+    onRequestPut4 = /* @__PURE__ */ __name(async ({ env, request, waitUntil }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -13695,10 +13820,10 @@ function looseJsonParse2(text) {
   }
   return JSON.parse(out);
 }
-var DEFAULT_BATCH, MAX_BATCH, MAX_KEYWORDS, onRequestPost49;
+var DEFAULT_BATCH, MAX_BATCH, MAX_KEYWORDS, onRequestPost50;
 var init_brand_filter_queue = __esm({
   "api/admin/brand-filter-queue.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_settings();
@@ -13710,7 +13835,7 @@ var init_brand_filter_queue = __esm({
     __name(buildBatchPrompt, "buildBatchPrompt");
     __name(evaluateBatch, "evaluateBatch");
     __name(looseJsonParse2, "looseJsonParse");
-    onRequestPost49 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost50 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       let body;
@@ -13798,17 +13923,17 @@ async function enrichWithPosts(env, rows) {
     post: row.post_id ? byId[row.post_id] || null : null
   }));
 }
-var VALID_STATUSES, onRequestGet30, onRequestPost50, onRequestPatch4, onRequestDelete5;
+var VALID_STATUSES, onRequestGet31, onRequestPost51, onRequestPatch4, onRequestDelete5;
 var init_calendar = __esm({
   "api/admin/calendar/index.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     VALID_STATUSES = ["scheduled", "generating", "draft", "published", "skipped"];
     __name(todayUtc2, "todayUtc");
     __name(isValidDate, "isValidDate");
     __name(enrichWithPosts, "enrichWithPosts");
-    onRequestGet30 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet31 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -13835,7 +13960,7 @@ var init_calendar = __esm({
         project_slug: tenant?.activeProjectSlug || null
       });
     }, "onRequestGet");
-    onRequestPost50 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost51 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -13935,13 +14060,13 @@ var init_calendar = __esm({
 });
 
 // api/admin/competitors/index.js
-var onRequestGet31;
+var onRequestGet32;
 var init_competitors = __esm({
   "api/admin/competitors/index.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
-    onRequestGet31 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet32 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -14815,7 +14940,7 @@ window.psBlog.state = state;
 }
 var init_widget_render = __esm({
   "_lib/widget_render.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     __name(jsString, "jsString");
     __name(imageUrlFor5, "imageUrlFor");
     __name(widgetBody, "widgetBody");
@@ -14876,7 +15001,7 @@ function embedWidgetOptions({ settings = {}, embed: embed2 = {}, origin = "" }) 
 var EMBED_THEMES, EMBED_PALETTE_KEYS;
 var init_embed_settings = __esm({
   "_lib/embed_settings.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     EMBED_THEMES = ["auto", "light", "dark"];
     EMBED_PALETTE_KEYS = ["bg", "fg", "muted", "line", "accent"];
     __name(hexOrNull, "hexOrNull");
@@ -14908,15 +15033,15 @@ function html(js) {
 </body>
 </html>`;
 }
-var onRequestGet32;
+var onRequestGet33;
 var init_embed_preview = __esm({
   "api/admin/embed-preview.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_auth();
     init_widget_render();
     init_embed_settings();
     __name(html, "html");
-    onRequestGet32 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet33 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       if (!env?.DB) return new Response("no_db", { status: 500 });
@@ -14998,17 +15123,17 @@ function safeSettings(settings) {
   if (j.length > SETTINGS_MAX_BYTES) throw new Error("settings_too_large");
   return j;
 }
-var SETTINGS_MAX_BYTES, onRequestGet33, onRequestPost51, onRequestPut4, onRequestDelete6;
+var SETTINGS_MAX_BYTES, onRequestGet34, onRequestPost52, onRequestPut5, onRequestDelete6;
 var init_embeds = __esm({
   "api/admin/embeds.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_embed_settings();
     SETTINGS_MAX_BYTES = 8 * 1024;
     __name(newEmbedId, "newEmbedId");
     __name(safeSettings, "safeSettings");
-    onRequestGet33 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet34 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -15037,7 +15162,7 @@ var init_embeds = __esm({
       });
       return json(200, { ok: true, embeds });
     }, "onRequestGet");
-    onRequestPost51 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost52 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -15065,7 +15190,7 @@ var init_embeds = __esm({
       audit(env, "admin", "embed_create", id, { name, project_id: pid });
       return json(200, { ok: true, id });
     }, "onRequestPost");
-    onRequestPut4 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPut5 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -15124,16 +15249,16 @@ var init_embeds = __esm({
 });
 
 // api/admin/google-search-console/index.js
-var onRequestGet34, onRequestPost52, onRequestDelete7;
+var onRequestGet35, onRequestPost53, onRequestDelete7;
 var init_google_search_console = __esm({
   "api/admin/google-search-console/index.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_secret_vault();
     init_settings();
     init_google_indexing();
-    onRequestGet34 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet35 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const s = await loadSettings(env);
@@ -15144,7 +15269,7 @@ var init_google_search_console = __esm({
         use_indexing_api: String(s.google_use_indexing_api || "") === "1"
       });
     }, "onRequestGet");
-    onRequestPost52 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost53 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       let body;
@@ -15209,16 +15334,16 @@ function extractLocs(xml2) {
   }
   return out;
 }
-var onRequestPost53;
+var onRequestPost54;
 var init_indexnow_ping = __esm({
   "api/admin/indexnow-ping.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_indexnow();
     init_project_scope();
     __name(extractLocs, "extractLocs");
-    onRequestPost53 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost54 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -15439,7 +15564,7 @@ async function computeInsights(env, { maxProjects = 2e3 } = {}) {
 var DAY;
 var init_insights = __esm({
   "_lib/insights.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     DAY = 86400;
     __name(isoWeek, "isoWeek");
     __name(percentile, "percentile");
@@ -15449,14 +15574,14 @@ var init_insights = __esm({
 });
 
 // api/admin/insights.js
-var onRequestGet35;
+var onRequestGet36;
 var init_insights2 = __esm({
   "api/admin/insights.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_insights();
-    onRequestGet35 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet36 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -15473,17 +15598,17 @@ var init_insights2 = __esm({
 function clientIp(request) {
   return request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }
-var MAX_FAILS, LOCKOUT_SEC, onRequestPost54;
+var MAX_FAILS, LOCKOUT_SEC, onRequestPost55;
 var init_login = __esm({
   "api/admin/login.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_passwords();
     init_admin_token();
     MAX_FAILS = 5;
     LOCKOUT_SEC = 60 * 60;
     __name(clientIp, "clientIp");
-    onRequestPost54 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost55 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       const adminToken = await getAdminToken(env);
       if (!adminToken) {
@@ -15560,13 +15685,13 @@ var init_login = __esm({
 });
 
 // api/admin/logout.js
-var onRequestPost55;
+var onRequestPost56;
 var init_logout = __esm({
   "api/admin/logout.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_passwords();
     init_admin_token();
-    onRequestPost55 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost56 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const raw = readCookie(request, SESSION_COOKIE);
       const token = env?.DB ? await getAdminToken(env) : "";
       if (raw && token) {
@@ -15591,7 +15716,7 @@ var init_logout = __esm({
 var SCHEMA_SQL;
 var init_schema = __esm({
   "_lib/schema.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     SCHEMA_SQL = `
 -- pages-seo: D1 schema.
 --
@@ -16327,7 +16452,7 @@ __export(migrations_bundle_exports, {
 var MIGRATIONS;
 var init_migrations_bundle = __esm({
   "_lib/migrations_bundle.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     MIGRATIONS = [
       { id: "001_social_posts", sql: "-- ============================================================================\n-- Social distribution queue\n-- ============================================================================\n-- One row per (blog post, channel) publication attempt. Publishing to an\n-- external network is not transactional with the blog write, so it gets\n-- its own durable job: the blog publish enqueues, and the cron drains.\n-- Without this, a dropped connection or a Facebook 5xx silently loses the\n-- post \u2014 the old fire-and-forget waitUntil() only wrote an audit line.\n--\n--   status: pending | publishing | published | failed | skipped\n--   next_attempt_at: unix seconds; exponential backoff between attempts\n--   needs_reconnect: 1 when the failure is a credential problem (bad or\n--     expired token, missing permission). Retrying is pointless until a\n--     human reconnects the channel, so the UI surfaces it as an action.\nCREATE TABLE IF NOT EXISTS social_posts (\n  id              TEXT PRIMARY KEY,\n  project_id      TEXT,\n  blog_post_id    TEXT NOT NULL,\n  channel         TEXT NOT NULL DEFAULT 'facebook',\n  status          TEXT NOT NULL DEFAULT 'pending',\n  attempts        INTEGER NOT NULL DEFAULT 0,\n  max_attempts    INTEGER NOT NULL DEFAULT 5,\n  next_attempt_at INTEGER NOT NULL,\n  external_id     TEXT,\n  external_url    TEXT,\n  error           TEXT,\n  needs_reconnect INTEGER NOT NULL DEFAULT 0,\n  created_at      INTEGER NOT NULL,\n  updated_at      INTEGER NOT NULL,\n  published_at    INTEGER\n);\n\n-- Idempotency: a retried blog publish must not enqueue a second time.\nCREATE UNIQUE INDEX IF NOT EXISTS idx_social_post_channel\n  ON social_posts(blog_post_id, channel);\n\n-- The drain query: due jobs, oldest first.\nCREATE INDEX IF NOT EXISTS idx_social_due\n  ON social_posts(status, next_attempt_at);\n\nCREATE INDEX IF NOT EXISTS idx_social_project\n  ON social_posts(project_id, created_at DESC);" },
       { id: "002_project_scoped_aliases", sql: "-- 002: project-scoped internal-link aliases.\n--\n-- The problem: site_aliases was global. buildAliasMap() returned EVERY row to\n-- every project, so the AI writing for project A was told it could link to\n-- project B's pages, and the sanitiser would happily expand those names into\n-- A's article. A cross-tenant content leak, not just a cosmetic one.\n--\n-- Why the table is rebuilt rather than ALTERed: the legacy table has\n-- `name TEXT PRIMARY KEY`, so only one row per name can exist in the whole\n-- database. Two projects could not each own a `login` alias. SQLite cannot\n-- change a primary key in place, so the table is recreated.\n--\n-- Nothing is dropped. The legacy table is RENAMED to site_aliases_legacy and\n-- left in place as a recovery copy; all rows are copied forward first.\n--\n-- project_id uses '' (not NULL) for \"global\". SQLite treats NULLs as distinct\n-- in a unique index, so a NULL-scoped row could be inserted twice and\n-- `ON CONFLICT(project_id, name)` would never fire for it. The empty string\n-- keeps the constraint meaningful.\n--\n-- This runs on fresh installs too \u2014 schema/init.sql still declares the legacy\n-- shape, so every database takes the same upgrade path and the migration is\n-- exercised by every install rather than only by old ones.\n\nALTER TABLE site_aliases RENAME TO site_aliases_legacy;\n\nCREATE TABLE IF NOT EXISTS site_aliases (\n  id          TEXT PRIMARY KEY,\n  project_id  TEXT NOT NULL DEFAULT '',   -- '' = shared/legacy\n  name        TEXT NOT NULL,\n  url         TEXT NOT NULL,\n  description TEXT,\n  kind        TEXT NOT NULL DEFAULT 'manual',  -- manual | sitemap\n  created_at  INTEGER NOT NULL,\n  updated_at  INTEGER NOT NULL\n);\n\n-- Scope + name is the identity. Composite so each project owns its own\n-- vocabulary; '' still allows one shared row per name.\nCREATE UNIQUE INDEX IF NOT EXISTS idx_site_aliases_scope\n  ON site_aliases(project_id, name);\n\nCREATE INDEX IF NOT EXISTS idx_site_aliases_project\n  ON site_aliases(project_id, kind);\n\n-- Copy every legacy row forward as global (''). Existing installs keep\n-- working exactly as before until an operator re-syncs per project.\nINSERT INTO site_aliases (id, project_id, name, url, description, kind, created_at, updated_at)\n  SELECT lower(hex(randomblob(16))), '', name, url, description, kind, created_at, updated_at\n    FROM site_aliases_legacy;" },
@@ -16413,7 +16538,7 @@ async function runMigrations(env, { logger = console } = {}) {
 var BENIGN;
 var init_migrations = __esm({
   "_lib/migrations.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_schema();
     init_migrations_bundle();
     BENIGN = /duplicate column name|already exists|duplicate index/i;
@@ -16426,14 +16551,14 @@ var init_migrations = __esm({
 });
 
 // api/admin/migrate.js
-var onRequestPost56, onRequestGet36;
+var onRequestPost57, onRequestGet37;
 var init_migrate = __esm({
   "api/admin/migrate.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_migrations();
-    onRequestPost56 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost57 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -16452,7 +16577,7 @@ var init_migrate = __esm({
         migrations_after: after.size
       });
     }, "onRequestPost");
-    onRequestGet36 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet37 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const { MIGRATIONS: MIGRATIONS2 } = await Promise.resolve().then(() => (init_migrations_bundle(), migrations_bundle_exports));
@@ -16468,13 +16593,13 @@ var init_migrate = __esm({
 });
 
 // api/admin/notices.js
-var onRequestGet37;
+var onRequestGet38;
 var init_notices2 = __esm({
   "api/admin/notices.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
-    onRequestGet37 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet38 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       if (!env?.DB) return json(503, { ok: false, error: "no_db_binding" });
@@ -16522,16 +16647,16 @@ async function stateFor(env, pid) {
     providers_configured: providers.text || []
   };
 }
-var onRequestGet38, onRequestPost57, onRequestDelete8;
+var onRequestGet39, onRequestPost58, onRequestDelete8;
 var init_onboarding = __esm({
   "api/admin/onboarding.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
     init_events();
     __name(stateFor, "stateFor");
-    onRequestGet38 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet39 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -16549,7 +16674,7 @@ var init_onboarding = __esm({
       const complete = required.every((x) => x.done);
       return json(200, { ok: true, ...s, steps, complete });
     }, "onRequestGet");
-    onRequestPost57 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost58 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -16582,10 +16707,10 @@ var init_onboarding = __esm({
 });
 
 // api/admin/preview-sample.js
-var DEFAULT_TOPIC, onRequestPost58;
+var DEFAULT_TOPIC, onRequestPost59;
 var init_preview_sample = __esm({
   "api/admin/preview-sample.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
@@ -16595,7 +16720,7 @@ var init_preview_sample = __esm({
     init_page_render();
     init_settings();
     DEFAULT_TOPIC = "Practical tips for someone starting out";
-    onRequestPost58 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost59 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -16686,14 +16811,14 @@ var init_preview_sample = __esm({
 });
 
 // api/admin/pricing.js
-var onRequestGet39, onRequestPost59;
+var onRequestGet40, onRequestPost60;
 var init_pricing = __esm({
   "api/admin/pricing.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_prices();
-    onRequestGet39 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet40 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const { prices, source, fetched_at, stale } = await loadPrices(env);
@@ -16705,7 +16830,7 @@ var init_pricing = __esm({
         stale
       });
     }, "onRequestGet");
-    onRequestPost59 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost60 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       try {
@@ -16719,14 +16844,14 @@ var init_pricing = __esm({
 });
 
 // api/admin/projects.js
-var onRequestGet40, onRequestPost60;
+var onRequestGet41, onRequestPost61;
 var init_projects2 = __esm({
   "api/admin/projects.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_projects();
-    onRequestGet40 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet41 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const url = new URL(request.url);
@@ -16734,7 +16859,7 @@ var init_projects2 = __esm({
       const projects = await listProjects(env, { status });
       return json(200, { ok: true, projects });
     }, "onRequestGet");
-    onRequestPost60 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost61 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       let body;
@@ -16757,14 +16882,14 @@ var init_projects2 = __esm({
 });
 
 // api/admin/providers.js
-var onRequestGet41;
+var onRequestGet42;
 var init_providers = __esm({
   "api/admin/providers.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
-    onRequestGet41 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet42 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       return json(200, await listProviders(env));
@@ -16773,10 +16898,10 @@ var init_providers = __esm({
 });
 
 // api/admin/secrets.js
-var ALLOWED, MIN_LEN, MAX_LEN, onRequestGet42, onRequestPost61, onRequestDelete9;
+var ALLOWED, MIN_LEN, MAX_LEN, onRequestGet43, onRequestPost62, onRequestDelete9;
 var init_secrets = __esm({
   "api/admin/secrets.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_secret_vault();
@@ -16805,7 +16930,7 @@ var init_secrets = __esm({
     ];
     MIN_LEN = 2;
     MAX_LEN = 512;
-    onRequestGet42 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet43 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const status = await describeKeys(env, ALLOWED);
@@ -16818,7 +16943,7 @@ var init_secrets = __esm({
       }
       return json(200, { ok: true, keys: status, values, allowed: ALLOWED });
     }, "onRequestGet");
-    onRequestPost61 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost62 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       let body;
@@ -16863,20 +16988,20 @@ var init_secrets = __esm({
 });
 
 // api/admin/settings.js
-var onRequestGet43, onRequestPut5;
+var onRequestGet44, onRequestPut6;
 var init_settings2 = __esm({
   "api/admin/settings.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_settings();
-    onRequestGet43 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet44 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const settings = await loadSettings(env);
       return json(200, { ok: true, settings, keys: listSettingKeys() });
     }, "onRequestGet");
-    onRequestPut5 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPut6 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       let body;
@@ -16908,14 +17033,14 @@ var init_settings2 = __esm({
 });
 
 // api/admin/social.js
-var onRequestGet44, onRequestPost62;
+var onRequestGet45, onRequestPost63;
 var init_social = __esm({
   "api/admin/social.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_social_queue();
-    onRequestGet44 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet45 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -16930,7 +17055,7 @@ var init_social = __esm({
       for (const j of all) if (counts[j.status] != null) counts[j.status]++;
       return json(200, { ok: true, project_id: pid, jobs, counts });
     }, "onRequestGet");
-    onRequestPost62 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost63 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -17090,10 +17215,10 @@ async function checkRepairSecrets(env) {
     detail: missing.length ? `${missing.length} secret(s) missing \u2014 site can't self-repair bindings` : "all CF_* secrets present"
   };
 }
-var onRequestGet45;
+var onRequestGet46;
 var init_status2 = __esm({
   "api/admin/status.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_settings();
@@ -17105,7 +17230,7 @@ var init_status2 = __esm({
     __name(checkBudget2, "checkBudget");
     __name(checkProviders, "checkProviders");
     __name(checkRepairSecrets, "checkRepairSecrets");
-    onRequestGet45 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet46 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const [db, r2, ai, content, failures, budget, providers, repair] = await Promise.all([
@@ -17140,15 +17265,15 @@ var init_status2 = __esm({
 });
 
 // api/admin/topics.js
-var onRequestGet46, onRequestPost63;
+var onRequestGet47, onRequestPost64;
 var init_topics2 = __esm({
   "api/admin/topics.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_projects();
     init_project_topics();
-    onRequestGet46 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet47 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const url = new URL(request.url);
@@ -17158,7 +17283,7 @@ var init_topics2 = __esm({
       const topics = await listProjectTopics(env, projectId, { status });
       return json(200, { ok: true, topics });
     }, "onRequestGet");
-    onRequestPost63 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost64 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       let body;
@@ -17192,15 +17317,15 @@ var init_topics2 = __esm({
 });
 
 // api/admin/trend-discover.js
-var onRequestGet47, onRequestPost64, ALLOWED_STATUS, onRequestPatch5;
+var onRequestGet48, onRequestPost65, ALLOWED_STATUS, onRequestPatch5;
 var init_trend_discover = __esm({
   "api/admin/trend-discover.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_ai();
     init_projects();
-    onRequestGet47 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet48 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -17211,7 +17336,7 @@ var init_trend_discover = __esm({
       const { results } = await stmt.all().catch(() => ({ results: [] }));
       return json(200, { ok: true, project_id: pid, topics: results || [] });
     }, "onRequestGet");
-    onRequestPost64 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost65 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -17452,10 +17577,10 @@ async function buildUpdateReport(env) {
     deletions: (cmp.files || []).reduce((n, f) => n + (f.deletions || 0), 0)
   });
 }
-var UPSTREAM_OWNER2, UPSTREAM_REPO2, BRANCH, onRequestGet48, UPSTREAM_TTL_SEC;
+var UPSTREAM_OWNER2, UPSTREAM_REPO2, BRANCH, onRequestGet49, UPSTREAM_TTL_SEC;
 var init_update = __esm({
   "api/admin/update/index.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_settings();
@@ -17466,7 +17591,7 @@ var init_update = __esm({
     __name(fetchLatest, "fetchLatest");
     __name(fetchCompare, "fetchCompare");
     __name(short, "short");
-    onRequestGet48 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet49 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       try {
@@ -17507,16 +17632,16 @@ function windowStart(name) {
   const m = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
   return Math.floor(m.getTime() / 1e3);
 }
-var onRequestGet49;
+var onRequestGet50;
 var init_usage2 = __esm({
   "api/admin/usage.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_settings();
     init_usage();
     __name(windowStart, "windowStart");
-    onRequestGet49 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet50 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const url = new URL(request.url);
@@ -17610,10 +17735,10 @@ async function projectExists(env, id) {
   ).bind(id).first().catch(() => null);
   return !!r;
 }
-var MIN_PW, MAX_PW, ROLES, onRequestGet50, onRequestPost65, onRequestPut6, onRequestDelete10;
+var MIN_PW, MAX_PW, ROLES, onRequestGet51, onRequestPost66, onRequestPut7, onRequestDelete10;
 var init_users = __esm({
   "api/admin/users.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_email_rules();
     init_auth();
@@ -17623,7 +17748,7 @@ var init_users = __esm({
     ROLES = ["super_admin", "project_admin"];
     __name(hasKey, "hasKey");
     __name(projectExists, "projectExists");
-    onRequestGet50 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet51 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const r = await env.DB.prepare(
@@ -17634,7 +17759,7 @@ var init_users = __esm({
       ).all();
       return json(200, { ok: true, users: r?.results || [] });
     }, "onRequestGet");
-    onRequestPost65 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost66 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       let body;
@@ -17699,7 +17824,7 @@ var init_users = __esm({
       audit(env, "admin", "user_create", id, { email, role, project_id: projectId });
       return json(200, { ok: true, id, email, role, project_id: projectId });
     }, "onRequestPost");
-    onRequestPut6 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPut7 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const url = new URL(request.url);
@@ -17784,15 +17909,15 @@ var init_users = __esm({
 });
 
 // api/admin/whoami.js
-var onRequestGet51;
+var onRequestGet52;
 var init_whoami = __esm({
   "api/admin/whoami.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_config();
     init_site_identity();
-    onRequestGet51 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet52 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const missing = await missingConfig(env);
       if (missing.length) {
         let usersCount = 0;
@@ -18105,17 +18230,17 @@ Standard pages-seo failure modes you may encounter:
 
 Start by acknowledging which CRITICAL issue we're tackling first (if any), tell me concretely what to click or run, then wait for me to confirm before moving on.`;
 }
-var PROBE_TIMEOUT_MS, onRequestGet52;
+var PROBE_TIMEOUT_MS, onRequestGet53;
 var init_diagnose = __esm({
   "api/ai-prompt/diagnose.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     PROBE_TIMEOUT_MS = 6e3;
     __name(cleanUrl, "cleanUrl");
     __name(probe, "probe");
     __name(tryJson, "tryJson");
     __name(runDiagnostics, "runDiagnostics");
     __name(buildTargetedPrompt, "buildTargetedPrompt");
-    onRequestGet52 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestGet53 = /* @__PURE__ */ __name(async ({ request }) => {
       const url = new URL(request.url);
       const site = cleanUrl(url.searchParams.get("site"));
       const format = String(url.searchParams.get("format") || "text").toLowerCase();
@@ -18166,13 +18291,13 @@ var init_diagnose = __esm({
 });
 
 // api/blog/feedback.js
-var onRequestPost66;
+var onRequestPost67;
 var init_feedback = __esm({
   "api/blog/feedback.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_project_scope();
-    onRequestPost66 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost67 = /* @__PURE__ */ __name(async ({ request, env }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       let body;
       try {
@@ -18195,14 +18320,14 @@ var init_feedback = __esm({
 });
 
 // api/blog/leads.js
-var onRequestPost67, onRequestGet53;
+var onRequestPost68, onRequestGet54;
 var init_leads = __esm({
   "api/blog/leads.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_project_scope();
-    onRequestPost67 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost68 = /* @__PURE__ */ __name(async ({ request, env }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       let body;
       try {
@@ -18222,7 +18347,7 @@ var init_leads = __esm({
       ).bind(newId(), project?.id || null, name, email, phone, source, blogSlug || null, nowSec()).run();
       return json(200, { ok: true });
     }, "onRequestPost");
-    onRequestGet53 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet54 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -18237,14 +18362,14 @@ var init_leads = __esm({
 });
 
 // api/blog/views.js
-var onRequestPost68, onRequestGet54;
+var onRequestPost69, onRequestGet55;
 var init_views = __esm({
   "api/blog/views.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     init_project_scope();
-    onRequestPost68 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost69 = /* @__PURE__ */ __name(async ({ request, env }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       let body;
       try {
@@ -18271,7 +18396,7 @@ var init_views = __esm({
       }
       return json(200, { ok: true });
     }, "onRequestPost");
-    onRequestGet54 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet55 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -18286,13 +18411,13 @@ var init_views = __esm({
 });
 
 // api/install/check.js
-var URL_RX, onRequestGet55;
+var URL_RX, onRequestGet56;
 var init_check = __esm({
   "api/install/check.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     URL_RX = /^https:\/\/[a-z0-9-]+\.pages\.dev$/i;
-    onRequestGet55 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestGet56 = /* @__PURE__ */ __name(async ({ request }) => {
       const u = new URL(request.url).searchParams.get("url") || "";
       if (!URL_RX.test(u)) return json(400, { ok: false, error: "bad_url" });
       const ctrl = new AbortController();
@@ -18349,17 +18474,17 @@ function summariseFailure(deployment) {
   }
   return "Build failed \u2014 open the build log for details.";
 }
-var CF_API5, onRequestPost69;
+var CF_API5, onRequestPost70;
 var init_deploy_status = __esm({
   "api/install/deploy-status.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     CF_API5 = "https://api.cloudflare.com/client/v4";
     __name(cfFetch4, "cfFetch");
     __name(firstError3, "firstError");
     __name(bucket, "bucket");
     __name(summariseFailure, "summariseFailure");
-    onRequestPost69 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestPost70 = /* @__PURE__ */ __name(async ({ request }) => {
       let payload;
       try {
         payload = await request.json();
@@ -18429,15 +18554,15 @@ function firstError4(body) {
   }
   return body?.error || null;
 }
-var CF_API6, onRequestPost70;
+var CF_API6, onRequestPost71;
 var init_projects3 = __esm({
   "api/install/projects.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     CF_API6 = "https://api.cloudflare.com/client/v4";
     __name(cfFetch5, "cfFetch");
     __name(firstError4, "firstError");
-    onRequestPost70 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestPost71 = /* @__PURE__ */ __name(async ({ request }) => {
       let payload;
       try {
         payload = await request.json();
@@ -18810,10 +18935,10 @@ async function fetchGithubPrimaryEmail(ghToken) {
     return "";
   }
 }
-var CF_API7, PROD_BRANCH, DEFAULT_REPO_NAME2, SLUG_RX, onRequestPost71, onRequestGet56;
+var CF_API7, PROD_BRANCH, DEFAULT_REPO_NAME2, SLUG_RX, onRequestPost72, onRequestGet57;
 var init_provision = __esm({
   "api/install/provision.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_oauth_cookie();
     CF_API7 = "https://api.cloudflare.com/client/v4";
@@ -18839,7 +18964,7 @@ var init_provision = __esm({
     __name(verifyBindings, "verifyBindings");
     __name(triggerDeploy, "triggerDeploy");
     __name(fetchGithubPrimaryEmail, "fetchGithubPrimaryEmail");
-    onRequestPost71 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost72 = /* @__PURE__ */ __name(async ({ env, request }) => {
       let body;
       try {
         body = await request.json();
@@ -18991,7 +19116,7 @@ var init_provision = __esm({
         gh_email: ghEmail || null
       });
     }, "onRequestPost");
-    onRequestGet56 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet57 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const u = new URL(request.url);
       const project = (u.searchParams.get("project") || "").toLowerCase();
       const fp = u.searchParams.get("token_fp") || "";
@@ -19076,10 +19201,10 @@ async function triggerCfDeploy(token, accountId, project) {
     url: result.url || null
   };
 }
-var CF_API8, UPSTREAM_BRANCH, onRequestPost72;
+var CF_API8, UPSTREAM_BRANCH, onRequestPost73;
 var init_redeploy = __esm({
   "api/install/redeploy.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_oauth_cookie();
     CF_API8 = "https://api.cloudflare.com/client/v4";
@@ -19088,7 +19213,7 @@ var init_redeploy = __esm({
     __name(firstError5, "firstError");
     __name(syncFork, "syncFork");
     __name(triggerCfDeploy, "triggerCfDeploy");
-    onRequestPost72 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost73 = /* @__PURE__ */ __name(async ({ env, request }) => {
       let payload;
       try {
         payload = await request.json();
@@ -19125,12 +19250,12 @@ var init_redeploy = __esm({
 });
 
 // api/public/latest-post.js
-var onRequestGet57;
+var onRequestGet58;
 var init_latest_post = __esm({
   "api/public/latest-post.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
-    onRequestGet57 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet58 = /* @__PURE__ */ __name(async ({ env }) => {
       if (!env?.DB) {
         return json(200, { ok: true, post: null, note: "no_db" });
       }
@@ -19181,10 +19306,10 @@ var init_latest_post = __esm({
 });
 
 // api/public/register.js
-var MIN_PW2, MAX_PW2, onRequestPost73;
+var MIN_PW2, MAX_PW2, onRequestPost74;
 var init_register = __esm({
   "api/public/register.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_email_rules();
     init_passwords();
@@ -19192,7 +19317,7 @@ var init_register = __esm({
     init_events();
     MIN_PW2 = 8;
     MAX_PW2 = 256;
-    onRequestPost73 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost74 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       let body;
       try {
@@ -19386,10 +19511,10 @@ async function mailboxTaken(env, email, canonical) {
   }
   return false;
 }
-var OTP_RESEND_SEC, OTP_MAX_PER_IP_PER_HOUR, onRequestPost74;
+var OTP_RESEND_SEC, OTP_MAX_PER_IP_PER_HOUR, onRequestPost75;
 var init_send_otp = __esm({
   "api/public/send-otp.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_email_smtp();
     init_email_rules();
@@ -19397,7 +19522,7 @@ var init_send_otp = __esm({
     OTP_MAX_PER_IP_PER_HOUR = 10;
     __name(clientIp2, "clientIp");
     __name(mailboxTaken, "mailboxTaken");
-    onRequestPost74 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost75 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       let body;
       try {
@@ -19492,17 +19617,17 @@ function ghHeaders4() {
 function short2(sha) {
   return String(sha || "").slice(0, 7);
 }
-var UPSTREAM_OWNER3, UPSTREAM_REPO3, BRANCH2, onRequestGet58;
+var UPSTREAM_OWNER3, UPSTREAM_REPO3, BRANCH2, onRequestGet59;
 var init_diff = __esm({
   "api/update/diff.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     UPSTREAM_OWNER3 = "Benjamin-Bloch";
     UPSTREAM_REPO3 = "pages-seo";
     BRANCH2 = "main";
     __name(ghHeaders4, "ghHeaders");
     __name(short2, "short");
-    onRequestGet58 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestGet59 = /* @__PURE__ */ __name(async ({ request }) => {
       const url = new URL(request.url);
       const base = String(url.searchParams.get("base") || "").trim();
       if (base && !/^[0-9a-f]{7,40}$/.test(base)) {
@@ -19636,16 +19761,16 @@ function firstErrorMessage2(body) {
   }
   return body.error || body.detail || null;
 }
-var CF_API9, NAME_RX3, onRequestPost75;
+var CF_API9, NAME_RX3, onRequestPost76;
 var init_rebuild = __esm({
   "api/update/rebuild.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     CF_API9 = "https://api.cloudflare.com/client/v4";
     __name(cf, "cf");
     __name(firstErrorMessage2, "firstErrorMessage");
     NAME_RX3 = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
-    onRequestPost75 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestPost76 = /* @__PURE__ */ __name(async ({ request }) => {
       let body;
       try {
         body = await request.json();
@@ -19709,15 +19834,15 @@ var init_rebuild = __esm({
 });
 
 // api/embed/[id].js
-var CACHE_SEC, onRequestGet59;
+var CACHE_SEC, onRequestGet60;
 var init_id2 = __esm({
   "api/embed/[id].js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_widget_render();
     init_embed_settings();
     CACHE_SEC = 300;
-    onRequestGet59 = /* @__PURE__ */ __name(async ({ env, params, request }) => {
+    onRequestGet60 = /* @__PURE__ */ __name(async ({ env, params, request }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       const id = String(params.id || "").trim();
       if (!id || !/^[a-zA-Z0-9_-]{6,64}$/.test(id)) {
@@ -19757,12 +19882,12 @@ var init_id2 = __esm({
 });
 
 // blog/page/[page].js
-var onRequestGet60;
+var onRequestGet61;
 var init_page2 = __esm({
   "blog/page/[page].js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_blog();
-    onRequestGet60 = /* @__PURE__ */ __name(({ env, request, params }) => {
+    onRequestGet61 = /* @__PURE__ */ __name(({ env, request, params }) => {
       const page = parseInt(params.page, 10);
       if (!Number.isFinite(page) || page < 1) {
         return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -19778,14 +19903,14 @@ var init_page2 = __esm({
 });
 
 // blog/[slug].js
-var onRequestGet61;
+var onRequestGet62;
 var init_slug2 = __esm({
   "blog/[slug].js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_page_render();
     init_settings();
     init_project_scope();
-    onRequestGet61 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
+    onRequestGet62 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
       const slug = String(params.slug || "").toLowerCase();
       if (!/^[a-z0-9-]+$/.test(slug)) {
         return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -19854,30 +19979,30 @@ var init_slug2 = __esm({
 });
 
 // [project]/blog/[slug].js
-var onRequestGet62;
+var onRequestGet63;
 var init_slug3 = __esm({
   "[project]/blog/[slug].js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_slug2();
     init_project_scope();
-    onRequestGet62 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet63 = /* @__PURE__ */ __name(async (ctx) => {
       const projectSlug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, projectSlug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
-      return onRequestGet61({ env: ctx.env, request: ctx.request, params: { project: projectSlug, slug: ctx.params?.slug } });
+      return onRequestGet62({ env: ctx.env, request: ctx.request, params: { project: projectSlug, slug: ctx.params?.slug } });
     }, "onRequestGet");
   }
 });
 
 // p/[slug].js
-var onRequestGet63;
+var onRequestGet64;
 var init_slug4 = __esm({
   "p/[slug].js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_page_render();
     init_settings();
     init_project_scope();
-    onRequestGet63 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
+    onRequestGet64 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
       const slug = String(params.slug || "").toLowerCase();
       if (!/^[a-z0-9-]+$/.test(slug)) {
         return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -19930,17 +20055,17 @@ var init_slug4 = __esm({
 });
 
 // [project]/p/[slug].js
-var onRequestGet64;
+var onRequestGet65;
 var init_slug5 = __esm({
   "[project]/p/[slug].js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_slug4();
     init_project_scope();
-    onRequestGet64 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet65 = /* @__PURE__ */ __name(async (ctx) => {
       const projectSlug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, projectSlug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
-      return onRequestGet63({ env: ctx.env, request: ctx.request, params: { project: projectSlug, slug: ctx.params?.slug } });
+      return onRequestGet64({ env: ctx.env, request: ctx.request, params: { project: projectSlug, slug: ctx.params?.slug } });
     }, "onRequestGet");
   }
 });
@@ -20900,10 +21025,10 @@ Ask me: "What URL are you on, and what do you see vs what you
 expect?" Wait for my answer. Then pick the right rung based on what
 I tell you.`;
 }
-var TOOLS, VALID_TOOLS, VALID_MODES, onRequestGet65;
+var TOOLS, VALID_TOOLS, VALID_MODES, onRequestGet66;
 var init_ai_prompt = __esm({
   "api/ai-prompt.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     __name(cleanUrl2, "cleanUrl");
     __name(cleanSlug, "cleanSlug");
@@ -20930,7 +21055,7 @@ var init_ai_prompt = __esm({
     };
     VALID_TOOLS = Object.keys(TOOLS);
     VALID_MODES = ["install", "update", "repair"];
-    onRequestGet65 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestGet66 = /* @__PURE__ */ __name(async ({ request }) => {
       const url = new URL(request.url);
       const toolRaw = String(url.searchParams.get("tool") || "chat").toLowerCase();
       const tool = VALID_TOOLS.includes(toolRaw) ? toolRaw : "chat";
@@ -20994,10 +21119,10 @@ function splitMessage(msg) {
     body: s.slice(nl + 1).trim().slice(0, 1200)
   };
 }
-var UPSTREAM_OWNER4, UPSTREAM_REPO4, BRANCH3, EDGE_CACHE_SEC, BROWSER_CACHE_SEC, MAX_COMMITS, onRequestGet66;
+var UPSTREAM_OWNER4, UPSTREAM_REPO4, BRANCH3, EDGE_CACHE_SEC, BROWSER_CACHE_SEC, MAX_COMMITS, onRequestGet67;
 var init_changes = __esm({
   "api/changes.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     UPSTREAM_OWNER4 = "Benjamin-Bloch";
     UPSTREAM_REPO4 = "pages-seo";
@@ -21008,7 +21133,7 @@ var init_changes = __esm({
     __name(ghHeaders5, "ghHeaders");
     __name(short3, "short");
     __name(splitMessage, "splitMessage");
-    onRequestGet66 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet67 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const url = new URL(request.url);
       const since = String(url.searchParams.get("since") || "").trim().toLowerCase();
       const limit = Math.min(MAX_COMMITS, Math.max(1, parseInt(url.searchParams.get("limit"), 10) || 50));
@@ -21109,17 +21234,17 @@ async function fetchJson(url, headers) {
   if (!r.ok) throw new Error(`${url} \u2192 HTTP ${r.status}`);
   return r.json();
 }
-var OWNER, REPO, EDGE_CACHE_SEC2, BROWSER_CACHE_SEC2, onRequestGet67;
+var OWNER, REPO, EDGE_CACHE_SEC2, BROWSER_CACHE_SEC2, onRequestGet68;
 var init_github_stats = __esm({
   "api/github-stats.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     OWNER = "Benjamin-Bloch";
     REPO = "pages-seo";
     EDGE_CACHE_SEC2 = 600;
     BROWSER_CACHE_SEC2 = 120;
     __name(fetchJson, "fetchJson");
-    onRequestGet67 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet68 = /* @__PURE__ */ __name(async ({ env }) => {
       const headers = {
         "User-Agent": "pages-seo-github-stats",
         "Accept": "application/vnd.github+json"
@@ -21160,12 +21285,12 @@ var init_github_stats = __esm({
 });
 
 // api/health.js
-var onRequestGet68;
+var onRequestGet69;
 var init_health = __esm({
   "api/health.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
-    onRequestGet68 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet69 = /* @__PURE__ */ __name(async ({ env }) => {
       const now = Math.floor(Date.now() / 1e3);
       let db = "unbound";
       const posts = { count: null, last_published: null };
@@ -21303,10 +21428,10 @@ async function triggerDeploy2(env) {
   });
   return { ok: r.res.ok };
 }
-var CF_API10, onRequestGet69, onRequestPost76;
+var CF_API10, onRequestGet70, onRequestPost77;
 var init_repair_bindings = __esm({
   "api/repair-bindings.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_auth();
     CF_API10 = "https://api.cloudflare.com/client/v4";
@@ -21318,7 +21443,7 @@ var init_repair_bindings = __esm({
     __name(checkBindings, "checkBindings");
     __name(patchBindings, "patchBindings");
     __name(triggerDeploy2, "triggerDeploy");
-    onRequestGet69 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet70 = /* @__PURE__ */ __name(async ({ env }) => {
       const missing = missingEnvVars(env);
       if (missing.length) {
         return json(503, {
@@ -21341,7 +21466,7 @@ var init_repair_bindings = __esm({
       const healthy = status.DB && status.IMAGES && status.AI;
       return json(200, { ok: true, healthy, bindings: status, project });
     }, "onRequestGet");
-    onRequestPost76 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost77 = /* @__PURE__ */ __name(async ({ env, request }) => {
       let body = {};
       try {
         body = await request.json();
@@ -21429,10 +21554,10 @@ async function tokensMatch2(a, b) {
   for (let i = 0; i < xa.length; i++) acc |= xa[i] ^ xb[i];
   return acc === 0;
 }
-var EMAIL_RX2, MIN_PW3, MAX_PW3, onRequestGet70, onRequestPost77;
+var EMAIL_RX2, MIN_PW3, MAX_PW3, onRequestGet71, onRequestPost78;
 var init_setup = __esm({
   "api/setup.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_passwords();
     init_email_rules();
@@ -21445,7 +21570,7 @@ var init_setup = __esm({
     __name(userCount, "userCount");
     __name(expectedSetupToken, "expectedSetupToken");
     __name(tokensMatch2, "tokensMatch");
-    onRequestGet70 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet71 = /* @__PURE__ */ __name(async ({ env }) => {
       if (!env?.DB) return json(503, { error: "no_db_binding" });
       const n = await userCount(env);
       const expected = await expectedSetupToken(env);
@@ -21455,7 +21580,7 @@ var init_setup = __esm({
         requires_token: !!expected
       });
     }, "onRequestGet");
-    onRequestPost77 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost78 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.DB) return json(503, { error: "no_db_binding" });
       if (await userCount(env) > 0) {
         return json(409, { error: "setup_already_done", detail: "An admin user already exists." });
@@ -21610,10 +21735,10 @@ async function fetchCommitsSinceTag(env, tag) {
     return null;
   }
 }
-var UPSTREAM_OWNER5, UPSTREAM_REPO5, BRANCH4, EDGE_CACHE_SEC3, BROWSER_CACHE_SEC3, onRequestGet71;
+var UPSTREAM_OWNER5, UPSTREAM_REPO5, BRANCH4, EDGE_CACHE_SEC3, BROWSER_CACHE_SEC3, onRequestGet72;
 var init_version = __esm({
   "api/version.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     UPSTREAM_OWNER5 = "Benjamin-Bloch";
     UPSTREAM_REPO5 = "pages-seo";
@@ -21626,7 +21751,7 @@ var init_version = __esm({
     __name(fetchLatestTag, "fetchLatestTag");
     __name(fetchRecentCommits, "fetchRecentCommits");
     __name(fetchCommitsSinceTag, "fetchCommitsSinceTag");
-    onRequestGet71 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet72 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const [commit, tag, recent_commits] = await Promise.all([
         fetchLatestCommit(env),
         fetchLatestTag(env),
@@ -21681,17 +21806,17 @@ function fmtDate(secs) {
     iso: d.toISOString()
   };
 }
-var MAX_PER_PAGE, MAX_Q_LENGTH, MAX_TAG_LENGTH, onRequestGet72;
+var MAX_PER_PAGE, MAX_Q_LENGTH, MAX_TAG_LENGTH, onRequestGet73;
 var init_widget = __esm({
   "api/widget.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_widget_render();
     init_project_scope();
     MAX_PER_PAGE = 50;
     MAX_Q_LENGTH = 100;
     MAX_TAG_LENGTH = 200;
     __name(fmtDate, "fmtDate");
-    onRequestGet72 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet73 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.DB) {
         return new Response(JSON.stringify({ error: "no_db_binding", posts: [], total: 0 }), {
           status: 503,
@@ -21965,7 +22090,7 @@ async function renderCoverSvg(spec, ctx, env) {
 var SELF_HOSTED_FONTS;
 var init_cover_svg = __esm({
   "_lib/cover_svg.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_template();
     __name(xml, "xml");
     __name(wrapText, "wrapText");
@@ -21988,15 +22113,15 @@ var init_cover_svg = __esm({
 });
 
 // cover/[slug].svg.js
-var onRequestGet73;
+var onRequestGet74;
 var init_slug_svg = __esm({
   "cover/[slug].svg.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_cover_svg();
     init_template();
     init_settings();
     init_notices();
-    onRequestGet73 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
+    onRequestGet74 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
       const slug = String(params.slug || "").toLowerCase();
       if (!/^[a-z0-9-]{1,200}$/.test(slug)) {
         return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -22125,10 +22250,10 @@ function fallbackSpec() {
     ]
   };
 }
-var W, H, onRequestGet74;
+var W, H, onRequestGet75;
 var init_slug_svg2 = __esm({
   "og/[slug].svg.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_cover_svg();
     init_template();
     init_settings();
@@ -22136,7 +22261,7 @@ var init_slug_svg2 = __esm({
     W = 1200;
     H = 630;
     __name(fallbackSpec, "fallbackSpec");
-    onRequestGet74 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
+    onRequestGet75 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
       const slug = String(params.slug || "").toLowerCase();
       if (!/^[a-z0-9-]{1,200}$/.test(slug)) {
         return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -22189,11 +22314,11 @@ var init_slug_svg2 = __esm({
 });
 
 // image/[[path]].js
-var onRequestGet75;
+var onRequestGet76;
 var init_path = __esm({
   "image/[[path]].js"() {
-    init_functionsRoutes_0_6365317468905451();
-    onRequestGet75 = /* @__PURE__ */ __name(async ({ env, params }) => {
+    init_functionsRoutes_0_9734229960597824();
+    onRequestGet76 = /* @__PURE__ */ __name(async ({ env, params }) => {
       const parts = Array.isArray(params.path) ? params.path : [params.path].filter(Boolean);
       const key = parts.join("/");
       if (!key || !/^[a-zA-Z0-9._/-]+$/.test(key) || key.includes("..")) {
@@ -22213,13 +22338,13 @@ var init_path = __esm({
 });
 
 // [project]/blog/index.js
-var onRequestGet76;
+var onRequestGet77;
 var init_blog2 = __esm({
   "[project]/blog/index.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_blog();
     init_project_scope();
-    onRequestGet76 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet77 = /* @__PURE__ */ __name(async (ctx) => {
       const slug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -22232,16 +22357,16 @@ var init_blog2 = __esm({
 function rfc822(epoch) {
   return new Date((epoch || 0) * 1e3).toUTCString();
 }
-var ITEMS_LIMIT, onRequestGet77;
+var ITEMS_LIMIT, onRequestGet78;
 var init_feed_xml = __esm({
   "feed.xml.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_settings();
     init_util();
     init_project_scope();
     ITEMS_LIMIT = 30;
     __name(rfc822, "rfc822");
-    onRequestGet77 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
+    onRequestGet78 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
       const settings = await loadSettings(env).catch(() => ({}));
       const projectSlug = String(params?.project || "").toLowerCase() || null;
       const basePath = projectSlug ? `/${projectSlug}` : "";
@@ -22303,27 +22428,27 @@ ${items}
 });
 
 // [project]/feed.xml.js
-var onRequestGet78;
+var onRequestGet79;
 var init_feed_xml2 = __esm({
   "[project]/feed.xml.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_feed_xml();
     init_project_scope();
-    onRequestGet78 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet79 = /* @__PURE__ */ __name(async (ctx) => {
       const slug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
-      return onRequestGet77({ env: ctx.env, request: ctx.request, params: { project: slug } });
+      return onRequestGet78({ env: ctx.env, request: ctx.request, params: { project: slug } });
     }, "onRequestGet");
   }
 });
 
 // [project]/rss.xml.js
-var onRequestGet79;
+var onRequestGet80;
 var init_rss_xml = __esm({
   "[project]/rss.xml.js"() {
-    init_functionsRoutes_0_6365317468905451();
-    onRequestGet79 = /* @__PURE__ */ __name(async () => new Response(null, {
+    init_functionsRoutes_0_9734229960597824();
+    onRequestGet80 = /* @__PURE__ */ __name(async () => new Response(null, {
       status: 301,
       headers: { location: "feed.xml", "cache-control": "public, max-age=3600" }
     }), "onRequestGet");
@@ -22446,10 +22571,10 @@ async function pagesUrlset({ env, request, projectSlug = null, basePath = "" }) 
     }
   });
 }
-var SITEMAP_NS, IMAGE_NS, onRequestGet80;
+var SITEMAP_NS, IMAGE_NS, onRequestGet81;
 var init_sitemap_xml = __esm({
   "sitemap.xml.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     init_blog();
     init_project_scope();
@@ -22459,7 +22584,7 @@ var init_sitemap_xml = __esm({
     __name(renderIndex, "renderIndex");
     __name(renderUrlset, "renderUrlset");
     __name(fetchEntries, "fetchEntries");
-    onRequestGet80 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
+    onRequestGet81 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
       const host = requestHost(request);
       const projectSlug = String(params?.project || "").toLowerCase() || null;
       let project = null;
@@ -22485,13 +22610,13 @@ var init_sitemap_xml = __esm({
 });
 
 // [project]/sitemap-pages.xml.js
-var onRequestGet81;
+var onRequestGet82;
 var init_sitemap_pages_xml = __esm({
   "[project]/sitemap-pages.xml.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_sitemap_xml();
     init_project_scope();
-    onRequestGet81 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet82 = /* @__PURE__ */ __name(async (ctx) => {
       const slug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -22501,17 +22626,17 @@ var init_sitemap_pages_xml = __esm({
 });
 
 // [project]/sitemap.xml.js
-var onRequestGet82;
+var onRequestGet83;
 var init_sitemap_xml2 = __esm({
   "[project]/sitemap.xml.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_sitemap_xml();
     init_project_scope();
-    onRequestGet82 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet83 = /* @__PURE__ */ __name(async (ctx) => {
       const slug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
-      return onRequestGet80({ env: ctx.env, request: ctx.request, params: { project: slug } });
+      return onRequestGet81({ env: ctx.env, request: ctx.request, params: { project: slug } });
     }, "onRequestGet");
   }
 });
@@ -22531,10 +22656,10 @@ function renderSections() {
 </section>`
   ).join("\n");
 }
-var SECTIONS, onRequestGet83;
+var SECTIONS, onRequestGet84;
 var init_docs = __esm({
   "docs/index.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     SECTIONS = [
       { id: "quick-start", title: "Quick start", level: 1, content: `
@@ -22834,7 +22959,7 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
     ];
     __name(renderToc, "renderToc");
     __name(renderSections, "renderSections");
-    onRequestGet83 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestGet84 = /* @__PURE__ */ __name(async ({ request }) => {
       const url = new URL(request.url);
       const host = url.hostname;
       const body = `<!doctype html>
@@ -22931,13 +23056,13 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
 });
 
 // embed/index.js
-var VALID_THEME, onRequestGet84;
+var VALID_THEME, onRequestGet85;
 var init_embed = __esm({
   "embed/index.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_util();
     VALID_THEME = ["auto", "light", "dark"];
-    onRequestGet84 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestGet85 = /* @__PURE__ */ __name(async ({ request }) => {
       const url = new URL(request.url);
       const count = Math.min(50, Math.max(1, parseInt(url.searchParams.get("count"), 10) || 5));
       const title = String(url.searchParams.get("title") || "").trim().slice(0, 100);
@@ -22980,12 +23105,12 @@ var init_embed = __esm({
 });
 
 // robots.txt.js
-var onRequestGet85;
+var onRequestGet86;
 var init_robots_txt = __esm({
   "robots.txt.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_project_scope();
-    onRequestGet85 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet86 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const host = requestHost(request);
       const project = await resolveProjectByHost(env, host).catch(() => null);
       const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
@@ -23027,11 +23152,11 @@ Sitemap: https://${sitemapHost}/sitemap.xml
 });
 
 // rss.xml.js
-var onRequestGet86;
+var onRequestGet87;
 var init_rss_xml2 = __esm({
   "rss.xml.js"() {
-    init_functionsRoutes_0_6365317468905451();
-    onRequestGet86 = /* @__PURE__ */ __name(async () => new Response(null, {
+    init_functionsRoutes_0_9734229960597824();
+    onRequestGet87 = /* @__PURE__ */ __name(async () => new Response(null, {
       status: 301,
       headers: { location: "/feed.xml", "cache-control": "public, max-age=3600" }
     }), "onRequestGet");
@@ -23039,23 +23164,23 @@ var init_rss_xml2 = __esm({
 });
 
 // sitemap-pages.xml.js
-var onRequestGet87;
+var onRequestGet88;
 var init_sitemap_pages_xml2 = __esm({
   "sitemap-pages.xml.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_sitemap_xml();
-    onRequestGet87 = pagesUrlset;
+    onRequestGet88 = pagesUrlset;
   }
 });
 
 // widget.js.js
-var onRequestGet88;
+var onRequestGet89;
 var init_widget_js = __esm({
   "widget.js.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_widget_render();
     init_site_identity();
-    onRequestGet88 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet89 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const url = new URL(request.url);
       const apiBase = `${url.protocol}//${url.host}`;
       const id = await getSiteIdentity(env);
@@ -23076,7 +23201,7 @@ var init_widget_js = __esm({
 var onRequest;
 var init_middleware = __esm({
   "admin/_middleware.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     onRequest = /* @__PURE__ */ __name(async ({ request, env, next }) => {
       const url = new URL(request.url);
       if (url.pathname === "/admin" || url.pathname === "/admin/") {
@@ -23094,12 +23219,12 @@ var init_middleware = __esm({
 });
 
 // [indexnow_key].txt.js
-var onRequestGet89;
+var onRequestGet90;
 var init_indexnow_key_txt = __esm({
   "[indexnow_key].txt.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_indexnow_key();
-    onRequestGet89 = /* @__PURE__ */ __name(async ({ params, env }) => {
+    onRequestGet90 = /* @__PURE__ */ __name(async ({ params, env }) => {
       const requested = String(params.indexnow_key || "").toLowerCase();
       const expected = (await getIndexNowKey(env)).toLowerCase();
       if (!expected || requested !== expected) {
@@ -23128,7 +23253,7 @@ async function isMaintainer(env) {
 }
 var init_maintainer = __esm({
   "_lib/maintainer.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_settings();
     __name(isMaintainer, "isMaintainer");
   }
@@ -23138,7 +23263,7 @@ var init_maintainer = __esm({
 var INSTALLER_RX, INSTALLER_API_RX, onRequest2;
 var init_middleware2 = __esm({
   "_middleware.js"() {
-    init_functionsRoutes_0_6365317468905451();
+    init_functionsRoutes_0_9734229960597824();
     init_maintainer();
     init_project_scope();
     INSTALLER_RX = /^\/(install|update)(\/.*)?$/;
@@ -23181,10 +23306,10 @@ var init_middleware2 = __esm({
   }
 });
 
-// ../.wrangler/tmp/pages-czEajw/functionsRoutes-0.6365317468905451.mjs
+// ../.wrangler/tmp/pages-MxTM4d/functionsRoutes-0.9734229960597824.mjs
 var routes;
-var init_functionsRoutes_0_6365317468905451 = __esm({
-  "../.wrangler/tmp/pages-czEajw/functionsRoutes-0.6365317468905451.mjs"() {
+var init_functionsRoutes_0_9734229960597824 = __esm({
+  "../.wrangler/tmp/pages-MxTM4d/functionsRoutes-0.9734229960597824.mjs"() {
     init_export();
     init_import();
     init_sync();
@@ -23239,10 +23364,13 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
     init_score();
     init_apply2();
     init_recanonicalize();
+    init_brand();
+    init_brand();
     init_business();
     init_claim();
     init_delete();
     init_deliver();
+    init_enqueue_missing();
     init_list2();
     init_publish2();
     init_website();
@@ -23754,6 +23882,20 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         modules: [onRequestPost36]
       },
       {
+        routePath: "/api/admin/video/brand",
+        mountPath: "/api/admin/video",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet14]
+      },
+      {
+        routePath: "/api/admin/video/brand",
+        mountPath: "/api/admin/video",
+        method: "PUT",
+        middlewares: [],
+        modules: [onRequestPut2]
+      },
+      {
         routePath: "/api/admin/video/business",
         mountPath: "/api/admin/video",
         method: "POST",
@@ -23782,88 +23924,95 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         modules: [onRequestPost40]
       },
       {
-        routePath: "/api/admin/video/list",
-        mountPath: "/api/admin/video",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet14]
-      },
-      {
-        routePath: "/api/admin/video/publish",
+        routePath: "/api/admin/video/enqueue-missing",
         mountPath: "/api/admin/video",
         method: "POST",
         middlewares: [],
         modules: [onRequestPost41]
       },
       {
-        routePath: "/api/admin/video/website",
+        routePath: "/api/admin/video/list",
+        mountPath: "/api/admin/video",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet15]
+      },
+      {
+        routePath: "/api/admin/video/publish",
         mountPath: "/api/admin/video",
         method: "POST",
         middlewares: [],
         modules: [onRequestPost42]
       },
       {
-        routePath: "/api/install/d1/delete",
-        mountPath: "/api/install/d1",
+        routePath: "/api/admin/video/website",
+        mountPath: "/api/admin/video",
         method: "POST",
         middlewares: [],
         modules: [onRequestPost43]
       },
       {
-        routePath: "/api/install/d1/list",
+        routePath: "/api/install/d1/delete",
         mountPath: "/api/install/d1",
         method: "POST",
         middlewares: [],
         modules: [onRequestPost44]
       },
       {
+        routePath: "/api/install/d1/list",
+        mountPath: "/api/install/d1",
+        method: "POST",
+        middlewares: [],
+        modules: [onRequestPost45]
+      },
+      {
         routePath: "/api/install/github/cf-app",
         mountPath: "/api/install/github",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet15]
+        modules: [onRequestGet16]
       },
       {
         routePath: "/api/install/github/fork",
         mountPath: "/api/install/github",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost45]
+        modules: [onRequestPost46]
       },
       {
         routePath: "/api/update/github/callback",
         mountPath: "/api/update/github",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet16]
+        modules: [onRequestGet17]
       },
       {
         routePath: "/api/update/github/repos",
         mountPath: "/api/update/github",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet17]
+        modules: [onRequestGet18]
       },
       {
         routePath: "/api/update/github/start",
         mountPath: "/api/update/github",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet18]
+        modules: [onRequestGet19]
       },
       {
         routePath: "/api/update/github/status",
         mountPath: "/api/update/github",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet19]
+        modules: [onRequestGet20]
       },
       {
         routePath: "/api/update/github/sync",
         mountPath: "/api/update/github",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost46]
+        modules: [onRequestPost47]
       },
       {
         routePath: "/api/admin/projects/:id",
@@ -23877,35 +24026,35 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin/projects",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet20]
+        modules: [onRequestGet21]
       },
       {
         routePath: "/api/admin/projects/:id",
         mountPath: "/api/admin/projects",
         method: "PUT",
         middlewares: [],
-        modules: [onRequestPut2]
+        modules: [onRequestPut3]
       },
       {
         routePath: "/api/public/post/:slug",
         mountPath: "/api/public/post",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet21]
+        modules: [onRequestGet22]
       },
       {
         routePath: "/:project/blog/page/:page",
         mountPath: "/:project/blog/page",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet23]
+        modules: [onRequestGet24]
       },
       {
         routePath: "/api/admin/activation",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet24]
+        modules: [onRequestGet25]
       },
       {
         routePath: "/api/admin/aliases",
@@ -23919,7 +24068,7 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin/aliases",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet25]
+        modules: [onRequestGet26]
       },
       {
         routePath: "/api/admin/aliases",
@@ -23933,31 +24082,24 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin/aliases",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost47]
+        modules: [onRequestPost48]
       },
       {
         routePath: "/api/admin/analytics",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet26]
+        modules: [onRequestGet27]
       },
       {
         routePath: "/api/admin/attention",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet27]
-      },
-      {
-        routePath: "/api/admin/audit",
-        mountPath: "/api/admin",
-        method: "GET",
-        middlewares: [],
         modules: [onRequestGet28]
       },
       {
-        routePath: "/api/admin/brand-dna",
+        routePath: "/api/admin/audit",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
@@ -23966,23 +24108,30 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
       {
         routePath: "/api/admin/brand-dna",
         mountPath: "/api/admin",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet30]
+      },
+      {
+        routePath: "/api/admin/brand-dna",
+        mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost48]
+        modules: [onRequestPost49]
       },
       {
         routePath: "/api/admin/brand-dna",
         mountPath: "/api/admin",
         method: "PUT",
         middlewares: [],
-        modules: [onRequestPut3]
+        modules: [onRequestPut4]
       },
       {
         routePath: "/api/admin/brand-filter-queue",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost49]
+        modules: [onRequestPost50]
       },
       {
         routePath: "/api/admin/calendar",
@@ -23996,7 +24145,7 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin/calendar",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet30]
+        modules: [onRequestGet31]
       },
       {
         routePath: "/api/admin/calendar",
@@ -24010,21 +24159,21 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin/calendar",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost50]
+        modules: [onRequestPost51]
       },
       {
         routePath: "/api/admin/competitors",
         mountPath: "/api/admin/competitors",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet31]
+        modules: [onRequestGet32]
       },
       {
         routePath: "/api/admin/embed-preview",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet32]
+        modules: [onRequestGet33]
       },
       {
         routePath: "/api/admin/embeds",
@@ -24038,21 +24187,21 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet33]
+        modules: [onRequestGet34]
       },
       {
         routePath: "/api/admin/embeds",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost51]
+        modules: [onRequestPost52]
       },
       {
         routePath: "/api/admin/embeds",
         mountPath: "/api/admin",
         method: "PUT",
         middlewares: [],
-        modules: [onRequestPut4]
+        modules: [onRequestPut5]
       },
       {
         routePath: "/api/admin/google-search-console",
@@ -24066,63 +24215,63 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin/google-search-console",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet34]
+        modules: [onRequestGet35]
       },
       {
         routePath: "/api/admin/google-search-console",
         mountPath: "/api/admin/google-search-console",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost52]
+        modules: [onRequestPost53]
       },
       {
         routePath: "/api/admin/indexnow-ping",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost53]
+        modules: [onRequestPost54]
       },
       {
         routePath: "/api/admin/insights",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet35]
+        modules: [onRequestGet36]
       },
       {
         routePath: "/api/admin/login",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost54]
+        modules: [onRequestPost55]
       },
       {
         routePath: "/api/admin/logout",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost55]
+        modules: [onRequestPost56]
       },
       {
         routePath: "/api/admin/migrate",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet36]
+        modules: [onRequestGet37]
       },
       {
         routePath: "/api/admin/migrate",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost56]
+        modules: [onRequestPost57]
       },
       {
         routePath: "/api/admin/notices",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet37]
+        modules: [onRequestGet38]
       },
       {
         routePath: "/api/admin/onboarding",
@@ -24136,56 +24285,56 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet38]
+        modules: [onRequestGet39]
       },
       {
         routePath: "/api/admin/onboarding",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost57]
+        modules: [onRequestPost58]
       },
       {
         routePath: "/api/admin/preview-sample",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost58]
-      },
-      {
-        routePath: "/api/admin/pricing",
-        mountPath: "/api/admin",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet39]
-      },
-      {
-        routePath: "/api/admin/pricing",
-        mountPath: "/api/admin",
-        method: "POST",
-        middlewares: [],
         modules: [onRequestPost59]
       },
       {
-        routePath: "/api/admin/projects",
+        routePath: "/api/admin/pricing",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
         modules: [onRequestGet40]
       },
       {
-        routePath: "/api/admin/projects",
+        routePath: "/api/admin/pricing",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
         modules: [onRequestPost60]
       },
       {
-        routePath: "/api/admin/providers",
+        routePath: "/api/admin/projects",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
         modules: [onRequestGet41]
+      },
+      {
+        routePath: "/api/admin/projects",
+        mountPath: "/api/admin",
+        method: "POST",
+        middlewares: [],
+        modules: [onRequestPost61]
+      },
+      {
+        routePath: "/api/admin/providers",
+        mountPath: "/api/admin",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet42]
       },
       {
         routePath: "/api/admin/secrets",
@@ -24199,52 +24348,45 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet42]
+        modules: [onRequestGet43]
       },
       {
         routePath: "/api/admin/secrets",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost61]
+        modules: [onRequestPost62]
       },
       {
         routePath: "/api/admin/settings",
-        mountPath: "/api/admin",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet43]
-      },
-      {
-        routePath: "/api/admin/settings",
-        mountPath: "/api/admin",
-        method: "PUT",
-        middlewares: [],
-        modules: [onRequestPut5]
-      },
-      {
-        routePath: "/api/admin/social",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
         modules: [onRequestGet44]
       },
       {
-        routePath: "/api/admin/social",
+        routePath: "/api/admin/settings",
         mountPath: "/api/admin",
-        method: "POST",
+        method: "PUT",
         middlewares: [],
-        modules: [onRequestPost62]
+        modules: [onRequestPut6]
       },
       {
-        routePath: "/api/admin/status",
+        routePath: "/api/admin/social",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
         modules: [onRequestGet45]
       },
       {
-        routePath: "/api/admin/topics",
+        routePath: "/api/admin/social",
+        mountPath: "/api/admin",
+        method: "POST",
+        middlewares: [],
+        modules: [onRequestPost63]
+      },
+      {
+        routePath: "/api/admin/status",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
@@ -24253,16 +24395,23 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
       {
         routePath: "/api/admin/topics",
         mountPath: "/api/admin",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet47]
+      },
+      {
+        routePath: "/api/admin/topics",
+        mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost63]
+        modules: [onRequestPost64]
       },
       {
         routePath: "/api/admin/trend-discover",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet47]
+        modules: [onRequestGet48]
       },
       {
         routePath: "/api/admin/trend-discover",
@@ -24276,21 +24425,21 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost64]
+        modules: [onRequestPost65]
       },
       {
         routePath: "/api/admin/update",
         mountPath: "/api/admin/update",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet48]
+        modules: [onRequestGet49]
       },
       {
         routePath: "/api/admin/usage",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet49]
+        modules: [onRequestGet50]
       },
       {
         routePath: "/api/admin/users",
@@ -24304,206 +24453,199 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet50]
+        modules: [onRequestGet51]
       },
       {
         routePath: "/api/admin/users",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost65]
+        modules: [onRequestPost66]
       },
       {
         routePath: "/api/admin/users",
         mountPath: "/api/admin",
         method: "PUT",
         middlewares: [],
-        modules: [onRequestPut6]
+        modules: [onRequestPut7]
       },
       {
         routePath: "/api/admin/whoami",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet51]
+        modules: [onRequestGet52]
       },
       {
         routePath: "/api/ai-prompt/diagnose",
         mountPath: "/api/ai-prompt",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet52]
+        modules: [onRequestGet53]
       },
       {
         routePath: "/api/blog/feedback",
         mountPath: "/api/blog",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost66]
-      },
-      {
-        routePath: "/api/blog/leads",
-        mountPath: "/api/blog",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet53]
-      },
-      {
-        routePath: "/api/blog/leads",
-        mountPath: "/api/blog",
-        method: "POST",
-        middlewares: [],
         modules: [onRequestPost67]
       },
       {
-        routePath: "/api/blog/views",
+        routePath: "/api/blog/leads",
         mountPath: "/api/blog",
         method: "GET",
         middlewares: [],
         modules: [onRequestGet54]
       },
       {
-        routePath: "/api/blog/views",
+        routePath: "/api/blog/leads",
         mountPath: "/api/blog",
         method: "POST",
         middlewares: [],
         modules: [onRequestPost68]
       },
       {
-        routePath: "/api/install/check",
-        mountPath: "/api/install",
+        routePath: "/api/blog/views",
+        mountPath: "/api/blog",
         method: "GET",
         middlewares: [],
         modules: [onRequestGet55]
       },
       {
-        routePath: "/api/install/deploy-status",
-        mountPath: "/api/install",
+        routePath: "/api/blog/views",
+        mountPath: "/api/blog",
         method: "POST",
         middlewares: [],
         modules: [onRequestPost69]
       },
       {
-        routePath: "/api/install/projects",
-        mountPath: "/api/install",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost70]
-      },
-      {
-        routePath: "/api/install/provision",
+        routePath: "/api/install/check",
         mountPath: "/api/install",
         method: "GET",
         middlewares: [],
         modules: [onRequestGet56]
       },
       {
-        routePath: "/api/install/provision",
+        routePath: "/api/install/deploy-status",
+        mountPath: "/api/install",
+        method: "POST",
+        middlewares: [],
+        modules: [onRequestPost70]
+      },
+      {
+        routePath: "/api/install/projects",
         mountPath: "/api/install",
         method: "POST",
         middlewares: [],
         modules: [onRequestPost71]
       },
       {
-        routePath: "/api/install/redeploy",
+        routePath: "/api/install/provision",
+        mountPath: "/api/install",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet57]
+      },
+      {
+        routePath: "/api/install/provision",
         mountPath: "/api/install",
         method: "POST",
         middlewares: [],
         modules: [onRequestPost72]
       },
       {
+        routePath: "/api/install/redeploy",
+        mountPath: "/api/install",
+        method: "POST",
+        middlewares: [],
+        modules: [onRequestPost73]
+      },
+      {
         routePath: "/api/public/latest-post",
         mountPath: "/api/public",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet57]
+        modules: [onRequestGet58]
       },
       {
         routePath: "/api/public/register",
         mountPath: "/api/public",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost73]
+        modules: [onRequestPost74]
       },
       {
         routePath: "/api/public/send-otp",
         mountPath: "/api/public",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost74]
+        modules: [onRequestPost75]
       },
       {
         routePath: "/api/update/diff",
         mountPath: "/api/update",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet58]
+        modules: [onRequestGet59]
       },
       {
         routePath: "/api/update/rebuild",
         mountPath: "/api/update",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost75]
+        modules: [onRequestPost76]
       },
       {
         routePath: "/api/embed/:id",
         mountPath: "/api/embed",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet59]
+        modules: [onRequestGet60]
       },
       {
         routePath: "/blog/page/:page",
         mountPath: "/blog/page",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet60]
+        modules: [onRequestGet61]
       },
       {
         routePath: "/:project/blog/:slug",
         mountPath: "/:project/blog",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet62]
+        modules: [onRequestGet63]
       },
       {
         routePath: "/:project/p/:slug",
         mountPath: "/:project/p",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet64]
+        modules: [onRequestGet65]
       },
       {
         routePath: "/api/ai-prompt",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet65]
+        modules: [onRequestGet66]
       },
       {
         routePath: "/api/changes",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet66]
+        modules: [onRequestGet67]
       },
       {
         routePath: "/api/github-stats",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet67]
-      },
-      {
-        routePath: "/api/health",
-        mountPath: "/api",
-        method: "GET",
-        middlewares: [],
         modules: [onRequestGet68]
       },
       {
-        routePath: "/api/repair-bindings",
+        routePath: "/api/health",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
@@ -24512,170 +24654,177 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
       {
         routePath: "/api/repair-bindings",
         mountPath: "/api",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost76]
-      },
-      {
-        routePath: "/api/setup",
-        mountPath: "/api",
         method: "GET",
         middlewares: [],
         modules: [onRequestGet70]
       },
       {
-        routePath: "/api/setup",
+        routePath: "/api/repair-bindings",
         mountPath: "/api",
         method: "POST",
         middlewares: [],
         modules: [onRequestPost77]
       },
       {
-        routePath: "/api/version",
+        routePath: "/api/setup",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
         modules: [onRequestGet71]
       },
       {
-        routePath: "/api/widget",
+        routePath: "/api/setup",
+        mountPath: "/api",
+        method: "POST",
+        middlewares: [],
+        modules: [onRequestPost78]
+      },
+      {
+        routePath: "/api/version",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
         modules: [onRequestGet72]
       },
       {
+        routePath: "/api/widget",
+        mountPath: "/api",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet73]
+      },
+      {
         routePath: "/blog/:slug",
         mountPath: "/blog",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet61]
+        modules: [onRequestGet62]
       },
       {
         routePath: "/cover/:slug.svg",
         mountPath: "/cover",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet73]
+        modules: [onRequestGet74]
       },
       {
         routePath: "/og/:slug.svg",
         mountPath: "/og",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet74]
+        modules: [onRequestGet75]
       },
       {
         routePath: "/p/:slug",
         mountPath: "/p",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet63]
+        modules: [onRequestGet64]
       },
       {
         routePath: "/image/:path*",
         mountPath: "/image",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet75]
+        modules: [onRequestGet76]
       },
       {
         routePath: "/:project/blog",
         mountPath: "/:project/blog",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet76]
+        modules: [onRequestGet77]
       },
       {
         routePath: "/:project/feed.xml",
         mountPath: "/:project",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet78]
+        modules: [onRequestGet79]
       },
       {
         routePath: "/:project/rss.xml",
         mountPath: "/:project",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet79]
+        modules: [onRequestGet80]
       },
       {
         routePath: "/:project/sitemap-pages.xml",
         mountPath: "/:project",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet81]
+        modules: [onRequestGet82]
       },
       {
         routePath: "/:project/sitemap.xml",
         mountPath: "/:project",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet82]
+        modules: [onRequestGet83]
       },
       {
         routePath: "/blog",
         mountPath: "/blog",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet22]
+        modules: [onRequestGet23]
       },
       {
         routePath: "/docs",
         mountPath: "/docs",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet83]
+        modules: [onRequestGet84]
       },
       {
         routePath: "/embed",
         mountPath: "/embed",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet84]
+        modules: [onRequestGet85]
       },
       {
         routePath: "/feed.xml",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet77]
+        modules: [onRequestGet78]
       },
       {
         routePath: "/robots.txt",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet85]
+        modules: [onRequestGet86]
       },
       {
         routePath: "/rss.xml",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet86]
+        modules: [onRequestGet87]
       },
       {
         routePath: "/sitemap-pages.xml",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet87]
+        modules: [onRequestGet88]
       },
       {
         routePath: "/sitemap.xml",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet80]
+        modules: [onRequestGet81]
       },
       {
         routePath: "/widget.js",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet88]
+        modules: [onRequestGet89]
       },
       {
         routePath: "/admin",
@@ -24689,7 +24838,7 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet89]
+        modules: [onRequestGet90]
       },
       {
         routePath: "/",
@@ -24703,10 +24852,10 @@ var init_functionsRoutes_0_6365317468905451 = __esm({
 });
 
 // ../node_modules/wrangler/templates/pages-template-worker.ts
-init_functionsRoutes_0_6365317468905451();
+init_functionsRoutes_0_9734229960597824();
 
 // ../node_modules/path-to-regexp/dist.es2015/index.js
-init_functionsRoutes_0_6365317468905451();
+init_functionsRoutes_0_9734229960597824();
 function lexer(str) {
   var tokens = [];
   var i = 0;
