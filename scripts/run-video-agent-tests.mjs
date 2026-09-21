@@ -1,16 +1,22 @@
-// Smoke test for the carousel path of the render agent.
+// Smoke test for the render agent: the carousel deck path and the post
+// video's music bed.
 //
-// The agent runs on a VPS with Chrome + hyperframes + ffmpeg, none of which
-// exist here. So this drives the real renderCarousel with a temp workspace,
-// a faked snapshot process, a faked Openverse fetch and a faked deliver POST
+// The agent runs on a VPS with Chrome + hyperframes + ffmpeg. For the
+// carousel this drives the real renderCarousel with a temp workspace, a
+// faked snapshot process, a faked Openverse fetch and a faked deliver POST
 // — real filesystem, no Chrome, no network — and separately pins the deck's
 // markup contract (the part the platform and the admin UI contract with):
 // 5 slides at 1080x1350, cover / 3 points / CTA, text escaped, and the same
 // input producing the same HTML (what makes a snapshot at any --at time
 // deterministic).
 //
+// For the post video it measures the real music bed with ffmpeg: a bed
+// nobody can hear is indistinguishable from no music at all, and the first
+// version rendered 17 dB too quiet to notice.
+//
 //   node --no-warnings scripts/run-video-agent-tests.mjs
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -21,7 +27,8 @@ process.env.BASE_URL = 'https://agent.test';
 process.env.ADMIN_TOKEN = 'test-token';
 process.env.GUROUTER_API_KEY = '';
 
-const { composeCarouselSlideHtml, renderCarousel, slideQueries } = await import('../video-agent/render-video.mjs');
+const { composeCarouselSlideHtml, composeHtml, makeBgm, renderCarousel, slideQueries } =
+  await import('../video-agent/render-video.mjs');
 const { carouselPrefix, carouselSlideKey } = await import('../functions/_lib/video_jobs.js');
 
 let passed = 0;
@@ -259,5 +266,48 @@ for (const [label, deliverResult] of [
   r.done();
 }
 ok('a rejected deliver fails the job instead of reporting success');
+
+// ── the post video's music bed ───────────────────────────────────────
+// A bed nobody can hear is the bug this guards. Measured on a real
+// hyperframes render, the original bed landed 31 LU under the voice — the
+// rendered video then measures the same as one with no music — because
+// amix divided the three sines by three and the chord sat below what a
+// phone speaker reproduces. So: level, and energy in the band that
+// actually leaves a phone.
+if (spawnSync('ffmpeg', ['-version'], { encoding: 'utf8' }).status !== 0) {
+  console.log('… music-bed checks skipped: no ffmpeg on this machine');
+} else {
+  const TOTAL = 9.6;
+  const dir = mkdtempSync(join(tmpdir(), 'bgm-'));
+  const bed = makeBgm(TOTAL, 'alpha-post-post', join(dir, 'bgm.mp3'));
+  assert.ok(bed && existsSync(bed), 'makeBgm must produce a bed');
+
+  const maxDb = (filters) => {
+    const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', bed, '-af', filters, '-f', 'null', '-'], { encoding: 'utf8' });
+    return Number((r.stderr.match(/max_volume: (-?[\d.]+) dB/) || [])[1]);
+  };
+  const peak = maxDb('volumedetect');
+  assert.ok(peak >= -26, `the bed must be mastered to be heard, not whispered (peaks at ${peak} dBFS)`);
+  const speechBand = maxDb('highpass=f=400,lowpass=f=2000,volumedetect');
+  assert.ok(speechBand >= -30, `the bed must carry energy a phone speaker reproduces, 400-2000 Hz (peaks at ${speechBand} dBFS)`);
+  ok('the music bed is loud enough to hear under the voice (level + phone band)');
+
+  const dur = Number(spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', bed], { encoding: 'utf8' }).stdout);
+  assert.ok(Math.abs(dur - TOTAL) < 0.2, `the bed must span the video (${dur}s for ${TOTAL}s)`);
+  ok('the bed spans the whole video');
+  rmSync(dir, { recursive: true, force: true });
+}
+
+// The composition is what puts the bed under the voice — at the gain the
+// level above is tuned for, and only when there is a bed at all.
+{
+  const segs = [2, 2, 2, 2];
+  const withBed = composeHtml(JOB, SCRIPT, segs, null, '/tmp/bgm.mp3');
+  assert.match(withBed, /<audio class="clip" data-start="0" data-duration="9\.60" data-volume="0\.12" data-track-index="6" src="assets\/bgm\.mp3"><\/audio>/,
+    'the bed must be a full-length track on its own channel at the documented gain');
+  assert.doesNotMatch(composeHtml(JOB, SCRIPT, segs, null, null), /assets\/bgm\.mp3/,
+    'no bed means no music track');
+  ok('the composition carries the bed at the documented gain, and only when there is one');
+}
 
 console.log(`\nALL VIDEO AGENT TESTS PASSED (${passed} checks)`);
