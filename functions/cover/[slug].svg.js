@@ -25,7 +25,8 @@
 // moment the edge cache expires (within ~1h). To force-bust earlier,
 // admin can trigger a deploy or hit the URL with ?v=<timestamp>.
 
-import { renderCoverSvg, isRenderableSpec, fallbackCoverSpec } from '../_lib/cover_svg.js';
+import { renderCoverSvg } from '../_lib/cover_svg.js';
+import { isRenderableSpec } from '../_lib/cover_spec.js';
 import { buildBrandContext } from '../_lib/template.js';
 import { loadSettings } from '../_lib/settings.js';
 import { recordNotice, clearNotice } from '../_lib/notices.js';
@@ -90,10 +91,13 @@ export const onRequestGet = async ({ env, request, params }) => {
   // The row exists but its spec can't paint anything (no background,
   // no layers) — the signature of a template created with `spec: {}`.
   // page_render.js only checks that a default ROW exists, so it will
-  // still point the hero <img> at this endpoint; returning black here
-  // is what users saw. Render the built-in branded card instead and
-  // surface the problem to the admin so the template gets fixed.
-  if (!isRenderableSpec(spec)) {
+  // still point the hero <img> at this endpoint. The unsafe spec itself
+  // is the renderer's problem, not ours: renderCoverSvg swaps in the
+  // branded card (see _lib/cover_spec.js), so all this branch has to do
+  // is tell the admin their default template is unusable.
+  if (isRenderableSpec(spec)) {
+    clearNotice(env, 'cover_template_empty');
+  } else {
     recordNotice(env, {
       kind: 'cover_template_empty',
       severity: 'warn',
@@ -102,9 +106,6 @@ export const onRequestGet = async ({ env, request, params }) => {
       action_url: '/admin#covers',
       action_label: 'Open Covers',
     });
-    spec = fallbackCoverSpec();
-  } else {
-    clearNotice(env, 'cover_template_empty');
   }
 
   const settings = await loadSettings(env).catch(() => ({}));

@@ -14,7 +14,7 @@
 //      The card mirrors the "main — official" template visually so
 //      the brand stays consistent.
 
-import { renderCoverSvg, isRenderableSpec, fallbackCoverSpec } from '../_lib/cover_svg.js';
+import { renderCoverSvg } from '../_lib/cover_svg.js';
 import { buildBrandContext } from '../_lib/template.js';
 import { loadSettings } from '../_lib/settings.js';
 import { esc } from '../_lib/util.js';
@@ -44,11 +44,11 @@ export const onRequestGet = async ({ env, request, params }) => {
     }
   } catch { /* DB unavailable — fall through */ }
 
-  // Use the default cover template if one exists AND can actually
-  // paint something; otherwise the built-in branded card. The
-  // renderability check matters: a default template saved with an
-  // empty spec (`{}`) would otherwise render as a black rectangle
-  // with no text — the exact bug operators reported.
+  // Render through the default cover template, whatever shape it is
+  // in. Applying the "can this paint anything?" rule is the renderer's
+  // job — it swaps in the branded card for a spec that can't (see
+  // _lib/cover_spec.js) — so an empty default template can't render as
+  // the black, textless rectangle operators reported.
   let spec = null;
   try {
     const row = await env.DB.prepare(
@@ -56,7 +56,6 @@ export const onRequestGet = async ({ env, request, params }) => {
     ).first();
     if (row?.spec_json) spec = JSON.parse(row.spec_json);
   } catch { /* */ }
-  if (!isRenderableSpec(spec)) spec = fallbackCoverSpec();
 
   const settings = await loadSettings(env).catch(() => ({}));
   const fakePost = post || { slug, title: slug.replace(/-/g, ' '), body_markdown: '', published_at: 0 };

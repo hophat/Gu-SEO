@@ -24,6 +24,13 @@
 //     layer matrix.
 
 import { renderTemplate } from './template.js';
+import { isRenderableSpec, normalizeCoverSpec, fallbackCoverSpec } from './cover_spec.js';
+
+// The policy this file enforces — what counts as paintable and the
+// branded card served in its place — lives in cover_spec.js. These two
+// re-exports stay because callers (and the platform test suite) import
+// them from the renderer they render through.
+export { isRenderableSpec, fallbackCoverSpec };
 
 // SVG-attribute XML escape. NOT the same as HTML escape — we need to
 // quote the five XML entities. Caller is responsible for ensuring
@@ -243,57 +250,6 @@ function renderLayer(layer, ctx, inlined) {
   return '';
 }
 
-// Is this spec worth rendering at all?
-//
-// The editor's template-create path (and templates saved before the
-// server validated anything) can persist `{}` — an object with no
-// background and no layers. Rendering it produced a near-black
-// rectangle with no text: the cover looked broken to readers and to
-// OG scrapers. Callers use this to fall back to the built-in card.
-//
-// A spec counts as renderable when it either paints a background
-// image or has at least one layer. Anything else is a blank canvas.
-export function isRenderableSpec(spec) {
-  if (!spec || typeof spec !== 'object') return false;
-  if (spec.background && spec.background.url) return true;
-  return Array.isArray(spec.layers) && spec.layers.length > 0;
-}
-
-// Built-in branded card. Serves three roles:
-//   1. /og/<slug>.svg when no default template row exists.
-//   2. /cover/<slug>.svg when the default template's spec is unusable
-//      (so a hero <img> pointing at /cover/ still paints something).
-//   3. The last-resort render in renderCoverSvg() below, which means
-//      no caller can ever produce a black, textless cover.
-//
-// Mirrors the "main — official" editorial template the installer
-// seeds: near-black card, accent rule, brand eyebrow, big title,
-// metadata footer. Renders at 1200×630 so it doubles as an OG card.
-export function fallbackCoverSpec() {
-  return {
-    width: 1200, height: 630,
-    layers: [
-      { id: 'bg', kind: 'box', x: 0, y: 0, w: 1200, h: 630, fill: '#0a0c10', radius: 0 },
-      { id: 'rule', kind: 'box', x: 80, y: 60, w: 200, h: 2, fill: '#d4af62', radius: 0 },
-      { id: 'eyebrow', kind: 'text', x: 80, y: 80, w: 700, h: 30,
-        text: '{brand.name|upper}',
-        size: 22, family: '"JetBrains Mono", monospace', weight: '600',
-        align: 'left', color: '#d4af62', shadow: false,
-      },
-      { id: 'title', kind: 'text', x: 80, y: 280, w: 1040, h: 240,
-        text: '{title}',
-        size: 76, family: '"Playfair Display", Georgia, serif', weight: '700',
-        align: 'left', color: '#f5f0e6', shadow: false,
-      },
-      { id: 'sig', kind: 'text', x: 80, y: 560, w: 600, h: 30,
-        text: '{pub_date|date:long} · {reading_time}',
-        size: 16, family: '"JetBrains Mono", monospace', weight: '400',
-        align: 'left', color: 'rgba(245,240,230,0.55)', shadow: false,
-      },
-    ],
-  };
-}
-
 // Public entry. Renders the entire template against ctx and returns
 // a self-contained SVG document string.
 //
@@ -312,12 +268,11 @@ export async function renderCoverSvg(rawSpec, ctx, env) {
   // A template with no background and no layers would render as a
   // black rectangle with no text. Swap in the built-in card instead
   // so every caller — /cover, /og, future ones — stays safe even
-  // when the stored spec is empty. See isRenderableSpec().
-  const spec = isRenderableSpec(rawSpec) ? rawSpec : fallbackCoverSpec();
-
-  const W = spec?.width  || 1200;
-  const H = spec?.height || 630;
-  const layers = Array.isArray(spec?.layers) ? spec.layers : [];
+  // when the stored spec is empty, then normalise whatever we ended up
+  // with so the rest of this function reads one known shape.
+  // See cover_spec.js for both rules.
+  const spec = normalizeCoverSpec(isRenderableSpec(rawSpec) ? rawSpec : fallbackCoverSpec());
+  const { width: W, height: H, layers } = spec;
 
   // Pre-fetch every R2-hosted asset and base64 it. The result map
   // (original URL → data URL) is consulted by the background +
@@ -364,7 +319,7 @@ export async function renderCoverSvg(rawSpec, ctx, env) {
   // <img src=…>, an external href won't fetch. We swap in the data
   // URL from the inline map when available.
   let backgroundEl = '';
-  if (spec?.background?.url) {
+  if (spec.background?.url) {
     const bgHref = inlined.get(spec.background.url) || spec.background.url;
     backgroundEl = `<image href="${xml(bgHref)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`;
   } else {
