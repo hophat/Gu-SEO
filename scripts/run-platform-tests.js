@@ -37,6 +37,9 @@ import { onRequestGet as secretsRead, onRequestPost as secretsWrite } from '../f
 import { onRequestGet as providersList } from '../functions/api/admin/providers.js';
 import { onRequestPost as providersTest } from '../functions/api/admin/providers/test.js';
 import { signSession } from '../functions/_lib/passwords.js';
+import { setVaultSecret } from '../functions/_lib/secret_vault.js';
+import { carouselRef, carouselPrefix, carouselSlideKey } from '../functions/_lib/video_jobs.js';
+import { onRequestPost as deleteVideoJob } from '../functions/api/admin/video/delete.js';
 import { recipientsFor, isScheduledPost, sendPublishReport, renderReport } from '../functions/_lib/publishing/report.js';
 import { onRequestPost as sendOtp } from '../functions/api/public/send-otp.js';
 import { onRequestPost as usersCreate } from '../functions/api/admin/users.js';
@@ -1916,8 +1919,111 @@ async function testFacebookPageRecovery() {
   }
 }
 
+// ── Q. carousel video jobs ──────────────────────────────────────────
+// A carousel rides the same video_jobs queue as the 9:16 videos, but it
+// carries a sentinel ref ("carousel:<post_id>") and a slide prefix as its
+// video_key. Both conventions are shared policy (functions/_lib/video_jobs.js)
+// and getting either wrong stays invisible until Facebook is involved, so
+// these cases drive the real publisher against a fake Graph API and a fake R2.
+
+// The slice of R2 the publishing paths use. `get()` on a missing key returns
+// null, exactly like the real binding — that is what made a slide prefix
+// handed to the video uploader fail.
+function fakeImages(initial = {}) {
+  const store = new Map(Object.entries(initial));
+  return {
+    keys: () => [...store.keys()].sort(),
+    async list({ prefix = '' } = {}) {
+      return { objects: [...store.keys()].filter((k) => k.startsWith(prefix)).sort().map((key) => ({ key })) };
+    },
+    async get(key) {
+      const v = store.get(key);
+      return v ? { async arrayBuffer() { return v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength); } } : null;
+    },
+    async put(key, bytes) { store.set(key, bytes); },
+    async delete(key) { store.delete(key); },
+  };
+}
+
+async function testCarouselVideoJobs() {
+  console.log('\nQ. Carousel video jobs');
+  const realFetch = globalThis.fetch;
+  const graph = [];
+  const jsonRes = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
+  globalThis.fetch = async (u, init = {}) => {
+    const path = String(u);
+    graph.push({
+      path,
+      isForm: typeof FormData !== 'undefined' && init.body instanceof FormData,
+      params: typeof init.body === 'string' ? Object.fromEntries(new URLSearchParams(init.body)) : null,
+    });
+    if (path.includes('/videos')) return jsonRes({ id: 'video_1' });
+    if (path.includes('/photos')) return jsonRes({ id: `photo_${graph.length}` });
+    return jsonRes({ id: 'feed_1' });
+  };
+
+  try {
+    const env = await freshEnv();
+    const t = Math.floor(Date.now() / 1000);
+    const prefix = carouselPrefix('alpha-post');
+    const slides = [1, 2, 3].map((n) => carouselSlideKey(prefix, n));
+    env.IMAGES = fakeImages(Object.fromEntries(slides.map((k) => [k, new Uint8Array([1])])));
+
+    // A Facebook channel that wants videos — the configuration that used to
+    // swallow a slide prefix and fail on an object that is not there.
+    await env.DB.prepare(
+      `INSERT INTO project_publishing_configs (project_id, publisher_type, config_json, created_at, updated_at)
+       VALUES (?, 'facebook', ?, ?, ?)`
+    ).bind(PROJECT, JSON.stringify({ page_id: '111222333', as_video: true }), t, t).run();
+    await setVaultSecret(env, `FACEBOOK_PAGE_TOKEN__${PROJECT}`, 'page-token');
+
+    const ref = carouselRef(POST);
+    await env.DB.prepare(
+      `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, video_key, attempts, created_at, updated_at)
+       VALUES ('vj_carousel', ?, ?, 'alpha-post', 'carousel', 'done', ?, 1, ?, ?)`
+    ).bind(PROJECT, ref, prefix, t, t).run();
+
+    await enqueueSocialPost(env, { projectId: PROJECT, blogPostId: ref, channel: 'facebook_video' });
+    const drained = await drainSocialQueue(env, { projectId: PROJECT });
+    assert.equal(drained.results[0]?.ok, true, 'a carousel must still publish on an as_video channel');
+    assert.equal(graph.filter((g) => g.isForm && g.path.includes('/photos')).length, slides.length,
+      'every slide in R2 is uploaded');
+    assert.equal(graph.filter((g) => g.path.includes('/videos')).length, 0,
+      'a slide prefix is never uploaded as a video');
+    const feed = graph.find((g) => !g.isForm && g.path.endsWith('/feed'));
+    assert.equal(JSON.parse(feed.params.attached_media).length, slides.length,
+      'all slides attach to one feed post');
+    ok('a carousel on an as_video channel posts as photos, not as a video');
+
+    // The Social tab reads the same rows, so the sentinel must resolve to the
+    // article instead of rendering an empty cell.
+    const [social] = await listSocialPosts(env, { projectId: PROJECT });
+    assert.equal(social.post_title, 'Tiêu đề', 'a carousel job must show its article title');
+    assert.equal(social.post_slug, 'alpha-post');
+    ok('the social list resolves a carousel ref back to its post');
+
+    // Delete owns the slide objects, and only its own: a slug that STARTS WITH
+    // this one (alpha-postX) shares the string prefix, so a bare prefix list
+    // would take its slides too.
+    await env.IMAGES.put(carouselSlideKey(carouselPrefix('alpha-postX'), 1), new Uint8Array([1]));
+    await env.IMAGES.put('video/other.mp4', new Uint8Array([1]));
+    const deleted = await (await deleteVideoJob({
+      env, request: adminReq('https://x/api/admin/video/delete', { body: { id: 'vj_carousel' } }),
+    })).json();
+    assert.equal(deleted.ok, true);
+    assert.deepEqual(
+      env.IMAGES.keys(),
+      [carouselSlideKey(carouselPrefix('alpha-postX'), 1), 'video/other.mp4'],
+      'delete removes its own slides and nothing else',
+    );
+    ok('delete removes its own slides and keeps a neighbouring slug');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 async function main() {
-  console.log('--- Platform tests (migrations · queue · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy) ---');
+  console.log('--- Platform tests (migrations · queue · carousel · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy) ---');
   await testMigrations();
   await testQueue();
   await testHelpers();
@@ -1935,6 +2041,7 @@ async function main() {
   await testPublishReport();
   await testMailCredentials();
   await testEmailPolicy();
+  await testCarouselVideoJobs();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }
 

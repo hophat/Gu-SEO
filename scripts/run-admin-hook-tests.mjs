@@ -1,0 +1,137 @@
+// Tests for the shared admin queue hook (src/admin/lib/videoQueue.js).
+//
+// The Video page and the Carousel page are two views of one queue, and only
+// the Carousel page opts into auto-refresh (the agent renders off-platform on
+// a ~5 minute cycle; the Video page is an inventory view). That difference
+// lives entirely inside a React hook, so it is exercised rather than read:
+// the hook runs on a minimal runtime (scripts/admin-hook-harness.mjs) with a
+// fake fetch and fake timers.
+//
+//   node --no-warnings scripts/run-admin-hook-tests.mjs
+import assert from 'node:assert/strict';
+import * as nodeModule from 'node:module';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const HARNESS = new URL('./admin-hook-harness.mjs', import.meta.url).href;
+
+// The hook imports `react` / `antd`; point both at the harness. These tests
+// need Node's module hooks (>= 22.15); the platform suite in the same
+// `npm test` already needs node:sqlite, so the floor does not move much.
+const { registerHooks } = nodeModule;
+assert.equal(typeof registerHooks, 'function', 'the admin hook tests need Node >= 22.15 for module hooks');
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier === 'react' || specifier === 'antd') return { url: HARNESS, shortCircuit: true };
+    return nextResolve(specifier, context);
+  },
+});
+
+const { Harness, messageLog } = await import(HARNESS);
+const hook = await import('../src/admin/lib/videoQueue.js');
+
+let passed = 0;
+function ok(label) { passed++; console.log(`✓ ${label}`); }
+
+// ── fake fetch ───────────────────────────────────────────────────────
+let requests = [];
+let responses = [];
+globalThis.window = { location: { origin: 'http://localhost' } };
+globalThis.fetch = async (url, init = {}) => {
+  requests.push({ url: String(url), method: init.method || 'GET' });
+  // The last canned response repeats, so a poll cannot run out of answers.
+  const r = responses.length > 1 ? responses.shift() : responses[0];
+  return { status: r.status, json: async () => r.body };
+};
+
+// ── fake timers: intervals are recorded, never fired on their own ─────
+let intervals = [];
+globalThis.setInterval = (fn, ms) => { const t = { fn, ms, id: intervals.length + 1 }; intervals.push(t); return t.id; };
+globalThis.clearInterval = (id) => { const i = intervals.findIndex((t) => t.id === id); if (i >= 0) intervals.splice(i, 1); };
+
+const jobsResponse = (jobs) => ({ status: 200, body: { ok: true, jobs } });
+const CAROUSEL_PENDING = [{ id: 'j1', kind: 'carousel', status: 'pending', slug: 'alpha-post', title: 'T' }];
+const CAROUSEL_DONE = [{ id: 'j1', kind: 'carousel', status: 'done', slug: 'alpha-post', title: 'T', slides: ['/image/carousel/alpha-post-1.png'] }];
+
+function mount(opts) { return new Harness(() => hook.useVideoJobs(opts)); }
+
+console.log('--- Admin queue hook (polling · status copy) ---\n');
+
+// ── Video page: inventory view, never polls ──────────────────────────
+{
+  requests = []; responses = [jobsResponse(CAROUSEL_PENDING)]; intervals = [];
+  const v = mount({ poll: false });
+  const out = await v.settle();
+  assert.deepEqual(requests.map((r) => r.url), ['/api/admin/video/list']);
+  assert.equal(out.loading, false);
+  assert.equal(intervals.length, 0, 'the Video page must not register a refresh timer');
+  const before = requests.length;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(requests.length, before, 'the Video page must not re-fetch on its own');
+  ok('Video page loads once and never polls');
+
+  const src = readFileSync(join(ROOT, 'src/admin/pages/Video.jsx'), 'utf8');
+  assert.match(src, /useVideoJobs\(\{\s*poll:\s*false\s*\}\)/, 'Video.jsx must opt out of polling');
+  ok('Video page is wired to poll:false');
+  v.unmount();
+}
+
+// ── Carousel page: polls while the agent is still working ────────────
+{
+  requests = []; responses = [jobsResponse(CAROUSEL_PENDING)]; intervals = [];
+  const c = mount({ noun: 'carousel' });
+  await c.settle();
+  assert.equal(intervals.length, 1, 'one refresh timer while a job is in progress');
+  assert.equal(intervals[0].ms, 20000, 'the render cycle is ~5 minutes; 20s keeps the page honest');
+  const before = requests.length;
+  intervals[0].fn();
+  await c.settle(4);
+  assert.ok(requests.length > before, 'the timer must re-fetch the queue');
+  ok('Carousel page polls every 20s while a job is in progress');
+
+  // Nothing left in progress: the timer must go away.
+  responses = [jobsResponse(CAROUSEL_DONE)];
+  intervals[0].fn();
+  await c.settle(4);
+  assert.equal(intervals.length, 0, 'polling must stop once no job is in progress');
+  ok('polling stops when the queue is idle');
+  c.unmount();
+
+  const src = readFileSync(join(ROOT, 'src/admin/pages/Carousel.jsx'), 'utf8');
+  assert.doesNotMatch(src, /poll:\s*false/, 'Carousel.jsx must keep polling');
+  ok('Carousel page is wired to poll');
+}
+
+// ── the copy a row action shows ──────────────────────────────────────
+{
+  requests = []; responses = [jobsResponse(CAROUSEL_DONE)]; intervals = []; messageLog.length = 0;
+  const c = mount({ noun: 'carousel' });
+  const out = await c.settle();
+
+  responses = [{ status: 200, body: { ok: true, posted: true } }, jobsResponse(CAROUSEL_DONE)];
+  assert.equal(await out.publish('j1'), true);
+  await c.settle(3);
+  assert.deepEqual(requests.at(-1), { url: '/api/admin/video/list', method: 'GET' }, 'publish reloads the list');
+  assert.match(messageLog.at(-1).text, /carousel/, 'the success copy names the job kind');
+
+  responses = [{ status: 409, body: { error: 'already_enqueued' } }];
+  assert.equal(await out.publish('j1'), false);
+  await c.settle(2);
+  assert.match(messageLog.at(-1).text, /Đã có job đăng/, 'a duplicate publish explains itself instead of showing the code');
+  ok('publish reloads, names the kind and explains a duplicate');
+
+  responses = [{ status: 500, body: { error: 'r2_delete_failed', detail: 'R2 said no' } }];
+  assert.equal(await out.remove('j1'), false);
+  await c.settle(2);
+  assert.equal(messageLog.at(-1).text, 'R2 said no', 'a delete failure surfaces the server detail');
+  ok('a failed delete surfaces the server detail');
+  c.unmount();
+}
+
+assert.equal(hook.statusMeta('carousel', 'done').text, 'Sẵn sàng đăng');
+assert.equal(hook.statusMeta('post', 'done').text, 'Đã có video');
+ok('the same status reads differently per job kind');
+
+console.log(`\nALL ADMIN HOOK TESTS PASSED (${passed} checks)`);
