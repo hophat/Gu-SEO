@@ -16,8 +16,9 @@
 //
 //   node --no-warnings scripts/run-loop-tests.mjs
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -111,14 +112,25 @@ writeFileSync(TRAP, `globalThis.fetch = () => {
 `);
 
 // ── driving the runner ───────────────────────────────────────────────
-function run(args, env = {}) {
+const env = (extra) => ({ ...process.env, PATH: `${BIN}:${process.env.PATH}`, REAL_NODE, JEV_CALLS: CALLS, VERIFIER_DIFF, FETCH_LOG, ...extra });
+
+function run(args, extra = {}) {
   reset();
-  const r = spawnSync('bash', [join(CLONE, 'scripts', 'loop-run.sh'), ...args], {
-    cwd: CLONE,
-    encoding: 'utf8',
-    env: { ...process.env, PATH: `${BIN}:${process.env.PATH}`, REAL_NODE, JEV_CALLS: CALLS, VERIFIER_DIFF, FETCH_LOG, ...env },
-  });
+  const r = spawnSync('bash', [join(CLONE, 'scripts', 'loop-run.sh'), ...args], { cwd: CLONE, encoding: 'utf8', env: env(extra) });
   return { status: r.status, out: `${r.stdout}${r.stderr}` };
+}
+
+// Same, without blocking the event loop: the loopback stub below answers from
+// this process, and spawnSync would deadlock against it.
+function runAsync(args, extra = {}) {
+  reset();
+  return new Promise((resolve) => {
+    const child = spawn('bash', [join(CLONE, 'scripts', 'loop-run.sh'), ...args], { cwd: CLONE, env: env(extra) });
+    let out = '';
+    child.stdout.on('data', (chunk) => { out += chunk; });
+    child.stderr.on('data', (chunk) => { out += chunk; });
+    child.on('close', (status) => resolve({ status, out }));
+  });
 }
 const calls = () => (existsSync(CALLS) ? readFileSync(CALLS, 'utf8').split('\n').filter(Boolean).length : 0);
 const verifierSaw = () => (existsSync(VERIFIER_DIFF) ? readFileSync(VERIFIER_DIFF, 'utf8') : '');
@@ -207,6 +219,49 @@ for (const [fake, kind, evidence] of [
   assert.match(lastRow(), evidence, `the row must say why there is no answer (${fake}): ${lastRow()}`);
   assert.match(lastRow(), /dry-run \(would merge\)/, 'the gates above Jev still decide');
   ok(`a ${kind} key is recorded, not treated as a verdict`);
+}
+
+// ── the real client, against a loopback stub ─────────────────────────
+// Every case above stubs jev.js, so the runner is only ever tested against
+// answers this file invented. Here the real scripts/jev.js runs against a local
+// server that replies in the API's shape: one request, the diff as state, the
+// rubric as questions, and the reply read back into the `--summary` line the
+// runner acts on. That is the seam nothing else closes — change the summary
+// format or the token field and this fails, where the canned cases stay green.
+{
+  const seen = [];
+  const server = createServer((req, res) => {
+    let raw = '';
+    req.on('data', (chunk) => { raw += chunk; });
+    req.on('end', () => {
+      const body = JSON.parse(raw);
+      seen.push({ path: req.url, auth: req.headers.authorization, body });
+      // Answer whatever was asked, so a change to the rubric does not have to
+      // change this stub with it.
+      const answers = Object.fromEntries(Object.entries(body.questions).map(([key, q]) => [key,
+        q.type === 'score' ? { type: 'score', score: 2, confidence: 0.9 } : { type: 'choice', choice: 'proceed', confidence: 0.95 }]));
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ model: 'jev-1.13.0', answers, usage: { input_tokens: 4242, output_tokens: 12 } }));
+    });
+  });
+  await new Promise((listening) => server.listen(0, '127.0.0.1', listening));
+  try {
+    const r = await runAsync(['autofix'], {
+      IMPL: 'work', JEV_REAL: '1', TYPESAFE_API_KEY: 'test-key',
+      TYPESAFE_API_URL: `http://127.0.0.1:${server.address().port}/v1/systemone`,
+    });
+    assert.equal(seen.length, 1, 'the real client should make exactly one request');
+    assert.equal(seen[0].auth, 'Bearer test-key', 'the key must travel in the auth header');
+    assert.equal(seen[0].path, '/v1/systemone', 'the endpoint path is part of the contract');
+    assert.match(JSON.stringify(seen[0].body.state), /loop-fix-probe/, 'the state must be the diff under judgement');
+    assert.ok(seen[0].body.questions.overall, 'the questions must carry the gate the runner reads');
+    assert.equal(r.status, 0, `a proceeding answer still merges: ${r.out}`);
+    assert.match(lastRow(), /proceed overall=proceed@0\.95/, 'the row must carry the answer the real client printed');
+    assert.match(lastRow(), /in=4242/, 'the token count the API reported must reach the row');
+    ok('the real client against a stub: one request, and its answer reaches the row and the merge');
+  } finally {
+    server.close();
+  }
 }
 
 // ── triage ───────────────────────────────────────────────────────────

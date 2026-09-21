@@ -46,6 +46,11 @@ node scripts/jev.js score   --question "How risky?" --level low --level mid --le
 no extension (a `mktemp` file, a process substitution) is dropped silently, so
 pipe it through `--state -` instead.
 
+`TYPESAFE_API_URL` overrides the endpoint (default
+`https://api.typesafe.ai/v1/systemone`). It is for tests — `npm test` points the
+real client at a loopback stub to pin the wire contract without spending a
+request — not a knob to run against anything else.
+
 `evaluate` scores each document on the dev dimensions in `DIMENSIONS`
 (`scripts/jev.js`): `correctness, safety, rule_fit, security, scope, evidence,
 clarity, reuse`, plus one `overall` choice of `proceed | review | stop`.

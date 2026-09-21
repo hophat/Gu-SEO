@@ -11,7 +11,11 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-export const API = 'https://api.typesafe.ai/v1/systemone';
+// TYPESAFE_API_URL points this client at a stub. It exists so a test can drive
+// the real client — request shape, response parsing, the `--summary` line the
+// loop runner reads — without spending a request; unset, production talks to
+// the public API as before.
+export const API = process.env.TYPESAFE_API_URL?.trim() || 'https://api.typesafe.ai/v1/systemone';
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 export function loadKey() {
