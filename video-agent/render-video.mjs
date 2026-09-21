@@ -20,6 +20,9 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, statSync, r
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import {
+  MAX_SCENES, MIN_SCENES, sceneInner, sanitizePlan, planFromMarkdown,
+} from './explainer.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const HF_VERSION = '0.8.56';
@@ -165,15 +168,16 @@ Trả JSON: {"hook":"...","points":["...","...","..."],"question":"..."}`;
 
 // Small models truncate mid-string at the token cap ("Unterminated string").
 // Repair by closing whatever is still open — good enough for these fixed
-// schemas, and a regex fallback recovers the fields individually.
-function parseScript(raw) {
+// schemas. Shared by the script and the explainer plan, which are both
+// "strict JSON" answers from the same model.
+function repairJson(raw) {
   let s = String(raw || '').trim().replace(/^```(?:json)?/i, '').replace(/```\s*$/, '').trim();
   const first = s.indexOf('{');
   if (first > 0) s = s.slice(first);
   const tryParse = (txt) => { try { return JSON.parse(txt); } catch { return null; } };
 
   const direct = tryParse(s);
-  if (direct) return direct;
+  if (direct) return { parsed: direct, text: s };
 
   let inStr = false, esc = false, curly = 0, bracket = 0;
   for (const ch of s) {
@@ -185,8 +189,12 @@ function parseScript(raw) {
   let fixed = s.replace(/,\s*$/, '');
   if (inStr) fixed += '"';
   fixed += ']'.repeat(Math.max(0, bracket)) + '}'.repeat(Math.max(0, curly));
-  const repaired = tryParse(fixed);
-  if (repaired) return repaired;
+  return { parsed: tryParse(fixed), text: s };
+}
+
+function parseScript(raw) {
+  const { parsed, text: s } = repairJson(raw);
+  if (parsed) return parsed;
 
   const str = (name) => {
     const m = s.match(new RegExp(`"${name}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)`));
@@ -207,6 +215,119 @@ function parseScript(raw) {
     tagline: str('tagline'),
     highlights: items,
   };
+}
+
+// ── 2c. explainer plan — the article's structure, not its prose ───────
+// The LLM fills a typed plan; video-agent/explainer.mjs draws it. Two
+// rules the model cannot be trusted with, so the code enforces them:
+// every number must exist in the article (sanitizePlan), and the video
+// must stay inside the scene budget. A plan that fails either is repaired
+// or replaced by planFromMarkdown — the job never dies for want of a model.
+export function parsePlan(raw) {
+  const { parsed } = repairJson(raw);
+  if (!parsed) return null;
+  const scenes = Array.isArray(parsed.scenes) ? parsed.scenes
+    : Array.isArray(parsed.shots) ? parsed.shots
+    : null;
+  if (!scenes) return null;
+  return { title: String(parsed.title || '').trim(), scenes };
+}
+
+async function writePlan(job) {
+  if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
+  // The plan needs the whole argument, not the teaser's 3500-char skim.
+  const article = String(job.body_markdown || '').slice(0, 8000);
+  const sys = `Bạn là đạo diễn video giải thích (explainer) cho bài blog tiếng Việt.
+Nhiệm vụ: đọc bài rồi chia nó thành các CẢNH, mỗi cảnh nói một ý và có cách hiển thị phù hợp.
+Chỉ trả JSON thuần, không markdown, không giải thích.`;
+
+  const user = `Bài viết:
+Tiêu đề: ${job.title}
+Mô tả: ${job.meta_description || ''}
+Nội dung: ${article}
+
+Trả JSON đúng dạng:
+{"title":"...","scenes":[{...}]}
+
+Mỗi cảnh có "type", "say" (lời đọc tiếng Việt, 1-2 câu, tự nhiên như người kể), và dữ liệu của loại đó:
+
+- {"type":"hook","say":"...","text":"câu mở, tối đa 12 từ"}
+- {"type":"stat","say":"...","value":40,"unit":"%","label":"nhãn ngắn","icon":"clock"}
+- {"type":"bars","say":"...","title":"...","unit":"%","items":[{"label":"...","value":30}]}
+- {"type":"donut","say":"...","value":65,"label":"nhãn ngắn"}
+- {"type":"line","say":"...","title":"...","items":[{"label":"2023","value":12}]}
+- {"type":"steps","say":"...","title":"...","items":[{"icon":"cart","label":"bước ngắn"}]}
+- {"type":"timeline","say":"...","title":"...","items":[{"label":"mốc","text":"chuyện gì"}]}
+- {"type":"icons","say":"...","title":"...","items":[{"icon":"shield","label":"ý ngắn"}]}
+- {"type":"compare","say":"...","title":"...","left":{"title":"Nên","items":["..."]},"right":{"title":"Tránh","items":["..."]}}
+- {"type":"quote","say":"...","text":"câu đắt nhất trong bài"}
+- {"type":"outro","say":"...","text":"Đọc bài viết đầy đủ"}
+
+ICON hợp lệ: check, x, clock, dollar, trend, users, cart, shield, phone, pin, star, zap, leaf, tool, book, truck, home, calendar, message, heart, target, key, box, globe, award, percent.
+
+QUY TẮC BẮT BUỘC:
+1. CHỈ dùng con số CÓ TRONG BÀI. Tuyệt đối không bịa, không làm tròn, không suy diễn. Nếu bài không có số thì đừng dùng cảnh stat/bars/donut/line.
+2. ${MIN_SCENES}-${MAX_SCENES} cảnh, bắt đầu bằng hook, kết thúc bằng outro.
+3. "say" của tất cả các cảnh cộng lại khoảng 45-75 giây đọc (khoảng 200-240 từ).
+4. Mỗi cảnh chỉ một ý. Đừng lặp lại cùng một số ở hai cảnh.
+5. Tiếng Việt tự nhiên, không emoji, không markdown.
+
+VÍ DỤ (bài về chi phí bao bì):
+{"title":"Giảm chi phí bao bì","scenes":[
+ {"type":"hook","say":"Bao bì đang ăn mất một phần lợi nhuận mà bạn không thấy.","text":"Bao bì ăn mất lợi nhuận bạn không thấy"},
+ {"type":"bars","say":"Khảo sát cho thấy bao bì chiếm 12 phần trăm, trong khi vận chuyển chỉ 7 phần trăm.","title":"Chi phí chiếm bao nhiêu","unit":"%","items":[{"label":"Bao bì","value":12},{"label":"Vận chuyển","value":7}]},
+ {"type":"quote","say":"Đổi sang hộp giấy một lớp là cách rẻ nhất để bắt đầu.","text":"Đổi sang hộp giấy một lớp là cách rẻ nhất để bắt đầu."},
+ {"type":"outro","say":"Đọc bài viết đầy đủ để xem bảng giá từng loại.","text":"Đọc bài viết đầy đủ"}]}
+
+Trả JSON:`;
+
+  const r = await fetch(`${GUROUTER_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${GUROUTER_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: GUROUTER_MODEL,
+      messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
+      temperature: 0.6, max_tokens: 3000, response_format: { type: 'json_object' },
+    }),
+  }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
+  if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  const data = await r.json();
+  const raw = data?.choices?.[0]?.message?.content || '';
+  const plan = parsePlan(raw);
+  if (!plan) throw new Error('plan_schema_bad: ' + String(raw).slice(0, 150));
+
+  const { plan: clean, dropped } = sanitizePlan(plan, job.body_markdown || '');
+  if (dropped.length) {
+    log(`plan: dropped ${dropped.length} scene(s) — ${dropped.map((d) => `${d.type}:${d.reason}`).join(', ')}`);
+  }
+  if (clean.scenes.length < MIN_SCENES) {
+    throw new Error(`plan_too_thin: only ${clean.scenes.length} scene(s) survived the number guard`);
+  }
+  return clean;
+}
+
+// What a scene says out loud when the model left "say" out. Deterministic,
+// so the segment count always matches the scene count — the composition
+// maps audio by index, and a mismatch would desync voice from picture.
+export function narrationFor(s) {
+  const items = (arr) => (Array.isArray(arr) ? arr : []);
+  switch (s?.type) {
+    case 'hook': return String(s.text || '');
+    case 'stat': return `${s.value}${s.unit || ''} ${s.label || ''}`.trim();
+    case 'donut': return `${s.value} phần trăm ${s.label || ''}`.trim();
+    case 'bars':
+    case 'line':
+      return [s.title, ...items(s.items).map((i) => `${i.label} ${i.value}${s.unit || ''}`)].filter(Boolean).join('. ');
+    case 'steps': return items(s.items).map((i, n) => `${n + 1}. ${i.label}`).join('. ');
+    case 'timeline': return items(s.items).map((i) => `${i.label}: ${i.text || ''}`).join('. ');
+    case 'icons': return [s.title, ...items(s.items).map((i) => i.label)].filter(Boolean).join('. ');
+    case 'compare':
+      return [s.title, s.left?.title, ...items(s.left?.items), s.right?.title, ...items(s.right?.items)]
+        .filter(Boolean).join('. ');
+    case 'quote': return String(s.text || '');
+    case 'outro': return String(s.text || 'Đọc bài viết đầy đủ');
+    default: return '';
+  }
 }
 
 // ── 2b. business script — per-project promo (AI Video Post) ──────────
@@ -443,6 +564,41 @@ function composeBusinessHtml(job, script, segs, media = [], logoSrc = null, bgmS
   return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: sceneDefs, logoSrc, bgmSrc });
 }
 
+// Explainer composition — the article explained, one scene at a time.
+// Each scene's markup comes from video-agent/explainer.mjs; this function
+// only times it against the narration and hands it to the shared shell.
+// No GSAP here beyond the shell's fade: charts are static SVG, so a
+// snapshot at any moment is reproducible.
+export function composeExplainerHtml(job, plan, segs, logoSrc = null, bgmSrc = null) {
+  const accent = job.project?.accent || ACCENT;
+  const scenes = (plan?.scenes || []).slice(0, MAX_SCENES);
+  const GAP = 0.35;
+  const hasHero = existsSync(join(WORK, 'assets', 'hero.jpg'));
+  let t = 0;
+  const sceneHtml = [];
+  const bgEls = [];
+  for (const [i, s] of scenes.entries()) {
+    s.start = t;
+    // A scene with no narration still gets a beat, or the cut is invisible.
+    s.dur = Math.max(1.5, (segs[i] || 0)) + GAP;
+    sceneHtml.push(`<div id="s${i}" class="clip scene" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="0">${sceneInner(s, accent)}</div>`);
+    // A photo sits behind prose only. Charts need a clean surface, and the
+    // hook/quote scenes are the two that read better with a real image.
+    if (hasHero && (s.type === 'hook' || s.type === 'quote')) {
+      s.bgId = `bg${bgEls.length}`;
+      bgEls.push(s);
+      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img src="assets/hero.jpg" alt=""/></div>`);
+    }
+    t += s.dur;
+  }
+  const total = scenes.reduce((a, s) => a + s.dur, 0);
+  const audioHtml = scenes.map((s, i) =>
+    `<audio class="clip" data-start="${s.start.toFixed(2)}" data-duration="${(segs[i] || 0).toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
+  ).join('\n  ');
+
+  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: scenes, logoSrc, bgmSrc });
+}
+
 // Shared HTML shell — both compositions render inside the same brand
 // frame so post videos and business promos stay visually consistent.
 function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, logoSrc, bgmSrc }) {
@@ -481,6 +637,62 @@ function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, 
     background:linear-gradient(180deg, rgba(10,12,16,0.25), rgba(10,12,16,0.88)); }
   .brandlogo { position:absolute; top:36px; right:40px; height:56px; max-width:220px;
     object-fit:contain; z-index:6; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
+
+  /* ── explainer primitives ────────────────────────────────────────────
+     Charts at 720px: shapes in SVG, every label in HTML (SVG text cannot
+     wrap, and Vietnamese labels are long). Type is smaller than the teaser
+     scale on purpose — a chart needs room for six bars, not one sentence. */
+  .ex { display:flex; flex-direction:column; align-items:center; gap:20px; width:100%; }
+  .ex-title { color:#9fb3c8; font-size:30px; font-weight:600; }
+  .ico { display:block; }
+  .stat-ico { color:${A}; }
+  .stat-v { display:flex; align-items:baseline; gap:12px; }
+  .stat-n { color:#fff; font-weight:800; line-height:1; letter-spacing:-0.03em; }
+  .stat-u { color:${A}; font-size:64px; font-weight:700; }
+  .stat-l { color:#c9d6e2; font-size:36px; line-height:1.35; max-width:580px; }
+  .bars { display:flex; flex-direction:column; gap:24px; width:100%; }
+  .bar-row { display:flex; align-items:center; gap:14px; }
+  .bar-lab { color:#c9d6e2; font-size:26px; width:190px; text-align:right; line-height:1.2; }
+  .bar-track { flex:1; height:30px; border-radius:999px; background:rgba(255,255,255,0.12); overflow:hidden; }
+  .bar-fill { display:block; height:100%; border-radius:999px; }
+  .bar-val { color:#fff; font-size:28px; font-weight:700; width:120px; text-align:left; }
+  .donut-wrap { position:relative; width:320px; height:320px; }
+  .donut-c { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .donut-n { color:#fff; font-size:78px; font-weight:800; }
+  .line-wrap { position:relative; width:620px; }
+  .line-labs { position:relative; height:36px; margin-top:4px; }
+  .line-lab { position:absolute; transform:translateX(-50%); color:#9fb3c8; font-size:22px; white-space:nowrap; }
+  .steps { display:flex; flex-direction:column; width:100%; }
+  .step { display:flex; align-items:flex-start; gap:16px; }
+  .step-n { width:56px; height:56px; flex:none; border-radius:50%; color:#fff; font-size:28px;
+    font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .step-b { text-align:left; padding-top:8px; }
+  .step-t { color:#f4f6f8; font-size:32px; font-weight:600; line-height:1.3;
+    display:flex; align-items:center; gap:10px; }
+  .step-d { color:#9fb3c8; font-size:26px; margin-top:4px; }
+  .step-arrow { width:3px; height:26px; margin-left:26px; background:rgba(255,255,255,0.25); }
+  .timeline { display:flex; flex-direction:column; gap:18px; width:100%; text-align:left; }
+  .tl-row { display:flex; gap:16px; }
+  .tl-dot { width:22px; height:22px; border-radius:50%; flex:none; margin-top:10px; }
+  .tl-l { color:#fff; font-size:32px; font-weight:700; }
+  .tl-t { color:#c9d6e2; font-size:26px; line-height:1.35; }
+  .icon-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:26px 18px; width:100%; }
+  .ig-item { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .ig-ico { color:${A}; }
+  .ig-lab { color:#f4f6f8; font-size:26px; line-height:1.25; }
+  .compare { display:grid; grid-template-columns:1fr 1fr; gap:16px; width:100%; }
+  .cmp-col { border-radius:16px; padding:18px 16px; background:rgba(255,255,255,0.06); }
+  .cmp-good { border:2px solid rgba(82,196,26,0.55); }
+  .cmp-bad { border:2px solid rgba(255,77,79,0.5); }
+  .cmp-h { color:#fff; font-size:28px; font-weight:700; margin-bottom:12px; }
+  .cmp-i { color:#e6edf5; font-size:24px; line-height:1.35; display:flex; gap:8px;
+    margin:8px 0; text-align:left; }
+  .cmp-m { flex:none; display:flex; }
+  .cmp-m.good { color:#52c41a; }
+  .cmp-m.bad { color:#ff4d4f; }
+  .quote-mark { font-size:150px; line-height:0.55; font-weight:800; }
+  .quote-t { color:#fff; font-size:44px; font-weight:600; line-height:1.35; max-width:580px; }
+  .quote-s { color:#9fb3c8; font-size:28px; margin-top:16px; }
 </style></head>
 <body><div id="root" data-composition-id="main" data-start="0"
   data-duration="${total.toFixed(2)}" data-width="720" data-height="1280">
@@ -972,6 +1184,35 @@ export async function renderCarousel(job, deps = {}) {
 }
 
 // ── 5. render + deliver one job ───────────────────────────────────────
+// TTS per scene, one file per entry in `segTexts` — the composition maps
+// audio to scenes by index, so the count must match exactly. edge-tts
+// occasionally returns an empty file (network hiccup): retry, then fall
+// back to the companion voice before giving up.
+export function speakSegments(segTexts, work, spawn) {
+  const segs = [];
+  for (const [i, text] of segTexts.entries()) {
+    const mp3 = join(work, 'assets', `seg${i}.mp3`);
+    const ok = (f) => existsSync(f) && statSync(f).size > 500;
+    let done = false, lastErr = '';
+    // The endpoint throttles bursts: space every attempt out, escalate
+    // the backoff, and keep the last stderr for the failure report.
+    for (const voice of [VOICE, 'vi-VN-HoaiMyNeural']) {
+      for (let attempt = 0; attempt < 3 && !done; attempt++) {
+        const r = spawn('edge-tts', ['--voice', voice, '--rate=+8%', '--text', text, '--write-media', mp3], { encoding: 'utf8' });
+        if (ok(mp3)) { done = true; break; }
+        lastErr = (r.stderr || r.stdout || '').toString().slice(-120);
+        spawn('sleep', [String(4 + attempt * 4)]);
+      }
+      if (done) break;
+    }
+    if (!done) throw new Error(`edge-tts failed for segment ${i} (both voices): ${lastErr}`);
+    segs.push(audioSeconds(mp3));
+    spawn('sleep', ['2']); // pace consecutive calls — no bursts
+  }
+  log(`tts: ${segs.map((d) => d.toFixed(1) + 's').join(' + ')}`);
+  return segs;
+}
+
 // `deps` are test seams (scripts/run-video-agent-tests.mjs drives this path
 // with a temp workspace and faked TTS + render + deliver): what the agent
 // hands to the platform is the end of a chain — TTS, composition, render,
@@ -994,6 +1235,7 @@ export async function renderOne(job, deps = {}) {
   }
 
   const isBusiness = job.kind === 'business' || job.kind === 'website';
+  const isExplainer = job.kind === 'explainer';
   let siteText = null;
 
   // Website promos: screenshot the live site + scrape its text as the
@@ -1012,45 +1254,42 @@ export async function renderOne(job, deps = {}) {
     log(`captured ${site.shots.length} screenshot(s)`);
   }
 
-  log('writing script via GuRouter…');
-  const scriptSource = siteText ? { ...job, body_markdown: siteText } : job;
-  const script = isBusiness ? await writeBusinessScript(scriptSource) : await writeScript(job);
-  log(`script ok (${job.kind})`);
-
-  // TTS per scene. Post: hook → 3 takeaways → the open question → the
-  // read-the-article invite. Business: hook → reveal → 3 points → cta
-  // (contact scene is silent on a fixed beat). edge-tts occasionally
-  // returns an empty file (network hiccup) — retry, then fall back to
-  // the companion voice before giving up.
-  const READ_CTA = 'Đọc bài viết để biết thêm chi tiết';
-  const segTexts = isBusiness
-    ? [script.hook, `${job.project?.name || ''}. ${script.reveal}`, script.points.join(' '), script.cta]
-    : [script.hook, script.points.join(' '), script.question, 'Đọc bài viết để biết thêm chi tiết'];
-  const segs = [];
-  for (const [i, text] of segTexts.entries()) {
-    const mp3 = join(work, 'assets', `seg${i}.mp3`);
-    const ok = (f) => existsSync(f) && statSync(f).size > 500;
-    let done = false, lastErr = '';
-    // The endpoint throttles bursts: space every attempt out, escalate
-    // the backoff, and keep the last stderr for the failure report.
-    for (const voice of [VOICE, 'vi-VN-HoaiMyNeural']) {
-      for (let attempt = 0; attempt < 3 && !done; attempt++) {
-        const r = spawn('edge-tts', ['--voice', voice, '--rate=+8%', '--text', text, '--write-media', mp3], { encoding: 'utf8' });
-        if (ok(mp3)) { done = true; break; }
-        lastErr = (r.stderr || r.stdout || '').toString().slice(-120);
-        spawn('sleep', [String(4 + attempt * 4)]);
-      }
-      if (done) break;
+  // The narration source is the only thing that differs by kind; the TTS
+  // loop, the imagery, the music, the render and the master are shared.
+  let script = null;
+  let plan = null;
+  if (isExplainer) {
+    log('writing explainer plan via GuRouter…');
+    try {
+      plan = await writePlan(job);
+      log(`plan ok (${plan.scenes.length} scenes: ${plan.scenes.map((s) => s.type).join(', ')})`);
+    } catch (e) {
+      // GuRouter down, out of quota, or a plan the number guard gutted:
+      // derive the scenes from the article itself, the way the carousel
+      // already does. A model outage must not cost the job.
+      log(`plan failed (${String(e?.message || e).slice(0, 120)}) — deriving scenes from the article`);
+      plan = planFromMarkdown(job.body_markdown, job.title);
     }
-    if (!done) throw new Error(`edge-tts failed for segment ${i} (both voices): ${lastErr}`);
-    segs.push(audioSeconds(mp3));
-    spawn('sleep', ['2']); // pace consecutive calls — no bursts
+  } else {
+    log('writing script via GuRouter…');
+    const scriptSource = siteText ? { ...job, body_markdown: siteText } : job;
+    script = isBusiness ? await writeBusinessScript(scriptSource) : await writeScript(job);
+    log(`script ok (${job.kind})`);
   }
-  log(`tts: ${segs.map((d) => d.toFixed(1) + 's').join(' + ')}`);
+
+  const READ_CTA = 'Đọc bài viết để biết thêm chi tiết';
+  const segTexts = isExplainer
+    ? plan.scenes.map((s) => String(s.say || narrationFor(s)).trim() || ' ')
+    : isBusiness
+      ? [script.hook, `${job.project?.name || ''}. ${script.reveal}`, script.points.join(' '), script.cta]
+      : [script.hook, script.points.join(' '), script.question, READ_CTA];
+  const segs = speakSegments(segTexts, work, spawn);
 
   // Real imagery: post videos scrape the project's website for scene
   // backgrounds, falling back to the R2 hero the claim payload carries.
-  if (!isBusiness) {
+  // An explainer skips the scrape — its scenes are charts, and a photo
+  // behind a chart is what makes numbers unreadable.
+  if (!isBusiness && !isExplainer) {
     media = await collectMedia(job);
   }
   const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
@@ -1072,9 +1311,11 @@ export async function renderOne(job, deps = {}) {
   else log('bgm: none (VIDEO_MUSIC=off, or ffmpeg missing/failed) — voice only');
 
   log('composing…');
-  const html = isBusiness
-    ? composeBusinessHtml(job, script, segs, media, logoSrc, bgmSrc)
-    : composeHtml(job, script, segs, logoSrc, bgmSrc);
+  const html = isExplainer
+    ? composeExplainerHtml(job, plan, segs, logoSrc, bgmSrc)
+    : isBusiness
+      ? composeBusinessHtml(job, script, segs, media, logoSrc, bgmSrc)
+      : composeHtml(job, script, segs, logoSrc, bgmSrc);
   writeFileSync(join(work, 'index.html'), html);
 
   log('rendering (hyperframes)…');

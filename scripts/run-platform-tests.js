@@ -40,7 +40,11 @@ import { onRequestGet as providersList } from '../functions/api/admin/providers.
 import { onRequestPost as providersTest } from '../functions/api/admin/providers/test.js';
 import { signSession } from '../functions/_lib/passwords.js';
 import { setVaultSecret } from '../functions/_lib/secret_vault.js';
-import { carouselRef, carouselPrefix, carouselSlideKey } from '../functions/_lib/video_jobs.js';
+import {
+  carouselRef, carouselPrefix, carouselSlideKey, explainerRef, postIdFromRef, postIdFromRefSql,
+} from '../functions/_lib/video_jobs.js';
+import { onRequestPost as createExplainerJob } from '../functions/api/admin/video/explainer.js';
+import { onRequestPost as claimVideoJob } from '../functions/api/admin/video/claim.js';
 import { renderCoverSvg, isRenderableSpec, fallbackCoverSpec } from '../functions/_lib/cover_svg.js';
 import { onRequestGet as coverSvgRoute } from '../functions/cover/[slug].svg.js';
 import { onRequestGet as ogSvgRoute } from '../functions/og/[slug].svg.js';
@@ -2255,6 +2259,75 @@ async function testChannelOAuthState() {
   ok('state carries the channel and legacy 3-part state still verifies');
 }
 
+// ── R. explainer video jobs ─────────────────────────────────────────
+// An explainer is another per-post kind, so it rides the same queue with
+// its own sentinel. Two failures here are invisible until production: if
+// the ref helpers do not strip the new sentinel the job resolves to the
+// wrong article (and the list shows an empty title), and if the claim does
+// not list the kind the job sits `pending` forever. Neither throws.
+async function testExplainerVideoJobs() {
+  console.log('\nR. Explainer video jobs');
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+  const ref = explainerRef(POST);
+
+  // 1. The ref policy.
+  assert.equal(postIdFromRef(ref), POST, 'postIdFromRef must strip the explainer sentinel');
+  assert.equal(postIdFromRef(carouselRef(POST)), POST, 'and still strip the carousel one');
+  assert.equal(postIdFromRef(`project:${PROJECT}`), null, 'a project sentinel has no post behind it');
+  assert.match(postIdFromRefSql('v.blog_post_id'), /explainer:/, 'the SQL mirror knows the sentinel too');
+
+  await env.DB.prepare(
+    `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, attempts, created_at, updated_at)
+     VALUES ('vj_explain', ?, ?, 'alpha-post', 'explainer', 'pending', 0, ?, ?)`
+  ).bind(PROJECT, ref, t, t).run();
+
+  // The list query joins through postIdFromRefSql — the sentinel must land
+  // on the article, not on a row that does not exist.
+  const joined = await env.__get(
+    `SELECT p.title FROM video_jobs v JOIN blog_posts p
+       ON p.id = ${postIdFromRefSql('v.blog_post_id')} WHERE v.id = 'vj_explain'`
+  );
+  assert.equal(joined?.title, 'Tiêu đề', 'an explainer job resolves back to its article');
+  ok('the explainer sentinel resolves to its post in both JS and SQL');
+
+  // 2. The create endpoint.
+  const create = async (body, token) => createExplainerJob({
+    env, request: adminReq('https://x/api/admin/video/explainer', token === undefined ? { body } : { body, token }),
+  });
+  assert.equal((await create({ project_id: PROJECT, slug: 'alpha-post' }, '')).status, 401,
+    'creating an explainer needs the admin gate');
+  assert.equal((await create({ project_id: PROJECT })).status, 400, 'a slug is required');
+  assert.equal((await create({ project_id: PROJECT, slug: 'nope' })).status, 404, 'an unpublished slug is not found');
+  assert.equal((await create({ project_id: PROJECT, slug: 'alpha-post' })).status, 409,
+    'a second explainer for the same post while one is rendering is refused');
+  ok('the explainer endpoint is admin-gated and refuses a duplicate while one is rendering');
+
+  // 3. The claim. The kind is not business/website, so it comes through the
+  // shared post queue — which is exactly the list that has to name it.
+  const claimed = await (await claimVideoJob({
+    env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'explainer' } }),
+  })).json();
+  assert.ok(claimed?.job, 'the queued explainer must be claimable');
+  assert.equal(claimed.job.kind, 'explainer');
+  assert.equal(claimed.job.slug, 'alpha-post');
+  assert.equal(claimed.job.title, 'Tiêu đề', 'and it carries the article payload the plan needs');
+  assert.ok('body_markdown' in claimed.job, 'including the body the visual plan is built from');
+  assert.equal((await env.__get("SELECT status FROM video_jobs WHERE id = 'vj_explain'"))?.status, 'claimed');
+  ok('a queued explainer is claimed with its article payload');
+
+  // 4. Re-render: a finished explainer is replaced, not duplicated.
+  await env.DB.prepare("UPDATE video_jobs SET status = 'done' WHERE id = 'vj_explain'").run();
+  const again = await (await create({ project_id: PROJECT, slug: 'alpha-post' })).json();
+  assert.equal(again.ok, true, 'a finished explainer can be re-rendered');
+  assert.equal((await env.__get("SELECT COUNT(*) AS n FROM video_jobs WHERE kind = 'explainer'"))?.n, 1,
+    're-rendering replaces the row instead of leaving two behind');
+  const fresh = await env.__get("SELECT blog_post_id, status FROM video_jobs WHERE kind = 'explainer'");
+  assert.equal(fresh.blog_post_id, ref, 'and the new row keeps the sentinel, so UNIQUE(blog_post_id) holds');
+  assert.equal(fresh.status, 'pending');
+  ok('re-creating a finished explainer replaces it and keeps the sentinel');
+}
+
 async function main() {
   console.log('--- Platform tests (migrations · queue · carousel · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy · cover) ---');
   await testMigrations();
@@ -2278,6 +2351,7 @@ async function main() {
   await testMailCredentials();
   await testEmailPolicy();
   await testCarouselVideoJobs();
+  await testExplainerVideoJobs();
   await testCoverSpecFallback();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }

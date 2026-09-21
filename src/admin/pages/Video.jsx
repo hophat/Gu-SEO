@@ -4,14 +4,14 @@
 // functions/api/admin/video/*). Videos are rendered off-platform by the
 // HyperFrames agent on the render VPS; this page shows what exists,
 // what failed and why, and links the MP4 for download / social posting.
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Card, Table, Button, Space, Typography, message, Row, Col, Tooltip, Alert, Popconfirm, Input, Modal,
+  Card, Table, Button, Space, Typography, message, Row, Col, Tooltip, Alert, Popconfirm, Input, Modal, Select,
 } from 'antd';
 import {
   ReloadOutlined, VideoCameraOutlined, CheckCircleOutlined,
   ClockCircleOutlined, WarningOutlined, DownloadOutlined, FacebookOutlined,
-  AppstoreOutlined, DeleteOutlined, GlobalOutlined, PlayCircleOutlined,
+  AppstoreOutlined, DeleteOutlined, GlobalOutlined, PlayCircleOutlined, PictureOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import VideoStatusTag from '../components/VideoStatusTag.jsx';
@@ -30,6 +30,42 @@ export default function Video() {
   const [viewing, setViewing] = useState(null);
   const [brandForm, setBrandForm] = useState({ video_tagline: '', brand_accent: '', address: '', phone: '' });
   const [brandOpen, setBrandOpen] = useState(false);
+  // Explainer create flow — a content video is tied to one article, so the
+  // operator picks it here the same way the Carousel page does.
+  const [posts, setPosts] = useState([]);
+  const [explainerSlug, setExplainerSlug] = useState(undefined);
+
+  const loadPosts = useCallback(async () => {
+    const { status, body } = await apiGet('/api/admin/blog/list');
+    if (status === 200) setPosts((body?.posts || []).filter((p) => p.status === 'published'));
+  }, []);
+
+  useEffect(() => { loadPosts(); }, [loadPosts]);
+
+  const postOptions = useMemo(
+    () => posts.map((p) => ({ value: p.slug, label: p.title || p.slug })),
+    [posts]
+  );
+
+  const createExplainer = async () => {
+    if (!explainerSlug) { message.warning('Chọn một bài viết trước'); return; }
+    setBusyId('__explainer__');
+    const { status, body } = await apiPost('/api/admin/video/explainer', {
+      project_id: getActiveProject(), slug: explainerSlug,
+    });
+    setBusyId(null);
+    if (status === 200 && body?.ok) {
+      message.success(body.hint || 'Đã tạo video minh hoạ — agent sẽ render trong ~5 phút');
+      setExplainerSlug(undefined);
+      load();
+    } else if (status === 409) {
+      message.info('Video minh hoạ cho bài này đang render — đợi vài phút rồi tải lại');
+    } else if (status === 404) {
+      message.error('Không tìm thấy bài viết đã xuất bản với slug này');
+    } else {
+      message.error(body?.hint || body?.error || 'Không tạo được video minh hoạ');
+    }
+  };
 
   const loadBrand = useCallback(async () => {
     const pid = getActiveProject();
@@ -192,6 +228,40 @@ export default function Video() {
           </Space>
         }
       />
+      <Card
+        title={<Space><PictureOutlined /> Video minh hoạ nội dung bài viết</Space>}
+        style={{ marginBottom: 16 }}
+        extra={
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            45–75 giây · biểu đồ, sơ đồ quy trình, icon vẽ từ nội dung bài
+          </Text>
+        }
+      >
+        <Space wrap>
+          <Select
+            showSearch
+            allowClear
+            placeholder="Chọn bài viết đã xuất bản"
+            style={{ width: 420 }}
+            value={explainerSlug}
+            onChange={setExplainerSlug}
+            options={postOptions}
+            optionFilterProp="label"
+          />
+          <Button
+            type="primary"
+            icon={<PictureOutlined />}
+            loading={busyId === '__explainer__'}
+            onClick={createExplainer}
+          >
+            Tạo video minh hoạ
+          </Button>
+        </Space>
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+          Khác với video tóm tắt: video minh hoạ giải thích nội dung bài bằng số liệu và sơ đồ.
+          Mỗi bài có một video minh hoạ; tạo lại sẽ thay bản cũ.
+        </Text>
+      </Card>
       <Card
         title={<Space><VideoCameraOutlined /> Hàng chờ video</Space>}
         extra={

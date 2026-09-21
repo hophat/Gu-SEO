@@ -1,9 +1,11 @@
 // Video agent — claim the next job that needs rendering.
 //
-// Three job kinds flow through here:
-//   business — per-project promo from the brand kit (admin button)
-//   website  — promo rendered from a live URL (source_url recorded)
-//   post     — a published blog post becomes a narrated summary
+// The job kinds that flow through here:
+//   business  — per-project promo from the brand kit (admin button)
+//   website   — promo rendered from a live URL (source_url recorded)
+//   post      — a published blog post becomes a narrated teaser
+//   carousel  — the same post as 5 static slides
+//   explainer — the same post as an illustrated content video
 //
 // Claim semantics: POST { type?, slug?, project_id? }.
 //   - business/website: claim the oldest pending/failed job of that kind.
@@ -15,12 +17,19 @@
 // never trips the unique index.
 import { json, nowSec, newId, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
-import { postIdFromRef } from '../../../_lib/video_jobs.js';
+import { postIdFromRef, CAROUSEL_KIND, EXPLAINER_KIND } from '../../../_lib/video_jobs.js';
 
 // How far back the auto-queue looks for post videos. Videos are
 // enrichment for fresh posts — without a window, the first agent run
 // would try to backfill the entire archive.
 const QUEUE_WINDOW = 48 * 3600;
+
+// Every per-post kind rides this one queue: they all need the same blog
+// post payload (title, body_markdown, hero). A new per-post kind that is
+// not listed here is never claimed and its jobs sit `pending` forever —
+// derived from the kind constants so the list cannot drift from the ones
+// the ref policy knows about.
+const POST_QUEUE_KINDS = ['post', CAROUSEL_KIND, EXPLAINER_KIND].map((k) => `'${k}'`).join(',');
 
 export const onRequestPost = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -156,10 +165,10 @@ export const onRequestPost = async ({ env, request }) => {
     // Carousels ride the same queue — they need the same post payload.
     const pendSql = projectId
       ? `SELECT id, kind, blog_post_id FROM video_jobs
-          WHERE COALESCE(kind, 'post') IN ('post','carousel') AND project_id = ? AND status IN ('pending','failed')
+          WHERE COALESCE(kind, 'post') IN (${POST_QUEUE_KINDS}) AND project_id = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`
       : `SELECT id, kind, project_id, blog_post_id FROM video_jobs
-          WHERE COALESCE(kind, 'post') IN ('post','carousel') AND status IN ('pending','failed')
+          WHERE COALESCE(kind, 'post') IN (${POST_QUEUE_KINDS}) AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`;
     const pendRows = projectId
       ? await env.DB.prepare(pendSql).bind(projectId).all().catch(() => ({ results: [] }))

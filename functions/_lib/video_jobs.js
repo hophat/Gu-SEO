@@ -14,6 +14,17 @@ export const CAROUSEL_REF_PREFIX = 'carousel:';
 export const CAROUSEL_KEY_PREFIX = 'carousel/';
 export const CAROUSEL_SLIDE_COUNT = 5;
 
+// A per-post video kind that is not the post's own job: the article video
+// already holds UNIQUE(blog_post_id), so each extra kind satisfies it with
+// its own sentinel. Adding a kind means adding its prefix here and nothing
+// else — the three ref helpers below all read this list.
+export const EXPLAINER_KIND = 'explainer';
+export const EXPLAINER_REF_PREFIX = 'explainer:';
+
+// Sentinels that still point at a blog post (as opposed to project:/url:,
+// which have no post behind them). Order matters only for readability.
+export const POST_BACKED_PREFIXES = [CAROUSEL_REF_PREFIX, EXPLAINER_REF_PREFIX];
+
 // ── refs (video_jobs.blog_post_id) ────────────────────────────────────
 
 export function carouselRef(postId) {
@@ -24,27 +35,37 @@ export function isCarouselRef(ref) {
   return typeof ref === 'string' && ref.startsWith(CAROUSEL_REF_PREFIX);
 }
 
+export function explainerRef(postId) {
+  return `${EXPLAINER_REF_PREFIX}${postId}`;
+}
+
 // The blog post a ref points at, or null when the ref is not post-backed
 // (the project:/url: sentinels have no post behind them).
 export function postIdFromRef(ref) {
   const s = String(ref ?? '');
-  if (isCarouselRef(s)) return s.slice(CAROUSEL_REF_PREFIX.length);
+  for (const p of POST_BACKED_PREFIXES) if (s.startsWith(p)) return s.slice(p.length);
   if (/^(project|url):/.test(s)) return null;
   return s || null;
 }
 
 // SQL mirror of postIdFromRef for a column expression, so reader queries
-// (list.js, social_queue.js) don't each re-encode the sentinel.
+// (list.js, social_queue.js) don't each re-encode the sentinel. Built from
+// POST_BACKED_PREFIXES so a new kind cannot be handled in JS and forgotten
+// in SQL — that mismatch silently joins to the wrong row.
 export function postIdFromRefSql(col) {
-  const p = CAROUSEL_REF_PREFIX;
-  return `CASE WHEN ${col} LIKE '${p}%' THEN substr(${col}, ${p.length + 1}) ELSE ${col} END`;
+  return POST_BACKED_PREFIXES.reduceRight(
+    (acc, p) => `CASE WHEN ${col} LIKE '${p}%' THEN substr(${col}, ${p.length + 1}) ELSE ${acc} END`,
+    col,
+  );
 }
 
 // SQL: the exact video_jobs ref for a row — the sentinel when it carries one,
 // otherwise the post id. Used to pick the right job's video_key.
 export function videoJobRefSql(refCol, postCol) {
-  const p = CAROUSEL_REF_PREFIX;
-  return `CASE WHEN ${refCol} LIKE '${p}%' THEN ${refCol} ELSE ${postCol} END`;
+  return POST_BACKED_PREFIXES.reduceRight(
+    (acc, p) => `CASE WHEN ${refCol} LIKE '${p}%' THEN ${refCol} ELSE ${acc} END`,
+    postCol,
+  );
 }
 
 // ── R2 slide keys (video_jobs.video_key) ──────────────────────────────

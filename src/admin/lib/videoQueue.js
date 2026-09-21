@@ -9,6 +9,7 @@ import { message } from 'antd';
 import { apiGet, apiPost } from '../api.js';
 
 export const CAROUSEL_KIND = 'carousel';
+export const EXPLAINER_KIND = 'explainer';
 export const IN_PROGRESS = ['pending', 'claimed', 'rendering'];
 
 const VIDEO_STATUS_META = {
@@ -28,7 +29,8 @@ const CAROUSEL_STATUS_META = {
 };
 
 // Status label depends on the job kind — a carousel generates slides, a
-// video renders an MP4, so "done" reads differently for each.
+// video renders an MP4, so "done" reads differently for each. An
+// explainer is a video (it delivers an MP4), so it shares VIDEO_STATUS_META.
 export function statusMeta(kind, status) {
   const table = kind === CAROUSEL_KIND ? CAROUSEL_STATUS_META : VIDEO_STATUS_META;
   return table[status] || { color: 'default', text: status };
