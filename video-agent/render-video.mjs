@@ -962,16 +962,24 @@ export async function renderCarousel(job, deps = {}) {
 }
 
 // ── 5. render + deliver one job ───────────────────────────────────────
-async function renderOne(job) {
+// `deps` are test seams (scripts/run-video-agent-tests.mjs drives this path
+// with a temp workspace and faked TTS + render + deliver): what the agent
+// hands to the platform is the end of a chain — TTS, composition, render,
+// mastering — and only a real run of the whole chain shows which file that
+// is. Production calls it with the job alone.
+export async function renderOne(job, deps = {}) {
+  const work = deps.work || WORK;
+  const spawn = deps.spawn || spawnSync;
+  const deliver = deps.deliver || api;
   log(`claimed ${job.slug} (${job.kind}, job ${job.id})`);
-  rmSync(join(WORK, 'renders'), { recursive: true, force: true });
-  rmSync(join(WORK, 'snapshots'), { recursive: true, force: true });
-  mkdirSync(join(WORK, 'assets'), { recursive: true });
+  rmSync(join(work, 'renders'), { recursive: true, force: true });
+  rmSync(join(work, 'snapshots'), { recursive: true, force: true });
+  mkdirSync(join(work, 'assets'), { recursive: true });
 
   // Carousel: static 4:5 slides (1080×1350) exported with hyperframes
   // snapshot — no TTS, no video. Same script as the post teaser.
   if (job.kind === 'carousel') {
-    await renderCarousel(job);
+    await renderCarousel(job, deps);
     return;
   }
 
@@ -988,7 +996,7 @@ async function renderOne(job) {
     // Screenshots double as the media pool (img{n}.jpg naming).
     let n = 0;
     for (const shot of site.shots) {
-      copyFileSync(shot, join(WORK, 'assets', 'media', `img${n}.jpg`));
+      copyFileSync(shot, join(work, 'assets', 'media', `img${n}.jpg`));
       n++;
     }
     log(`captured ${site.shots.length} screenshot(s)`);
@@ -1010,23 +1018,23 @@ async function renderOne(job) {
     : [script.hook, script.points.join(' '), script.question, 'Đọc bài viết để biết thêm chi tiết'];
   const segs = [];
   for (const [i, text] of segTexts.entries()) {
-    const mp3 = join(WORK, 'assets', `seg${i}.mp3`);
+    const mp3 = join(work, 'assets', `seg${i}.mp3`);
     const ok = (f) => existsSync(f) && statSync(f).size > 500;
     let done = false, lastErr = '';
     // The endpoint throttles bursts: space every attempt out, escalate
     // the backoff, and keep the last stderr for the failure report.
     for (const voice of [VOICE, 'vi-VN-HoaiMyNeural']) {
       for (let attempt = 0; attempt < 3 && !done; attempt++) {
-        const r = spawnSync('edge-tts', ['--voice', voice, '--rate=+8%', '--text', text, '--write-media', mp3], { encoding: 'utf8' });
+        const r = spawn('edge-tts', ['--voice', voice, '--rate=+8%', '--text', text, '--write-media', mp3], { encoding: 'utf8' });
         if (ok(mp3)) { done = true; break; }
         lastErr = (r.stderr || r.stdout || '').toString().slice(-120);
-        spawnSync('sleep', [String(4 + attempt * 4)]);
+        spawn('sleep', [String(4 + attempt * 4)]);
       }
       if (done) break;
     }
     if (!done) throw new Error(`edge-tts failed for segment ${i} (both voices): ${lastErr}`);
     segs.push(audioSeconds(mp3));
-    spawnSync('sleep', ['2']); // pace consecutive calls — no bursts
+    spawn('sleep', ['2']); // pace consecutive calls — no bursts
   }
   log(`tts: ${segs.map((d) => d.toFixed(1) + 's').join(' + ')}`);
 
@@ -1037,7 +1045,7 @@ async function renderOne(job) {
   }
   const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
   if (!media.length && heroB64) {
-    writeFileSync(join(WORK, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
+    writeFileSync(join(work, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
   }
 
   // Brand logo — downloaded once, overlaid on every scene by the shell.
@@ -1047,7 +1055,8 @@ async function renderOne(job) {
   // length, mixed well under the voice (data-volume in the composition).
   const bgmSrc = makeBgm(
     segs.reduce((a, s) => a + s + 0.4, 0),
-    `${job.slug}-${job.kind}`
+    `${job.slug}-${job.kind}`,
+    join(work, 'assets', 'bgm.mp3')
   );
   if (bgmSrc) log('bgm: ambient pad mixed in');
   else log('bgm: none (VIDEO_MUSIC=off, or ffmpeg missing/failed) — voice only');
@@ -1056,25 +1065,25 @@ async function renderOne(job) {
   const html = isBusiness
     ? composeBusinessHtml(job, script, segs, media, logoSrc, bgmSrc)
     : composeHtml(job, script, segs, logoSrc, bgmSrc);
-  writeFileSync(join(WORK, 'index.html'), html);
+  writeFileSync(join(work, 'index.html'), html);
 
   log('rendering (hyperframes)…');
-  const ren = spawnSync('npx', ['-y', `hyperframes@${HF_VERSION}`, 'render'], { cwd: WORK, encoding: 'utf8', timeout: 15 * 60 * 1000 });
+  const ren = spawn('npx', ['-y', `hyperframes@${HF_VERSION}`, 'render'], { cwd: work, encoding: 'utf8', timeout: 15 * 60 * 1000 });
   if (ren.status !== 0) {
     throw new Error('render failed: ' + ((ren.stderr || ren.stdout || '').slice(-400)));
   }
-  const renders = join(WORK, 'renders');
+  const renders = join(work, 'renders');
   const mp4 = readdirSync(renders).filter((f) => f.endsWith('.mp4'))
     .map((f) => ({ f, m: statSync(join(renders, f)).mtimeMs }))
     .sort((a, b) => b.m - a.m)[0]?.f;
   if (!mp4) throw new Error('render produced no mp4');
   const raw = join(renders, mp4);
-  const mastered = masterLoudness(raw);
+  const mastered = masterLoudness(raw, join(renders, 'master.mp4'));
   const bytes = readFileSync(mastered || raw);
   log(`${mastered ? `mastered to ${LOUDNESS.i} LUFS` : 'loudness master skipped'} ` +
     `(${(bytes.length / 1024).toFixed(0)}KB) → delivering`);
 
-  const up = await api('/api/admin/video/deliver', {
+  const up = await deliver('/api/admin/video/deliver', {
     method: 'POST',
     headers: { 'x-video-job': job.id, 'content-type': 'video/mp4' },
     body: bytes,

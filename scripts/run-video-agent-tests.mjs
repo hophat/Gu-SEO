@@ -20,28 +20,53 @@
 //   node --no-warnings scripts/run-video-agent-tests.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// The agent refuses to load without config, and an empty key forces the
-// offline script fallback so no test can reach GuRouter.
+// The agent refuses to load without config. GuRouter is stubbed rather than
+// disabled: the module reads the key once, at import, so a keyless import
+// makes renderCarousel fall back to the article (fine) but leaves renderOne's
+// script step unreachable — and the point below is to run renderOne whole.
+// The stub refuses every request unless a test asks for a script, so nothing
+// here can reach the network.
 process.env.BASE_URL = 'https://agent.test';
 process.env.ADMIN_TOKEN = 'test-token';
-process.env.GUROUTER_API_KEY = '';
+process.env.GUROUTER_API_KEY = 'test-key';
 
-const { composeCarouselSlideHtml, composeHtml, LOUDNESS, makeBgm, masterLoudness, renderCarousel, slideQueries } =
+let scriptStub = null;
+globalThis.fetch = async (url) => {
+  if (scriptStub && String(url).includes('/chat/completions')) {
+    return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify(scriptStub) } }] }) };
+  }
+  throw new Error(`network disabled in tests: ${url}`);
+};
+
+const { composeCarouselSlideHtml, composeHtml, LOUDNESS, makeBgm, masterLoudness, renderCarousel, renderOne, slideQueries } =
   await import('../video-agent/render-video.mjs');
 const { carouselPrefix, carouselSlideKey } = await import('../functions/_lib/video_jobs.js');
 
+const HAS_FFMPEG = spawnSync('ffmpeg', ['-version'], { encoding: 'utf8' }).status === 0;
+
+// Integrated loudness and true peak, read from ebur128's summary — never from
+// a tool that took part in any mastering.
+function integrated(file) {
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-af', 'ebur128=peak=true:framelog=quiet', '-f', 'null', '-'], { encoding: 'utf8' });
+  const s = r.stderr.split('Summary:')[1] || '';
+  const num = (re) => Number((s.match(re) || [])[1]);
+  return { i: num(/I:\s+(-?[\d.]+) LUFS/), tp: num(/Peak:\s+(-?[\d.]+) dBFS/) };
+}
+
 let passed = 0;
 function ok(label) { passed++; console.log(`✓ ${label}`); }
-// renderCarousel narrates every step; that is useful on the VPS and noise here.
-async function silently(fn) {
-  const real = console.log;
-  console.log = () => {};
-  try { return await fn(); } finally { console.log = real; }
+// The agent narrates every step; that is useful on the VPS and noise here.
+async function captureLogs(fn) {
+  const real = console.log, lines = [];
+  console.log = (...a) => lines.push(a.join(' '));
+  try { await fn(); } finally { console.log = real; }
+  return lines;
 }
+const silently = (fn) => captureLogs(fn).then(() => undefined);
 
 const JOB = {
   slug: 'alpha-post',
@@ -171,6 +196,9 @@ function rig({ failAt = 0, emptyAt = 0, photoFails = false, deliverResult = { ok
   const deps = {
     work,
     spawn(cmd, args, opts) {
+      // The carousel path runs exactly one kind of subprocess. Anything else
+      // means the job was routed somewhere it does not belong.
+      if (!args.includes('snapshot')) throw new Error(`carousel rig got a non-snapshot call: ${cmd} ${args.join(' ')}`);
       seen.snapshots.push({ cmd, args, cwd: opts?.cwd, html: readFileSync(join(opts.cwd, 'index.html'), 'utf8') });
       const n = seen.snapshots.length;
       if (n === failAt) return { status: 1, stderr: 'chrome exploded', stdout: '' };
@@ -270,6 +298,143 @@ for (const [label, deliverResult] of [
 }
 ok('a rejected deliver fails the job instead of reporting success');
 
+console.log('\n--- renderOne: what actually reaches deliver ---\n');
+
+// Only hyperframes is faked here. Every ffmpeg/ffprobe the agent runs on the
+// way (the bed, TTS durations, the loudness master) is the real tool, so the
+// bytes handed to deliver are a real, measurable MP4 rather than a call order
+// this test asserted to itself.
+const POST_JOB = {
+  id: 'vj_post',
+  kind: 'post',
+  slug: 'alpha-post',
+  title: '5 địa điểm ăn sáng ngon ở Lagi',
+  meta_description: 'Quán ăn sáng ở Lagi',
+  body_markdown: '## Bánh canh cá lóc 25k no căng\n## Bánh căn nướng than hoa\n## Cà phê sân vườn ven sông',
+  project: { name: 'Lagi Food', accent: '#e8590c', publishing_url: 'https://lagi.example/blog' },
+};
+const POST_SCRIPT = {
+  hook: 'Bữa sáng ở Lagi có gì?',
+  points: ['Bánh canh 25k', 'Bánh căn than hoa', 'Cà phê ven sông'],
+  question: 'Bạn thử món nào rồi?',
+};
+const POST_SECONDS = 9.6;
+
+// `raw` decides what the faked render leaves behind, i.e. the ways the master
+// can fail: a mix with audio, a silent picture, an unreadable file.
+function postRig({ raw = 'quiet', renderFails = false } = {}) {
+  const work = mkdtempSync(join(tmpdir(), 'render-one-'));
+  const seen = { spawns: [], delivers: [] };
+  const deps = {
+    work,
+    spawn(cmd, args, opts) {
+      seen.spawns.push({ cmd, args, cwd: opts?.cwd });
+      if (cmd === 'edge-tts') {
+        spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=2',
+          '-b:a', '128k', args[args.indexOf('--write-media') + 1]]);
+        return { status: 0, stdout: '', stderr: '' };
+      }
+      if (cmd === 'sleep') return { status: 0, stdout: '', stderr: '' };
+      if (cmd === 'npx') {
+        if (renderFails) return { status: 1, stdout: '', stderr: 'chrome exploded' };
+        const renders = join(opts.cwd, 'renders');
+        mkdirSync(renders, { recursive: true });
+        const out = join(renders, 'post_2026-01-01_00-00-00.mp4');
+        if (raw === 'corrupt') writeFileSync(out, Buffer.from('not an mp4'));
+        else spawnSync('ffmpeg', ['-v', 'error', '-y',
+          '-f', 'lavfi', '-i', `color=c=navy:s=64x64:d=${POST_SECONDS}`,
+          // Level matched to a real hyperframes render of this composition
+          // (-29 LUFS): what the master is asked to fix, not an easier number.
+          ...(raw === 'silent-video' ? [] : ['-f', 'lavfi', '-i', `sine=f=220:d=${POST_SECONDS}`, '-af', 'volume=-7dB']),
+          '-c:v', 'mpeg4', '-q:v', '31', '-c:a', 'aac', '-b:a', '128k', '-shortest', out]);
+        return { status: 0, stdout: 'render complete', stderr: '' };
+      }
+      throw new Error(`unexpected subprocess: ${cmd} ${args.join(' ')}`);
+    },
+    async deliver(path, opts) {
+      seen.delivers.push({ path, header: opts.headers['x-video-job'], body: opts.body });
+      return { ok: true, status: 200, json: async () => ({ status: 'done', video_key: 'video/alpha-post.mp4' }) };
+    },
+  };
+  const renders = () => join(work, 'renders');
+  return {
+    work, seen, deps,
+    raws: () => readdirSync(renders()).filter((f) => f !== 'master.mp4'),
+    master: () => join(renders(), 'master.mp4'),
+    done: () => rmSync(work, { recursive: true, force: true }),
+  };
+}
+
+if (!HAS_FFMPEG) {
+  console.log('… renderOne checks skipped: no ffmpeg on this machine');
+} else {
+  // ── the file that reaches the platform is the master ───────────────
+  {
+    const r = postRig();
+    scriptStub = POST_SCRIPT;
+    await silently(() => renderOne(POST_JOB, r.deps));
+    scriptStub = null;
+
+    const [post] = r.seen.delivers;
+    assert.equal(r.seen.delivers.length, 1, 'one deliver call');
+    assert.equal(post.path, '/api/admin/video/deliver');
+    assert.equal(post.header, POST_JOB.id, 'the bytes travel under the job id');
+    assert.ok(r.seen.spawns.some((s) => s.cmd === 'npx' && s.args.includes('render')), 'the render ran');
+
+    const raws = r.raws();
+    assert.equal(raws.length, 1, 'the render left one raw mp4 behind');
+    const rawFile = join(r.work, 'renders', raws[0]);
+    assert.ok(existsSync(r.master()), 'a master was written next to the render');
+    // Compared with equals() and a size, never deepEqual(): asserting on two
+    // multi-hundred-KB buffers makes the *failure* path diff them, which is
+    // how this suite got OOM-killed instead of reporting the regression.
+    assert.equal(post.body.length, statSync(r.master()).size, 'the delivered size is the master\'s, not the render\'s');
+    assert.ok(post.body.equals(readFileSync(r.master())), 'deliver must carry the master, not the render');
+    assert.ok(statSync(r.master()).mtimeMs >= statSync(rawFile).mtimeMs, 'mastering happens after the render');
+
+    const sent = join(r.work, 'sent.mp4');
+    writeFileSync(sent, post.body);
+    const rawLoud = integrated(rawFile), sentLoud = integrated(sent);
+    assert.ok(rawLoud.i < -24, `the render is quiet as rendered (${rawLoud.i} LUFS)`);
+    assert.ok(Math.abs(sentLoud.i - LOUDNESS.i) <= 1, `what was delivered is mastered (${sentLoud.i} LUFS)`);
+    assert.ok(sentLoud.tp <= LOUDNESS.tp + 0.1, `and under the ceiling (${sentLoud.tp} dBTP)`);
+    ok('renderOne masters after the render and delivers the master, not the render');
+    r.done();
+  }
+
+  // ── a mix that cannot be mastered is never a silent surprise ───────
+  for (const [label, raw] of [
+    ['a picture with no audio', 'silent-video'],
+    ['a file ffmpeg cannot read', 'corrupt'],
+  ]) {
+    const r = postRig({ raw });
+    scriptStub = POST_SCRIPT;
+    const lines = await captureLogs(() => renderOne(POST_JOB, r.deps));
+    scriptStub = null;
+
+    const [post] = r.seen.delivers;
+    assert.equal(post.path, '/api/admin/video/deliver', label);
+    assert.ok(post.body.equals(readFileSync(join(r.work, 'renders', r.raws()[0]))), `${label}: the render goes out as rendered`);
+    assert.ok(!existsSync(r.master()), `${label}: no master was produced`);
+    assert.ok(lines.some((l) => /loudness master skipped/.test(l)), `${label}: the skip is reported, not silent`);
+    r.done();
+  }
+  ok('an unmasterable mix is delivered as rendered and the skip is logged, never silent');
+
+  // ── a carousel job still takes the carousel path ───────────────────
+  {
+    const r = rig();
+    scriptStub = POST_SCRIPT; // armed, so a fall-through fails on the carousel contract, not on the network
+    await silently(() => renderOne(RENDER_JOB, r.deps));
+    scriptStub = null;
+    assert.equal(r.seen.snapshots.length, 5, 'five snapshots, reached through renderOne');
+    assert.equal(r.seen.delivers[0].path, '/api/admin/video/carousel-deliver');
+    assert.ok(!existsSync(join(r.work, 'renders')), 'a carousel renders no video, so there is nothing to master');
+    r.done();
+  }
+  ok('renderOne routes a carousel job down the carousel path — no video, no master');
+}
+
 // ── the post video's music bed ───────────────────────────────────────
 // A bed nobody can hear is the bug this guards. Measured on a real
 // hyperframes render, the original bed landed 31 LU under the voice — the
@@ -277,7 +442,7 @@ ok('a rejected deliver fails the job instead of reporting success');
 // amix divided the three sines by three and the chord sat below what a
 // phone speaker reproduces. So: level, and energy in the band that
 // actually leaves a phone.
-if (spawnSync('ffmpeg', ['-version'], { encoding: 'utf8' }).status !== 0) {
+if (!HAS_FFMPEG) {
   console.log('… music-bed checks skipped: no ffmpeg on this machine');
 } else {
   const TOTAL = 9.6;
@@ -318,13 +483,6 @@ if (spawnSync('ffmpeg', ['-version'], { encoding: 'utf8' }).status !== 0) {
     '-filter_complex', '[0]aformat=channel_layouts=mono[v];[1]volume=0.12[m];[v][m]amix=inputs=2:normalize=0[a]',
     '-map', '[a]', '-c:a', 'aac', '-b:a', '192k', mix], { encoding: 'utf8' });
 
-  // Measured with ebur128 — not the filter that did the mastering.
-  const integrated = (file) => {
-    const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-af', 'ebur128=peak=true:framelog=quiet', '-f', 'null', '-'], { encoding: 'utf8' });
-    const s = r.stderr.split('Summary:')[1] || '';
-    const num = (re) => Number((s.match(re) || [])[1]);
-    return { i: num(/I:\s+(-?[\d.]+) LUFS/), tp: num(/Peak:\s+(-?[\d.]+) dBFS/) };
-  };
   // The dB each window of the file moved by. One gain is a flat line here;
   // a dynamic normalizer diverges wherever the voice is not talking.
   const gainSpread = (before, after, winSec = 0.4) => {
