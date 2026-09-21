@@ -89,6 +89,20 @@ export default function Video() {
     }
   };
 
+  const publishFb = async (id) => {
+    setBusyId(id);
+    const { status, body } = await apiPost('/api/admin/video/publish', { id });
+    setBusyId(null);
+    if (status === 200 && body?.ok) {
+      message.success(body.posted ? 'Đã đăng video lên Facebook' : 'Đã vào hàng chờ — cron sẽ đăng trong ít phút');
+      load();
+    } else {
+      message.error(body?.error === 'already_enqueued'
+        ? 'Bài này đã có job đăng video — xem tab Bài đăng mạng xã hội'
+        : body?.error || 'Đăng thất bại');
+    }
+  };
+
   const statusTag = (s, kind) => {
     const m = STATUS_META[s] || { color: 'default', text: s };
     return (

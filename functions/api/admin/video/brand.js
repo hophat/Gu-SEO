@@ -4,8 +4,6 @@
 import { json, nowSec, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
 
-const FIELDS = ['video_tagline', 'brand_accent', 'address', 'phone'];
-
 export const onRequestGet = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
   const url = new URL(request.url);
@@ -32,7 +30,12 @@ export const onRequestGet = async ({ env, request }) => {
   });
 };
 
-export const onRequestPut = async ({ env, request }) => {
+// The admin UI's apiPost helper is POST-only — both verbs land here so a
+// save never dies on 405.
+export const onRequestPut = brandSave;
+export const onRequestPost = onRequestPut;
+
+async function brandSave({ env, request }) {
   const gate = await adminGate(env, request); if (gate) return gate;
   let body = {};
   try { body = await request.json(); } catch { return json(400, { error: 'bad_json' }); }
@@ -66,4 +69,4 @@ export const onRequestPut = async ({ env, request }) => {
 
   audit(env, 'admin', 'video.brand_update', projectId, { keys: Object.keys(fields) });
   return json(200, { ok: true, saved: Object.keys(fields) });
-};
+}
