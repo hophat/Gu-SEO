@@ -194,7 +194,8 @@ export async function publishToFacebook({ project, article, configJson, env }) {
   if (article.video_key && String(article.video_key).startsWith('carousel/') && env?.IMAGES) {
     const prefix = article.video_key;
     const listed = await env.IMAGES.list({ prefix }).catch(() => ({ objects: [] }));
-    const keys = (listed?.objects || []).map((o) => o.key).sort();
+    const slideRe = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d+\\.png$`);
+    const keys = (listed?.objects || []).map((o) => o.key).filter((k) => slideRe.test(k)).sort();
     if (!keys.length) throw new Error(`Carousel ${prefix} không còn trong R2 — render lại trước khi đăng.`);
     const v2 = cfg.apiVersion || await getApiVersion(env);
 
