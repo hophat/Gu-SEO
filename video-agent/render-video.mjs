@@ -332,8 +332,9 @@ function shade(hex, amt) {
 
 // Post composition — the teaser arc: hook → 3 takeaways → open
 // question → "đọc bài viết" outro. Scenes timed to TTS; the question
-// scene is the curiosity gap that sells the read.
-function composeHtml(job, script, segs, logoSrc = null, bgmSrc = null) {
+// scene is the curiosity gap that sells the read. Exported so the test
+// can check the music track the shell emits (and its gain).
+export function composeHtml(job, script, segs, logoSrc = null, bgmSrc = null) {
   const brand = job.project?.name || 'Blog';
   const outroUrl = (job.project?.publishing_url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
   const accent = job.project?.accent || ACCENT;
@@ -619,26 +620,38 @@ async function captureSite(siteUrl) {
 // no licensing questions). The chord set is picked by the job slug so a
 // project keeps the same bed across renders, and the pad is trimmed to
 // the video length with fades. Set VIDEO_MUSIC=off to disable.
-function makeBgm(totalSec, seedStr) {
+//
+// Levels matter more than they look: mastered to ≈ -31 LUFS / -19 dBFS
+// peak the bed lands ~18 LU under the edge-tts voice once the
+// composition applies its data-volume. The first version produced a
+// -45 LUFS file, which measured 31 LU under the voice in a real render
+// — indistinguishable from a video with no music — because `amix`
+// divides by its input count (9.5 dB thrown away) and the chord sat at
+// 220-330 Hz, under what a phone speaker reproduces. Hence normalize=0,
+// hotter sines, and an octave up.
+//
+// Exported, with an injectable `out`, for scripts/run-video-agent-tests.mjs:
+// a bed nobody can hear is the bug this function has to not repeat.
+export function makeBgm(totalSec, seedStr, out = join(WORK, 'assets', 'bgm.mp3')) {
   if (String(E('VIDEO_MUSIC') || '').toLowerCase() === 'off') return null;
   const chords = [
-    [220.0, 277.2, 329.6],  // A major — warm
-    [174.6, 220.0, 261.6],  // F major — calm
-    [196.0, 246.9, 293.7],  // G major — open
-    [164.8, 207.7, 261.6],  // E minor — soft
+    [440.0, 554.4, 659.2],  // A major — warm
+    [349.2, 440.0, 523.2],  // F major — calm
+    [392.0, 493.8, 587.4],  // G major — open
+    [329.6, 415.4, 523.2],  // E minor — soft
   ];
   // The chord set is picked by the job slug so a project keeps the same
   // bed across renders.
   const seed = String(seedStr || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const ch = chords[seed % chords.length];
-  const out = join(WORK, 'assets', 'bgm.mp3');
+  mkdirSync(dirname(out), { recursive: true });
   const fadeOut = Math.max(1, totalSec - 3).toFixed(1);
   const r = spawnSync('ffmpeg', [
     '-y', '-f', 'lavfi', '-i', `sine=frequency=${ch[0]}:duration=${totalSec.toFixed(1)}`,
     '-f', 'lavfi', '-i', `sine=frequency=${ch[1]}:duration=${totalSec.toFixed(1)}`,
     '-f', 'lavfi', '-i', `sine=frequency=${ch[2]}:duration=${totalSec.toFixed(1)}`,
     '-filter_complex',
-    `[0]volume=0.16[a];[1]volume=0.22[b];[2]volume=0.18[c];[a][b][c]amix=3,tremolo=f=0.4:d=0.6,lowpass=f=900,afade=t=in:d=2,afade=t=out:st=${fadeOut}:d=3[out]`,
+    `[0]volume=0.30[a];[1]volume=0.34[b];[2]volume=0.30[c];[a][b][c]amix=inputs=3:normalize=0,tremolo=f=0.4:d=0.6,lowpass=f=2400,afade=t=in:d=2,afade=t=out:st=${fadeOut}:d=3[out]`,
     '-map', '[out]', '-b:a', '128k', out,
   ], { encoding: 'utf8', timeout: 60000 });
   return r.status === 0 && existsSync(out) && statSync(out).size > 5000 ? out : null;
@@ -990,6 +1003,7 @@ async function renderOne(job) {
     `${job.slug}-${job.kind}`
   );
   if (bgmSrc) log('bgm: ambient pad mixed in');
+  else log('bgm: none (VIDEO_MUSIC=off, or ffmpeg missing/failed) — voice only');
 
   log('composing…');
   const html = isBusiness
