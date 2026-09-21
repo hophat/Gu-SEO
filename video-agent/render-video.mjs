@@ -16,7 +16,7 @@
 //
 // Config in video-agent/.env (0600): BASE_URL, ADMIN_TOKEN,
 // GUROUTER_API_KEY, VIDEO_VOICE, VIDEO_PROJECT_ID, VIDEO_BATCH, ACCENT.
-import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, statSync, readdirSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, statSync, readdirSync, copyFileSync, realpathSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -687,7 +687,11 @@ function matchKeyword(map, hay) {
 
 // Candidate queries for one slide, most specific first. The caller tries
 // them in order and keeps the first that yields an unused photo.
-function slideQueries(job, script, idx) {
+// Exported (with composeCarouselSlideHtml below) for
+// scripts/run-video-agent-tests.mjs — the deck contract they encode is what
+// the platform's deliver endpoint and the admin UI depend on, and it is
+// checkable without Chrome, hyperframes or the network.
+export function slideQueries(job, script, idx) {
   const title = String(job.title || '');
   const topic = matchKeyword(TOPIC_MAP, `${title} ${job.meta_description || ''}`) || 'small business';
   const text = idx === 0 ? script.hook
@@ -745,7 +749,7 @@ async function fetchOpenversePhoto(query, usedIds) {
 // snapshot then returns exactly that slide at any --at time, which makes
 // the deck deterministic — a single animated composition mis-mapped the
 // first frame in practice (cover came out as the CTA scene).
-function composeCarouselSlideHtml(job, script, slideIdx) {
+export function composeCarouselSlideHtml(job, script, slideIdx, assetsDir = join(WORK, 'assets')) {
   const p = job.project || {};
   const brand = p.name || 'Blog';
   const accent = p.accent || ACCENT;
@@ -771,10 +775,10 @@ function composeCarouselSlideHtml(job, script, slideIdx) {
   // Each slide prefers its own free photo; the article hero is the
   // fallback when Openverse had nothing (or the job has no hero at all).
   const own = `slide-${slideIdx}.jpg`;
-  const bgSrc = existsSync(join(WORK, 'assets', own)) ? own
-    : existsSync(join(WORK, 'assets', 'hero.jpg')) ? 'hero.jpg' : null;
+  const bgSrc = existsSync(join(assetsDir, own)) ? own
+    : existsSync(join(assetsDir, 'hero.jpg')) ? 'hero.jpg' : null;
   const bg = bgSrc ? `<div class="bgi"><img src="assets/${bgSrc}" alt=""/></div>` : '';
-  const logo = existsSync(join(WORK, 'assets', 'logo.png'))
+  const logo = existsSync(join(assetsDir, 'logo.png'))
     ? `<img class="brandlogo" src="assets/logo.png"/>` : '';
 
   return `<!doctype html>
@@ -815,16 +819,23 @@ ${logo}
 
 // Render the carousel: compose → snapshot at each slide's midpoint →
 // upload the PNGs. No TTS, no video encode.
-async function renderCarousel(job) {
+//
+// `deps` are test seams (scripts/run-video-agent-tests.mjs drives this path
+// with a temp workspace and faked snapshot/photo/deliver); production calls
+// it with the job alone.
+export async function renderCarousel(job, deps = {}) {
+  const work = deps.work || WORK;
+  const spawn = deps.spawn || spawnSync;
+  const photo = deps.photo || fetchOpenversePhoto;
+  const deliver = deps.deliver || api;
   log(`carousel for ${job.slug} (job ${job.id})`);
-  rmSync(join(WORK, 'snapshots'), { recursive: true, force: true });
-  mkdirSync(join(WORK, 'assets'), { recursive: true });
+  mkdirSync(join(work, 'assets'), { recursive: true });
   // Drop the previous deck's photos so a failed fetch this run cannot be
   // papered over by a stale slide-*.jpg left behind by an earlier job.
-  for (let i = 0; i < 5; i++) rmSync(join(WORK, 'assets', `slide-${i}.jpg`), { force: true });
+  for (let i = 0; i < 5; i++) rmSync(join(work, 'assets', `slide-${i}.jpg`), { force: true });
 
   const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
-  if (heroB64) writeFileSync(join(WORK, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
+  if (heroB64) writeFileSync(join(work, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
 
   log('writing script via GuRouter…');
   let script;
@@ -854,9 +865,9 @@ async function renderCarousel(job) {
   for (let i = 0; i < 5; i++) {
     for (const q of slideQueries(job, script, i)) {
       try {
-        const photo = await fetchOpenversePhoto(q, usedIds);
-        writeFileSync(join(WORK, 'assets', `slide-${i}.jpg`), photo.bytes);
-        log(`slide ${i + 1} photo: "${q}" (${photo.credit.license})`);
+        const shot = await photo(q, usedIds);
+        writeFileSync(join(work, 'assets', `slide-${i}.jpg`), shot.bytes);
+        log(`slide ${i + 1} photo: "${q}" (${shot.credit.license})`);
         break;
       } catch (e) {
         log(`slide ${i + 1} photo "${q}" failed: ${String(e?.message || e).slice(0, 60)}`);
@@ -869,19 +880,19 @@ async function renderCarousel(job) {
   log('snapshotting 5 slides…');
   const slides = [];
   for (let i = 0; i < 5; i++) {
-    writeFileSync(join(WORK, 'index.html'), composeCarouselSlideHtml(job, script, i));
-    rmSync(join(WORK, 'snapshots'), { recursive: true, force: true });
-    const ren = spawnSync('npx', ['-y', `hyperframes@${HF_VERSION}`, 'snapshot', '--at', '0.5', '--timeout', '9000'],
-      { cwd: WORK, encoding: 'utf8', timeout: 3 * 60 * 1000 });
+    writeFileSync(join(work, 'index.html'), composeCarouselSlideHtml(job, script, i, join(work, 'assets')));
+    rmSync(join(work, 'snapshots'), { recursive: true, force: true });
+    const ren = spawn('npx', ['-y', `hyperframes@${HF_VERSION}`, 'snapshot', '--at', '0.5', '--timeout', '9000'],
+      { cwd: work, encoding: 'utf8', timeout: 3 * 60 * 1000 });
     if (ren.status !== 0) throw new Error(`snapshot slide ${i + 1} failed: ` + ((ren.stderr || ren.stdout || '').slice(-300)));
-    const frame = readdirSync(join(WORK, 'snapshots'))
+    const frame = readdirSync(join(work, 'snapshots'))
       .filter((f) => f.startsWith('frame-') && f.endsWith('.png')).sort()[0];
     if (!frame) throw new Error(`snapshot produced no PNG for slide ${i + 1}`);
-    slides.push(readFileSync(join(WORK, 'snapshots', frame)).toString('base64'));
+    slides.push(readFileSync(join(work, 'snapshots', frame)).toString('base64'));
   }
   log(`slides: ${slides.length} PNG(s) → delivering`);
 
-  const up = await api('/api/admin/video/carousel-deliver', {
+  const up = await deliver('/api/admin/video/carousel-deliver', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ job_id: job.id, slides }),
   });
@@ -1010,22 +1021,30 @@ async function renderOne(job) {
 }
 
 // ── main — batch loop (VIDEO_BATCH jobs per invocation) ───────────────
-let rendered = 0;
-for (let i = 0; i < BATCH; i++) {
-  let job = null;
-  try {
-    job = await claim();
-  } catch (e) {
-    log(`claim failed: ${e.message}`); break;
+// Gated on being the entry point: the test suite imports this module for
+// the pure slide helpers, and importing must not claim a job or exit.
+const invokedDirectly = (() => {
+  try { return realpathSync(process.argv[1] || '') === fileURLToPath(import.meta.url); } catch { return false; }
+})();
+
+if (invokedDirectly) {
+  let rendered = 0;
+  for (let i = 0; i < BATCH; i++) {
+    let job = null;
+    try {
+      job = await claim();
+    } catch (e) {
+      log(`claim failed: ${e.message}`); break;
+    }
+    if (!job) { log('queue empty'); break; }
+    try {
+      await renderOne(job);
+      rendered++;
+    } catch (e) {
+      await reportFailure(job, e.message || String(e));
+      log(`job failed: ${e.message || e}`);
+    }
   }
-  if (!job) { log('queue empty'); break; }
-  try {
-    await renderOne(job);
-    rendered++;
-  } catch (e) {
-    await reportFailure(job, e.message || String(e));
-    log(`job failed: ${e.message || e}`);
-  }
+  if (!rendered) process.exit(0);
+  log(`batch complete: ${rendered} video(s)`);
 }
-if (!rendered) process.exit(0);
-log(`batch complete: ${rendered} video(s)`);
