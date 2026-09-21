@@ -644,10 +644,103 @@ function makeBgm(totalSec, seedStr) {
   return r.status === 0 && existsSync(out) && statSync(out).size > 5000 ? out : null;
 }
 
+// ── free slide imagery (Openverse) ────────────────────────────────────
+// Openverse aggregates CC0 / public-domain photos: no API key, no
+// watermark, and no attribution obligation, so a slide can carry one
+// without legal plumbing. Each slide gets its own photo — the deck used
+// to repeat the article hero on every point slide.
+//
+// The article is Vietnamese, so we do not search with its raw text:
+// Openverse indexes English metadata. A tiny keyword map derives an
+// English topic from the title plus a per-slide concept, and the search
+// is only allowed to return CC0/PDM originals.
+const TOPIC_MAP = [
+  [/nhà hàng|quán ăn|ẩm thực|món ăn|restaurant|food/i, 'restaurant'],
+  [/cà phê|cafe|coffee/i, 'coffee shop'],
+  [/khách sạn|hotel|resort|homestay|nghỉ dưỡng/i, 'hotel'],
+  [/spa|massage|nail|salon|thẩm mỹ|làm đẹp/i, 'spa salon'],
+  [/nha khoa|nha sĩ|dentist|răng/i, 'dental clinic'],
+  [/phòng khám|bệnh viện|clinic|bác sĩ|sức khỏe|y tế/i, 'medical clinic'],
+  [/bất động sản|nhà đất|real estate/i, 'real estate house'],
+  [/giáo dục|trường học|khóa học|học sinh|đào tạo/i, 'classroom education'],
+  [/du lịch|tour|travel/i, 'travel landscape'],
+  [/thời trang|quần áo|fashion|cửa hàng|shop|bán hàng/i, 'retail store'],
+  [/gym|fitness|thể hình|yoga/i, 'gym fitness'],
+  [/ô tô|xe hơi|garage|sửa xe/i, 'car garage'],
+  [/website|trang web|thiết kế web|web design/i, 'website design'],
+];
+const CONCEPT_MAP = [
+  [/menu|thực đơn/i, 'restaurant menu'],
+  [/đánh giá|review|nhận xét|phản hồi/i, 'customer review'],
+  [/google maps|bản đồ|chỉ đường/i, 'google maps navigation'],
+  [/đặt bàn|đặt lịch|booking|đặt chỗ/i, 'restaurant table setting'],
+  [/website|trang web|thiết kế web/i, 'website design laptop'],
+  [/điện thoại|smartphone|di động/i, 'smartphone in hand'],
+  [/\bseo\b|tối ưu|tìm kiếm|xếp hạng|top 1/i, 'seo analytics laptop'],
+  [/doanh thu|kinh doanh|khách hàng|doanh nghiệp|business/i, 'business owner shop'],
+];
+
+function matchKeyword(map, hay) {
+  for (const [re, kw] of map) if (re.test(hay)) return kw;
+  return null;
+}
+
+// Candidate queries for one slide, most specific first. The caller tries
+// them in order and keeps the first that yields an unused photo.
+function slideQueries(job, script, idx) {
+  const title = String(job.title || '');
+  const topic = matchKeyword(TOPIC_MAP, `${title} ${job.meta_description || ''}`) || 'small business';
+  const text = idx === 0 ? script.hook
+    : idx === 4 ? script.question
+      : (script.points || [])[idx - 1] || '';
+  const concept = matchKeyword(CONCEPT_MAP, `${title} ${text}`);
+  return [...new Set([concept, topic, 'small business'].filter(Boolean))];
+}
+
+// Fetch one CC0/PDM photo for `query`, skipping ids already used by an
+// earlier slide so the deck never shows the same picture twice.
+async function fetchOpenversePhoto(query, usedIds) {
+  const api = 'https://api.openverse.org/v1/images/?q=' + encodeURIComponent(query) +
+    '&license=cc0,pdm&size=large&page_size=20';
+  const r = await fetch(api, { headers: { 'user-agent': 'Gu-SEO-video-agent/1.0' } });
+  if (!r.ok) throw new Error(`openverse_http_${r.status}`);
+  const data = await r.json().catch(() => ({}));
+  const candidates = (data.results || []).filter((x) =>
+    x?.id && x?.url && !usedIds.has(x.id) &&
+    /\.(jpe?g|png)$/i.test(x.url) &&
+    (x.width || 0) >= 900 &&
+    !/clipart|sticker|vector|illustration|icon|logo|drawing|cartoon/i.test(String(x.title || ''))
+  );
+  // Full-text search matches metadata, not pixels — a query for
+  // "restaurant" once returned a castle ruin whose page mentioned one.
+  // Rank candidates by how many query words appear in the title and
+  // prefer the ones that actually describe what we asked for.
+  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  const rank = (x) => words.filter((w) => String(x.title || '').toLowerCase().includes(w)).length;
+  const pick = candidates.slice().sort((a, b) => rank(b) - rank(a))[0];
+  if (!pick) throw new Error('openverse_no_result');
+  const img = await fetch(pick.url, { headers: { 'user-agent': 'Gu-SEO-video-agent/1.0' } });
+  if (!img.ok) throw new Error(`openverse_download_${img.status}`);
+  const type = String(img.headers.get('content-type') || '');
+  if (!type.startsWith('image/')) throw new Error('openverse_not_an_image');
+  const bytes = Buffer.from(await img.arrayBuffer());
+  if (bytes.length < 4096) throw new Error('openverse_image_too_small');
+  usedIds.add(pick.id);
+  return {
+    bytes,
+    credit: {
+      title: pick.title || null,
+      license: pick.license || null,
+      creator: pick.creator || null,
+      source: pick.foreign_landing_url || null,
+    },
+  };
+}
+
 // ── 5b. carousel — 5 static slides 1080×1350 via hyperframes snapshot ─
 // Slide 1: hook (brand badge). 2-4: the three takeaways. Slide 5: the
-// open question + "đọc bài viết". Same script as the post teaser; the
-// hero image backs the point slides.
+// open question + "đọc bài viết". Same script as the post teaser; every
+// slide is backed by its own CC0 photo (article hero when none is found).
 // One slide per HTML file, fully static (no GSAP timeline). Hyperframes
 // snapshot then returns exactly that slide at any --at time, which makes
 // the deck deterministic — a single animated composition mis-mapped the
@@ -657,7 +750,6 @@ function composeCarouselSlideHtml(job, script, slideIdx) {
   const brand = p.name || 'Blog';
   const accent = p.accent || ACCENT;
   const outroUrl = (p.publishing_url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
-  const hasHero = existsSync(join(WORK, 'assets', 'hero.jpg'));
   const W = 1080, H = 1350;
   const A = accent;
 
@@ -676,8 +768,12 @@ function composeCarouselSlideHtml(job, script, slideIdx) {
     : s.kind === 'point'
       ? `<div class="num">${s.n}</div><p class="point">${esc(s.text)}</p>`
       : `<p class="question">${esc(script.question)}</p><p class="sub">Đọc bài viết đầy đủ ↓</p><p class="url">${esc(outroUrl)}</p>`;
-  const bg = hasHero && s.kind !== 'cover'
-    ? `<div class="bgi"><img src="assets/hero.jpg" alt=""/></div>` : '';
+  // Each slide prefers its own free photo; the article hero is the
+  // fallback when Openverse had nothing (or the job has no hero at all).
+  const own = `slide-${slideIdx}.jpg`;
+  const bgSrc = existsSync(join(WORK, 'assets', own)) ? own
+    : existsSync(join(WORK, 'assets', 'hero.jpg')) ? 'hero.jpg' : null;
+  const bg = bgSrc ? `<div class="bgi"><img src="assets/${bgSrc}" alt=""/></div>` : '';
   const logo = existsSync(join(WORK, 'assets', 'logo.png'))
     ? `<img class="brandlogo" src="assets/logo.png"/>` : '';
 
@@ -703,9 +799,9 @@ function composeCarouselSlideHtml(job, script, slideIdx) {
   .sub { color:#c9d6e2; font-size:32px; margin-top:28px; }
   .url { color:${A}; font-size:30px; font-weight:600; margin-top:12px; }
   .bgi { position:absolute; inset:0; }
-  .bgi img { width:100%; height:100%; object-fit:cover; opacity:0.3; }
+  .bgi img { width:100%; height:100%; object-fit:cover; opacity:0.42; }
   .bgi::after { content:''; position:absolute; inset:0;
-    background:linear-gradient(180deg, rgba(10,12,16,0.3), rgba(10,12,16,0.85)); }
+    background:linear-gradient(180deg, rgba(10,12,16,0.45), rgba(10,12,16,0.92)); }
   .brandlogo { position:absolute; top:48px; right:56px; height:72px; max-width:280px;
     object-fit:contain; z-index:6; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
 </style></head>
@@ -723,6 +819,9 @@ async function renderCarousel(job) {
   log(`carousel for ${job.slug} (job ${job.id})`);
   rmSync(join(WORK, 'snapshots'), { recursive: true, force: true });
   mkdirSync(join(WORK, 'assets'), { recursive: true });
+  // Drop the previous deck's photos so a failed fetch this run cannot be
+  // papered over by a stale slide-*.jpg left behind by an earlier job.
+  for (let i = 0; i < 5; i++) rmSync(join(WORK, 'assets', `slide-${i}.jpg`), { force: true });
 
   const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
   if (heroB64) writeFileSync(join(WORK, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
@@ -747,6 +846,23 @@ async function renderCarousel(job) {
     while (script.points.length < 3) script.points.push(job.meta_description || 'Đọc bài viết để xem đầy đủ');
   }
   log(`script ok: hook + ${script.points.length} points + question`);
+
+  // One free CC0 photo per slide (article hero as the fallback). The
+  // photos are written to assets/slide-<i>.jpg before composing, so a
+  // failed fetch just leaves that slide on the hero.
+  const usedIds = new Set();
+  for (let i = 0; i < 5; i++) {
+    for (const q of slideQueries(job, script, i)) {
+      try {
+        const photo = await fetchOpenversePhoto(q, usedIds);
+        writeFileSync(join(WORK, 'assets', `slide-${i}.jpg`), photo.bytes);
+        log(`slide ${i + 1} photo: "${q}" (${photo.credit.license})`);
+        break;
+      } catch (e) {
+        log(`slide ${i + 1} photo "${q}" failed: ${String(e?.message || e).slice(0, 60)}`);
+      }
+    }
+  }
 
   // One static HTML per slide → one snapshot each. Deterministic: the
   // snapshot time does not matter because nothing animates.
