@@ -39,6 +39,7 @@ const CHANNEL_META = {
   facebook_video: { color: 'geekblue', text: 'Facebook Video' },
   instagram: { color: 'magenta', text: 'Instagram' },
   threads:   { color: 'purple', text: 'Threads' },
+  x:         { color: 'black',  text: 'X (Twitter)' },
   wordpress: { color: 'cyan',   text: 'WordPress' },
   webhook:   { color: 'default', text: 'Webhook' },
   custom_api: { color: 'default', text: 'Custom API' },
@@ -51,18 +52,21 @@ export default function Social() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [busyId, setBusyId] = useState(null);
+  const [channelFilter, setChannelFilter] = useState('');
   const [view, setView] = useState('list');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const q = statusFilter ? `?status=${statusFilter}` : '';
-    const { status, body } = await apiGet(`/api/admin/social${q}`);
+    const params = new URLSearchParams();
+    if (statusFilter) params.set('status', statusFilter);
+    if (channelFilter) params.set('channel', channelFilter);
+    const { status, body } = await apiGet(`/api/admin/social${params.toString() ? '?' + params.toString() : ''}`);
     if (status === 200 && body?.ok) {
       setJobs(body.jobs || []);
       setCounts(body.counts || {});
     }
     setLoading(false);
-  }, [statusFilter]);
+  }, [statusFilter, channelFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -139,6 +143,23 @@ export default function Social() {
       breadcrumb={[{ title: 'Phân phối' }, { title: 'Bài đăng mạng xã hội' }]}
       extra={
         <Space>
+          <Select
+            allowClear
+            placeholder="Tất cả kênh"
+            style={{ minWidth: 150 }}
+            value={channelFilter || undefined}
+            onChange={(v) => setChannelFilter(v || '')}
+            options={[
+              { value: 'facebook', label: 'Facebook' },
+              { value: 'facebook_video', label: 'Facebook Video' },
+              { value: 'instagram', label: 'Instagram' },
+              { value: 'threads', label: 'Threads' },
+              { value: 'x', label: 'X (Twitter)' },
+              { value: 'wordpress', label: 'WordPress' },
+              { value: 'webhook', label: 'Webhook' },
+              { value: 'custom_api', label: 'Custom API' },
+            ]}
+          />
           <Segmented
             value={view}
             onChange={setView}

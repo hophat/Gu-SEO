@@ -26,6 +26,7 @@ import {
   LinkOutlined, WarningOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
+import ChannelCards from '../components/ChannelCards.jsx';
 import { apiGet, apiPost } from '../api.js';
 import { useProjects } from '../hooks/useTheme.jsx';
 
@@ -34,6 +35,7 @@ const { Text } = Typography;
 export default function Publishing() {
   const { activeProject } = useProjects();
   const [cfg, setCfg] = useState(null);
+  const [channelsData, setChannelsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -54,7 +56,11 @@ export default function Publishing() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { status, body } = await apiGet('/api/admin/projects/publishing');
+    const [{ status, body }, ch] = await Promise.all([
+      apiGet('/api/admin/projects/publishing'),
+      apiGet('/api/admin/projects/channels'),
+    ]);
+    if (ch.status === 200 && ch.body?.ok) setChannelsData(ch.body);
     if (status === 200 && body?.ok) {
       setCfg(body);
       setType(body.publisher_type || 'internal_d1');
@@ -173,15 +179,41 @@ export default function Publishing() {
         />
       )}
 
+      <Card
+        loading={loading}
+        title="Đa nền tảng"
+        extra={
+          channelsData
+            ? <Text type="secondary" style={{ fontSize: 12 }}>{channelsData.channels?.filter((c) => c.enabled).length || 0} kênh đang bật</Text>
+            : null
+        }
+        style={{ marginBottom: 16 }}
+      >
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="Mỗi bài mới sẽ tự động được đẩy tới TẤT CẢ các kênh đang bật dưới đây."
+          description="Bật nhiều kênh cùng lúc được. Job đăng bài có retry tự động; lỗi token sẽ đánh dấu 'cần kết nối lại' thay vì retry vô hạn."
+        />
+        <ChannelCards data={channelsData} reload={load} />
+      </Card>
+
       <Card loading={loading}>
         <Form layout="vertical" style={{ maxWidth: 760 }}>
-          <Form.Item label="Kênh xuất bản">
+          <Form.Item
+            label="Kênh xuất bản chính (tương thích cũ)"
+            extra="Bản ghi cũ — các kênh ở khung 'Đa nền tảng' bên trên là nơi cấu hình chính. Giữ khớp để cron report và video tự đăng vẫn đúng."
+          >
             <Select
               value={type}
               onChange={setType}
               options={[
                 { value: 'internal_d1', label: 'Chỉ blog nội bộ (mặc định)' },
                 { value: 'facebook', label: 'Facebook Page của tôi' },
+                { value: 'instagram', label: 'Instagram' },
+                { value: 'threads', label: 'Threads' },
+                { value: 'x', label: 'X (Twitter)' },
                 { value: 'wordpress', label: 'WordPress' },
                 { value: 'webhook', label: 'Webhook (tùy chỉnh)' },
                 { value: 'custom_api', label: 'Custom API' },

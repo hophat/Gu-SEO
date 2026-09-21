@@ -1,5 +1,30 @@
 import { publishToFacebook, publishFacebookVideo } from './facebook.js';
+import { publishToInstagram } from './instagram.js';
+import { publishToThreads } from './threads.js';
+import { publishToX } from './x.js';
 import { isCarouselKey } from '../video_jobs.js';
+
+// Channel config resolution: legacy project_publishing_configs.config_json
+// and the per-channel project_channels row are MERGED, row winning. The
+// merge (not replacement) matters: a Facebook Page connected through the
+// pre-multi-channel flow keeps its page_id/message_template in the legacy
+// config even when the channel row only holds hashtags — replacing would
+// lose the Page ID and every drain would fail with 'Thiếu Page ID'.
+async function channelConfigFor(env, project, channel) {
+  const pubCfg = project?.publishing_config || {};
+  let legacyCfg = {};
+  try {
+    legacyCfg = typeof pubCfg.config_json === 'string'
+      ? JSON.parse(pubCfg.config_json || '{}')
+      : (pubCfg.config_json || {});
+  } catch { legacyCfg = {}; }
+  let rowCfg = {};
+  if (env?.DB && project?.id) {
+    const { getChannelConfig } = await import('../channels.js');
+    rowCfg = await getChannelConfig(env, project.id, channel).catch(() => ({})) || {};
+  }
+  return { ...legacyCfg, ...rowCfg };
+}
 
 export async function dispatchPublication({ project, article, env, channel = null }) {
   const pubCfg = project?.publishing_config || {};
@@ -15,7 +40,8 @@ export async function dispatchPublication({ project, article, env, channel = nul
     return publishFacebookVideo({ project, article, configJson: pubCfg.config_json, env });
   }
 
-  switch (publisherType) {
+  const ch = channel || publisherType;
+  switch (ch) {
     case 'webhook':
       return publishToWebhook({ endpointUrl: pubCfg.endpoint_url, authHeader: pubCfg.auth_header, article });
     case 'custom_api':
@@ -23,7 +49,13 @@ export async function dispatchPublication({ project, article, env, channel = nul
     case 'wordpress':
       return publishToWordPress({ endpointUrl: pubCfg.endpoint_url, authHeader: pubCfg.auth_header, article });
     case 'facebook':
-      return publishToFacebook({ project, article, configJson: pubCfg.config_json, env });
+      return publishToFacebook({ project, article, configJson: await channelConfigFor(env, project, 'facebook'), env });
+    case 'instagram':
+      return publishToInstagram({ project, article, configJson: await channelConfigFor(env, project, 'instagram'), env });
+    case 'threads':
+      return publishToThreads({ project, article, configJson: await channelConfigFor(env, project, 'threads'), env });
+    case 'x':
+      return publishToX({ project, article, configJson: await channelConfigFor(env, project, 'x'), env });
     case 'internal_d1':
     default:
       return {

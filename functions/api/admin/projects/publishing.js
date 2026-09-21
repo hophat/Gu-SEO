@@ -181,6 +181,9 @@ export const onRequestPost = async ({ env, request }) => {
          config_json = excluded.config_json,
          updated_at = excluded.updated_at`
     ).bind(pid, JSON.stringify({ page_id: chosen.id, page_name: chosen.name }), t, t).run();
+    // Mirror into the multi-channel registry (see fb-callback for why).
+    const { connectChannel } = await import('../../../_lib/channels.js');
+    await connectChannel(env, pid, 'facebook', { page_id: chosen.id, page_name: chosen.name }).catch(() => {});
     await clearPendingPages(env, pid);
     audit(env, 'admin', 'fb_select_page', pid, { page_id: chosen.id });
     await track(env, { event: 'channel_connected', projectId: pid, props: { channel: 'facebook', page: chosen.name } });
@@ -189,6 +192,11 @@ export const onRequestPost = async ({ env, request }) => {
 
   if (body?.action === 'disconnect') {
     await setVaultSecret(env, facebookTokenName(pid), '');
+    // Clearing the token disables the channel in the registry too — the
+    // card must not sit 'enabled' with nothing behind it. The row stays
+    // (config preserved) so reconnecting restores it with one click.
+    const { setChannelEnabled } = await import('../../../_lib/channels.js');
+    await setChannelEnabled(env, pid, 'facebook', false).catch(() => {});
     await clearPendingPages(env, pid);
     const t = Math.floor(Date.now() / 1000);
     await env.DB.prepare(

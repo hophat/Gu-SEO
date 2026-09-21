@@ -35,6 +35,11 @@ export function isCredentialError(err) {
   const code = err?.graph?.code;
   if (code === 190 || code === 200 || code === 10) return true;
   const msg = String(err?.message || '');
+  // X: 401 = bad/expired token, 403 = app permission or account state —
+  // both pointless to retry until a human fixes the credential/grant.
+  // The 429 rate limit is NOT here: retrying later is exactly right.
+  if (err?.x_status === 401 || err?.x_status === 403) return true;
+  if (/\bX API lỗi \(HTTP 40[13]\)|Token X không hợp lệ|X từ chối đăng bài/.test(msg)) return true;
   return /token|quyền|permission/i.test(msg) && /hết hạn|không hợp lệ|chưa có quyền|not set|missing/i.test(msg);
 }
 
@@ -191,12 +196,13 @@ export async function drainSocialQueue(env, { projectId = null, limit = 5, dispa
   return { processed: out.length, results: out };
 }
 
-export async function listSocialPosts(env, { projectId = null, status = null, limit = 100 } = {}) {
+export async function listSocialPosts(env, { projectId = null, status = null, channel = null, limit = 100 } = {}) {
   if (!env?.DB) return [];
   const clauses = [];
   const binds = [];
   if (projectId) { clauses.push('s.project_id = ?'); binds.push(projectId); }
   if (status) { clauses.push('s.status = ?'); binds.push(status); }
+  if (channel) { clauses.push('s.channel = ?'); binds.push(channel); }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   binds.push(Math.min(500, limit));
 
@@ -213,7 +219,7 @@ export async function listSocialPosts(env, { projectId = null, status = null, li
   return results || [];
 }
 
-export async function retrySocialPost(env, { projectId = null, id }) {
+export async function retrySocialPost(env, { projectId = null, id, dispatch = dispatchPublication } = {}) {
   const t = nowSec();
   const owned = projectId
     ? await env.DB.prepare('SELECT id FROM social_posts WHERE id = ? AND project_id = ? LIMIT 1').bind(id, projectId).first().catch(() => null)
@@ -227,7 +233,9 @@ export async function retrySocialPost(env, { projectId = null, id }) {
     `UPDATE social_posts SET status = 'pending', attempts = 0, next_attempt_at = ?,
        error = NULL, needs_reconnect = 0, updated_at = ? WHERE id = ?`
   ).bind(t, t, id).run().catch(() => {});
-  return runSocialJob(env, id);
+  // dispatch rides through: the admin API never injects one, but tests
+  // (and any caller that needs determinism) rely on it reaching the job.
+  return runSocialJob(env, id, { dispatch });
 }
 
 export async function cancelSocialPost(env, { projectId = null, id }) {

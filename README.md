@@ -39,6 +39,7 @@ Multi-Brand AI Content Platform supporting independent project configuration, to
 - **Admin dashboard** — single-page SPA with email/password login, runs jobs and inspects the queue.
 - **Cover image editor** — canvas-based crop, captions, badges, gradient overlay.
 - **Multi-AI registry** — Workers AI → OpenAI → Anthropic → Gemini → Groq → DeepSeek → Mistral → Together → Cerebras. Each is optional.
+- **Multi-platform distribution** — every new post fans out to all enabled channels at once: Facebook Page, Instagram, Threads and X (Twitter), plus WordPress / Webhook / Custom API. Per-channel content adaptation (X's 280 weighted chars, Threads' 500, Instagram's photo-only + link-in-bio), durable per-channel queue with retry/backoff, and one-click Meta OAuth for Facebook/Instagram/Threads.
 
 ## 🚀 Install in one command
 
@@ -122,6 +123,7 @@ You can drag-add, remove, swap, or rename any slot. The cron picks up "scheduled
 
 | Action | Where |
 |---|---|
+| Connect Facebook / Instagram / Threads / X | Admin → Phân phối → Kênh xuất bản (card "Đa nền tảng") |
 | Save / regenerate brand DNA | Admin → Brand DNA |
 | Re-plan the content calendar | Admin → Content Calendar → "Regenerate" |
 | Run today's blog post manually | Admin → Daily blog → "Run now" |

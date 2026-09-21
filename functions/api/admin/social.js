@@ -21,12 +21,13 @@ export const onRequestGet = async ({ env, request }) => {
 
   const url = new URL(request.url);
   const status = url.searchParams.get('status') || null;
+  const channel = url.searchParams.get('channel') || null;
   const limit = Math.min(500, parseInt(url.searchParams.get('limit'), 10) || 100);
 
-  const jobs = await listSocialPosts(env, { projectId: pid, status, limit });
+  const jobs = await listSocialPosts(env, { projectId: pid, status, channel, limit });
 
   // Counts drive the UI tabs; one extra pass beats N round trips.
-  const all = status ? await listSocialPosts(env, { projectId: pid, limit: 500 }) : jobs;
+  const all = (status || channel) ? await listSocialPosts(env, { projectId: pid, limit: 500 }) : jobs;
   const counts = { pending: 0, publishing: 0, published: 0, failed: 0, skipped: 0 };
   for (const j of all) if (counts[j.status] != null) counts[j.status]++;
 

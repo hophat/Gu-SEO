@@ -30,8 +30,10 @@ const STATUS_LABEL = {
 
 const CHANNEL_LABEL = {
   facebook: 'Facebook Page',
+  facebook_video: 'Facebook Video',
   instagram: 'Instagram',
   threads: 'Threads',
+  x: 'X (Twitter)',
   wordpress: 'WordPress',
   webhook: 'Webhook',
   custom_api: 'Custom API',
