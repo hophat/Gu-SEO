@@ -30,7 +30,7 @@
     "build": "npm run check-public && npm run bundle-schema && npm run admin:build",
     "bundle-schema": "node scripts/bundle-schema.js && node scripts/bundle-migrations.js",
     "check-public": "node scripts/check-public-mirrors.js",
-    "test": "node scripts/run-tests.js && node --no-warnings scripts/run-platform-tests.js && node --no-warnings scripts/run-admin-hook-tests.mjs && node --no-warnings scripts/run-video-agent-tests.mjs",
+    "test": "node scripts/run-tests.js && node --no-warnings scripts/run-platform-tests.js && node --no-warnings scripts/run-admin-hook-tests.mjs && node --no-warnings scripts/run-video-agent-tests.mjs && node --no-warnings scripts/run-loop-tests.mjs",
     "seed": "node scripts/seed-runner.js",
     "build:functions": "npx wrangler pages functions build --outdir functions_dist",
     "dev:local": "npm run build:functions && node dev-server.js",
