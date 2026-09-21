@@ -24,6 +24,13 @@
 //     layer matrix.
 
 import { renderTemplate } from './template.js';
+import { isRenderableSpec, normalizeCoverSpec, fallbackCoverSpec } from './cover_spec.js';
+
+// The policy this file enforces — what counts as paintable and the
+// branded card served in its place — lives in cover_spec.js. These two
+// re-exports stay because callers (and the platform test suite) import
+// them from the renderer they render through.
+export { isRenderableSpec, fallbackCoverSpec };
 
 // SVG-attribute XML escape. NOT the same as HTML escape — we need to
 // quote the five XML entities. Caller is responsible for ensuring
@@ -257,10 +264,15 @@ function renderLayer(layer, ctx, inlined) {
 //
 // Returns a Promise<string> of the SVG document, ready to send
 // with content-type: image/svg+xml.
-export async function renderCoverSvg(spec, ctx, env) {
-  const W = spec?.width  || 1200;
-  const H = spec?.height || 630;
-  const layers = Array.isArray(spec?.layers) ? spec.layers : [];
+export async function renderCoverSvg(rawSpec, ctx, env) {
+  // A template with no background and no layers would render as a
+  // black rectangle with no text. Swap in the built-in card instead
+  // so every caller — /cover, /og, future ones — stays safe even
+  // when the stored spec is empty, then normalise whatever we ended up
+  // with so the rest of this function reads one known shape.
+  // See cover_spec.js for both rules.
+  const spec = normalizeCoverSpec(isRenderableSpec(rawSpec) ? rawSpec : fallbackCoverSpec());
+  const { width: W, height: H, layers } = spec;
 
   // Pre-fetch every R2-hosted asset and base64 it. The result map
   // (original URL → data URL) is consulted by the background +
@@ -307,7 +319,7 @@ export async function renderCoverSvg(spec, ctx, env) {
   // <img src=…>, an external href won't fetch. We swap in the data
   // URL from the inline map when available.
   let backgroundEl = '';
-  if (spec?.background?.url) {
+  if (spec.background?.url) {
     const bgHref = inlined.get(spec.background.url) || spec.background.url;
     backgroundEl = `<image href="${xml(bgHref)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>`;
   } else {

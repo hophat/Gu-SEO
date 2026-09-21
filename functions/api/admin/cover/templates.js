@@ -6,10 +6,20 @@
 //   DELETE /api/admin/cover/templates?id=X      → remove
 //
 // `spec` is the JSON the canvas editor produces. We don't validate the
-// inner shape here — the renderer in admin.js is responsible. We do cap
-// it at 64KB to prevent obviously-broken pastes from filling the DB.
+// inner shape here — the renderer is responsible (see the renderability
+// rule in _lib/cover_spec.js, which catches an empty spec at render
+// time). We do cap it at 64KB to prevent obviously-broken pastes from
+// filling the DB.
+//
+// This endpoint is also how the two browser clients learn the cover
+// policy: every row is returned with its spec normalised plus a
+// `renderable` flag, and the payload carries `starter_spec` (the
+// branded card). That way neither src/admin/pages/Covers.jsx nor the
+// unbundled public/cover-editor.js keeps a copy of the card or of the
+// rule, and neither can drift from what the renderer serves.
 import { json, newId, nowSec, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
+import { isRenderableSpec, normalizeCoverSpec, fallbackCoverSpec } from '../../../_lib/cover_spec.js';
 
 const MAX_SPEC_BYTES = 64 * 1024;
 
@@ -29,10 +39,14 @@ export const onRequestGet = async ({ env, request }) => {
   ).all();
   const templates = (r?.results || []).map((t) => {
     let spec = null;
-    try { spec = JSON.parse(t.spec_json); } catch { /* corrupted row — skip */ }
-    return { ...t, spec, spec_json: undefined };
+    // A row whose spec_json won't parse has nothing to paint, so it
+    // keeps `spec: null` and reads as renderable: false — clients treat
+    // both as "this template is empty" (the editor opens its starter
+    // card on one of those instead of a black canvas).
+    try { spec = normalizeCoverSpec(JSON.parse(t.spec_json)); } catch { /* corrupted row — skip */ }
+    return { ...t, spec, renderable: isRenderableSpec(spec), spec_json: undefined };
   });
-  return json(200, { ok: true, templates });
+  return json(200, { ok: true, templates, starter_spec: fallbackCoverSpec() });
 };
 
 export const onRequestPost = async ({ env, request }) => {
