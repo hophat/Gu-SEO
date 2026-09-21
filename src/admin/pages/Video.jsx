@@ -6,12 +6,12 @@
 // what failed and why, and links the MP4 for download / social posting.
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Card, Table, Button, Space, Typography, Tag, message, Row, Col, Statistic, Tooltip, Alert, Popconfirm, Input,
+  Card, Table, Button, Space, Typography, Tag, message, Row, Col, Statistic, Tooltip, Alert, Popconfirm, Input, Modal,
 } from 'antd';
 import {
   ReloadOutlined, VideoCameraOutlined, CheckCircleOutlined,
   ClockCircleOutlined, WarningOutlined, DownloadOutlined, FacebookOutlined,
-  AppstoreOutlined, DeleteOutlined, GlobalOutlined,
+  AppstoreOutlined, DeleteOutlined, GlobalOutlined, PlayCircleOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, getActiveProject } from '../api.js';
@@ -36,6 +36,7 @@ export default function Video() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [siteUrl, setSiteUrl] = useState('');
+  const [viewing, setViewing] = useState(null);
   const [brandForm, setBrandForm] = useState({ video_tagline: '', brand_accent: '', address: '', phone: '' });
   const [brandOpen, setBrandOpen] = useState(false);
 
@@ -151,7 +152,7 @@ export default function Video() {
       title: 'Video', dataIndex: 'video_url', width: 240,
       render: (url, r) => url ? (
         <Space>
-          <a href={url} target="_blank" rel="noopener"><Button size="small" icon={<VideoCameraOutlined />}>Xem</Button></a>
+          <Button size="small" icon={<PlayCircleOutlined />} onClick={() => setViewing(r)}>Xem</Button>
           <Tooltip title="Tải MP4 (9:16)">
             <Button size="small" icon={<DownloadOutlined />} href={url} download={`${r.slug}.mp4`} />
           </Tooltip>
@@ -261,6 +262,35 @@ export default function Video() {
           </Text>
         )}
       </Card>
+      <Modal
+        open={!!viewing}
+        title={viewing?.title || viewing?.slug}
+        onCancel={() => setViewing(null)}
+        footer={
+          <Space>
+            <Button icon={<DownloadOutlined />} href={viewing?.video_url} download={`${viewing?.slug || 'video'}.mp4`}>
+              Tải MP4
+            </Button>
+            <Button type="primary" onClick={() => setViewing(null)}>Đóng</Button>
+          </Space>
+        }
+        width={420}
+        destroyOnClose
+      >
+        {viewing?.video_url && (
+          <video
+            src={viewing.video_url}
+            controls
+            autoPlay
+            playsInline
+            style={{ width: '100%', aspectRatio: '9 / 16', maxHeight: '70vh', background: '#000', borderRadius: 8 }}
+          />
+        )}
+        <Space style={{ marginTop: 12 }} direction="vertical" size={0}>
+          <Text strong>{viewing?.title || viewing?.slug}</Text>
+          <Text type="secondary">{viewing?.slug} · {statusTag(viewing?.status, viewing?.kind)}</Text>
+        </Space>
+      </Modal>
     </PageContainer>
   );
 }
