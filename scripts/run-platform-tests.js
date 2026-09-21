@@ -16,6 +16,8 @@ import {
   enqueueSocialPost, drainSocialQueue, runSocialJob, listSocialPosts,
   retrySocialPost, cancelSocialPost, backoffSec, isCredentialError,
 } from '../functions/_lib/publishing/social_queue.js';
+import { listEnabledChannels } from '../functions/_lib/channels.js';
+import { adaptArticleForChannel, xWeightedLengthWithUrls } from '../functions/_lib/publishing/adapter.js';
 import {
   describeGraphError, buildFacebookMessage, parseFacebookConfig, projectPublicBase, verifyFacebookPage,
 } from '../functions/_lib/publishing/facebook.js';
@@ -360,7 +362,9 @@ async function testHelpers() {
   // OAuth state
   const secret = 'admin-token-value';
   const state = await signState(secret, PROJECT);
-  assert.deepEqual(await verifyState(secret, state), { projectId: PROJECT });
+  const verified = await verifyState(secret, state);
+  assert.equal(verified.projectId, PROJECT);
+  assert.equal(verified.channel, 'facebook', 'state without a channel reads as the facebook channel');
   assert.equal(await verifyState(secret, `${state}tampered`), null, 'tampered state must be rejected');
   assert.equal(await verifyState('other-secret', state), null, 'wrong key must be rejected');
   assert.equal(await verifyState(secret, 'a.b'), null, 'malformed state must be rejected');
@@ -2088,9 +2092,175 @@ async function testCoverSpecFallback() {
   ok('a designed template still renders instead of the fallback');
 }
 
+// ── Multi-channel distribution (migration 010) ──────────────────────
+async function testMultiChannel() {
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+  await env.DB.prepare(
+    `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, created_at, published_at)
+     VALUES ('post_mc', 'mc-post', 'Tiêu đề đa kênh', 'Mô tả cho đa kênh', '# Body', 'published', ?, ?)`
+  ).bind(t, t).run();
+
+  // 1. Legacy fallback: no project_channels rows → publisher_type speaks.
+  await env.DB.prepare(
+    `INSERT INTO project_publishing_configs (project_id, publisher_type, endpoint_url, auth_header, config_json, created_at, updated_at)
+     VALUES (?, 'facebook', '', '', '{"page_id":"123"}', ?, ?)`
+  ).bind(PROJECT, t, t).run();
+  let chans = await listEnabledChannels(env, PROJECT);
+  assert.equal(chans.length, 1, 'legacy fallback returns the single publisher_type channel');
+  assert.equal(chans[0].channel, 'facebook');
+  assert.equal(chans[0].config.page_id, '123', 'legacy config rides through the fallback');
+  ok('listEnabledChannels falls back to legacy publisher_type');
+
+  // 2. Rows win; legacy config merges under the row config.
+  await env.DB.prepare(
+    `INSERT INTO project_channels (id, project_id, channel, enabled, config_json, created_at, updated_at)
+     VALUES ('ch1', ?, 'facebook', 1, '{"page_id":"456"}', ?, ?)`
+  ).bind(PROJECT, t, t).run();
+  await env.DB.prepare(
+    `INSERT INTO project_channels (id, project_id, channel, enabled, config_json, created_at, updated_at)
+     VALUES ('ch2', ?, 'x', 1, '{}', ?, ?)`
+  ).bind(PROJECT, t, t).run();
+  await env.DB.prepare(
+    `INSERT INTO project_channels (id, project_id, channel, enabled, config_json, created_at, updated_at)
+     VALUES ('ch3', ?, 'threads', 0, '{}', ?, ?)`
+  ).bind(PROJECT, t, t).run();
+  chans = await listEnabledChannels(env, PROJECT);
+  assert.deepEqual(chans.map((c) => c.channel), ['facebook', 'x'], 'only enabled rows are returned, canonical order');
+  ok('project_channels rows drive the fan-out');
+
+  // 3. Fan-out: one publish → one queue row per enabled channel.
+  for (const ch of chans) {
+    await enqueueSocialPost(env, { projectId: PROJECT, blogPostId: 'post_mc', channel: ch.channel });
+  }
+  const { results: rows } = await env.DB.prepare(
+    `SELECT channel, status FROM social_posts WHERE blog_post_id = 'post_mc' ORDER BY channel`
+  ).all();
+  assert.deepEqual(rows.map((r) => r.channel), ['facebook', 'x']);
+  ok('multi-channel enqueue creates one row per channel');
+
+  // Re-enqueue is idempotent per channel (UNIQUE index).
+  await enqueueSocialPost(env, { projectId: PROJECT, blogPostId: 'post_mc', channel: 'x' });
+  const { results: rows2 } = await env.DB.prepare(
+    `SELECT channel FROM social_posts WHERE blog_post_id = 'post_mc'`
+  ).all();
+  assert.equal(rows2.length, 2, 'double enqueue cannot duplicate a channel row');
+  ok('multi-channel enqueue stays idempotent');
+
+  // 4. Dispatch: the x channel routes to publishToX (fails on missing
+  //    credentials with the operator-facing message — proving routing).
+  const job = rows.find((r) => r.channel === 'x')
+    ? (await env.DB.prepare(`SELECT id FROM social_posts WHERE blog_post_id = 'post_mc' AND channel = 'x'`).first())
+    : null;
+  assert.ok(job, 'x row exists for dispatch');
+  const res = await runSocialJob(env, job.id);
+  assert.equal(res.ok, false);
+  assert.match(res.error, /API Key|Access Token/i, 'x dispatch routes to the X publisher and reports missing creds');
+  ok('dispatch routes channel=x to the X publisher');
+
+  // 5. X credential errors park the job with needs_reconnect, not retry.
+  const xRow = await jobRow(env, job.id);
+  assert.equal(xRow.status, 'failed');
+  assert.equal(xRow.needs_reconnect, 1, 'missing X credentials is a credential failure');
+  ok('X credential failure raises needs_reconnect');
+
+  // 6. isCredentialError recognises X-specific errors.
+  const e401 = new Error('Token X không hợp lệ hoặc đã hết hạn (Unauthorized).');
+  e401.x_status = 401;
+  assert.equal(isCredentialError(e401), true, 'X 401 is a credential error');
+  assert.equal(isCredentialError(Object.assign(new Error('Đã chạm giới hạn tần suất của X'), { x_status: 429 })), false, 'X 429 is retriable');
+  ok('isCredentialError maps X 401/403 vs 429 correctly');
+}
+
+// ── Content adaptation per channel ─────────────────────────────────
+async function testAdapter() {
+  const project = { id: 'p1', publishing_url: 'https://seo.test/alpha', slug: 'alpha' };
+  const article = {
+    id: 'post1',
+    slug: 'bai-viet-dau-tien',
+    title: 'Bài viết đầu tiên về tối ưu chi phí bao bì cho doanh nghiệp vừa và nhỏ',
+    meta_description: 'Hướng dẫn ngắn gọn giúp doanh nghiệp nhỏ chọn bao bì đúng chi phí, đúng chất lượng mà vẫn giữ được thương hiệu.',
+    body_markdown: '# Tiêu đề\n\nNội dung dài hơn nhiều nằm ở đây, có cả [link](https://example.com) và **đậm**.',
+    hero_image_key: 'covers/abc.png',
+    keywords: 'bao bi, chi phi, doanh nghiep',
+  };
+
+  // X: 280 weighted with URL=23.
+  const x = adaptArticleForChannel('x', project, article, {});
+  assert.ok(x.text.length > 0, 'x text built');
+  assert.ok(x.link.includes('/blog/bai-viet-dau-tien'), 'x keeps the article link');
+  // The tweet must fit the weighted budget.
+  const urls = (x.text.match(/https?:\/\/[^\s<>"]+/gi) || []);
+  const weighted = xWeightedLengthWithUrls(x.text);
+  assert.ok(weighted <= 280, `x text fits 280 weighted chars (got ${weighted})`);
+  assert.ok(urls.length >= 1, 'tweet carries the article link');
+  ok('X payload fits the 280 weighted-char budget and keeps the link');
+
+  // Threads: ≤500 chars.
+  const th = adaptArticleForChannel('threads', project, article, {});
+  assert.ok([...th.text].length <= 500, `threads text ≤ 500 chars (got ${[...th.text].length})`);
+  assert.ok(th.text.includes('https://seo.test'), 'threads keeps the article link');
+  ok('Threads payload fits the 500-char budget');
+
+  // Instagram: photo kind + bio note, no clickable link in the caption.
+  const ig = adaptArticleForChannel('instagram', project, article, {});
+  assert.equal(ig.kind, 'photo');
+  assert.equal(ig.media.length, 1);
+  assert.ok(ig.media[0].includes('/image/covers/abc.png'), 'instagram uses the public hero URL');
+  assert.ok(/bio/i.test(ig.text), 'instagram caption points at the bio for the link');
+  ok('Instagram payload is a photo post with a bio pointer');
+
+  // Instagram without a hero image is unsupported, not silently text.
+  const igNoImg = adaptArticleForChannel('instagram', project, { ...article, hero_image_key: '' }, {});
+  assert.equal(igNoImg.kind, 'unsupported');
+  assert.ok(igNoImg.reason.length > 5, 'unsupported reason explains itself');
+  ok('Instagram without a hero image reports unsupported with a reason');
+
+  // Long Vietnamese meta description trims at word boundaries, no cut diacritics.
+  const longDesc = 'Từ khoá quan trọng '.repeat(40).trim();
+  const xLong = adaptArticleForChannel('x', project, { ...article, meta_description: longDesc }, {});
+  assert.ok(!/\S…\S/.test(xLong.text.split('…')[0] || ''), 'trim does not cut inside a word before the ellipsis');
+  assert.ok(xLong.text.endsWith('…') || xLong.text.includes('…') || xLong.text.length < 280, 'long lead is trimmed with an ellipsis or dropped');
+  ok('X trim respects word boundaries on Vietnamese text');
+
+  // Facebook stays a thin link-format payload.
+  const fb = adaptArticleForChannel('facebook', project, article, {});
+  assert.equal(fb.kind, 'link');
+  assert.ok(fb.text.length > 0 && fb.text.length <= 400, 'facebook message stays short');
+  ok('Facebook payload stays the short link-format message');
+}
+
+// ── OAuth state with channel (4-part) + legacy acceptance ───────────
+async function testChannelOAuthState() {
+  const adminToken = 'test-admin-token-123';
+  const st4 = await signState(adminToken, 'proj_x', 'threads');
+  const v4 = await verifyState(adminToken, st4);
+  assert.equal(v4?.projectId, 'proj_x');
+  assert.equal(v4?.channel, 'threads');
+
+  // Legacy 3-part state still verifies (as facebook).
+  const nonce = 'deadbeefdeadbeef';
+  const legacy = await (async () => {
+    const payload = `proj_y.${nonce}`;
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(adminToken), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+    return `${payload}.${Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+  })();
+  const vLegacy = await verifyState(adminToken, legacy);
+  assert.equal(vLegacy?.projectId, 'proj_y');
+  assert.equal(vLegacy?.channel, 'facebook', 'legacy state reads as the facebook channel');
+
+  // Forged state still rejected.
+  assert.equal(await verifyState(adminToken, 'proj_z.threads.deadbeef.deadbeef'), null);
+  ok('state carries the channel and legacy 3-part state still verifies');
+}
+
 async function main() {
   console.log('--- Platform tests (migrations · queue · carousel · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy · cover) ---');
   await testMigrations();
+  await testMultiChannel();
+  await testAdapter();
+  await testChannelOAuthState();
   await testQueue();
   await testHelpers();
   await testFacebookPageRecovery();

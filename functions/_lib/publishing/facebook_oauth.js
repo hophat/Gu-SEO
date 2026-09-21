@@ -29,6 +29,11 @@ const DIALOG = 'https://www.facebook.com';
 const DEFAULT_VERSION = 'v23.0';
 
 export const FB_SCOPES = ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts'];
+// Threads publishes through the same Meta app but its own scopes; adding
+// them unconditionally would fail the dialog for apps without a Threads
+// use case, so the connect route appends them per requested channel.
+export const THREADS_SCOPES = ['threads_basic', 'threads_content_publish'];
+export const INSTAGRAM_SCOPES = ['instagram_basic', 'instagram_content_publish'];
 export const FB_APP_SECRET_NAME = 'FACEBOOK_APP_SECRET';
 
 export async function getApiVersion(env) {
@@ -46,13 +51,13 @@ export function fbRedirectUri(request) {
   return `${u.protocol}//${u.host}/api/admin/projects/fb-callback`;
 }
 
-export function buildAuthUrl({ appId, redirectUri, state, version = DEFAULT_VERSION }) {
+export function buildAuthUrl({ appId, redirectUri, state, version = DEFAULT_VERSION, scopes = null }) {
   const p = new URLSearchParams({
     client_id: appId,
     redirect_uri: redirectUri,
     state,
     response_type: 'code',
-    scope: FB_SCOPES.join(','),
+    scope: (scopes && scopes.length ? scopes : FB_SCOPES).join(','),
   });
   return `${DIALOG}/${version}/dialog/oauth?${p.toString()}`;
 }
@@ -157,20 +162,31 @@ async function hmacHex(secret, msg) {
   return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function signState(adminToken, projectId) {
+export async function signState(adminToken, projectId, channel = 'facebook') {
   const nonce = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
-  const payload = `${projectId}.${nonce}`;
+  const payload = `${projectId}.${channel}.${nonce}`;
   const sig = await hmacHex(adminToken, payload);
   return `${payload}.${sig}`;
 }
 
+// Accepts both the legacy 3-part state (projectId.nonce.sig) and the
+// 4-part one that carries the channel, so an old in-flight dialog can
+// still complete after a deploy.
 export async function verifyState(adminToken, state) {
   const parts = String(state || '').split('.');
-  if (parts.length !== 3) return null;
-  const [projectId, nonce, sig] = parts;
-  const expect = await hmacHex(adminToken, `${projectId}.${nonce}`);
-  if (sig !== expect) return null;
-  return { projectId };
+  if (parts.length === 3) {
+    const [projectId, nonce, sig] = parts;
+    const expect = await hmacHex(adminToken, `${projectId}.${nonce}`);
+    if (sig !== expect) return null;
+    return { projectId, channel: 'facebook' };
+  }
+  if (parts.length === 4) {
+    const [projectId, channel, nonce, sig] = parts;
+    const expect = await hmacHex(adminToken, `${projectId}.${channel}.${nonce}`);
+    if (sig !== expect) return null;
+    return { projectId, channel };
+  }
+  return null;
 }
 
 // ── pending Page tokens ────────────────────────────────────────────

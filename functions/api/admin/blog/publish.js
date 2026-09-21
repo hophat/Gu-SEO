@@ -8,6 +8,7 @@ import { syncSitemapAliases } from '../../../_lib/links/aliases.js';
 import { storeEmbedding } from '../../../_lib/dedup.js';
 import { scorePost, statusForScore } from '../../../_lib/quality.js';
 import { getProject } from '../../../_lib/projects.js';
+import { listEnabledChannels } from '../../../_lib/channels.js';
 import { enqueueSocialPost, drainSocialQueue } from '../../../_lib/publishing/social_queue.js';
 import { publicBaseFor } from '../../../_lib/project_scope.js';
 import { trackOnce } from '../../../_lib/events.js';
@@ -99,13 +100,21 @@ export const onRequestPost = async ({ request, env, waitUntil }) => {
     let distributed = false;
     if (job.project_id) {
       const proj = await getProject(env, job.project_id).catch(() => null);
-      const channel = proj?.publishing_config?.publisher_type;
-      if (channel && channel !== 'internal_d1') {
+      // Multi-channel fan-out: every enabled channel gets its own durable
+      // row. listEnabledChannels falls back to the legacy publisher_type
+      // when the project has no project_channels rows, so pre-010 installs
+      // keep their single-channel behaviour unchanged.
+      const channels = await listEnabledChannels(env, job.project_id).catch(() => []);
+      if (channels.length) {
         distributed = true;
-        const q = await enqueueSocialPost(env, {
-          projectId: job.project_id, blogPostId: postId, channel,
-        }).catch(() => ({ enqueued: false }));
-        if (q.enqueued) {
+        let anyEnqueued = false;
+        for (const { channel } of channels) {
+          const q = await enqueueSocialPost(env, {
+            projectId: job.project_id, blogPostId: postId, channel,
+          }).catch(() => ({ enqueued: false }));
+          if (q.enqueued) anyEnqueued = true;
+        }
+        if (anyEnqueued) {
           // Happy path stays immediate; if this is interrupted the cron
           // picks the row up on its next pass.
           waitUntil(

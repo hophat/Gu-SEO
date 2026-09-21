@@ -19,6 +19,7 @@ import {
   savePendingPages, clearPendingPages, pendingKey,
 } from '../../../_lib/publishing/facebook_oauth.js';
 import { setVaultSecret } from '../../../_lib/secret_vault.js';
+import { connectChannel } from '../../../_lib/channels.js';
 import { track } from '../../../_lib/events.js';
 
 function backToSettings(status, detail = '') {
@@ -115,6 +116,9 @@ export const onRequestGet = async ({ env, request }) => {
            config_json = excluded.config_json,
            updated_at = excluded.updated_at`
       ).bind(pid, JSON.stringify({ page_id: p.id, page_name: p.name }), t, t).run();
+      // Keep the multi-channel registry in step so the channel card shows
+      // the Page and the fan-out treats facebook as explicitly enabled.
+      await connectChannel(env, pid, 'facebook', { page_id: p.id, page_name: p.name }).catch(() => {});
       await clearPendingPages(env, pid);
       return done('connected', p.name);
     }
