@@ -409,12 +409,34 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     cta: { type: 'cta', text: clampText(brand.cta || 'Xem thêm'), say: clampText(brand.cta || 'Xem thêm tại website.') },
   };
 
-  const scenes = beatSlots(intent).map((slot) => {
+  const slots = beatSlots(intent);
+  const scenes = slots.map((slot) => {
     const base = fill[slot.beat] || { type: 'feature', text: clampText(title) };
     const scene = { ...base, duration: slot.duration };
     if (scene.say === undefined) scene.say = clampText(scene.text, 12);
     if (url && scene.type === 'cta') scene.url = url;
     return scene;
   });
+
+  // Two beats can legitimately want the same scene type — a product demo's
+  // "product" and "demo" both show the site — and the variety rule would then
+  // drop one, silently losing a beat. Rebuild the repeat as another type the
+  // same beat allows, rather than letting the gate eat it.
+  for (let i = 1; i < scenes.length; i++) {
+    if (scenes[i].type !== scenes[i - 1].type) continue;
+    const alt = slots[i].types.find((t) => t !== scenes[i].type);
+    if (!alt) continue;
+    const text = scenes[i].text;
+    const rebuilt = {
+      ui_demo: { type: 'ui_demo', text, asset: siteAsset },
+      product_reveal: { type: 'product_reveal', text },
+      photo: { type: 'photo', text, asset: photoAsset },
+      feature: { type: 'feature', text, icon: 'check' },
+      quote: { type: 'quote', text },
+      result: { type: 'result', text },
+      problem: { type: 'problem', text },
+    }[alt];
+    if (rebuilt) scenes[i] = { ...rebuilt, duration: scenes[i].duration, say: scenes[i].say };
+  }
   return { intent, duration: DURATION.default, scenes };
 }

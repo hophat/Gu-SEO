@@ -25,7 +25,7 @@ import {
   DURATION, INTENTS, MIN_SCENES, beatSlots, clampDuration, clampWords, intentFromSignals,
   reviewStoryboard, sanitizeStoryboard, storyboardFromContent, wordCount,
 } from './storyboard.mjs';
-import { captureSite, collectAssets, collectMedia, downloadLogo } from './assets.mjs';
+import { collectAssets, downloadLogo } from './assets.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const HF_VERSION = '0.8.56';
@@ -990,16 +990,9 @@ export async function renderOne(job, deps = {}) {
   const suggested = intentFromSignals(job, source);
   log(`intent: ${suggested.intent} (${suggested.reason})`);
 
-  let siteText = null;
-  if (job.kind === 'website' && job.source_url) {
-    const site = await captureSite(job.source_url, work, log);
-    if (site.text) siteText = site.text;
-    site.shots.forEach((shot, n) => {
-      copyFileSync(shot, join(work, 'assets', `site${n}.png`));
-    });
-  }
-  const assets = await collectAssets({ job, intent: suggested.intent, work, log });
-  if (siteText) assets.siteText = true;
+  // collectAssets captures the site once and hands back its text too, so the
+  // slowest step in the pipeline is not paid for twice.
+  const { assets, siteText } = await collectAssets({ job, intent: suggested.intent, work, log });
 
   // 2. The story. A model writes it; the code owns the budgets it must fit.
   const storySource = siteText || source;

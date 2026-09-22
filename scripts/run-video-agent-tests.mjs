@@ -51,6 +51,7 @@ const {
 // values (a free-form plan allowed 5-9, a 20s story wants 3-8) and a bare
 // name here silently mixed the two.
 const { ICON_NAMES, icon, sceneInner, statSize } = await import('../video-agent/scenes.mjs');
+const { pickShowcaseLinks } = await import('../video-agent/assets.mjs');
 const {
   DURATION, INTENTS, MAX_TEXT_WORDS, beatSlots, intentFromSignals, reviewStoryboard,
   sanitizeStoryboard, storyboardFromContent, wordCount, narrationBudget,
@@ -716,6 +717,28 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
   ok('the composition declares 9:16, one narration track per scene, and only the motion the story asked for');
 }
 
+// ── which page becomes the product demo ──────────────────────────────
+// The second screenshot is the one shown inside the phone frame, so it is
+// the scene that sells — and the first anchors in a nav are usually the
+// cookie policy and the login form. A real job rendered a phone frame full
+// of a privacy policy before this existed.
+{
+  const html = `<nav>
+    <a href="/chinh-sach-bao-mat">Chính sách bảo mật</a>
+    <a href="/dang-nhap">Đăng nhập</a>
+    <a href="/thuc-don">Thực đơn</a>
+    <a href="https://other.example/x">Ngoài site</a>
+    <a href="/lien-he">Liên hệ</a>
+    <a href="/thuc-don">Thực đơn (lặp lại)</a>
+  </nav>`;
+  assert.deepEqual(pickShowcaseLinks(html, 'https://quan.example/'),
+    ['https://quan.example/thuc-don', 'https://quan.example/lien-he'],
+    'the menu is preferred, the policy and the login are skipped, duplicates and other origins dropped');
+  assert.deepEqual(pickShowcaseLinks('<p>không có link</p>', 'https://x.example/'), [],
+    'a page with no links yields no shots instead of throwing');
+  ok('the screenshot that becomes the demo is chosen by what the link says');
+}
+
 // ── renderOne drives the storyboard path end to end ──────────────────
 if (!HAS_FFMPEG) {
   console.log('… storyboard renderOne checks skipped: no ffmpeg on this machine');
@@ -941,6 +964,11 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
     assert.equal(sb.scenes[0].type, 'hook', `${intent} fallback opens on a hook`);
     assert.equal(sb.scenes.at(-1).type, 'cta', `${intent} fallback closes on a CTA`);
     assert.ok(sb.scenes.every((s) => s.text && wordCount(s.text) <= MAX_TEXT_WORDS), `${intent} fallback text is caption-sized`);
+    // The gate must not have to eat a beat: two beats that want the same
+    // scene type are rebuilt as another type that beat allows.
+    const { dropped } = sanitizeStoryboard(sb, { source: STORY_ARTICLE, intent, target: 20, assets: {} });
+    assert.equal(dropped.filter((d) => d.reason === 'repeat_of_previous').length, 0,
+      `${intent} fallback must not hand the gate a repeated scene type`);
     const again = storyboardFromContent(
       { title: 'Tối ưu website bán hàng', body_markdown: STORY_ARTICLE, highlights: ['Nhanh hơn', 'Rẻ hơn', 'Đẹp hơn'],
         project: { name: 'Gulagi', publishing_url: 'https://gulagi.com', address: '12 Lê Lợi', brand: { cta: 'Thử ngay' } } },

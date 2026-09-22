@@ -52,6 +52,29 @@ export async function captureMaps(query, work, log = () => {}) {
   return ok ? 'assets/map.jpg' : null;
 }
 
+// Links worth screenshotting: the pages that show the product. A shop's
+// menu, a service list, a pricing table — not the cookie policy, the login
+// form or a tag archive, which are what a nav's first anchors usually are.
+const SHOWCASE = /(thực đơn|menu|sản phẩm|dịch vụ|bảng giá|giá|tính năng|khóa học|liệu trình|phòng|tour|product|service|pricing|feature|course|about|giới thiệu)/i;
+const UTILITY = /(chính sách|điều khoản|bảo mật|privacy|terms|policy|cookie|đăng nhập|đăng ký|login|signin|sign-in|register|cart|giỏ hàng|checkout|tag|danh mục|category|search|tìm kiếm|\.(pdf|jpg|png|zip)$)/i;
+
+export function pickShowcaseLinks(html, siteUrl, limit = 2) {
+  const base = siteUrl.replace(/\/+$/, '');
+  const seen = new Set([siteUrl, base + '/']);
+  const scored = [];
+  for (const m of String(html).matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]{0,80}?)<\/a>/gi)) {
+    let href;
+    try { href = new URL(m[1], siteUrl).href.split('#')[0]; } catch { continue; }
+    if (!href.startsWith(base) || seen.has(href)) continue;
+    seen.add(href);
+    const label = m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (UTILITY.test(label) || UTILITY.test(href)) continue;
+    scored.push({ href, good: SHOWCASE.test(label) || SHOWCASE.test(href) });
+  }
+  // A named showcase page first; anything else same-origin only as filler.
+  return scored.sort((a, b) => Number(b.good) - Number(a.good)).slice(0, limit).map((s) => s.href);
+}
+
 // Homepage + up to two same-origin nav pages, text scraped for the storyboard.
 export async function captureSite(siteUrl, work, log = () => {}) {
   const outDir = join(work, 'assets', 'media');
@@ -68,11 +91,11 @@ export async function captureSite(siteUrl, work, log = () => {}) {
 
   if (findChrome()) {
     if (capturePage(siteUrl, join(outDir, 'shot0.png'))) shots.push(join(outDir, 'shot0.png'));
-    const links = [...html.matchAll(/href=["']([^"']+)["']/gi)]
-      .map((m) => { try { return new URL(m[1], siteUrl).href; } catch { return null; } })
-      .filter((u) => u && u.startsWith(siteUrl.replace(/\/+$/, '')) && u !== siteUrl)
-      .filter((u) => !/\.(pdf|jpg|png|zip)$/i.test(u));
-    for (const u of [...new Set(links)]) {
+    // The second and third shots become the product demonstration, which is
+    // the scene that matters most — so they are chosen by what the link SAYS,
+    // not by where it sits in the nav. Taking the first two anchors rendered
+    // a phone frame full of a privacy policy on a real job.
+    for (const u of pickShowcaseLinks(html, siteUrl)) {
       if (shots.length >= 3) break;
       const f = join(outDir, `shot${shots.length}.png`);
       if (capturePage(u, f)) shots.push(f);
@@ -159,8 +182,12 @@ export async function downloadLogo(logoUrl, work, log = () => {}) {
 // each, so an article video does not screenshot a site it will never show.
 const WANTS_SITE = new Set(['product_demo', 'product_promotion', 'announcement', 'before_after']);
 
+// Returns { assets, siteText }: the site is captured once and its text comes
+// back with its screenshots. Capturing it here and again in the caller doubled
+// the slowest step in the whole pipeline for nothing.
 export async function collectAssets({ job, intent, work, log = () => {} }) {
   const assets = {};
+  let siteText = null;
   const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
   if (heroB64) {
     mkdirSync(join(work, 'assets'), { recursive: true });
@@ -176,7 +203,8 @@ export async function collectAssets({ job, intent, work, log = () => {} }) {
   const siteUrl = job.source_url || job.project?.website_url || '';
   const wantsSite = WANTS_SITE.has(intent) || job.kind === 'website';
   if (siteUrl && wantsSite) {
-    const { shots } = await captureSite(siteUrl, work, log);
+    const { shots, text } = await captureSite(siteUrl, work, log);
+    siteText = text || null;
     shots.slice(0, 2).forEach((p, i) => {
       // Copy to a role-named file so the storyboard can reference it without
       // knowing where captureSite happened to put it. The extension is kept:
@@ -203,5 +231,5 @@ export async function collectAssets({ job, intent, work, log = () => {} }) {
 
   const roles = Object.keys(assets);
   log(`assets: ${roles.length ? roles.join(', ') : 'none — will fall back to the gradient'}`);
-  return assets;
+  return { assets, siteText };
 }
