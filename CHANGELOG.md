@@ -7,6 +7,37 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.20.0 — 2026-09-22
+
+Video minh hoạ nội dung bài viết — biểu đồ, sơ đồ, icon thay vì chỉ chữ.
+
+### Added
+- **Loại video `explainer`.** Cùng một bài viết, nhưng thay vì 4 câu tóm tắt
+  trên ảnh nền, video dựng thành 5–9 cảnh có đồ hoạ: biểu đồ cột, vòng
+  donut, đường xu hướng, thẻ số lớn, sơ đồ các bước, timeline, lưới icon,
+  bảng so sánh nên/tránh, thẻ trích dẫn. Dài 45–75 giây. Video tóm tắt cũ
+  vẫn nguyên — đây là loại thứ hai, chọn theo từng bài.
+- **Nút "Video minh hoạ" trong tab Video 9:16.** Chọn bài viết đã xuất bản
+  rồi tạo job; mỗi bài một video, tạo lại thì thay bản cũ.
+- **Đồ hoạ vẽ bằng SVG/CSS tất định** — không thư viện chart, không CDN,
+  không ảnh do AI sinh. Cùng một bài luôn ra cùng một video.
+
+### An toàn nội dung
+- **Video không được bịa số.** Mọi con số hiển thị phải xuất hiện trong
+  chính bài viết (so khớp sau khi bỏ dấu phân cách, nên `1.000.000` trong
+  bài khớp `1000000` trên biểu đồ). Cảnh vi phạm bị loại chứ không render.
+- **GuRouter chết vẫn có video.** Không gọi được model thì agent tự rút
+  cảnh từ bài viết (số liệu, danh sách, câu chốt) — job không hỏng vì thiếu
+  model.
+
+### Vận hành
+- **`video-agent/deploy.sh`** — copy agent lên VPS rồi **so sha256 hai bên**
+  trước khi báo thành công. Trước đây không có đường deploy nào cho agent,
+  và đó là lý do một bản sửa nhạc nền nằm im trên `main` trong khi VPS vẫn
+  render bản cũ.
+- Agent cần thêm file `video-agent/explainer.mjs` — dùng `deploy.sh`, đừng
+  copy tay.
+
 ## 1.19.0 — 2026-09-21
 
 Video 9:16 cho bài blog — render HyperFrames trên VPS riêng.
