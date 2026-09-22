@@ -49,6 +49,14 @@ const {
 const {
   ICON_NAMES, MAX_SCENES, MIN_SCENES, icon, planFromMarkdown, sanitizePlan, sceneInner, statSize,
 } = await import('../video-agent/explainer.mjs');
+// Aliased: explainer.mjs and storyboard.mjs both export MIN/MAX_SCENES with
+// different values (the old free-form plan allowed 5-9, a 20s story wants
+// 3-8), and a bare name here silently mixed the two.
+const {
+  DURATION, INTENTS, MAX_TEXT_WORDS, beatSlots, intentFromSignals, reviewStoryboard,
+  sanitizeStoryboard, storyboardFromContent, wordCount,
+  MIN_SCENES: SB_MIN_SCENES, MAX_SCENES: SB_MAX_SCENES,
+} = await import('../video-agent/storyboard.mjs');
 const { carouselPrefix, carouselSlideKey } = await import('../functions/_lib/video_jobs.js');
 
 const HAS_FFMPEG = spawnSync('ffmpeg', ['-version'], { encoding: 'utf8' }).status === 0;
@@ -808,6 +816,132 @@ if (!HAS_FFMPEG) {
     ok('with GuRouter down the explainer falls back to the article instead of failing');
     r.done();
   }
+}
+
+// ── storyboard: the story decides, the narration fits ────────────────
+// These are the rules that separate a video from a slide deck. Every one of
+// them is a thing a model would otherwise decide, and every one is checked
+// here rather than trusted.
+console.log('\n--- Storyboard (intent · duration · anti-slideshow) ---\n');
+
+const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển chỉ 7%.';
+
+{
+  // Intent is the fork everything else hangs off, so the no-model path must
+  // be right: it runs whenever GuRouter is down.
+  const cases = [
+    [{ kind: 'website', source_url: 'https://x' }, '', 'product_demo', 'a live URL is shown'],
+    [{ kind: 'business', project: { address: '12 Lê Lợi', brand: { business_type: 'quán ăn' } } }, '', 'local_business', 'a place'],
+    [{ kind: 'post', title: '5 bước tối ưu website' }, '', 'listicle', 'a counted list'],
+    [{ kind: 'post', title: 'Ra mắt tính năng mới' }, '', 'announcement', 'news'],
+    [{ kind: 'post', title: 'Khách hàng nói gì về chúng tôi' }, '', 'testimonial', 'a customer voice'],
+    [{ kind: 'post', title: 'Tối ưu website' }, STORY_ARTICLE, 'educational', 'numbers and how-to'],
+  ];
+  for (const [job, text, want, why] of cases) {
+    assert.equal(intentFromSignals(job, text).intent, want, `${why} should classify as ${want}`);
+  }
+  assert.ok(INTENTS.length === 9, 'the nine intents of the strategy are all present');
+  ok('intent is classified from content even with no model');
+}
+
+{
+  // The inversion: beats get the story's seconds, and the video is that long.
+  for (const intent of INTENTS) {
+    const slots = beatSlots(intent, 20);
+    const total = slots.reduce((a, b) => a + b.duration, 0);
+    assert.ok(Math.abs(total - 20) < 0.4, `${intent} beats must add up to the target (${total})`);
+    assert.equal(slots[0].types[0], 'hook', `${intent} must open on a hook`);
+    assert.ok(slots.at(-1).types.includes('cta'), `${intent} must close on a call to action`);
+  }
+  assert.equal(beatSlots('product_demo', 999).reduce((a, b) => a + b.duration, 0) <= DURATION.max + 0.4, true,
+    'a silly target is still clamped to the ceiling');
+  ok('every intent opens on a hook, closes on a CTA, and fits the ceiling');
+}
+
+{
+  const { storyboard, dropped } = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mot hai ba bon nam sau bay tam chin muoi', say: 'x' },
+      { type: 'bars', text: 'Số liệu', items: [{ label: 'a', value: 12 }, { label: 'b', value: 7 }] },
+      { type: 'bars', text: 'Lặp lại', items: [{ label: 'a', value: 12 }, { label: 'b', value: 7 }] },
+      { type: 'bars', text: 'Bịa', items: [{ label: 'a', value: 12 }, { label: 'b', value: 99 }] },
+      { type: 'cta', text: 'Thử ngay', asset: 'site:0' },
+    ],
+  }, { source: STORY_ARTICLE, intent: 'educational', target: 20, assets: {} });
+
+  assert.ok(storyboard.scenes.every((s) => wordCount(s.text) <= MAX_TEXT_WORDS), 'on-screen text is never a sentence');
+  assert.equal(storyboard.scenes[0].text, 'Mot hai ba bon nam sau bay tam', 'it is cut at a word boundary');
+  assert.deepEqual(storyboard.scenes.map((s) => s.type), ['hook', 'bars', 'cta'],
+    'only the first bars survives: the repeat and the invented one do not');
+  assert.ok(dropped.some((d) => d.reason === 'repeat_of_previous'), 'a repeated scene type is dropped, not drawn');
+  assert.ok(dropped.some((d) => d.reason === 'too_few_verified_numbers'), 'a chart with an invented number is refused');
+  assert.ok(dropped.some((d) => d.reason === 'asset_missing'), 'a reference to an asset we do not have is reported');
+  assert.ok(Math.abs(storyboard.duration - 20) < 0.5, `the total is the target, not the model's sum (${storyboard.duration})`);
+  ok('the storyboard gate clamps text, drops repeats and missing assets, and owns the duration');
+}
+
+{
+  // A scene type the intent did not ask for is not drawn, however good it is.
+  const { dropped } = sanitizeStoryboard({
+    scenes: [{ type: 'hook', text: 'a' }, { type: 'bars', text: 'b', items: [{ label: 'x', value: 12 }, { label: 'y', value: 7 }] }, { type: 'cta', text: 'c' }],
+  }, { source: STORY_ARTICLE, intent: 'local_business', target: 20 });
+  assert.ok(dropped.some((d) => d.reason === 'not_in_local_business'),
+    'a chart has no place in a local-business story and is refused');
+  ok('the intent decides the vocabulary, so bars cannot appear in a business video');
+}
+
+{
+  const good = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Google Maps của bạn đã có mọi thứ' },
+      { type: 'problem', text: 'Nhưng chưa có website' },
+      { type: 'ui_demo', text: 'Gulagi dựng site', asset: 'site:0' },
+      { type: 'result', text: '30 ngày nội dung' },
+      { type: 'cta', text: 'Thử miễn phí' },
+    ],
+  }, { intent: 'product_demo', target: 20, assets: { 'site:0': 'a.jpg' } }).storyboard;
+  assert.equal(reviewStoryboard(good).ok, true, 'a story that shows the product passes');
+
+  const noAsset = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'a' }, { type: 'problem', text: 'b' }, { type: 'product_reveal', text: 'c' },
+      { type: 'feature', text: 'd' }, { type: 'result', text: 'e' }, { type: 'cta', text: 'f' },
+    ],
+  }, { intent: 'product_demo', target: 20, assets: {} }).storyboard;
+  assert.ok(reviewStoryboard(noAsset).problems.some((p) => p.startsWith('no_real_asset')),
+    'a product demo with nothing to show is rejected, not shipped as a slide deck');
+
+  const wall = { intent: 'educational', scenes: [
+    { type: 'hook', text: 'a', duration: 4 }, { type: 'quote', text: 'b', duration: 4 },
+    { type: 'quote', text: 'c', duration: 4 }, { type: 'quote', text: 'd', duration: 4 }, { type: 'cta', text: 'e', duration: 4 },
+  ] };
+  assert.ok(reviewStoryboard(wall).problems.some((p) => p.startsWith('slideshow')), 'a body of pure text is a slideshow');
+
+  const openOnly = { intent: 'educational', scenes: [
+    { type: 'quote', text: 'a', duration: 10 }, { type: 'cta', text: 'b', duration: 10 },
+  ] };
+  assert.ok(reviewStoryboard(openOnly).problems.includes('does_not_open_on_a_hook'), 'a video must open on a hook');
+  assert.ok(reviewStoryboard(openOnly).problems.includes('does_not_end_on_a_cta') === false, 'and the CTA is last here');
+  ok('the quality gate refuses a slideshow, and a hook and CTA are not counted as one');
+}
+
+{
+  for (const intent of INTENTS) {
+    const sb = storyboardFromContent(
+      { title: 'Tối ưu website bán hàng', body_markdown: STORY_ARTICLE, highlights: ['Nhanh hơn', 'Rẻ hơn', 'Đẹp hơn'],
+        project: { name: 'Gulagi', publishing_url: 'https://gulagi.com', address: '12 Lê Lợi', brand: { cta: 'Thử ngay' } } },
+      intent, {});
+    assert.ok(sb.scenes.length >= SB_MIN_SCENES && sb.scenes.length <= SB_MAX_SCENES, `${intent} fallback has a sane length`);
+    assert.equal(sb.scenes[0].type, 'hook', `${intent} fallback opens on a hook`);
+    assert.equal(sb.scenes.at(-1).type, 'cta', `${intent} fallback closes on a CTA`);
+    assert.ok(sb.scenes.every((s) => s.text && wordCount(s.text) <= MAX_TEXT_WORDS), `${intent} fallback text is caption-sized`);
+    const again = storyboardFromContent(
+      { title: 'Tối ưu website bán hàng', body_markdown: STORY_ARTICLE, highlights: ['Nhanh hơn', 'Rẻ hơn', 'Đẹp hơn'],
+        project: { name: 'Gulagi', publishing_url: 'https://gulagi.com', address: '12 Lê Lợi', brand: { cta: 'Thử ngay' } } },
+      intent, {});
+    assert.deepEqual(again, sb, `${intent} fallback is deterministic`);
+  }
+  ok('with no model, every intent still yields a caption-sized story that opens and closes right');
 }
 
 console.log(`\nALL VIDEO AGENT TESTS PASSED (${passed} checks)`);
