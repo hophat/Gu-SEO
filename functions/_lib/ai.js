@@ -853,13 +853,16 @@ async function cerebrasText(env, prompt) {
 async function gurouterText(env, prompt) {
   if (!env?.GUROUTER_API_KEY) throw new Error('gurouter_not_configured');
   const baseUrl = (env?.GUROUTER_BASE_URL || 'https://gurouter.com/v1').replace(/\/+$/, '');
-  // Prefer setting or env, fallback to deepseek-v4-flash which is active on GuRouter
-  const primaryModel = env?.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-v4-flash';
+  // Prefer setting or env, fallback to deepseek-v4.1-flash which is active on GuRouter
+  const primaryModel = env?.GUROUTER_TEXT_MODEL || 'deepseek/deepseek-v4.1-flash';
   // Fallback models tried in order when the primary model fails with a
   // transient error (500, empty, rate-limit). These are all active on
   // GuRouter and handle the JSON article prompt well enough to keep the
-  // daily cron moving when the primary model has a bad minute.
+  // daily cron moving when the primary model has a bad minute. The previous
+  // default leads the ladder: it is the known-good model if the new one has
+  // a bad minute of its own.
   const fallbackModels = [
+    'deepseek/deepseek-v4-flash',
     'openai/gpt-4o-mini',
     'anthropic/claude-3.5-sonnet',
     'google/gemini-flash-1.5',

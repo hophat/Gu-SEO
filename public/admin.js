@@ -1667,9 +1667,10 @@
       name: 'gurouter', label: 'GuRouter', envKey: 'GUROUTER_API_KEY',
       text: true, image: false, optional: true,
       modelEnvKey: 'GUROUTER_TEXT_MODEL',
-      modelDefault: 'deepseek/deepseek-v4-flash',
+      modelDefault: 'deepseek/deepseek-v4.1-flash',
       models: [
-        { id: 'deepseek/deepseek-v4-flash',             label: 'DeepSeek V4 Flash (Đang hoạt động)' },
+        { id: 'deepseek/deepseek-v4.1-flash',           label: 'DeepSeek V4.1 Flash (Đang hoạt động)' },
+        { id: 'deepseek/deepseek-v4-flash',             label: 'DeepSeek V4 Flash' },
         { id: 'zai-org/glm-5.3-flash',                 label: 'GLM 5.3 Flash (Zai Org)' },
         { id: 'meituan/LongCat-2.0:free',              label: 'LongCat 2.0 (Meituan Free)' },
         { id: 'inclusionai/ling-3.0-flash-sante:free', label: 'Ling 3.0 Flash Sante (Free)' },
