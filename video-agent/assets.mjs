@@ -26,6 +26,14 @@ export function findChrome() {
   return null;
 }
 
+// A page that fails to render still produces a perfectly valid PNG — a blank
+// one — so a size check has to be able to tell them apart. Measured on the
+// render VPS at 720x1280: an empty page is 5 394 bytes, the plainest real
+// page (one heading and a line of text) is 26 095, a real homepage is
+// 152 124. A floor of 5 000 let the blank through, and a live job then put a
+// blank screenshot inside the phone frame — the scene that sells the product.
+export const MIN_SHOT_BYTES = 16000;
+
 export function capturePage(url, outPath, { budget = 9000, size = '720,1280' } = {}) {
   const chrome = findChrome();
   if (!chrome) return false;
@@ -34,7 +42,7 @@ export function capturePage(url, outPath, { budget = 9000, size = '720,1280' } =
     `--window-size=${size}`, `--virtual-time-budget=${budget}`,
     '--screenshot=' + outPath, url,
   ], { encoding: 'utf8', timeout: Math.max(45000, budget * 5) });
-  return r.status === 0 && existsSync(outPath) && statSync(outPath).size > 5000;
+  return r.status === 0 && existsSync(outPath) && statSync(outPath).size > MIN_SHOT_BYTES;
 }
 
 // A real Google Maps view of the place, captured the same way — no API key,

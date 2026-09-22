@@ -51,7 +51,7 @@ const {
 // values (a free-form plan allowed 5-9, a 20s story wants 3-8) and a bare
 // name here silently mixed the two.
 const { ICON_NAMES, icon, sceneInner, statSize } = await import('../video-agent/scenes.mjs');
-const { pickShowcaseLinks } = await import('../video-agent/assets.mjs');
+const { MIN_SHOT_BYTES, pickShowcaseLinks } = await import('../video-agent/assets.mjs');
 const {
   DURATION, INTENTS, MAX_TEXT_WORDS, beatSlots, intentFromSignals, reviewStoryboard,
   sanitizeStoryboard, storyboardFromContent, wordCount, narrationBudget,
@@ -737,6 +737,13 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
   assert.deepEqual(pickShowcaseLinks('<p>không có link</p>', 'https://x.example/'), [],
     'a page with no links yields no shots instead of throwing');
   ok('the screenshot that becomes the demo is chosen by what the link says');
+
+  // A page that failed to render is still a valid PNG. The floor is pinned to
+  // the measurements, because lowering it back to 5000 is exactly how a
+  // blank screenshot ended up inside the phone frame on a live job.
+  assert.ok(MIN_SHOT_BYTES > 5394, 'the floor must reject an empty 720x1280 page (measured 5394 bytes)');
+  assert.ok(MIN_SHOT_BYTES < 26095, 'and still accept the plainest real page (measured 26095 bytes)');
+  ok('a screenshot that rendered nothing is rejected, and a plain one is not');
 }
 
 // ── renderOne drives the storyboard path end to end ──────────────────
