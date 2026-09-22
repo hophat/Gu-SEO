@@ -23,6 +23,7 @@ import { spawnSync } from 'node:child_process';
 import {
   MAX_SCENES, MIN_SCENES, sceneInner, sanitizePlan, planFromMarkdown,
 } from './explainer.mjs';
+import { captureSite, collectMedia, downloadLogo } from './assets.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const HF_VERSION = '0.8.56';
@@ -56,26 +57,6 @@ if (!BASE_URL || !TOKEN) die('BASE_URL / ADMIN_TOKEN missing — configure video
 
 const WORK = join(ROOT, 'workspace');
 
-// Brand logo — downloaded once per job, overlaid on every scene. The
-// extension is preserved (SVG/PNG/JPG all render inside <img> in Chrome).
-async function downloadLogo(logoUrl) {
-  if (!logoUrl) return null;
-  const ext = (String(logoUrl).match(/\.(svg|png|jpe?g|webp)(\?|$)/i)?.[1] || 'png').toLowerCase();
-  const out = join(WORK, 'assets', `logo.${ext}`);
-  try {
-    const r = await fetch(String(logoUrl).trim(), {
-      headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!r.ok) return null;
-    const type = (r.headers.get('content-type') || '').toLowerCase();
-    if (!type.startsWith('image/')) return null;
-    const buf = Buffer.from(await r.arrayBuffer());
-    if (buf.length < 100) return null;
-    writeFileSync(out, buf);
-    return `assets/logo.${ext}`;
-  } catch { return null; }
-}
 const api = (path, opts = {}) => fetch(`${BASE_URL}${path}`, {
   ...opts,
   headers: { authorization: `Bearer ${TOKEN}`, ...(opts.headers || {}) },
@@ -715,118 +696,6 @@ ${logoSrc ? `<img class="clip brandlogo" data-start="0" data-duration="${total.t
 </script></body></html>`;
 }
 
-// ── 4. media collection — real images from the project's website ──────
-// The site is the raw material: homepage HTML → og:image + <img> candidates
-// → download the largest few raster images as scene backgrounds. Falls
-// back to the R2 hero when the site yields nothing usable.
-const MAX_MEDIA = 4;
-async function collectMedia(job) {
-  const site = job.project?.website_url || job.project?.publishing_url || '';
-  const outDir = join(WORK, 'assets', 'media');
-  mkdirSync(outDir, { recursive: true });
-  if (!site) return [];
-  try {
-    const res = await fetch(site, {
-      headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(20000),
-    });
-    const html = await res.text().catch(() => '');
-    const srcs = new Set();
-    // og:image first — it is the curated visual.
-    for (const m of html.matchAll(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/gi)) srcs.add(m[1]);
-    for (const m of html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) srcs.add(m[1]);
-    // Absolute-ise and filter to raster URLs worth downloading.
-    const candidates = [...srcs]
-      .map((u) => { try { return new URL(u, site).href; } catch { return null; } })
-      .filter((u) => /^https?:/.test(u))
-      .filter((u) => /\.(jpe?g|png|webp)(\?|$)/i.test(u))
-      .filter((u) => !/logo|icon|sprite|avatar|favicon/i.test(u));
-    const picked = [];
-    for (const u of candidates.slice(0, 12)) {
-      if (picked.length >= MAX_MEDIA) break;
-      try {
-        const r = await fetch(u, { signal: AbortSignal.timeout(15000) });
-        if (!r.ok) continue;
-        const type = (r.headers.get('content-type') || '').toLowerCase();
-        if (!type.startsWith('image/')) continue;
-        const buf = Buffer.from(await r.arrayBuffer());
-        if (buf.length < 8000) continue; // icons/sprites — not scene material
-        const f = join(outDir, `img${picked.length}.jpg`);
-        writeFileSync(f, buf);
-        picked.push(f);
-      } catch { /* skip broken asset */ }
-    }
-    log(`media: ${picked.length} image(s) from ${site}`);
-    return picked;
-  } catch (e) {
-    log(`media collect failed (${e.message}) — using gradient/R2 hero only`);
-    return [];
-  }
-}
-
-// ── 4b. website promos — screenshot the live site, scrape its text ───
-// chrome-headless-shell (already provisioned by the renderer) captures
-// the homepage plus up to two nav pages; the page text feeds the LLM
-// storyboard. Falls back to og:image/<img> scraping when a shot fails.
-const CHROME_DIR = '/root/.cache/hyperframes/chrome/chrome-headless-shell';
-
-function findChrome() {
-  try {
-    for (const v of readdirSync(CHROME_DIR)) {
-      const p = join(CHROME_DIR, v, 'chrome-headless-shell-linux64', 'chrome-headless-shell');
-      if (existsSync(p)) return p;
-    }
-  } catch { /* fall through */ }
-  return null;
-}
-
-function capturePage(url, outPath) {
-  const chrome = findChrome();
-  if (!chrome) return false;
-  const r = spawnSync(chrome, [
-    '--headless', '--no-sandbox', '--disable-gpu', '--hide-scrollbars',
-    '--window-size=720,1280', '--virtual-time-budget=9000',
-    '--screenshot=' + outPath, url,
-  ], { encoding: 'utf8', timeout: 45000 });
-  return r.status === 0 && existsSync(outPath) && statSync(outPath).size > 5000;
-}
-
-// Homepage + up to two same-origin nav pages, text scraped for the LLM.
-async function captureSite(siteUrl) {
-  const outDir = join(WORK, 'assets', 'media');
-  mkdirSync(outDir, { recursive: true });
-  const shots = [];
-  let html = '';
-  try {
-    const res = await fetch(siteUrl, {
-      headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
-      redirect: 'follow', signal: AbortSignal.timeout(20000),
-    });
-    html = await res.text().catch(() => '');
-  } catch { /* screenshots below still attempted */ }
-
-  if (findChrome()) {
-    if (capturePage(siteUrl, join(outDir, 'shot0.png'))) shots.push(join(outDir, 'shot0.png'));
-    // Two same-origin nav links as extra scenes.
-    const links = [...html.matchAll(/href=["']([^"']+)["']/gi)]
-      .map((m) => { try { return new URL(m[1], siteUrl).href; } catch { return null; } })
-      .filter((u) => u && u.startsWith(siteUrl.replace(/\/+$/, '')) && u !== siteUrl)
-      .filter((u) => !/\.(pdf|jpg|png|zip)$/i.test(u));
-    for (const u of [...new Set(links)]) {
-      if (shots.length >= 3) break;
-      const f = join(outDir, `shot${shots.length}.png`);
-      if (capturePage(u, f)) shots.push(f);
-    }
-  }
-  // Text material for the storyboard: title + meta + headings.
-  const title = (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || '').trim();
-  const desc = (html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)?.[1] || '');
-  const headings = [...html.matchAll(/<h[12][^>]*>([^<]{4,90})<\/h[12]>/gi)]
-    .map((m) => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean).slice(0, 8);
-  return { shots, text: [title, desc, ...headings].filter(Boolean).join('\n') };
-}
-
 // ── 4c. background music — synthesised ambient pad, licence-free ─────
 // A soft major-chord pad generated with ffmpeg (no third-party service,
 // no licensing questions). The chord set is picked by the job slug so a
@@ -1243,7 +1112,7 @@ export async function renderOne(job, deps = {}) {
   let media = [];
   if (job.kind === 'website' && job.source_url) {
     log(`capturing ${job.source_url}…`);
-    const site = await captureSite(job.source_url);
+    const site = await captureSite(job.source_url, work, log);
     if (site.text) siteText = site.text;
     // Screenshots double as the media pool (img{n}.jpg naming).
     let n = 0;
@@ -1290,7 +1159,7 @@ export async function renderOne(job, deps = {}) {
   // An explainer skips the scrape — its scenes are charts, and a photo
   // behind a chart is what makes numbers unreadable.
   if (!isBusiness && !isExplainer) {
-    media = await collectMedia(job);
+    media = await collectMedia(job, work, log);
   }
   const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
   if (!media.length && heroB64) {
@@ -1298,7 +1167,7 @@ export async function renderOne(job, deps = {}) {
   }
 
   // Brand logo — downloaded once, overlaid on every scene by the shell.
-  const logoSrc = await downloadLogo(job.project?.logo_url);
+  const logoSrc = await downloadLogo(job.project?.logo_url, work, log);
 
   // Background music — synthesised ambient pad trimmed to the video
   // length, mixed well under the voice (data-volume in the composition).

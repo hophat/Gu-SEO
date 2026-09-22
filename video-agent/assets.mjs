@@ -1,0 +1,207 @@
+// Asset collection — what the video is allowed to show.
+//
+// The strategy is asset-first: a product video that shows the product beats
+// one that describes it with icons, and a restaurant video should show the
+// food. So the pipeline gathers real material before it writes a storyboard,
+// and the storyboard may only reference assets that actually arrived.
+//
+// Every function returns paths RELATIVE to the job workspace ("assets/…"),
+// because that is what the composition HTML references and what hyperframes
+// resolves when it renders.
+import { readdirSync, existsSync, statSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+// chrome-headless-shell is already provisioned by the renderer, so a
+// screenshot costs no extra dependency.
+export const CHROME_DIR = '/root/.cache/hyperframes/chrome/chrome-headless-shell';
+
+export function findChrome() {
+  try {
+    for (const v of readdirSync(CHROME_DIR)) {
+      const p = join(CHROME_DIR, v, 'chrome-headless-shell-linux64', 'chrome-headless-shell');
+      if (existsSync(p)) return p;
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
+export function capturePage(url, outPath, { budget = 9000, size = '720,1280' } = {}) {
+  const chrome = findChrome();
+  if (!chrome) return false;
+  const r = spawnSync(chrome, [
+    '--headless', '--no-sandbox', '--disable-gpu', '--hide-scrollbars',
+    `--window-size=${size}`, `--virtual-time-budget=${budget}`,
+    '--screenshot=' + outPath, url,
+  ], { encoding: 'utf8', timeout: Math.max(45000, budget * 5) });
+  return r.status === 0 && existsSync(outPath) && statSync(outPath).size > 5000;
+}
+
+// A real Google Maps view of the place, captured the same way — no API key,
+// no billing. It is heavy JS, so it gets a longer virtual-time budget, and a
+// consent overlay or a slow tile server just means no map (the caller falls
+// back to a photo rather than showing a broken frame).
+export async function captureMaps(query, work, log = () => {}) {
+  const q = String(query || '').trim();
+  if (!q || !findChrome()) return null;
+  const out = join(work, 'assets', 'map.jpg');
+  mkdirSync(join(work, 'assets'), { recursive: true });
+  const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+  const ok = capturePage(url, out, { budget: 14000 });
+  log(ok ? `map: captured "${q}"` : `map: capture failed for "${q}" — no map this time`);
+  return ok ? 'assets/map.jpg' : null;
+}
+
+// Homepage + up to two same-origin nav pages, text scraped for the storyboard.
+export async function captureSite(siteUrl, work, log = () => {}) {
+  const outDir = join(work, 'assets', 'media');
+  mkdirSync(outDir, { recursive: true });
+  const shots = [];
+  let html = '';
+  try {
+    const res = await fetch(siteUrl, {
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
+      redirect: 'follow', signal: AbortSignal.timeout(20000),
+    });
+    html = await res.text().catch(() => '');
+  } catch { /* screenshots below still attempted */ }
+
+  if (findChrome()) {
+    if (capturePage(siteUrl, join(outDir, 'shot0.png'))) shots.push(join(outDir, 'shot0.png'));
+    const links = [...html.matchAll(/href=["']([^"']+)["']/gi)]
+      .map((m) => { try { return new URL(m[1], siteUrl).href; } catch { return null; } })
+      .filter((u) => u && u.startsWith(siteUrl.replace(/\/+$/, '')) && u !== siteUrl)
+      .filter((u) => !/\.(pdf|jpg|png|zip)$/i.test(u));
+    for (const u of [...new Set(links)]) {
+      if (shots.length >= 3) break;
+      const f = join(outDir, `shot${shots.length}.png`);
+      if (capturePage(u, f)) shots.push(f);
+    }
+  }
+  const title = (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || '').trim();
+  const desc = (html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)?.[1] || '');
+  const headings = [...html.matchAll(/<h[12][^>]*>([^<]{4,90})<\/h[12]>/gi)]
+    .map((m) => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean).slice(0, 8);
+  log(`site: ${shots.length} screenshot(s) of ${siteUrl}`);
+  return { shots, text: [title, desc, ...headings].filter(Boolean).join('\n') };
+}
+
+// Real images from the project's own website — og:image first, then the
+// largest <img> candidates. The site is the raw material for a business or
+// article video; the R2 hero is the fallback.
+export const MAX_MEDIA = 4;
+
+export async function collectMedia(job, work, log = () => {}) {
+  const site = job.project?.website_url || job.project?.publishing_url || '';
+  const outDir = join(work, 'assets', 'media');
+  mkdirSync(outDir, { recursive: true });
+  if (!site) return [];
+  try {
+    const res = await fetch(site, {
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(20000),
+    });
+    const html = await res.text().catch(() => '');
+    const srcs = new Set();
+    for (const m of html.matchAll(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/gi)) srcs.add(m[1]);
+    for (const m of html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) srcs.add(m[1]);
+    const candidates = [...srcs]
+      .map((u) => { try { return new URL(u, site).href; } catch { return null; } })
+      .filter((u) => /^https?:/.test(u))
+      .filter((u) => /\.(jpe?g|png|webp)(\?|$)/i.test(u))
+      .filter((u) => !/logo|icon|sprite|avatar|favicon/i.test(u));
+    const picked = [];
+    for (const u of candidates.slice(0, 12)) {
+      if (picked.length >= MAX_MEDIA) break;
+      try {
+        const r = await fetch(u, { signal: AbortSignal.timeout(15000) });
+        if (!r.ok) continue;
+        const type = (r.headers.get('content-type') || '').toLowerCase();
+        if (!type.startsWith('image/')) continue;
+        const buf = Buffer.from(await r.arrayBuffer());
+        if (buf.length < 8000) continue; // icons/sprites — not scene material
+        const f = join(outDir, `img${picked.length}.jpg`);
+        writeFileSync(f, buf);
+        picked.push(f);
+      } catch { /* skip broken asset */ }
+    }
+    log(`media: ${picked.length} image(s) from ${site}`);
+    return picked;
+  } catch (e) {
+    log(`media collect failed (${e.message}) — gradient only`);
+    return [];
+  }
+}
+
+// The brand logo, extension preserved (SVG/PNG/JPG all render in <img>).
+export async function downloadLogo(logoUrl, work, log = () => {}) {
+  if (!logoUrl) return null;
+  const ext = (String(logoUrl).match(/\.(svg|png|jpe?g|webp)(\?|$)/i)?.[1] || 'png').toLowerCase();
+  const out = join(work, 'assets', `logo.${ext}`);
+  mkdirSync(join(work, 'assets'), { recursive: true });
+  try {
+    const r = await fetch(String(logoUrl).trim(), {
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) return null;
+    const type = (r.headers.get('content-type') || '').toLowerCase();
+    if (!type.startsWith('image/')) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length < 100) return null;
+    writeFileSync(out, buf);
+    return `assets/logo.${ext}`;
+  } catch { return null; }
+}
+
+// Which assets an intent is worth paying for. Chrome captures take 10-45s
+// each, so an article video does not screenshot a site it will never show.
+const WANTS_SITE = new Set(['product_demo', 'product_promotion', 'announcement', 'before_after']);
+
+export async function collectAssets({ job, intent, work, log = () => {} }) {
+  const assets = {};
+  const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
+  if (heroB64) {
+    mkdirSync(join(work, 'assets'), { recursive: true });
+    writeFileSync(join(work, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
+    assets.hero = 'assets/hero.jpg';
+  }
+
+  const logo = await downloadLogo(job.project?.logo_url, work, log);
+  if (logo) assets.logo = logo;
+
+  // Screenshots of the thing being sold. `source_url` is the explicit one
+  // (a website-promo job); otherwise the project's own site.
+  const siteUrl = job.source_url || job.project?.website_url || '';
+  const wantsSite = WANTS_SITE.has(intent) || job.kind === 'website';
+  if (siteUrl && wantsSite) {
+    const { shots } = await captureSite(siteUrl, work, log);
+    shots.slice(0, 2).forEach((p, i) => {
+      // Copy to a role-named file so the storyboard can reference it without
+      // knowing where captureSite happened to put it. The extension is kept:
+      // Chrome sniffs a local file by name, and these are PNGs.
+      const rel = `assets/site${i}.png`;
+      try {
+        copyFileSync(p, join(work, rel));
+        assets[`site:${i}`] = rel;
+      } catch { /* a shot we cannot copy is a shot we do not have */ }
+    });
+  }
+
+  // Photos: for anything that shows a place or a product, and as the generic
+  // texture for everything else.
+  const media = await collectMedia(job, work, log);
+  media.slice(0, 3).forEach((p, i) => { assets[`photo:${i}`] = p.replace(`${work}/`, ''); });
+
+  // A map, only where a map is the point.
+  if (intent === 'local_business') {
+    const where = job.project?.address || job.project?.name || '';
+    const map = await captureMaps(where, work, log);
+    if (map) assets.map = map;
+  }
+
+  const roles = Object.keys(assets);
+  log(`assets: ${roles.length ? roles.join(', ') : 'none — will fall back to the gradient'}`);
+  return assets;
+}
