@@ -16,6 +16,7 @@
 import { json, nowSec, newId, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
 import { videoTemplateById, parseTemplateParam, clampVideoDuration } from '../../../_lib/video_templates.js';
+import { parseBgmParam } from '../../../_lib/bgm_catalog.js';
 
 const IN_FLIGHT = ['pending', 'claimed', 'rendering'];
 
@@ -35,13 +36,13 @@ async function dedupe(env, kind, ref) {
   return null;
 }
 
-async function insertJob(env, { projectId, ref, slug, kind, sourceUrl, template, duration }) {
+async function insertJob(env, { projectId, ref, slug, kind, sourceUrl, template, duration, bgm }) {
   const id = newId();
   const t = nowSec();
   await env.DB.prepare(
-    `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, source_url, template, duration, attempts, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, 0, ?, ?)`
-  ).bind(id, projectId, ref, slug, kind, sourceUrl, template, duration, t, t).run();
+    `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, source_url, template, duration, bgm, attempts, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 0, ?, ?)`
+  ).bind(id, projectId, ref, slug, kind, sourceUrl, template, duration, bgm, t, t).run();
   return id;
 }
 
@@ -64,6 +65,14 @@ export const onRequestPost = async ({ env, request }) => {
     return json(400, { error: 'unknown_template', hint: 'template phải là một id trong catalog (hoặc "auto")' });
   }
   const duration = clampVideoDuration(body?.duration);
+
+  // Background music: 'auto'/absent → NULL (the agent's pad), 'none' →
+  // muted, else a catalog id. Never a free-form URL — the catalog is the
+  // allow-list, so no user-controlled host ever reaches the renderer.
+  const music = parseBgmParam(body?.bgm);
+  if (!music.ok) {
+    return json(400, { error: 'unknown_bgm', hint: 'bgm phải là "auto", "none" hoặc một id trong catalog nhạc' });
+  }
 
   // The chosen template must know how to tell this kind of story. 'auto'
   // (stored NULL) accepts every source — the engine picks at render time.
@@ -97,9 +106,9 @@ export const onRequestPost = async ({ env, request }) => {
     const jobId = await insertJob(env, {
       projectId: post.project_id || projectId,
       ref: post.id, slug: post.slug, kind: 'post',
-      sourceUrl: null, template: tpl.template, duration,
+      sourceUrl: null, template: tpl.template, duration, bgm: music.bgm,
     });
-    audit(env, 'admin', 'video.create', post.id, { job_id: jobId, template: tpl.template, source_type: 'post' });
+    audit(env, 'admin', 'video.create', post.id, { job_id: jobId, template: tpl.template, bgm: music.bgm, source_type: 'post' });
     return json(200, { ok: true, job_id: jobId, hint: 'Agent sẽ render trong chu kỳ tiếp theo.' });
   }
 
@@ -116,9 +125,9 @@ export const onRequestPost = async ({ env, request }) => {
 
     const jobId = await insertJob(env, {
       projectId, ref: sentinel, slug: project.slug, kind: 'website',
-      sourceUrl: url.href, template: tpl.template, duration,
+      sourceUrl: url.href, template: tpl.template, duration, bgm: music.bgm,
     });
-    audit(env, 'admin', 'video.create', projectId, { job_id: jobId, template: tpl.template, source_type: 'url', url: url.href });
+    audit(env, 'admin', 'video.create', projectId, { job_id: jobId, template: tpl.template, bgm: music.bgm, source_type: 'url', url: url.href });
     return json(200, { ok: true, job_id: jobId, hint: 'Agent sẽ render trong chu kỳ tiếp theo.' });
   }
 
@@ -129,8 +138,8 @@ export const onRequestPost = async ({ env, request }) => {
 
   const jobId = await insertJob(env, {
     projectId, ref: sentinel, slug: project.slug, kind: 'business',
-    sourceUrl: null, template: tpl.template, duration,
+    sourceUrl: null, template: tpl.template, duration, bgm: music.bgm,
   });
-  audit(env, 'admin', 'video.create', projectId, { job_id: jobId, template: tpl.template, source_type: 'business' });
+  audit(env, 'admin', 'video.create', projectId, { job_id: jobId, template: tpl.template, bgm: music.bgm, source_type: 'business' });
   return json(200, { ok: true, job_id: jobId, hint: 'Agent sẽ render trong chu kỳ tiếp theo.' });
 };

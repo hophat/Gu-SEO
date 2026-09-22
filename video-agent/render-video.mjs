@@ -712,6 +712,85 @@ export function makeBgm(totalSec, seedStr, out = join(WORK, 'assets', 'bgm.mp3')
   return r.status === 0 && existsSync(out) && statSync(out).size > 5000 ? out : null;
 }
 
+// ── 4c-ii. operator-chosen music ──────────────────────────────────────
+// The wizard can pin a catalog track instead of the pad: the job carries
+// bgm (catalog id | 'none' | NULL) and bgm_url (the track's public
+// /image/music/ URL, absolutized at claim). The catalog is server-owned —
+// bgm_url is the only URL the renderer ever downloads for music, so no
+// user-supplied host reaches this fetch.
+//
+// A real track is not the pad: it is denser and longer, so it is looped
+// if shorter than the video, cut to the video length, and given the same
+// fade-in/out the pad gets. The composition still ducks it to
+// data-volume=0.12 and loudness mastering still applies — the music
+// choice changes the colour of the bed, never the mix budget.
+
+// Fetch the track into work/ and verify it looks like audio. Returns the
+// local path or null — a failed fetch falls back to the pad (logged at
+// the caller), music is a preference not a hard dependency.
+export async function downloadBgm(url, work, log = () => {}) {
+  const src = join(work, 'assets', 'bgm-src.mp3');
+  try {
+    const r = await fetch(String(url).trim(), {
+      headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!r.ok) { log(`bgm: fetch ${r.status}`); return null; }
+    const type = (r.headers.get('content-type') || '').toLowerCase();
+    if (type && !type.startsWith('audio/') && !type.includes('octet-stream')) {
+      log(`bgm: not audio (${type})`);
+      return null;
+    }
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length < 50000) { log(`bgm: file too small (${buf.length}B)`); return null; }
+    mkdirSync(dirname(src), { recursive: true });
+    writeFileSync(src, buf);
+    return src;
+  } catch (e) {
+    log(`bgm: fetch failed (${String(e?.message || e).slice(0, 80)})`);
+    return null;
+  }
+}
+
+// Trim (or loop) a downloaded track to the video length with the pad's
+// 2s in / 3s out fades. Exported for the test suite — the ffmpeg call is
+// the part that can silently produce a silent file, so the size check
+// mirrors makeBgm's.
+export function cutBgm(src, totalSec, out = join(WORK, 'assets', 'bgm.mp3')) {
+  const fadeOut = Math.max(1, totalSec - 3).toFixed(1);
+  const r = spawnSync('ffmpeg', [
+    '-y', '-stream_loop', '-1', '-i', src, '-t', totalSec.toFixed(1),
+    '-af', `afade=t=in:d=2,afade=t=out:st=${fadeOut}:d=3`,
+    '-b:a', '128k', out,
+  ], { encoding: 'utf8', timeout: 120000 });
+  return r.status === 0 && existsSync(out) && statSync(out).size > 5000 ? out : null;
+}
+
+// The one BGM decision point. 'none' mutes; a catalog URL fetches + cuts;
+// absent or failed music falls back to the pad so a render is never lost
+// over a missing MP3. VIDEO_MUSIC=off still wins over everything.
+export async function prepareBgm(job, totalSec, work, log = () => {}) {
+  if (String(E('VIDEO_MUSIC') || '').toLowerCase() === 'off') return null;
+  if (String(job.bgm || '') === 'none') {
+    log('bgm: muted by choice — voice only');
+    return null;
+  }
+  const out = join(work, 'assets', 'bgm.mp3');
+  if (job.bgm_url) {
+    const src = await downloadBgm(job.bgm_url, work, log);
+    const cut = src ? cutBgm(src, totalSec, out) : null;
+    if (cut) {
+      log(`bgm: "${job.bgm}" mixed in`);
+      return out;
+    }
+    log('bgm: chosen track unavailable — falling back to the ambient pad');
+  }
+  const pad = makeBgm(totalSec, `${job.slug}-${job.kind}`, out);
+  if (pad) log('bgm: ambient pad mixed in');
+  else log('bgm: none (ffmpeg missing/failed) — voice only');
+  return pad;
+}
+
 // ── 4d. loudness master — the finished mix at social loudness ────────
 // A real render of the composition measures ≈ -29 LUFS integrated: the
 // visuals, the voice and the bed are each fine, but the delivered file is
@@ -1121,9 +1200,7 @@ export async function renderOne(job, deps = {}) {
   log(`video: ${total}s · ${storyboard.scenes.map((s) => s.type).join(' → ')}`);
 
   const logoSrc = assets.logo || await downloadLogo(job.project?.logo_url, work, log);
-  const bgmSrc = makeBgm(total, `${job.slug}-${job.kind}`, join(work, 'assets', 'bgm.mp3'));
-  if (bgmSrc) log('bgm: ambient pad mixed in');
-  else log('bgm: none (VIDEO_MUSIC=off, or ffmpeg missing/failed) — voice only');
+  const bgmSrc = await prepareBgm(job, total, work, log);
 
   log('composing…');
   writeFileSync(join(work, 'index.html'), composeStoryboardHtml(job, storyboard, segs, assets, logoSrc, bgmSrc));

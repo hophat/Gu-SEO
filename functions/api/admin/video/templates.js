@@ -8,6 +8,7 @@
 import { json } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
 import { VIDEO_TEMPLATES } from '../../../_lib/video_templates.js';
+import { BGM_TRACKS, BGM_LICENSE, bgmTrackPath } from '../../../_lib/bgm_catalog.js';
 
 export const onRequestGet = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -24,5 +25,9 @@ export const onRequestGet = async ({ env, request }) => {
     ok: true,
     templates: VIDEO_TEMPLATES,
     hasPresenter: !!String(row.presenter_image_url || '').trim(),
+    // The wizard's music picker: same catalog the create endpoint validates
+    // against, each track carrying the URL the preview player streams.
+    music: BGM_TRACKS.map((t) => ({ ...t, url: bgmTrackPath(t) })),
+    musicLicense: BGM_LICENSE,
   });
 };

@@ -737,4 +737,10 @@ ALTER TABLE video_jobs ADD COLUMN template TEXT;
 ALTER TABLE video_jobs ADD COLUMN duration INTEGER;
 ALTER TABLE projects ADD COLUMN presenter_name TEXT;
 ALTER TABLE projects ADD COLUMN presenter_image_url TEXT;
+
+-- Operator-chosen background music, see migration 012. video_jobs.bgm
+-- stores the catalog id from functions/_lib/bgm_catalog.js: NULL = 'auto'
+-- (the agent synthesises its pad), 'none' = muted by choice, otherwise a
+-- track id the claim resolves to a playable /image/music/ URL.
+ALTER TABLE video_jobs ADD COLUMN bgm TEXT;
 `;

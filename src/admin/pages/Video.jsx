@@ -17,7 +17,7 @@ import {
 import {
   ReloadOutlined, VideoCameraOutlined,
   ClockCircleOutlined, DownloadOutlined, FacebookOutlined,
-  DeleteOutlined, PlayCircleOutlined, UploadOutlined,
+  DeleteOutlined, PlayCircleOutlined, PauseCircleOutlined, UploadOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import VideoStatusTag from '../components/VideoStatusTag.jsx';
@@ -56,11 +56,18 @@ export default function Video() {
   const [tplId, setTplId] = useState('auto');
   const [duration, setDuration] = useState(20);
 
+  // Background music: 'auto' (the agent's pad) | 'none' | a catalog id.
+  // playingBgm is the track id currently previewing — one shared <audio>
+  // element so two previews can never overlap.
+  const [bgmId, setBgmId] = useState('auto');
+  const [playingBgm, setPlayingBgm] = useState(null);
+  const audioRef = useRef(null);
+
   // The template catalog is per-project only because of hasPresenter —
   // the list itself is static. Cached per project so reopening the modal
   // (and the table's id→label lookup) never refetches.
   const tplCache = useRef({});
-  const [tplData, setTplData] = useState({ templates: [], hasPresenter: false });
+  const [tplData, setTplData] = useState({ templates: [], hasPresenter: false, music: [] });
   const [tplLoading, setTplLoading] = useState(false);
 
   const loadTemplates = useCallback(async (force = false) => {
@@ -70,7 +77,11 @@ export default function Video() {
     setTplLoading(true);
     const { status, body } = await apiGet(`/api/admin/video/templates?project_id=${pid}`);
     if (status === 200 && body?.ok) {
-      tplCache.current[pid] = { templates: body.templates || [], hasPresenter: !!body.hasPresenter };
+      tplCache.current[pid] = {
+        templates: body.templates || [],
+        hasPresenter: !!body.hasPresenter,
+        music: body.music || [],
+      };
       setTplData(tplCache.current[pid]);
     }
     setTplLoading(false);
@@ -103,8 +114,26 @@ export default function Video() {
     setCreateSlug(undefined);
     setTplId('auto');
     setDuration(20);
+    setBgmId('auto');
+    setPlayingBgm(null);
     setCreateOpen(true);
     loadTemplates();
+  };
+
+  // One shared player: clicking a row's play button swaps the src, clicking
+  // the playing row pauses. destroyOnClose unmounts the element, so a closed
+  // modal can never keep playing.
+  const togglePreview = (t) => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playingBgm === t.id) {
+      el.pause();
+      setPlayingBgm(null);
+      return;
+    }
+    el.src = t.url;
+    el.play().catch(() => setPlayingBgm(null));
+    setPlayingBgm(t.id);
   };
 
   const pickTemplate = (t) => {
@@ -137,7 +166,7 @@ export default function Video() {
     }
     setBusyId('__create__');
     const { status, body } = await apiPost('/api/admin/video/create', {
-      project_id: getActiveProject(), source, template: tplId || 'auto', duration,
+      project_id: getActiveProject(), source, template: tplId || 'auto', duration, bgm: bgmId || 'auto',
     });
     setBusyId(null);
     if (status === 200 && body?.ok) {
@@ -490,6 +519,69 @@ export default function Video() {
                 })}
               </div>
             )}
+          </div>
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>Nhạc nền</Text>
+            <audio ref={audioRef} onEnded={() => setPlayingBgm(null)} style={{ display: 'none' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+              {[
+                { id: 'auto', label: 'Tự động', desc: 'Pad nhạc nền theo brand' },
+                { id: 'none', label: 'Không nhạc', desc: 'Chỉ giọng đọc' },
+              ].map((o) => {
+                const selected = bgmId === o.id;
+                return (
+                  <div
+                    key={o.id}
+                    onClick={() => setBgmId(o.id)}
+                    style={{
+                      border: `1px solid ${selected ? '#1677ff' : '#d9d9d9'}`,
+                      borderRadius: 8,
+                      padding: '6px 10px',
+                      cursor: 'pointer',
+                      background: selected ? '#e6f4ff' : '#fff',
+                    }}
+                  >
+                    <Text strong style={{ fontSize: 13 }}>{o.label}</Text>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{o.desc}</Text>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ maxHeight: 168, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 8 }}>
+              {(tplData.music || []).map((t) => {
+                const selected = bgmId === t.id;
+                const playing = playingBgm === t.id;
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => setBgmId(t.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '6px 10px', cursor: 'pointer',
+                      background: selected ? '#e6f4ff' : '#fff',
+                      borderBottom: '1px solid #f5f5f5',
+                    }}
+                  >
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={playing ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+                      onClick={(e) => { e.stopPropagation(); togglePreview(t); }}
+                      aria-label={`Nghe thử ${t.label}`}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text strong style={{ fontSize: 13 }}>{t.label}</Text>
+                      <Text type="secondary" style={{ fontSize: 11 }}> — {t.artist} · {t.mood} · {t.duration}</Text>
+                      <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t.desc}</Text>
+                    </div>
+                    {selected && <Text style={{ color: '#1677ff', fontSize: 11 }}>✓</Text>}
+                  </div>
+                );
+              })}
+            </div>
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              Nhạc miễn phí Mixkit — dùng thương mại được, không cần ghi credit.
+            </Text>
           </div>
           <div>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>Thời lượng: {duration}s</Text>

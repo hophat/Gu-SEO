@@ -47,6 +47,7 @@ import { onRequestPost as createExplainerJob } from '../functions/api/admin/vide
 import { onRequestDelete as deleteProgKeyword } from '../functions/api/admin/prog/queue.js';
 import { onRequestPost as claimVideoJob } from '../functions/api/admin/video/claim.js';
 import { VIDEO_TEMPLATES, videoTemplateById } from '../functions/_lib/video_templates.js';
+import { BGM_TRACKS } from '../functions/_lib/bgm_catalog.js';
 import { onRequestPost as createVideoJob } from '../functions/api/admin/video/create.js';
 import { onRequestGet as listVideoTemplates } from '../functions/api/admin/video/templates.js';
 import { onRequestPost as uploadPresenter } from '../functions/api/admin/video/presenter.js';
@@ -2434,6 +2435,52 @@ async function testVideoTemplates() {
   assert.equal(biz?.job?.project?.presenter_image_url, 'https://x/image/project/x/presenter/p.png');
   ok('the business claim path carries template/duration/presenter too');
 
+  // ── background music ──────────────────────────────────────────────
+  // 'bgm' validates against the catalog like template does: an unknown
+  // id is a 400 before any row exists, 'none' and track ids store.
+  const badBgm = await create({ project_id: PROJECT, source: { type: 'post', slug: 'alpha-post' }, bgm: 'nope' });
+  assert.equal(badBgm.status, 400);
+  assert.equal((await badBgm.json()).error, 'unknown_bgm', 'a music id outside the catalog is refused');
+  // And a user-supplied URL never passes for music — the catalog is the
+  // allow-list, so no operator-controlled host reaches the renderer.
+  assert.equal(
+    (await create({ project_id: PROJECT, source: { type: 'post', slug: 'alpha-post' }, bgm: 'https://evil.example/x.mp3' })).status,
+    400, 'a URL-shaped bgm is refused');
+  ok('create validates bgm against the catalog (no arbitrary URLs)');
+
+  // A catalog track stores its id and claims out as an absolute URL.
+  const bizMusic = await (await create({ project_id: OTHER, source: { type: 'business' }, bgm: 'serene-view' })).json();
+  assert.equal(bizMusic.ok, true);
+  const bizMusicRow = await env.__get('SELECT bgm FROM video_jobs WHERE id = ?', bizMusic.job_id);
+  assert.equal(bizMusicRow.bgm, 'serene-view', 'the catalog id lands on the job row');
+  const bizMusicClaim = await (await claimVideoJob({
+    env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'business', project_id: OTHER } }),
+  })).json();
+  assert.equal(bizMusicClaim?.job?.bgm, 'serene-view');
+  assert.equal(bizMusicClaim?.job?.bgm_url, 'https://x/image/music/serene-view.mp3',
+    'the track ships to the agent as an absolute /image/music/ URL');
+  ok('a chosen track stores its id and claims out as an absolute URL');
+
+  // 'none' is a real stored choice: the claim must carry the sentinel so
+  // the agent knows to mute, not to fall back to the pad.
+  const noMusic = await (await create({
+    project_id: OTHER, source: { type: 'url', url: 'https://silent.example' }, bgm: 'none',
+  })).json();
+  const noMusicRow = await env.__get('SELECT bgm FROM video_jobs WHERE id = ?', noMusic.job_id);
+  assert.equal(noMusicRow.bgm, 'none');
+  const noMusicClaim = await (await claimVideoJob({
+    env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'website', project_id: OTHER } }),
+  })).json();
+  assert.equal(noMusicClaim?.job?.bgm, 'none', "'none' survives the claim as a sentinel");
+  assert.equal(noMusicClaim?.job?.bgm_url, null);
+  // Absent bgm stays NULL = 'auto' — the agent's pad, same as before.
+  const autoMusic = await (await create({
+    project_id: OTHER, source: { type: 'url', url: 'https://auto.example' },
+  })).json();
+  const autoMusicRow = await env.__get('SELECT bgm FROM video_jobs WHERE id = ?', autoMusic.job_id);
+  assert.equal(autoMusicRow.bgm, null, "absent bgm stores NULL = 'auto'");
+  ok("'none' stores the mute sentinel, absent stores NULL = auto");
+
   // The catalog endpoint serves all 12 ids and the presenter flag.
   const cat = await (await listVideoTemplates({
     env, request: adminReq(`https://x/api/admin/video/templates?project_id=${PROJECT}`),
@@ -2442,6 +2489,17 @@ async function testVideoTemplates() {
   assert.equal(cat.templates.length, 12, 'the wizard offers the full frozen catalog');
   assert.equal(cat.hasPresenter, true, 'hasPresenter follows projects.presenter_image_url');
   ok('GET /api/admin/video/templates returns the catalog + hasPresenter');
+
+  // The wizard's music picker is served by the same endpoint — each track
+  // carries the streamable URL the preview player uses.
+  assert.equal(cat.music.length, BGM_TRACKS.length, 'the catalog endpoint serves every track');
+  assert.ok(cat.music.every((t) => t.url === `/image/music/${t.file}`),
+    'each track carries its streamable preview URL');
+  assert.equal(cat.musicLicense.attribution, false,
+    'the catalog only lists music that needs no attribution');
+  assert.equal(new Set(BGM_TRACKS.map((t) => t.id)).size, BGM_TRACKS.length, 'catalog ids are unique');
+  assert.equal(new Set(BGM_TRACKS.map((t) => t.file)).size, BGM_TRACKS.length, 'catalog files are unique');
+  ok('templates endpoint serves the music catalog + license metadata');
 
   // Presenter upload: bad mime is refused, a good image lands the column.
   const badMime = await uploadPresenter({

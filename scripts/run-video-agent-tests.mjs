@@ -53,6 +53,7 @@ globalThis.fetch = async (url, opts) => {
 
 const {
   composeCarouselSlideHtml, composeStoryboardHtml, fitNarration, LOUDNESS, makeBgm,
+  cutBgm, prepareBgm,
   masterLoudness, renderCarousel, renderOne, slideQueries,
 } = await import('../video-agent/render-video.mjs');
 // Scene renderers live in scenes.mjs; the story rules in storyboard.mjs.
@@ -486,6 +487,68 @@ if (!HAS_FFMPEG) {
   const dur = Number(spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', bed], { encoding: 'utf8' }).stdout);
   assert.ok(Math.abs(dur - TOTAL) < 0.2, `the bed must span the video (${dur}s for ${TOTAL}s)`);
   ok('the bed spans the whole video');
+
+  // ── operator-chosen music ──────────────────────────────────────────
+  // A catalog track is longer than the video and denser than the pad:
+  // cutBgm must loop-or-trim it to the video length and the fades must
+  // land — a bed that ends mid-phrase or outlasts the video is the bug
+  // this guards. Source: a 4s tone, far shorter than TOTAL.
+  const srcDir = mkdtempSync(join(tmpdir(), 'bgm-src-'));
+  const src4s = join(srcDir, 'src.mp3');
+  spawnSync('ffmpeg', ['-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=4', '-b:a', '128k', src4s], { encoding: 'utf8' });
+  const cut = cutBgm(src4s, TOTAL, join(srcDir, 'cut.mp3'));
+  assert.ok(cut && existsSync(cut), 'cutBgm must produce a bed from a real track');
+  const cutDur = Number(spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', cut], { encoding: 'utf8' }).stdout);
+  assert.ok(Math.abs(cutDur - TOTAL) < 0.6,
+    `a 4s track must loop up to the video length (${cutDur}s for ${TOTAL}s)`);
+  // The out-fade must have bitten: the last 0.5s is far under the middle.
+  const rmsOf = (file, ss, t) => {
+    const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-ss', String(ss), '-t', String(t), '-i', file, '-af', 'volumedetect', '-f', 'null', '-'], { encoding: 'utf8' });
+    return Number((r.stderr.match(/mean_volume: (-?[\d.]+) dB/) || [])[1]);
+  };
+  assert.ok(rmsOf(cut, TOTAL - 0.5, 0.4) < rmsOf(cut, TOTAL / 2, 0.4) - 6,
+    'the chosen track must fade out under the ending, not stop flat');
+  ok('a catalog track is looped/trimmed to the video with real fades');
+
+  // prepareBgm is the one decision point: 'none' mutes, a fetchable URL
+  // becomes the bed, an unreachable one falls back to the pad. fetch is
+  // stubbed to refuse network for the whole suite — for the fetchable
+  // case, swap in a local response carrying real MP3 bytes and put the
+  // stub back after.
+  const pWork = mkdtempSync(join(tmpdir(), 'bgm-job-'));
+  assert.equal(await prepareBgm({ bgm: 'none' }, TOTAL, pWork), null,
+    "'none' must mute the bed, not fall back to the pad");
+
+  const noNet = globalThis.fetch;
+  const trackBytes = readFileSync(src4s);
+  const fetchLogs = [];
+  globalThis.fetch = async () => ({
+    ok: true,
+    headers: { get: () => 'audio/mpeg' },
+    arrayBuffer: async () => trackBytes.buffer.slice(trackBytes.byteOffset, trackBytes.byteOffset + trackBytes.byteLength),
+  });
+  try {
+    const fetched = await prepareBgm(
+      { bgm: 'serene-view', bgm_url: 'https://agent.test/image/music/serene-view.mp3', slug: 's', kind: 'post' },
+      TOTAL, pWork, (m) => fetchLogs.push(m));
+    assert.ok(fetched && existsSync(fetched), 'a fetchable track becomes the bed');
+    assert.ok(fetchLogs.some((m) => m.includes('serene-view')),
+      'the log must name the chosen track, so a pad fallback cannot masquerade as it');
+  } finally {
+    globalThis.fetch = noNet;
+  }
+
+  // A dead URL must degrade to the pad, loudly logged, never silently
+  // dropped — the suite's refusing stub plays the dead host.
+  const logs = [];
+  const fellBack = await prepareBgm(
+    { bgm: 'x', bgm_url: 'https://agent.test/image/music/gone.mp3', slug: 's', kind: 'post' }, TOTAL, pWork, (m) => logs.push(m));
+  assert.ok(fellBack && existsSync(fellBack), 'a dead track URL falls back to the pad');
+  assert.ok(logs.some((m) => m.includes('falling back')), 'the fallback is logged, not silent');
+  rmSync(srcDir, { recursive: true, force: true });
+  rmSync(pWork, { recursive: true, force: true });
+  ok('prepareBgm: none mutes, a fetched track mixes, a dead URL falls back to the pad');
+
   rmSync(dir, { recursive: true, force: true });
 
   // ── the finished mix at social loudness ────────────────────────────

@@ -18,6 +18,7 @@
 import { json, nowSec, newId, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
 import { postIdFromRef, CAROUSEL_KIND, EXPLAINER_KIND } from '../../../_lib/video_jobs.js';
+import { BGM_NONE, bgmTrackById, bgmTrackPath } from '../../../_lib/bgm_catalog.js';
 
 // How far back the auto-queue looks for post videos. Videos are
 // enrichment for fresh posts — without a window, the first agent run
@@ -30,6 +31,21 @@ const QUEUE_WINDOW = 48 * 3600;
 // derived from the kind constants so the list cannot drift from the ones
 // the ref policy knows about.
 const POST_QUEUE_KINDS = ['post', CAROUSEL_KIND, EXPLAINER_KIND].map((k) => `'${k}'`).join(',');
+
+// Stored bgm → job payload fields. NULL = 'auto' (the agent's own pad),
+// 'none' = muted by choice, a catalog id = that track. bgm_url is
+// absolutized like presenter_image_url — the agent fetches it from a VPS
+// with no same-origin context. An id missing from the catalog (catalog
+// shrank after the job was queued) degrades to auto + the row keeps
+// rendering: music is a preference, not a hard dependency.
+function bgmFields(bgm, requestUrl) {
+  const id = String(bgm || '').trim();
+  if (!id) return { bgm: null, bgm_url: null };
+  if (id === BGM_NONE) return { bgm: BGM_NONE, bgm_url: null };
+  const track = bgmTrackById(id);
+  if (!track) return { bgm: null, bgm_url: null };
+  return { bgm: id, bgm_url: new URL(bgmTrackPath(track), requestUrl).href };
+}
 
 export const onRequestPost = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -47,10 +63,10 @@ export const onRequestPost = async ({ env, request }) => {
   if (body?.type === 'business' || body?.type === 'website') {
     const kind = body.type;
     const pendSql = projectId
-      ? `SELECT id, project_id, source_url, template, duration FROM video_jobs
+      ? `SELECT id, project_id, source_url, template, duration, bgm FROM video_jobs
           WHERE kind = ? AND project_id = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`
-      : `SELECT id, project_id, source_url, template, duration FROM video_jobs
+      : `SELECT id, project_id, source_url, template, duration, bgm FROM video_jobs
           WHERE kind = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`;
     const rows = projectId
@@ -121,6 +137,7 @@ export const onRequestPost = async ({ env, request }) => {
         source_url: pendingJob.source_url || null,
         template: pendingJob.template || null,
         duration: pendingJob.duration ?? null,
+        ...bgmFields(pendingJob.bgm, request.url),
         slug: project.slug,
         title: project.name,
         highlights,
@@ -166,6 +183,7 @@ export const onRequestPost = async ({ env, request }) => {
   // have no row before the claim INSERT, so both stay NULL = 'auto'.
   let pendingTemplate = null;
   let pendingDuration = null;
+  let pendingBgm = null;
 
   if (slug) {
     post = await env.DB.prepare(
@@ -178,10 +196,10 @@ export const onRequestPost = async ({ env, request }) => {
     // 1. Drain the batch queue: oldest pending/failed post job first.
     // Carousels ride the same queue — they need the same post payload.
     const pendSql = projectId
-      ? `SELECT id, kind, blog_post_id, template, duration FROM video_jobs
+      ? `SELECT id, kind, blog_post_id, template, duration, bgm FROM video_jobs
           WHERE COALESCE(kind, 'post') IN (${POST_QUEUE_KINDS}) AND project_id = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`
-      : `SELECT id, kind, project_id, blog_post_id, template, duration FROM video_jobs
+      : `SELECT id, kind, project_id, blog_post_id, template, duration, bgm FROM video_jobs
           WHERE COALESCE(kind, 'post') IN (${POST_QUEUE_KINDS}) AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`;
     const pendRows = projectId
@@ -214,6 +232,7 @@ export const onRequestPost = async ({ env, request }) => {
       pendingKind = pendingJob.kind || 'post';
       pendingTemplate = pendingJob.template || null;
       pendingDuration = pendingJob.duration ?? null;
+      pendingBgm = pendingJob.bgm || null;
     }
   }
 
@@ -259,7 +278,7 @@ export const onRequestPost = async ({ env, request }) => {
     } catch (e) {
       if (!/UNIQUE|unique/i.test(String(e?.message || e))) throw e;
       const existing = await env.DB.prepare(
-        'SELECT id, status, template, duration FROM video_jobs WHERE blog_post_id = ? LIMIT 1'
+        'SELECT id, status, template, duration, bgm FROM video_jobs WHERE blog_post_id = ? LIMIT 1'
       ).bind(post.id).first();
       if (!existing || existing.status !== 'failed') {
         return json(409, { error: 'already_claimed', slug: post.slug });
@@ -271,6 +290,7 @@ export const onRequestPost = async ({ env, request }) => {
       // A resurrected failed job keeps the template the operator chose.
       pendingTemplate = existing.template || null;
       pendingDuration = existing.duration ?? null;
+      pendingBgm = existing.bgm || null;
     }
   }
 
@@ -316,6 +336,7 @@ export const onRequestPost = async ({ env, request }) => {
       hero_image_base64: heroBase64,
       template: pendingTemplate,
       duration: pendingDuration,
+      ...bgmFields(pendingBgm, request.url),
       project: project ? {
         name: project.site_name || null,
         description: project.site_description || null,
