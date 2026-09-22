@@ -7,6 +7,39 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.21.0 — 2026-09-22
+
+Video kể chuyện theo intent — 20 giây, có hình thật, không còn slideshow.
+
+### Changed
+- **Video ngắn lại còn 20 giây (mặc định), tối đa 45.** Trước đây độ dài
+  video do độ dài lời đọc quyết định, nên một ý 20 giây thành video 79
+  giây. Giờ storyboard chốt thời lượng từng cảnh trước, rồi lời đọc phải
+  vừa: cảnh nào đọc quá slot thì agent **nói ít lại và đọc lại**, không kéo
+  dài video. Đặt `VIDEO_DURATION` trong `video-agent/.env` để đổi.
+- **Một engine cho mọi loại video.** `post`, `business`, `website`,
+  `explainer` không còn mỗi loại một cấu trúc cứng. Agent phân loại **intent**
+  (product_demo, local_business, educational, listicle, storytelling,
+  announcement, testimonial, before_after, product_promotion) rồi chọn beat
+  theo intent đó. `explainer` giờ là một gợi ý cho bộ phân loại.
+
+### Added
+- **Cảnh có hình thật.** Ảnh chụp website đặt trong khung điện thoại (có
+  cuộn/zoom), before/after bằng hai ảnh thật, bản đồ Google Maps chụp bằng
+  Chrome sẵn có (không cần API key), thẻ đánh giá sao, thẻ sản phẩm.
+- **Chữ trên màn hình tối đa 8 từ** — caption, không phải câu.
+
+### An toàn nội dung
+- **Video không được bịa số.** Mọi con số hiển thị phải có trong nguồn.
+- **Cổng chống slideshow.** Storyboard bị từ chối nếu phần thân chủ yếu là
+  chữ không có gì để nhìn, hoặc nếu video giới thiệu sản phẩm mà không dùng
+  asset thật nào.
+- **Không lặp cảnh cùng loại liền nhau**; video ≥5 cảnh phải có ≥4 loại.
+
+### Vận hành
+- Agent nay gồm `render-video.mjs` + `storyboard.mjs` + `scenes.mjs` +
+  `assets.mjs` — dùng `video-agent/deploy.sh`, đừng copy tay.
+
 ## 1.20.0 — 2026-09-22
 
 Video minh hoạ nội dung bài viết — biểu đồ, sơ đồ, icon thay vì chỉ chữ.
