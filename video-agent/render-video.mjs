@@ -579,7 +579,9 @@ function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, 
     text-shadow:0 2px 18px rgba(0,0,0,0.8); }
   .loc { gap:18px; }
   .loc-map { width:100%; border-radius:16px; overflow:hidden; border:2px solid rgba(255,255,255,0.15); }
-  .loc-map img { width:100%; height:420px; object-fit:cover; display:block; }
+  /* The map is captured phone-shaped (720x1280); a short panel crops the pin
+     and the place card away, which is the whole point of the scene. */
+  .loc-map img { width:100%; height:560px; object-fit:cover; display:block; }
   .loc-t { color:#fff; font-size:36px; font-weight:600; max-width:580px; }
   .stars { display:flex; gap:8px; }
   .rate-t { color:#fff; font-size:40px; font-weight:600; max-width:560px; line-height:1.3; }

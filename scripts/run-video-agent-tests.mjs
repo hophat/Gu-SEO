@@ -53,7 +53,7 @@ const {
 const { ICON_NAMES, icon, sceneInner, statSize } = await import('../video-agent/scenes.mjs');
 const {
   DURATION, INTENTS, MAX_TEXT_WORDS, beatSlots, intentFromSignals, reviewStoryboard,
-  sanitizeStoryboard, storyboardFromContent, wordCount,
+  sanitizeStoryboard, storyboardFromContent, wordCount, narrationBudget,
   MIN_SCENES: SB_MIN_SCENES, MAX_SCENES: SB_MAX_SCENES,
 } = await import('../video-agent/storyboard.mjs');
 const { carouselPrefix, carouselSlideKey } = await import('../functions/_lib/video_jobs.js');
@@ -702,7 +702,18 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
   assert.doesNotMatch(html.slice(html.indexOf('id="s1"'), html.indexOf('id="s2"')), /clip bgi/,
     'the chart does not — a photo behind a chart is what makes it unreadable');
   assert.match(html, /tl\.seek\(0\)/, 'the timeline is seekable, so a snapshot at any moment is reproducible');
-  ok('the composition declares 9:16, one narration track per scene, and backgrounds only where they read');
+
+  // Motion is declared by the storyboard and never invented: a scene that
+  // asked for nothing gets the plain fade, so the video does not animate
+  // just because it can.
+  const moving = composeStoryboardHtml(SCENE_JOB, { intent: 'product_demo', duration: 20, scenes: [
+    { type: 'hook', text: 'a', say: 'a', duration: 3, motion: 'zoom' },
+    { type: 'ui_demo', text: 'b', say: 'b', duration: 5, asset: 'site:0', motion: 'scroll' },
+    { type: 'cta', text: 'c', say: 'c', duration: 3 }] }, [2, 2, 2], ASSETS);
+  assert.match(moving, /tl\.fromTo\("#s1 \.device-shot", \{ yPercent: 0[^;]*yPercent: -20/, 'a scroll demo scrolls the real screenshot');
+  assert.match(moving, /tl\.fromTo\("#s0 [^"]*\.bgi img"[^;]*scale: 1\.12/, 'a zoom moves the background behind the hook');
+  assert.doesNotMatch(moving.slice(moving.indexOf('#s2 .device-shot')), /^.{0,4}tl/, 'a scene that asked for no motion gets none');
+  ok('the composition declares 9:16, one narration track per scene, and only the motion the story asked for');
 }
 
 // ── renderOne drives the storyboard path end to end ──────────────────
@@ -839,6 +850,40 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
   assert.ok(dropped.some((d) => d.reason === 'asset_missing'), 'a reference to an asset we do not have is reported');
   assert.ok(Math.abs(storyboard.duration - 20) < 0.5, `the total is the target, not the model's sum (${storyboard.duration})`);
   ok('the storyboard gate clamps text, drops repeats and missing assets, and owns the duration');
+}
+
+{
+  // A single big number is the easiest thing for a model to invent, and the
+  // most damaging to get wrong.
+  const { storyboard, dropped } = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'a' },
+      { type: 'stat', text: 'Số liệu', value: 12, label: 'bao bì' },
+      { type: 'stat', text: 'Bịa', value: 47, label: 'không có trong bài' },
+      { type: 'cta', text: 'c' },
+    ],
+  }, { source: STORY_ARTICLE, intent: 'educational', target: 20 });
+  assert.ok(dropped.some((d) => d.reason === 'number_not_in_source'), 'a stat the source never stated is refused');
+  assert.equal(JSON.stringify(storyboard).includes('47'), false, 'and never reaches the frame');
+  assert.ok(storyboard.scenes.some((s) => s.type === 'stat' && s.value === 12), 'a sourced one is kept');
+  ok('a big number the source does not contain is refused');
+}
+
+{
+  // Narration is written to fit its slot. A model that writes a paragraph
+  // for a three-second beat gets cut, not given more time.
+  const long = Array.from({ length: 40 }, () => 'chữ').join(' ');
+  const { storyboard } = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'a', say: long, duration: 3 },
+      { type: 'cta', text: 'c', say: 'ngắn thôi', duration: 3 },
+    ],
+  }, { intent: 'educational', target: 20 });
+  const hook = storyboard.scenes[0];
+  assert.ok(wordCount(hook.say) <= narrationBudget(hook.duration),
+    `narration must fit its slot (${wordCount(hook.say)} words for ${hook.duration}s)`);
+  assert.ok(hook.say.length < long.length, 'and it was actually cut');
+  ok('narration longer than its slot is cut to fit, not given more time');
 }
 
 {
