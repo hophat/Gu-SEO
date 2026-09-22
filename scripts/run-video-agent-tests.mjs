@@ -735,6 +735,31 @@ Một câu dài khác để làm quote cho video này nhé bạn.`;
   assert.equal(clean.scenes.length, plan.scenes.length);
   assert.equal(JSON.stringify(planFromMarkdown(md, 'Giảm chi phí bao bì')), JSON.stringify(plan), 'and it is deterministic');
   ok('with no model at all the article still yields a full, truthful explainer plan');
+
+  // Both of these came out of a real render, not a hunch: the first fallback
+  // used whole sentences as chart labels, which wrapped over three lines and
+  // crowded the bars, and the read ran to 79s against a 75s budget.
+  const bars = plan.scenes.find((s) => s.type === 'bars');
+  for (const item of bars.items) {
+    assert.ok(item.label.length <= 27, `a bar label is a phrase, not a sentence (got "${item.label}")`);
+    assert.doesNotMatch(item.label, /[.!?]$/, 'and it does not end like a sentence');
+  }
+  const spoken = plan.scenes.map((s) => narrationFor(s)).join(' ');
+  // Vietnamese TTS at this rate measures ~8.5 chars/second, so 75s is about
+  // 640 characters. The fallback has no model to pace it, so the budget is
+  // enforced here instead.
+  assert.ok(spoken.length <= 640,
+    `the fallback must fit the 45-75s budget (${spoken.length} chars ≈ ${Math.round(spoken.length / 8.5)}s)`);
+  // "12%" and "12" are different claims; the chart keeps the one the article
+  // made. One bar per clause is the fallback's contract, so each number here
+  // gets its own sentence.
+  const pct = planFromMarkdown('Doanh thu tăng 12%. Chi phí giảm 7%.', 'T');
+  assert.equal(pct.scenes.find((s) => s.type === 'bars').unit, '%', 'a percentage stays a percentage');
+  const counts = planFromMarkdown('Shop có 12 chi nhánh. Đội ngũ thêm 7 người.', 'T');
+  assert.equal(counts.scenes.find((s) => s.type === 'bars').unit, '', 'a count does not become a percentage');
+  assert.equal(planFromMarkdown('Chỉ một câu có 12 và 7 cùng lúc.', 'T').scenes.some((s) => s.type === 'bars'), false,
+    'one clause yields one number, so a single sentence cannot fill a chart');
+  ok('the fallback reads as a chart, and fits the time budget without a model pacing it');
 }
 
 {

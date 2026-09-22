@@ -379,6 +379,36 @@ function stripMarkdown(md) {
 // always draws the same grid.
 const FALLBACK_ICONS = ['check', 'clock', 'trend', 'shield', 'users', 'star'];
 
+// A year is not a statistic. "Trong năm 2026, 53% người dùng sẽ rời bỏ" must
+// chart 53, not 2026 — taking the first number in the sentence put a 2026 bar
+// next to a 25 bar and made every real number invisible. Prefer a number the
+// sentence marks as a quantity (followed by %), then the first that is not a
+// bare year.
+export function pickNumber(sentence) {
+  const s = String(sentence || '');
+  const all = [...s.matchAll(/\d[\d.,]*/g)].map((m) => m[0]);
+  if (!all.length) return null;
+  const isYear = (t) => /^(19|20)\d{2}$/.test(t.replace(/[.,]/g, ''));
+  const percent = all.find((t) => new RegExp(`${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*%`).test(s));
+  return percent || all.find((t) => !isYear(t)) || all[0];
+}
+
+// A chart label is a phrase, not the sentence the number came from. Reading
+// a whole sentence into a 210px column wraps it over three lines and crowds
+// the bars out — measured on a real render. So take the words that follow
+// the number ("…53% người dùng sẽ rời bỏ" → "người dùng sẽ rời bỏ"), and
+// fall back to the words before it when the number ends the clause.
+function labelNear(sentence, token) {
+  const s = String(sentence || '');
+  // A label is not a sentence: no trailing full stop, no leading punctuation.
+  const tidy = (t) => t.replace(/[.!?…:;,]+$/u, '').trim();
+  const idx = s.indexOf(token);
+  if (idx < 0) return tidy(cut(s, 26));
+  const after = s.slice(idx + token.length).replace(/^[^\p{L}]+/u, '').trim();
+  const before = s.slice(0, idx).replace(/[^\p{L}\d]+$/u, '').trim();
+  return tidy(cut(after.length >= 10 ? after : (before || after), 26));
+}
+
 export function planFromMarkdown(md, title = '') {
   const text = stripMarkdown(md);
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -391,40 +421,68 @@ export function planFromMarkdown(md, title = '') {
   // must not be filtered out just because it is brief.
   const parts = text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter((s) => s.length > 8);
 
-  // Numbers with the clause they came from — the label is the sentence, so
-  // the chart never claims more than the article said.
+  // Numbers with a phrase from the clause they came from — never a number
+  // the article does not contain, and never a whole sentence as a label.
   const seen = new Set();
   const nums = [];
   for (const s of parts) {
-    const m = s.match(/\d[\d.,]*/);
-    if (!m) continue;
-    const digits = m[0].replace(/[^\d]/g, '');
+    const token = pickNumber(s);
+    if (!token) continue;
+    const digits = token.replace(/[^\d]/g, '');
     if (!digits || seen.has(digits)) continue;
     seen.add(digits);
-    nums.push({ label: cut(s, 46), value: m[0] });
-    if (nums.length >= 5) break;
+    // Remember whether the article wrote this as a percentage, so the chart
+    // can say "53%" instead of a bare "53" that reads as a count.
+    nums.push({
+      label: labelNear(s, token),
+      value: token,
+      percent: new RegExp(`${token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*%`).test(s),
+    });
+    // Four bars fit the frame with room for a wrapped label; a fifth starts
+    // squeezing the chart and lengthening the read.
+    if (nums.length >= 4) break;
   }
 
-  const scenes = [{ type: 'hook', text: cut(title || lines[0] || 'Bài viết', 90) }];
-  if (nums.length >= 2) scenes.push({ type: 'bars', title: 'Những con số trong bài', items: nums });
-  if (bullets.length >= 3) {
-    scenes.push({ type: 'steps', title: 'Các bước chính', items: bullets.slice(0, 4).map((l) => ({ label: cut(l, 52) })) });
+  // Headings are the second source of short points, used when the bullets
+  // have already been spent on the steps scene.
+  const headings = String(md || '').split('\n').map((l) => l.trim())
+    .filter((l) => /^#{2,4}\s+\S/.test(l))
+    .map((l) => l.replace(/^#+\s+/, '').trim())
+    .filter((l) => l.length > 6 && l.length < 70);
+
+  const scenes = [{ type: 'hook', text: cut(title || lines[0] || 'Bài viết', 70) }];
+  // A chart shares one unit; only claim '%' when every bar is a percentage.
+  const barsUnit = nums.length && nums.every((n) => n.percent) ? '%' : '';
+  if (nums.length >= 2) {
+    scenes.push({
+      type: 'bars', title: 'Những con số trong bài', unit: barsUnit,
+      items: nums.map(({ label, value }) => ({ label, value })),
+    });
   }
-  if (bullets.length >= 2) {
+
+  // Steps and icons must not read the same list back to back — the first
+  // fallback showed the same three bullets twice in a 79s video.
+  let usedBullets = 0;
+  if (bullets.length >= 3) {
+    scenes.push({ type: 'steps', title: 'Các bước chính', items: bullets.slice(0, 3).map((l) => ({ label: cut(l, 40) })) });
+    usedBullets = 3;
+  }
+  const spare = bullets.slice(usedBullets).length >= 2 ? bullets.slice(usedBullets) : headings;
+  if (spare.length >= 2) {
     scenes.push({
       type: 'icons',
       title: 'Điểm chính',
-      items: bullets.slice(0, 6).map((l, i) => ({ icon: FALLBACK_ICONS[i % FALLBACK_ICONS.length], label: cut(l, 38) })),
+      items: spare.slice(0, 4).map((l, i) => ({ icon: FALLBACK_ICONS[i % FALLBACK_ICONS.length], label: cut(l, 26) })),
     });
   }
   const quote = parts.filter((s) => s.length > 30).sort((a, b) => b.length - a.length)[0];
-  if (quote) scenes.push({ type: 'quote', text: cut(quote, 150) });
+  if (quote) scenes.push({ type: 'quote', text: cut(quote, 110) });
 
   // A video shorter than MIN_SCENES is not worth rendering; fill from the
   // remaining headings, then from the numbers one at a time.
   for (const n of nums.slice(1, 4)) {
     if (scenes.length >= MIN_SCENES) break;
-    scenes.push({ type: 'stat', value: n.value, label: n.label, icon: 'trend' });
+    scenes.push({ type: 'stat', value: n.value, label: n.label, unit: n.percent ? '%' : '', icon: 'trend' });
   }
   scenes.push({ type: 'outro', text: 'Đọc bài viết đầy đủ' });
   return { title: title || '', scenes: scenes.slice(0, MAX_SCENES) };

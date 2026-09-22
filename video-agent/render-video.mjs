@@ -652,7 +652,7 @@ function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, 
   .stat-l { color:#c9d6e2; font-size:36px; line-height:1.35; max-width:580px; }
   .bars { display:flex; flex-direction:column; gap:24px; width:100%; }
   .bar-row { display:flex; align-items:center; gap:14px; }
-  .bar-lab { color:#c9d6e2; font-size:26px; width:190px; text-align:right; line-height:1.2; }
+  .bar-lab { color:#c9d6e2; font-size:24px; width:210px; text-align:right; line-height:1.2; }
   .bar-track { flex:1; height:30px; border-radius:999px; background:rgba(255,255,255,0.12); overflow:hidden; }
   .bar-fill { display:block; height:100%; border-radius:999px; }
   .bar-val { color:#fff; font-size:28px; font-weight:700; width:120px; text-align:left; }
