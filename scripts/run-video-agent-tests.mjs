@@ -557,7 +557,7 @@ if (!HAS_FFMPEG) {
   ] };
   const segs = [2, 2];
   const withBed = composeStoryboardHtml(JOB, bedStory, segs, {}, null, '/tmp/bgm.mp3');
-  assert.match(withBed, /<audio class="clip" data-start="0" data-duration="8\.00" data-volume="0\.12" data-track-index="6" src="assets\/bgm\.mp3"><\/audio>/,
+  assert.match(withBed, /<audio id="bgm" class="clip" data-start="0" data-duration="8\.00" data-volume="0\.12" data-track-index="6" src="assets\/bgm\.mp3"><\/audio>/,
     'the bed must be a full-length track on its own channel at the documented gain');
   assert.doesNotMatch(composeStoryboardHtml(JOB, bedStory, segs, {}, null, null), /assets\/bgm\.mp3/,
     'no bed means no music track');
@@ -696,6 +696,11 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
   assert.match(html, /data-width="720"[\s\S]*data-height="1280"/, 'and declares its composition size');
   assert.equal((html.match(/data-track-index="5"/g) || []).length, 3, 'exactly one narration track per scene');
   assert.match(html, /data-track-index="5" src="assets\/seg2\.mp3"/, 'in scene order');
+  // `hyperframes check` reports a media element without an id as an error.
+  // A render still plays it (measured), but the id is what the framework's
+  // tooling uses as a stable edit target, so every one carries it.
+  assert.equal((html.match(/<audio id="voice\d"/g) || []).length, 3, 'every narration track has an id');
+  assert.match(html, /<audio id="bgm"/, 'and so does the bed');
   assert.match(html, /data-volume="0\.12" data-track-index="6" src="assets\/bgm\.mp3"/, 'the bed rides its own track');
   // A hook reads better over a photo; a chart must not, or the numbers stop
   // being readable.
@@ -712,7 +717,15 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
     { type: 'ui_demo', text: 'b', say: 'b', duration: 5, asset: 'site:0', motion: 'scroll' },
     { type: 'cta', text: 'c', say: 'c', duration: 3 }] }, [2, 2, 2], ASSETS);
   assert.match(moving, /tl\.fromTo\("#s1 \.device-shot", \{ yPercent: 0[^;]*yPercent: -20/, 'a scroll demo scrolls the real screenshot');
-  assert.match(moving, /tl\.fromTo\("#s0 [^"]*\.bgi img"[^;]*scale: 1\.12/, 'a zoom moves the background behind the hook');
+  // The background is a SIBLING of the scene, so a zoom must name the scene's
+  // own background id. The first version of this assertion pinned
+  // `#s0 … .bgi img` — a selector that can never match — so it stayed green
+  // while the zoom did nothing, and only `hyperframes check` (a GSAP "target
+  // not found") caught it.
+  const zoom = moving.match(/tl\.fromTo\("([^"]*)"[^;]*scale: 1\.12/);
+  assert.ok(zoom, 'a zoom tween is emitted');
+  assert.match(zoom[1], /#bg0 img/, 'it targets the scene\'s own background, which is a sibling');
+  assert.doesNotMatch(zoom[1], /#s0 \.bgi/, 'never a descendant selector that cannot match');
   assert.doesNotMatch(moving.slice(moving.indexOf('#s2 .device-shot')), /^.{0,4}tl/, 'a scene that asked for no motion gets none');
   ok('the composition declares 9:16, one narration track per scene, and only the motion the story asked for');
 }

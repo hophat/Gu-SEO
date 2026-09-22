@@ -302,13 +302,22 @@ export function composeStoryboardHtml(job, sb, segs, assets = {}, logoSrc = null
     if (bgAsset) {
       s.bgId = `bg${bgEls.length}`;
       bgEls.push(s);
-      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img src="${esc(bgAsset)}" alt=""/></div>`);
+      // The <img> carries its own id: without one, two backgrounds that use
+      // the same file are indistinguishable to the renderer's media
+      // discovery (hyperframes check: duplicate_media_discovery_risk), and
+      // neither is a stable edit target.
+      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img id="${s.bgId}-img" src="${esc(bgAsset)}" alt=""/></div>`);
     }
     t += s.dur;
   }
   const total = scenes.reduce((a, s) => a + s.dur, 0);
+  // Every media element carries an id. `hyperframes check` reports an audio
+  // without one as an error ("the renderer requires id to discover media
+  // elements"), and while a real render still plays it — measured -19.8 LUFS
+  // on a tone with no id in 0.8.56 — the id is what gives the framework's
+  // tooling a stable edit target, and it costs nothing.
   const audioHtml = scenes.map((s, i) =>
-    `<audio class="clip" data-start="${s.start.toFixed(2)}" data-duration="${(segs[i] || 0).toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
+    `<audio id="voice${i}" class="clip" data-start="${s.start.toFixed(2)}" data-duration="${(segs[i] || 0).toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
   ).join('\n  ');
 
   return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: scenes, logoSrc, bgmSrc });
@@ -447,7 +456,15 @@ function motionFor(i, s) {
     `tl.fromTo("#s${i}", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, ${st});`,
     `tl.to("#s${i}", { opacity: 0, duration: 0.3 }, ${(s.start + s.dur - 0.35).toFixed(2)});`,
   ];
-  const inner = `#s${i} .device-shot, #s${i} .ba-img, #s${i} .loc-map img, #s${i} .bgi img`;
+  // The background div is a SIBLING of the scene, not a child of it, so the
+  // old `#s${i} .bgi img` never matched anything: the zoom and the pan on
+  // every photo-backed scene silently did nothing. `hyperframes check`
+  // surfaced it as a GSAP "target not found" — the test suite could not,
+  // because a tween that matches nothing is still valid markup.
+  const inner = [
+    `#s${i} .device-shot`, `#s${i} .ba-img`, `#s${i} .loc-map img`,
+    s.bgId ? `#${s.bgId} img` : null,
+  ].filter(Boolean).join(', ');
   if (s.motion === 'zoom') out.push(`tl.fromTo("${inner}", { scale: 1.0 }, { scale: 1.12, duration: ${du}, ease: "none" }, ${st});`);
   if (s.motion === 'pan') out.push(`tl.fromTo("${inner}", { xPercent: -4 }, { xPercent: 4, duration: ${du}, ease: "none" }, ${st});`);
   if (s.motion === 'scroll') out.push(`tl.fromTo("#s${i} .device-shot", { yPercent: 0, scale: 1.02 }, { yPercent: -20, scale: 1.02, duration: ${du}, ease: "none" }, ${st});`);
@@ -590,8 +607,8 @@ function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, 
   data-duration="${total.toFixed(2)}" data-width="720" data-height="1280">
 ${sceneHtml.join('\n')}
 ${audioHtml}
-${bgmSrc ? `<audio class="clip" data-start="0" data-duration="${total.toFixed(2)}" data-volume="0.12" data-track-index="6" src="assets/bgm.mp3"></audio>` : ''}
-${logoSrc ? `<img class="clip brandlogo" data-start="0" data-duration="${total.toFixed(2)}" data-track-index="9" src="${logoSrc}"/>` : ''}
+${bgmSrc ? `<audio id="bgm" class="clip" data-start="0" data-duration="${total.toFixed(2)}" data-volume="0.12" data-track-index="6" src="assets/bgm.mp3"></audio>` : ''}
+${logoSrc ? `<img id="brandlogo" class="clip brandlogo" data-start="0" data-duration="${total.toFixed(2)}" data-track-index="9" src="${logoSrc}"/>` : ''}
 </div>
 <script>
   const tl = gsap.timeline({ paused: true });
@@ -1037,6 +1054,19 @@ export async function renderOne(job, deps = {}) {
 
   log('composing…');
   writeFileSync(join(work, 'index.html'), composeStoryboardHtml(job, storyboard, segs, assets, logoSrc, bgmSrc));
+
+  // The framework ships a validator and we were not calling it. It found two
+  // real defects the test suite could not: a media element without an id
+  // (reported as an error) and, as a GSAP "target not found" warning, motion
+  // selectors that matched nothing — the zoom and pan on every photo-backed
+  // scene had never run. Logged, not fatal: a render still plays audio
+  // without the id (measured -19.8 LUFS), so until we know this checker's
+  // false-positive rate it is a diagnostic, not a gate.
+  const chk = spawn('npx', ['-y', `hyperframes@${HF_VERSION}`, 'check'], { cwd: work, encoding: 'utf8', timeout: 5 * 60 * 1000 });
+  const chkOut = `${chk.stdout || ''}${chk.stderr || ''}`;
+  const counts = chkOut.match(/(\d+) error\(s\), (\d+) warning\(s\)/);
+  if (chk.status === 0) log(`hyperframes check: ok${counts ? ` (${counts[2]} warning(s))` : ''}`);
+  else log(`hyperframes check: FAILED (exit ${chk.status}) — ${counts ? counts[0] : 'no summary'}; rendering anyway`);
 
   log('rendering (hyperframes)…');
   const ren = spawn('npx', ['-y', `hyperframes@${HF_VERSION}`, 'render'], { cwd: work, encoding: 'utf8', timeout: 15 * 60 * 1000 });
