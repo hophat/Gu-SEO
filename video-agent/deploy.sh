@@ -17,7 +17,7 @@ cd "$(dirname "$0")"
 
 HOST="${HOST:-node2-prod}"
 DEST="${DEST:-/root/video-agent}"
-FILES=(render-video.mjs storyboard.mjs scenes.mjs assets.mjs package.json)
+FILES=(render-video.mjs storyboard.mjs scenes.mjs assets.mjs templates.mjs package.json)
 
 for f in "${FILES[@]}"; do
   [ -f "$f" ] || { echo "missing $f — run this from video-agent/" >&2; exit 1; }

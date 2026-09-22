@@ -46,6 +46,10 @@ import {
 import { onRequestPost as createExplainerJob } from '../functions/api/admin/video/explainer.js';
 import { onRequestDelete as deleteProgKeyword } from '../functions/api/admin/prog/queue.js';
 import { onRequestPost as claimVideoJob } from '../functions/api/admin/video/claim.js';
+import { VIDEO_TEMPLATES, videoTemplateById } from '../functions/_lib/video_templates.js';
+import { onRequestPost as createVideoJob } from '../functions/api/admin/video/create.js';
+import { onRequestGet as listVideoTemplates } from '../functions/api/admin/video/templates.js';
+import { onRequestPost as uploadPresenter } from '../functions/api/admin/video/presenter.js';
 import { renderCoverSvg, isRenderableSpec, fallbackCoverSpec } from '../functions/_lib/cover_svg.js';
 import { onRequestGet as coverSvgRoute } from '../functions/cover/[slug].svg.js';
 import { onRequestGet as ogSvgRoute } from '../functions/og/[slug].svg.js';
@@ -2353,6 +2357,131 @@ async function testExplainerVideoJobs() {
   ok('re-creating a finished explainer replaces it and keeps the sentinel');
 }
 
+// ── T. user-chosen video templates ──────────────────────────────────
+// The admin wizard picks a template + duration per job; the claim hands
+// them to the agent. The contract that stays invisible until render time:
+// functions/_lib/video_templates.js must carry the same ids as the
+// agent's video-agent/templates.mjs — so the sync check reads the agent
+// file's source and compares id sets.
+async function testVideoTemplates() {
+  console.log('\nT. Video job templates');
+  const env = await freshEnv();
+  env.IMAGES = fakeImages();
+
+  const create = (body, token) => createVideoJob({
+    env, request: adminReq('https://x/api/admin/video/create', token === undefined ? { body } : { body, token }),
+  });
+
+  // The gate and the validators run before any row is written.
+  assert.equal((await create({ project_id: PROJECT, source: { type: 'post', slug: 'alpha-post' } }, '')).status, 401,
+    'creating a video job needs the admin gate');
+  assert.equal((await create({ project_id: PROJECT, source: { type: 'post', slug: 'alpha-post' }, template: 'nope' })).status, 400,
+    'an unknown template id is rejected');
+  const mismatch = await create({ project_id: PROJECT, source: { type: 'url', url: 'https://a.example' }, template: 'summary' });
+  assert.equal(mismatch.status, 400);
+  const mismatchBody = await mismatch.json();
+  assert.equal(mismatchBody.error, 'template_source_mismatch',
+    'a template that does not accept the source type is refused');
+  ok('create rejects unknown templates and template/source mismatches');
+
+  // A post job stores the chosen template and a clamped duration.
+  const made = await (await create({
+    project_id: PROJECT, source: { type: 'post', slug: 'alpha-post' }, template: 'story', duration: 999,
+  })).json();
+  assert.equal(made.ok, true);
+  const row = await env.__get('SELECT kind, blog_post_id, template, duration FROM video_jobs WHERE id = ?', made.job_id);
+  assert.equal(row.kind, 'post');
+  assert.equal(row.blog_post_id, POST, 'a post job carries the real post id, not a sentinel');
+  assert.equal(row.template, 'story');
+  assert.equal(row.duration, 45, 'duration is clamped into the 15–45s band');
+  assert.equal((await create({ project_id: PROJECT, source: { type: 'post', slug: 'alpha-post' } })).status, 409,
+    'a second post job while one is in flight is refused');
+  ok('a post job stores template + clamped duration and dedupes in flight');
+
+  // 'auto'/absent stores NULL — the agent's engine picks at render time.
+  const auto = await (await create({ project_id: OTHER, source: { type: 'post', slug: 'beta-post' }, template: 'auto' })).json();
+  const autoRow = await env.__get('SELECT template, duration FROM video_jobs WHERE id = ?', auto.job_id);
+  assert.equal(autoRow.template, null, "'auto' is stored as NULL");
+  assert.equal(autoRow.duration, null, 'absent duration stays NULL');
+  ok("'auto' and no duration land as NULL columns");
+
+  // The claim hands the operator's choices to the agent — and the
+  // presenter photo goes out absolute (the VPS cannot resolve '/image/').
+  // The seeded post has no project_id; link it so the project payload
+  // (which carries the presenter fields) is resolved.
+  await env.DB.prepare('UPDATE blog_posts SET project_id = ? WHERE id = ?').bind(PROJECT, POST).run();
+  await env.DB.prepare(
+    `UPDATE projects SET presenter_name = 'Lan', presenter_image_url = '/image/project/x/presenter/p.png' WHERE id = ?`
+  ).bind(PROJECT).run();
+  const claimed = await (await claimVideoJob({
+    env, request: adminReq('https://x/api/admin/video/claim', { body: { project_id: PROJECT } }),
+  })).json();
+  assert.ok(claimed?.job, 'the queued post job must be claimable');
+  assert.equal(claimed.job.template, 'story');
+  assert.equal(claimed.job.duration, 45);
+  assert.equal(claimed.job.project.presenter_name, 'Lan');
+  assert.equal(claimed.job.project.presenter_image_url, 'https://x/image/project/x/presenter/p.png',
+    'presenter_image_url ships absolute for the off-platform agent');
+  ok('claim returns template, duration and an absolute presenter_image_url');
+
+  // The business/website claim path carries the same fields.
+  await create({ project_id: PROJECT, source: { type: 'business' }, template: 'local', duration: 30 });
+  const biz = await (await claimVideoJob({
+    env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'business', project_id: PROJECT } }),
+  })).json();
+  assert.equal(biz?.job?.template, 'local');
+  assert.equal(biz?.job?.duration, 30);
+  assert.equal(biz?.job?.project?.presenter_image_url, 'https://x/image/project/x/presenter/p.png');
+  ok('the business claim path carries template/duration/presenter too');
+
+  // The catalog endpoint serves all 12 ids and the presenter flag.
+  const cat = await (await listVideoTemplates({
+    env, request: adminReq(`https://x/api/admin/video/templates?project_id=${PROJECT}`),
+  })).json();
+  assert.equal(cat.ok, true);
+  assert.equal(cat.templates.length, 12, 'the wizard offers the full frozen catalog');
+  assert.equal(cat.hasPresenter, true, 'hasPresenter follows projects.presenter_image_url');
+  ok('GET /api/admin/video/templates returns the catalog + hasPresenter');
+
+  // Presenter upload: bad mime is refused, a good image lands the column.
+  const badMime = await uploadPresenter({
+    env, request: adminReq('https://x/api/admin/video/presenter',
+      { body: { project_id: PROJECT, filename: 'a.txt', content_type: 'text/plain', base64: 'aGk=' } }),
+  });
+  assert.equal(badMime.status, 400);
+  assert.equal((await badMime.json()).error, 'unsupported_mime');
+  const goodUp = await (await uploadPresenter({
+    env, request: adminReq('https://x/api/admin/video/presenter',
+      { body: { project_id: PROJECT, filename: 'p.png', content_type: 'image/png', base64: 'aGk=' } }),
+  })).json();
+  assert.equal(goodUp.ok, true);
+  assert.match(goodUp.presenter_image_url, /^\/image\/project\/proj_test_a\/presenter\/.+\.png$/,
+    'the stored path is the /image/ route of the R2 key');
+  const stored = await env.__get('SELECT presenter_image_url FROM projects WHERE id = ?', PROJECT);
+  assert.equal(stored.presenter_image_url, goodUp.presenter_image_url);
+  ok('presenter upload rejects bad mime and stores the /image/ path');
+
+  // The contract with the agent: same id set on both sides. The agent
+  // file ships from a parallel change — when it is not present the
+  // frozen 12 ids still pin the platform side.
+  const frozenIds = ['auto', 'before_after', 'explainer', 'launch', 'listicle', 'local',
+    'news_anchor', 'product', 'qa', 'review', 'story', 'summary'].sort();
+  assert.deepEqual(VIDEO_TEMPLATES.map((t) => t.id).sort(), frozenIds,
+    'the platform catalog carries exactly the 12 frozen ids');
+  const agentTplPath = join(ROOT, 'video-agent', 'templates.mjs');
+  if (existsSync(agentTplPath)) {
+    const src = readFileSync(agentTplPath, 'utf8');
+    const agentIds = [...src.matchAll(/id:\s*['"]([^'"]+)['"]/g)].map((m) => m[1]).sort();
+    assert.deepEqual(agentIds, frozenIds,
+      'video-agent/templates.mjs and _lib/video_templates.js must expose the same ids');
+    ok('platform catalog is in sync with video-agent/templates.mjs');
+  } else {
+    ok('platform catalog pinned to the 12 frozen ids (agent file not present yet)');
+  }
+  assert.equal(videoTemplateById('news_anchor').needsPresenter, true,
+    'news_anchor is the presenter-gated template');
+}
+
 // ── S. programmatic SEO queue ───────────────────────────────────────
 // The Prog page had no way to remove a keyword at all. Deleting must drop
 // the QUEUE ROW and leave the page it produced: functions/p/[slug].js serves
@@ -2420,6 +2549,7 @@ async function main() {
   await testEmailPolicy();
   await testCarouselVideoJobs();
   await testExplainerVideoJobs();
+  await testVideoTemplates();
   await testProgQueueDelete();
   await testCoverSpecFallback();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);

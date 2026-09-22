@@ -11,7 +11,8 @@ export const onRequestGet = async ({ env, request }) => {
   if (!projectId) return json(400, { error: 'missing_project_id' });
 
   const row = await env.DB.prepare(
-    `SELECT video_tagline, brand_accent, address, phone, theme_color, logo_url, name
+    `SELECT video_tagline, brand_accent, address, phone, theme_color, logo_url, name,
+            presenter_name, presenter_image_url
      FROM projects WHERE id = ? LIMIT 1`
   ).bind(projectId).first().catch(() => null);
   if (!row) return json(404, { error: 'project_not_found' });
@@ -26,6 +27,8 @@ export const onRequestGet = async ({ env, request }) => {
       theme_color: row.theme_color || '',
       logo_url: row.logo_url || '',
       name: row.name || '',
+      presenter_name: row.presenter_name || '',
+      presenter_image_url: row.presenter_image_url || '',
     },
   });
 };
@@ -46,13 +49,16 @@ async function brandSave({ env, request }) {
   const project = await env.DB.prepare('SELECT id FROM projects WHERE id = ? LIMIT 1').bind(projectId).first();
   if (!project) return json(404, { error: 'project_not_found' });
 
-  // Only the four video tokens are writable here — name/logo/theme_color
-  // have their own screens. The accent is normalised to #rrggbb (the UI
-  // shows a "#" prefix, users type either form).
+  // Only the video tokens are writable here — name/logo/theme_color have
+  // their own screens, and presenter_image_url is set exclusively by the
+  // /api/admin/video/presenter upload (a client-sent path must never
+  // overwrite an R2-managed column). The accent is normalised to #rrggbb
+  // (the UI shows a "#" prefix, users type either form).
   const fields = {};
-  for (const k of ['video_tagline', 'brand_accent', 'address', 'phone']) {
+  for (const k of ['video_tagline', 'brand_accent', 'address', 'phone', 'presenter_name']) {
     if (body[k] !== undefined) {
       let v = String(body[k]).trim();
+      if (k === 'presenter_name') v = v.slice(0, 120);
       if (k === 'brand_accent' && v && !v.startsWith('#')) v = '#' + v.replace(/[^0-9a-f]/gi, '');
       if (k === 'brand_accent' && v && !/^#[0-9a-f]{6}$/i.test(v)) {
         return json(400, { error: 'bad_accent', hint: 'brand_accent phải là mã màu #RRGGBB' });

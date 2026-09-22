@@ -26,6 +26,7 @@ import {
   reviewStoryboard, sanitizeStoryboard, storyboardFromContent, wordCount,
 } from './storyboard.mjs';
 import { collectAssets, downloadLogo } from './assets.mjs';
+import { templateById, intentForTemplate } from './templates.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const HF_VERSION = '0.8.56';
@@ -129,7 +130,10 @@ const INTENT_BRIEF = `Chọn MỘT trong các intent sau, dựa trên nội dung
 - announcement: công bố điều gì mới
 - testimonial: khách hàng nói
 - before_after: trước và sau
-- listicle: danh sách đếm được`;
+- listicle: danh sách đếm được
+- news: bản tin thời sự, có người dẫn và chữ chạy
+- summary: tóm tắt ý chính của bài viết
+- qa: đặt câu hỏi rồi trả lời`;
 
 const SCENE_BRIEF = `Các loại cảnh được phép (chỉ dùng trong danh sách của intent đã chọn):
 - hook {text} — câu mở gây tò mò, tối đa 8 từ, KHÔNG mở bằng tên thương hiệu
@@ -147,22 +151,35 @@ const SCENE_BRIEF = `Các loại cảnh được phép (chỉ dùng trong danh s
 - stat {text, value, unit} · bars {text, items:[{label,value}]} · donut {text, value}
 - line {text, items:[{label,value}]} · steps {text, items:[{label}]} · icons {text, items:[{icon,label}]}
 - compare {text, left:{title,items}, right:{title,items}}
+- anchor {text, name?} — người dẫn bản tin (lower-third); chỉ dùng khi có asset "presenter"
+- headline {text, kicker?} — dòng tin lớn kiểu breaking news
+- keypoints {text, items:[{label}]} — ý chính đánh số, tối đa 4 mục
+- question {text} — câu hỏi lớn
+- answer {text, asset?} — câu trả lời, có thể kèm ảnh
 
 LUẬT BẮT BUỘC:
 1. "text" tối đa 8 từ, là CAPTION chứ không phải câu. Không xuống dòng dài dòng.
 2. "say" là lời đọc cho cảnh đó, ngắn thôi — xem số giây của cảnh trong dàn ý bên dưới.
 3. CHỈ dùng asset có trong danh sách. Không bịa ảnh.
 4. CHỈ dùng con số CÓ TRONG NỘI DUNG. Không làm tròn, không suy diễn.
-5. Cảnh đầu là hook, cảnh cuối là cta. Không lặp hai cảnh cùng loại liền nhau.
+5. Cảnh đầu là hook (bản tin mở bằng headline), cảnh cuối là cta. Không lặp hai cảnh cùng loại liền nhau.
 6. Người xem phải hiểu nội dung khi TẮT TIẾNG — hình phải mang thông tin.`;
 
-async function writeStoryboard(job, { source, suggested, assets, target }) {
+async function writeStoryboard(job, { source, suggested, assets, target, forced = null }) {
   if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
-  const slots = beatSlots(suggested, target);
+  // A user-chosen template fixes the intent: the model fills the shape it was
+  // given rather than picking another one — and the caller pins the result
+  // back to `forced` anyway, so a model that ignores the line below cannot
+  // move the video off the chosen template.
+  const intent = forced || suggested;
+  const slots = beatSlots(intent, target);
   const outline = slots.map((s) => `  ${s.beat} (~${s.duration}s): ${s.types.join(' | ')}`).join('\n');
   const assetList = Object.keys(assets).length
     ? Object.keys(assets).map((k) => `  ${k}`).join('\n')
     : '  (không có asset thật nào — đừng dùng cảnh cần asset)';
+  const intentLine = forced
+    ? `Intent bắt buộc do người dùng chọn: ${forced}. Trả đúng "intent":"${forced}".`
+    : `Intent gợi ý từ tín hiệu nội dung: ${suggested}. Chỉ đổi nếu bạn chắc chắn intent khác đúng hơn.`;
 
   const user = `Nội dung nguồn:
 Tiêu đề: ${job.title || job.project?.name || ''}
@@ -172,9 +189,9 @@ ${job.project?.address ? `Địa chỉ: ${job.project.address}\n` : ''}${job.pro
 
 ${INTENT_BRIEF}
 
-Intent gợi ý từ tín hiệu nội dung: ${suggested}. Chỉ đổi nếu bạn chắc chắn intent khác đúng hơn.
+${intentLine}
 
-Dàn ý beat cho intent "${suggested}" (tổng ~${target}s):
+Dàn ý beat cho intent "${intent}" (tổng ~${target}s):
 ${outline}
 
 Asset thật đang có (dùng đúng tên này ở trường "asset"):
@@ -182,7 +199,7 @@ ${assetList}
 
 ${SCENE_BRIEF}
 
-Trả JSON: {"intent":"${suggested}","duration":${target},"scenes":[{"type":"...","text":"...","say":"...","duration":số,"asset":"tên asset nếu cần","motion":"zoom|pan|reveal|none","icon":"tên icon nếu cần"}]}
+Trả JSON: {"intent":"${intent}","duration":${target},"scenes":[{"type":"...","text":"...","say":"...","duration":số,"asset":"tên asset nếu cần","motion":"zoom|pan|reveal|none","icon":"tên icon nếu cần"}]}
 
 VÍ DỤ (video website từ Google Maps, có asset site:0):
 {"intent":"product_demo","duration":20,"scenes":[
@@ -602,6 +619,39 @@ function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, 
   .loc-t { color:#fff; font-size:36px; font-weight:600; max-width:580px; }
   .stars { display:flex; gap:8px; }
   .rate-t { color:#fff; font-size:40px; font-weight:600; max-width:560px; line-height:1.3; }
+  /* ── newsroom + numbered cards ────────────────────────────────────────
+     The anchor is a lower third: it fills the scene's height so the chyron
+     and the name plate can sit at the bottom like a real broadcast. The
+     equalizer bars are static SVG — a snapshot must be reproducible. */
+  .anchor { height:100%; justify-content:flex-end; align-items:stretch; }
+  .anchor-chyron { color:#fff; font-size:46px; font-weight:800; line-height:1.25;
+    text-align:left; text-shadow:0 2px 18px rgba(0,0,0,0.8); }
+  .anchor-lower { display:flex; align-items:center; gap:20px; width:100%;
+    background:rgba(10,12,16,0.78); border-radius:20px; padding:18px 22px; text-align:left; }
+  .anchor-img { width:96px; height:96px; border-radius:50%; object-fit:cover; flex:none; }
+  .anchor-initials { width:96px; height:96px; border-radius:50%; flex:none; color:#fff;
+    font-size:34px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .anchor-id { flex:1; min-width:0; }
+  .anchor-name { color:#fff; font-size:32px; font-weight:700; }
+  .anchor-role { color:#9fb3c8; font-size:24px; margin-top:6px; }
+  .anchor-eq { flex:none; }
+  .headline { align-items:flex-start; text-align:left; }
+  .hl-kick { color:#fff; font-size:26px; font-weight:800; letter-spacing:0.1em;
+    text-transform:uppercase; padding:10px 22px; border-radius:8px; }
+  .hl-main { color:#fff; font-size:56px; font-weight:800; line-height:1.2; letter-spacing:-0.01em;
+    text-shadow:0 2px 18px rgba(0,0,0,0.8); }
+  .hl-ticker { width:100%; margin-top:18px; padding-top:14px; overflow:hidden; white-space:nowrap;
+    border-top:3px solid rgba(255,255,255,0.25); color:#c9d6e2; font-size:24px; font-weight:600; }
+  .hl-sep { color:${A}; margin:0 14px; }
+  .keypoints { align-items:stretch; }
+  .kp-list { display:flex; flex-direction:column; gap:20px; width:100%; }
+  .kp-row { display:flex; align-items:center; gap:20px; }
+  .kp-n { font-size:66px; font-weight:800; line-height:1; min-width:70px; text-align:center; }
+  .kp-t { color:#f4f6f8; font-size:34px; font-weight:600; line-height:1.3; text-align:left; }
+  .qa-badge { width:120px; height:120px; border-radius:50%; color:#fff; font-size:68px;
+    font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .qa-img { width:300px; height:300px; border-radius:20px; object-fit:cover; margin-bottom:28px; }
+  .qa-t { color:#fff; font-size:44px; font-weight:700; line-height:1.3; max-width:580px; }
 </style></head>
 <body><div id="root" data-composition-id="main" data-start="0"
   data-duration="${total.toFixed(2)}" data-width="720" data-height="1280">
@@ -1002,9 +1052,15 @@ export async function renderOne(job, deps = {}) {
 
   // 1. What is there to show? Asset-first: the story is written after the
   // material is known, so it can only reference what actually exists.
-  const target = clampDuration(Number(E('VIDEO_DURATION')) || DURATION.default);
+  // A template on the job pins the intent (and its default length) before any
+  // signal is read — the user's choice outranks the classifier.
+  const tpl = templateById(job.template);
+  const forced = tpl && intentForTemplate(tpl, job);
+  const target = clampDuration(Number(job.duration) || Number(E('VIDEO_DURATION')) || tpl?.defaultDuration || DURATION.default);
   const source = job.body_markdown || job.project?.description || '';
-  const suggested = intentFromSignals(job, source);
+  const suggested = forced
+    ? { intent: forced, reason: `template "${tpl.id}" chosen by the user` }
+    : intentFromSignals(job, source);
   log(`intent: ${suggested.intent} (${suggested.reason})`);
 
   // collectAssets captures the site once and hands back its text too, so the
@@ -1016,13 +1072,14 @@ export async function renderOne(job, deps = {}) {
   let raw = null;
   try {
     log('writing storyboard via GuRouter…');
-    raw = await writeStoryboard(job, { source: storySource, suggested: suggested.intent, assets, target });
+    raw = await writeStoryboard(job, { source: storySource, suggested: suggested.intent, assets, target, forced });
     log(`storyboard ok (intent ${raw.intent || suggested.intent}, ${raw.scenes.length} scenes)`);
   } catch (e) {
     log(`storyboard failed (${String(e?.message || e).slice(0, 140)}) — deriving from the content`);
   }
 
-  const intent = INTENTS.includes(raw?.intent) ? raw.intent : suggested.intent;
+  // A chosen template cannot be overridden by the model's answer.
+  const intent = forced || (INTENTS.includes(raw?.intent) ? raw.intent : suggested.intent);
   let { storyboard, dropped } = sanitizeStoryboard(
     raw || storyboardFromContent({ ...job, body_markdown: storySource }, intent, assets),
     { source: storySource, intent, target, assets },

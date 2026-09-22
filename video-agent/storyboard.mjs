@@ -18,6 +18,7 @@
 export const INTENTS = [
   'product_demo', 'product_promotion', 'local_business', 'educational',
   'storytelling', 'announcement', 'testimonial', 'before_after', 'listicle',
+  'news', 'summary', 'qa',
 ];
 
 // ── scene vocabulary ─────────────────────────────────────────────────
@@ -27,9 +28,11 @@ export const INTENTS = [
 export const VISUAL_TYPES = [
   'hook', 'problem', 'product_reveal', 'ui_demo', 'feature',
   'result', 'before_after', 'photo', 'location', 'rating', 'cta',
+  'anchor', 'headline',
 ];
 export const GRAPHIC_TYPES = [
   'stat', 'bars', 'donut', 'line', 'steps', 'icons', 'compare', 'timeline',
+  'keypoints', 'question', 'answer',
 ];
 // A quote card is words on a gradient, not a graphic. It is listed here so
 // the slideshow test counts it for what it is.
@@ -122,6 +125,27 @@ export const BEATS = {
     ['items', 3.2, ['steps', 'icons', 'bars']],
     ['close', 1.2, ['quote', 'result']],
     ['cta', 1.3, ['cta']],
+  ),
+  news: beats(
+    ['headline', 1.0, ['headline']],
+    ['anchor_intro', 1.3, ['anchor', 'headline']],
+    ['story', 2.4, ['photo', 'ui_demo', 'stat', 'location', 'feature']],
+    ['anchor_close', 1.2, ['anchor', 'quote']],
+    ['cta', 1.1, ['cta']],
+  ),
+  summary: beats(
+    ['hook', 1.0, ['hook']],
+    ['keypoints', 2.6, ['keypoints']],
+    ['takeaway', 1.2, ['quote', 'result']],
+    ['cta', 1.2, ['cta']],
+  ),
+  qa: beats(
+    ['hook', 1.0, ['hook']],
+    ['question', 1.2, ['question']],
+    ['answer', 2.0, ['answer', 'photo', 'ui_demo', 'stat', 'steps']],
+    ['question2', 1.0, ['question']],
+    ['answer2', 1.6, ['answer', 'feature', 'icons']],
+    ['cta', 1.2, ['cta']],
   ),
 };
 
@@ -241,9 +265,16 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
 
   const kept = [];
   for (const [index, raw] of (Array.isArray(sb?.scenes) ? sb.scenes : []).entries()) {
-    const type = raw?.type;
+    let type = raw?.type;
     if (!SCENE_TYPES.includes(type)) { dropped.push({ index, type: String(type), reason: 'unknown_type' }); continue; }
     if (!allowed.has(type)) { dropped.push({ index, type, reason: `not_in_${intent}` }); continue; }
+
+    // A news anchor with nobody to show is just a headline. Degrade the type
+    // and keep the scene — but record the swap, a rewrite is never silent.
+    if (type === 'anchor' && !assets.presenter) {
+      dropped.push({ index, type: 'anchor', reason: 'no_presenter' });
+      type = 'headline';
+    }
 
     const text = clampText(raw.text);
     if (!text) { dropped.push({ index, type, reason: 'no_text' }); continue; }
@@ -257,6 +288,14 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
     if (type === 'bars' || type === 'line') {
       items = (Array.isArray(raw.items) ? raw.items : []).filter((i) => have.has(numOf(i?.value)));
       if (items.length < 2) { dropped.push({ index, type, reason: 'too_few_verified_numbers' }); continue; }
+    }
+    // A keypoints card with one row is a sentence wearing a number.
+    if (type === 'keypoints') {
+      items = (Array.isArray(raw.items) ? raw.items : [])
+        .map((i) => ({ ...i, label: clampText(i?.label) }))
+        .filter((i) => i.label)
+        .slice(0, 4);
+      if (items.length < 2) { dropped.push({ index, type, reason: 'too_few_items' }); continue; }
     }
 
     // An asset the collector does not have is worse than no asset: it renders
@@ -334,7 +373,8 @@ export function reviewStoryboard(sb) {
   if (!scenes.length) return { ok: false, problems: ['empty'] };
 
   if (scenes.length < MIN_SCENES) problems.push(`too_few_scenes:${scenes.length}`);
-  if (scenes[0]?.type !== 'hook') problems.push('does_not_open_on_a_hook');
+  // A news piece opens on the headline, not a curiosity hook — both count.
+  if (!['hook', 'headline'].includes(scenes[0]?.type)) problems.push('does_not_open_on_a_hook');
   if (scenes.at(-1)?.type !== 'cta') problems.push('does_not_end_on_a_cta');
 
   const dur = scenes.reduce((a, s) => a + (Number(s.duration) || 0), 0);
@@ -376,6 +416,14 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
   const siteAsset = Object.keys(assets).find((k) => k.startsWith('site:'));
   const photoAsset = Object.keys(assets).find((k) => k.startsWith('photo:') || k === 'hero');
   const mapAsset = assets.map ? 'map' : null;
+  const pName = String(job.project?.presenter_name || '').trim();
+  const sentences = body.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+  // The summary's list: highlights first, the body's own sentences when the
+  // job carries no highlight list.
+  const highlightItems = (job.highlights || []).slice(0, 3).map((h) => ({ label: clampText(h, 6) })).filter((i) => i.label);
+  const bodyItems = sentences.slice(0, 3).map((s) => ({ label: clampText(s, 6) })).filter((i) => i.label);
+  const kpItems = highlightItems.length >= 2 ? highlightItems : bodyItems;
+  const bodyQuestion = sentences.find((s) => s.includes('?'));
 
   const fill = {
     hook: { type: 'hook', text: clampText(title), say: clampText(title) },
@@ -406,6 +454,22 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     experience: { type: photoAsset ? 'photo' : 'feature', text: 'Trải nghiệm', asset: photoAsset },
     location: mapAsset ? { type: 'location', text: clampText(p.address, 6), asset: 'map' }
       : { type: 'result', text: clampText(p.address || title, 6) },
+    headline: { type: 'headline', text: clampText(title), kicker: 'TIN MỚI' },
+    anchor_intro: assets.presenter
+      ? { type: 'anchor', text: clampText(title), asset: 'presenter', name: pName }
+      : { type: 'headline', text: clampText(title) },
+    anchor_close: assets.presenter
+      ? { type: 'anchor', text: clampText(brand.cta || title), asset: 'presenter', name: pName }
+      : { type: 'quote', text: clampText(title) },
+    story: { type: photoAsset ? 'photo' : 'feature', text: clampText(title), asset: photoAsset },
+    keypoints: kpItems.length >= 2
+      ? { type: 'keypoints', text: '3 ý chính', items: kpItems }
+      : { type: 'steps', text: '3 ý chính', items: kpItems.length ? kpItems : [{ label: clampText(title, 6) }] },
+    takeaway: { type: 'quote', text: clampText(title) },
+    question: { type: 'question', text: clampText(title) },
+    question2: { type: 'question', text: clampText(bodyQuestion || 'Còn gì nữa?') },
+    answer: { type: photoAsset ? 'photo' : 'answer', text: clampText(sentences[0] || title, 8), asset: photoAsset },
+    answer2: { type: 'answer', text: clampText(sentences[1] || title, 8) },
     cta: { type: 'cta', text: clampText(brand.cta || 'Xem thêm'), say: clampText(brand.cta || 'Xem thêm tại website.') },
   };
 
@@ -420,11 +484,17 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
 
   // Two beats can legitimately want the same scene type — a product demo's
   // "product" and "demo" both show the site — and the variety rule would then
-  // drop one, silently losing a beat. Rebuild the repeat as another type the
-  // same beat allows, rather than letting the gate eat it.
+  // drop one, silently losing a beat. Rebuild the repeat as another type,
+  // rather than letting the gate eat it.
+  // The new card types degrade in a fixed order when one repeats: a second
+  // anchor becomes a headline, a second headline a feature card, and so on.
+  // (News without a presenter hits this: its anchor_intro fill is already a
+  // headline, and 'anchor' cannot resolve it — a rebuilt anchor would just be
+  // rewritten back into a headline by the gate and dropped as a repeat.)
+  const REPEAT_ALT = { anchor: 'headline', headline: 'feature', keypoints: 'steps', question: 'quote', answer: 'feature' };
   for (let i = 1; i < scenes.length; i++) {
     if (scenes[i].type !== scenes[i - 1].type) continue;
-    const alt = slots[i].types.find((t) => t !== scenes[i].type);
+    const alt = REPEAT_ALT[scenes[i].type] || slots[i].types.find((t) => t !== scenes[i].type);
     if (!alt) continue;
     const text = scenes[i].text;
     const rebuilt = {
@@ -435,6 +505,12 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
       quote: { type: 'quote', text },
       result: { type: 'result', text },
       problem: { type: 'problem', text },
+      anchor: assets.presenter ? { type: 'anchor', text, asset: 'presenter', name: pName } : { type: 'headline', text },
+      headline: { type: 'headline', text },
+      keypoints: { type: 'keypoints', text, items: kpItems },
+      steps: { type: 'steps', text, items: kpItems.length ? kpItems : [{ label: clampText(title, 6) }] },
+      question: { type: 'question', text },
+      answer: { type: 'answer', text },
     }[alt];
     if (rebuilt) scenes[i] = { ...rebuilt, duration: scenes[i].duration, say: scenes[i].say };
   }

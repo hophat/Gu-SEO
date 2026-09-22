@@ -4,6 +4,7 @@
 // per project at a time — re-creating replaces a finished one.
 import { json, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
+import { parseTemplateParam, clampVideoDuration } from '../../../_lib/video_templates.js';
 
 export const onRequestPost = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -32,12 +33,16 @@ export const onRequestPost = async ({ env, request }) => {
     await env.DB.prepare('DELETE FROM video_jobs WHERE id = ?').bind(existing.id).run().catch(() => {});
   }
 
+  const tpl = parseTemplateParam(body?.template);
+  if (!tpl.ok) return json(400, { error: 'unknown_template' });
+  const duration = clampVideoDuration(body?.duration);
+
   const id = crypto.randomUUID().replace(/-/g, '');
   const t = Math.floor(Date.now() / 1000);
   await env.DB.prepare(
-    `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, attempts, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 'business', 'pending', 0, ?, ?)`
-  ).bind(id, projectId, `project:${projectId}`, project.slug, t, t).run();
+    `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, template, duration, attempts, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'business', 'pending', ?, ?, 0, ?, ?)`
+  ).bind(id, projectId, `project:${projectId}`, project.slug, tpl.template, duration, t, t).run();
 
   audit(env, 'admin', 'video.business_create', projectId, { job_id: id });
   return json(200, { ok: true, job_id: id, hint: 'Agent sẽ nhận và render trong chu kỳ 15 phút tới.' });

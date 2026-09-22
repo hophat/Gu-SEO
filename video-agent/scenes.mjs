@@ -37,6 +37,10 @@
 //   icons           { title?, items: [{ icon, label }] }
 //   compare         { title?, left: {title, items[]}, right: {title, items[]} }
 //   quote           { text, source? }
+//   anchor          { text, name? } — the news presenter's lower third
+//   headline        { text, kicker? } — breaking-news card
+//   keypoints       { text, items: [{ label }] } — numbered takeaways
+//   question        { text } / answer { text } — the Q&A pair
 
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
@@ -354,9 +358,72 @@ export function ctaCard(s) {
   return `<div class="ex"><p class="outro">${esc(s.text)}</p>${url ? `<p class="sub">${esc(url)}</p>` : ''}</div>`;
 }
 
+// The news presenter's lower third: the real photo when the platform sent
+// one, an initials circle when it did not. The level bars are static SVG —
+// a snapshot must draw the same frame at every moment.
+export function anchorCard(s, presenterImg, accent) {
+  const name = String(s.name || '').trim();
+  const initials = name.split(/\s+/).map((w) => w.charAt(0)).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'MC';
+  const avatar = presenterImg
+    ? `<img class="anchor-img" src="${esc(presenterImg)}" alt=""/>`
+    : `<span class="anchor-initials" style="background:${accent}">${esc(initials)}</span>`;
+  const bars = [12, 26, 40, 30, 18, 34, 22].map((h, i) =>
+    `<rect x="${i * 8}" y="${48 - h}" width="5" height="${h}" rx="2" fill="${accent}"/>`).join('');
+  return `<div class="ex anchor">
+    <p class="anchor-chyron">${esc(s.text || '')}</p>
+    <div class="anchor-lower">
+      ${avatar}
+      <div class="anchor-id">
+        <p class="anchor-name">${esc(name || 'Biên tập viên')}</p>
+        <p class="anchor-role">${esc(s.role || 'Bản tin')}</p>
+      </div>
+      <svg class="anchor-eq" viewBox="0 0 53 48" width="53" height="48" aria-hidden="true">${bars}</svg>
+    </div>
+  </div>`;
+}
+
+// Breaking-news card: a kicker badge, the headline, and a thin ticker strip.
+export function headlineCard(s, accent) {
+  const kicker = s.kicker || 'TIN MỚI';
+  const ticker = [kicker, s.text || '', kicker].map((t) => esc(t)).join('<span class="hl-sep">•</span>');
+  return `<div class="ex headline">
+    <p class="hl-kick" style="background:${accent}">${esc(kicker)}</p>
+    <h1 class="hl-main">${esc(s.text || '')}</h1>
+    <p class="hl-ticker">${ticker}</p>
+  </div>`;
+}
+
+// The summary's numbered takeaways — big numbers, tight rows.
+export function keypointsCard(s, accent) {
+  const items = (Array.isArray(s.items) ? s.items : []).slice(0, 4);
+  const rows = items.map((it, i) => `<div class="kp-row">
+      <span class="kp-n" style="color:${accent}">${i + 1}</span>
+      <p class="kp-t">${esc(it.label)}</p>
+    </div>`).join('');
+  return `<div class="ex keypoints">${exTitle(s.text || s.title)}<div class="kp-list">${rows}</div></div>`;
+}
+
+// The Q&A pair is one card twice: a big '?' badge for the question, an
+// accent tick for the answer.
+function qaCard(s, accent, markHtml, badgeBg, asset = null) {
+  const img = asset ? `<img class="qa-img" src="${esc(asset)}" alt=""/>` : '';
+  return `<div class="ex qa">${img}
+    <span class="qa-badge" style="background:${badgeBg}">${markHtml}</span>
+    <p class="qa-t">${esc(s.text || '')}</p>
+  </div>`;
+}
+
+export function questionCard(s, accent) {
+  return qaCard(s, accent, '?', accent);
+}
+
+export function answerCard(s, accent, asset = null) {
+  return qaCard(s, accent, icon('check', 60), accent, asset);
+}
+
 // Scenes that read better over a full-bleed photo than on the gradient.
 export function wantsBackground(type) {
-  return ['hook', 'problem', 'photo', 'quote'].includes(type);
+  return ['hook', 'problem', 'photo', 'quote', 'headline'].includes(type);
 }
 
 // Dispatch one scene to its renderer. Unknown types render nothing —
@@ -378,6 +445,8 @@ export function sceneInner(scene, accent = '#1677ff', assets = {}) {
     case 'rating': return ratingCard(scene, accent);
     case 'cta':
     case 'outro': return ctaCard(scene);
+    case 'anchor': return anchorCard(scene, assets.presenter, accent);
+    case 'headline': return headlineCard(scene, accent);
     case 'stat': return statCard(scene, accent);
     case 'bars': return barChart(scene, accent);
     case 'donut': return donut(scene, accent);
@@ -387,6 +456,9 @@ export function sceneInner(scene, accent = '#1677ff', assets = {}) {
     case 'icons': return iconGrid(scene, accent);
     case 'compare': return compare(scene, accent);
     case 'quote': return quoteCard(scene, accent);
+    case 'keypoints': return keypointsCard(scene, accent);
+    case 'question': return questionCard(scene, accent);
+    case 'answer': return answerCard(scene, accent, asset);
     default: return '';
   }
 }

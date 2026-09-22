@@ -3,6 +3,7 @@
 // renders a ~30s promo. One website job per URL at a time.
 import { json, nowSec, newId, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
+import { parseTemplateParam, clampVideoDuration } from '../../../_lib/video_templates.js';
 
 export const onRequestPost = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -35,12 +36,16 @@ export const onRequestPost = async ({ env, request }) => {
     await env.DB.prepare('DELETE FROM video_jobs WHERE id = ?').bind(existing.id).run().catch(() => {});
   }
 
+  const tpl = parseTemplateParam(body?.template);
+  if (!tpl.ok) return json(400, { error: 'unknown_template' });
+  const duration = clampVideoDuration(body?.duration);
+
   const id = newId();
   const t = nowSec();
   await env.DB.prepare(
-    `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, source_url, attempts, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 'website', 'pending', ?, 0, ?, ?)`
-  ).bind(id, projectId, sentinel, project.slug, url.href, t, t).run();
+    `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, source_url, template, duration, attempts, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'website', 'pending', ?, ?, ?, 0, ?, ?)`
+  ).bind(id, projectId, sentinel, project.slug, url.href, tpl.template, duration, t, t).run();
 
   audit(env, 'admin', 'video.website_create', projectId, { job_id: id, url: url.href });
   return json(200, { ok: true, job_id: id, url: url.href, hint: 'Agent sẽ chụp trang, viết storyboard và render trong chu kỳ 5 phút tới.' });

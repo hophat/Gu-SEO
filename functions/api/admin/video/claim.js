@@ -47,10 +47,10 @@ export const onRequestPost = async ({ env, request }) => {
   if (body?.type === 'business' || body?.type === 'website') {
     const kind = body.type;
     const pendSql = projectId
-      ? `SELECT id, project_id, source_url FROM video_jobs
+      ? `SELECT id, project_id, source_url, template, duration FROM video_jobs
           WHERE kind = ? AND project_id = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`
-      : `SELECT id, project_id, source_url FROM video_jobs
+      : `SELECT id, project_id, source_url, template, duration FROM video_jobs
           WHERE kind = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`;
     const rows = projectId
@@ -68,7 +68,8 @@ export const onRequestPost = async ({ env, request }) => {
     const pid = pendingJob.project_id;
     const project = await env.DB.prepare(
       `SELECT id, slug, name, description, logo_url, theme_color, brand_accent,
-              video_tagline, address, phone, publishing_url, custom_domain, website_url
+              video_tagline, address, phone, publishing_url, custom_domain, website_url,
+              presenter_name, presenter_image_url
        FROM projects WHERE id = ? LIMIT 1`
     ).bind(pid).first();
     if (!project) {
@@ -118,6 +119,8 @@ export const onRequestPost = async ({ env, request }) => {
         id: pendingJob.id,
         kind,
         source_url: pendingJob.source_url || null,
+        template: pendingJob.template || null,
+        duration: pendingJob.duration ?? null,
         slug: project.slug,
         title: project.name,
         highlights,
@@ -129,6 +132,13 @@ export const onRequestPost = async ({ env, request }) => {
           address: project.address || '',
           phone: project.phone || '',
           logo_url: project.logo_url || null,
+          presenter_name: project.presenter_name || null,
+          // presenter_image_url is stored as a relative '/image/...' path
+          // (same convention as logo_url) — the agent fetches it from a
+          // VPS, so it ships absolute.
+          presenter_image_url: project.presenter_image_url
+            ? new URL(project.presenter_image_url, request.url).href
+            : null,
           publishing_url: project.publishing_url || null,
           website_url: project.website_url || null,
           brand: {
@@ -152,6 +162,10 @@ export const onRequestPost = async ({ env, request }) => {
   let post = null;
   let jobId = null;
   let pendingKind = null;
+  // Operator-chosen render hints on the queued row. Auto-discovered jobs
+  // have no row before the claim INSERT, so both stay NULL = 'auto'.
+  let pendingTemplate = null;
+  let pendingDuration = null;
 
   if (slug) {
     post = await env.DB.prepare(
@@ -164,10 +178,10 @@ export const onRequestPost = async ({ env, request }) => {
     // 1. Drain the batch queue: oldest pending/failed post job first.
     // Carousels ride the same queue — they need the same post payload.
     const pendSql = projectId
-      ? `SELECT id, kind, blog_post_id FROM video_jobs
+      ? `SELECT id, kind, blog_post_id, template, duration FROM video_jobs
           WHERE COALESCE(kind, 'post') IN (${POST_QUEUE_KINDS}) AND project_id = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`
-      : `SELECT id, kind, project_id, blog_post_id FROM video_jobs
+      : `SELECT id, kind, project_id, blog_post_id, template, duration FROM video_jobs
           WHERE COALESCE(kind, 'post') IN (${POST_QUEUE_KINDS}) AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`;
     const pendRows = projectId
@@ -198,6 +212,8 @@ export const onRequestPost = async ({ env, request }) => {
       post = p;
       jobId = pendingJob.id;
       pendingKind = pendingJob.kind || 'post';
+      pendingTemplate = pendingJob.template || null;
+      pendingDuration = pendingJob.duration ?? null;
     }
   }
 
@@ -243,7 +259,7 @@ export const onRequestPost = async ({ env, request }) => {
     } catch (e) {
       if (!/UNIQUE|unique/i.test(String(e?.message || e))) throw e;
       const existing = await env.DB.prepare(
-        'SELECT id, status FROM video_jobs WHERE blog_post_id = ? LIMIT 1'
+        'SELECT id, status, template, duration FROM video_jobs WHERE blog_post_id = ? LIMIT 1'
       ).bind(post.id).first();
       if (!existing || existing.status !== 'failed') {
         return json(409, { error: 'already_claimed', slug: post.slug });
@@ -252,13 +268,18 @@ export const onRequestPost = async ({ env, request }) => {
         `UPDATE video_jobs SET status='claimed', attempts=attempts+1, claimed_at=?, updated_at=?, error=NULL WHERE id=?`
       ).bind(now, now, existing.id).run();
       jobId = existing.id;
+      // A resurrected failed job keeps the template the operator chose.
+      pendingTemplate = existing.template || null;
+      pendingDuration = existing.duration ?? null;
     }
   }
 
   // Public branding for the intro/outro cards.
   const project = post.project_id
     ? await env.DB.prepare(
-        'SELECT site_name, site_description, logo_url, publishing_url FROM projects WHERE id = ? LIMIT 1'
+        `SELECT site_name, site_description, logo_url, publishing_url,
+                presenter_name, presenter_image_url
+         FROM projects WHERE id = ? LIMIT 1`
       ).bind(post.project_id).first().catch(() => null)
     : null;
 
@@ -293,11 +314,19 @@ export const onRequestPost = async ({ env, request }) => {
       meta_description: post.meta_description,
       body_markdown: post.body_markdown,
       hero_image_base64: heroBase64,
+      template: pendingTemplate,
+      duration: pendingDuration,
       project: project ? {
         name: project.site_name || null,
         description: project.site_description || null,
         logo_url: project.logo_url || null,
         publishing_url: project.publishing_url || null,
+        presenter_name: project.presenter_name || null,
+        // Stored relative ('/image/...') — absolutized for the VPS agent,
+        // which has no same-origin context to resolve it against.
+        presenter_image_url: project.presenter_image_url
+          ? new URL(project.presenter_image_url, request.url).href
+          : null,
       } : null,
     },
   });

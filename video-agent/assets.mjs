@@ -165,14 +165,15 @@ export async function collectMedia(job, work, log = () => {}) {
   }
 }
 
-// The brand logo, extension preserved (SVG/PNG/JPG all render in <img>).
-export async function downloadLogo(logoUrl, work, log = () => {}) {
-  if (!logoUrl) return null;
-  const ext = (String(logoUrl).match(/\.(svg|png|jpe?g|webp)(\?|$)/i)?.[1] || 'png').toLowerCase();
-  const out = join(work, 'assets', `logo.${ext}`);
+// One remote image into assets/, extension preserved (SVG/PNG/JPG all render
+// in <img>). Serves the brand logo and the news presenter's photo alike.
+export async function downloadImage(url, work, fileBase, log = () => {}) {
+  if (!url) return null;
+  const ext = (String(url).match(/\.(svg|png|jpe?g|webp)(\?|$)/i)?.[1] || 'png').toLowerCase();
+  const out = join(work, 'assets', `${fileBase}.${ext}`);
   mkdirSync(join(work, 'assets'), { recursive: true });
   try {
-    const r = await fetch(String(logoUrl).trim(), {
+    const r = await fetch(String(url).trim(), {
       headers: { 'user-agent': 'Mozilla/5.0 (compatible; pages-seo-video/1.0)' },
       signal: AbortSignal.timeout(15000),
     });
@@ -182,9 +183,12 @@ export async function downloadLogo(logoUrl, work, log = () => {}) {
     const buf = Buffer.from(await r.arrayBuffer());
     if (buf.length < 100) return null;
     writeFileSync(out, buf);
-    return `assets/logo.${ext}`;
+    return `assets/${fileBase}.${ext}`;
   } catch { return null; }
 }
+
+// The brand logo — the common case of downloadImage.
+export const downloadLogo = (logoUrl, work, log = () => {}) => downloadImage(logoUrl, work, 'logo', log);
 
 // Which assets an intent is worth paying for. Chrome captures take 10-45s
 // each, so an article video does not screenshot a site it will never show.
@@ -205,6 +209,15 @@ export async function collectAssets({ job, intent, work, log = () => {} }) {
 
   const logo = await downloadLogo(job.project?.logo_url, work, log);
   if (logo) assets.logo = logo;
+
+  // The news template's presenter. A failed fetch just means anchor scenes
+  // degrade to headlines — the job is not lost over a portrait.
+  const presenterUrl = job.project?.presenter_image_url;
+  if (presenterUrl) {
+    const presenter = await downloadImage(presenterUrl, work, 'presenter', log);
+    if (presenter) assets.presenter = presenter;
+    else log('presenter: download failed — anchor scenes will fall back to headlines');
+  }
 
   // Screenshots of the thing being sold. `source_url` is the explicit one
   // (a website-promo job); otherwise the project's own site.

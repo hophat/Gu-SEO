@@ -4,14 +4,20 @@
 // functions/api/admin/video/*). Videos are rendered off-platform by the
 // HyperFrames agent on the render VPS; this page shows what exists,
 // what failed and why, and links the MP4 for download / social posting.
-import { useState, useEffect, useCallback, useMemo } from 'react';
+//
+// Creation goes through ONE wizard ("Tạo video"): pick a source (bài
+// viết / URL / doanh nghiệp), pick a template from the catalog the
+// templates endpoint serves, pick a duration. The endpoint stores
+// template + duration on the job row; the agent reads them at claim.
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Card, Table, Button, Space, Typography, message, Row, Col, Tooltip, Alert, Popconfirm, Input, Modal, Select,
+  Segmented, Slider, Upload, Spin,
 } from 'antd';
 import {
-  ReloadOutlined, VideoCameraOutlined, CheckCircleOutlined,
-  ClockCircleOutlined, WarningOutlined, DownloadOutlined, FacebookOutlined,
-  AppstoreOutlined, DeleteOutlined, GlobalOutlined, PlayCircleOutlined, PictureOutlined,
+  ReloadOutlined, VideoCameraOutlined,
+  ClockCircleOutlined, DownloadOutlined, FacebookOutlined,
+  DeleteOutlined, PlayCircleOutlined, UploadOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import VideoStatusTag from '../components/VideoStatusTag.jsx';
@@ -20,20 +26,57 @@ import { CAROUSEL_KIND, useVideoJobs, fmtDateTime } from '../lib/videoQueue.js';
 
 const { Text } = Typography;
 
+const SOURCE_OPTIONS = [
+  { label: 'Bài viết', value: 'post' },
+  { label: 'URL', value: 'url' },
+  { label: 'Doanh nghiệp', value: 'business' },
+];
+
 export default function Video() {
   // The shared queue hook owns loading, polling, publish and delete. This
   // page shows only videos — carousels are a post format on their own page.
   const { jobs: allJobs, loading, reload: load, publish, remove } = useVideoJobs({ poll: false });
   const jobs = allJobs.filter((j) => j.kind !== CAROUSEL_KIND);
   const [busyId, setBusyId] = useState(null);
-  const [siteUrl, setSiteUrl] = useState('');
   const [viewing, setViewing] = useState(null);
-  const [brandForm, setBrandForm] = useState({ video_tagline: '', brand_accent: '', address: '', phone: '' });
+  const [brandForm, setBrandForm] = useState({
+    video_tagline: '', brand_accent: '', address: '', phone: '',
+    presenter_name: '', presenter_image_url: '',
+  });
   const [brandOpen, setBrandOpen] = useState(false);
-  // Explainer create flow — a content video is tied to one article, so the
-  // operator picks it here the same way the Carousel page does.
+  const [presenterUploading, setPresenterUploading] = useState(false);
+
+  // Create wizard — one modal covers what used to be three separate
+  // affordances (post select, URL input, business button).
   const [posts, setPosts] = useState([]);
-  const [explainerSlug, setExplainerSlug] = useState(undefined);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [srcType, setSrcType] = useState('post');
+  const [createSlug, setCreateSlug] = useState(undefined);
+  const [siteUrl, setSiteUrl] = useState('');
+  const [tplId, setTplId] = useState('auto');
+  const [duration, setDuration] = useState(20);
+
+  // The template catalog is per-project only because of hasPresenter —
+  // the list itself is static. Cached per project so reopening the modal
+  // (and the table's id→label lookup) never refetches.
+  const tplCache = useRef({});
+  const [tplData, setTplData] = useState({ templates: [], hasPresenter: false });
+  const [tplLoading, setTplLoading] = useState(false);
+
+  const loadTemplates = useCallback(async (force = false) => {
+    const pid = getActiveProject();
+    if (!pid) return;
+    if (!force && tplCache.current[pid]) { setTplData(tplCache.current[pid]); return; }
+    setTplLoading(true);
+    const { status, body } = await apiGet(`/api/admin/video/templates?project_id=${pid}`);
+    if (status === 200 && body?.ok) {
+      tplCache.current[pid] = { templates: body.templates || [], hasPresenter: !!body.hasPresenter };
+      setTplData(tplCache.current[pid]);
+    }
+    setTplLoading(false);
+  }, []);
+
+  useEffect(() => { loadTemplates(); }, [loadTemplates]);
 
   const loadPosts = useCallback(async () => {
     const { status, body } = await apiGet('/api/admin/blog/list');
@@ -47,23 +90,69 @@ export default function Video() {
     [posts]
   );
 
-  const createExplainer = async () => {
-    if (!explainerSlug) { message.warning('Chọn một bài viết trước'); return; }
-    setBusyId('__explainer__');
-    const { status, body } = await apiPost('/api/admin/video/explainer', {
-      project_id: getActiveProject(), slug: explainerSlug,
+  const tplLabel = useCallback(
+    (id) => {
+      if (!id || id === 'auto') return 'Tự động';
+      return tplData.templates.find((t) => t.id === id)?.label || id;
+    },
+    [tplData]
+  );
+
+  const openCreate = () => {
+    setSrcType('post');
+    setCreateSlug(undefined);
+    setTplId('auto');
+    setDuration(20);
+    setCreateOpen(true);
+    loadTemplates();
+  };
+
+  const pickTemplate = (t) => {
+    setTplId(t.id);
+    setDuration(t.defaultDuration || 20);
+  };
+
+  // Switching the source can invalidate the picked template — fall back
+  // to 'auto', which accepts every source, instead of leaving a disabled
+  // card selected.
+  const onSourceChange = (v) => {
+    setSrcType(v);
+    const t = tplData.templates.find((x) => x.id === tplId);
+    if (t && t.id !== 'auto' && !t.sources.includes(v)) {
+      setTplId('auto');
+      setDuration(20);
+    }
+  };
+
+  const submitCreate = async () => {
+    const source = { type: srcType };
+    if (srcType === 'post') {
+      if (!createSlug) { message.warning('Chọn một bài viết trước'); return; }
+      source.slug = createSlug;
+    }
+    if (srcType === 'url') {
+      const url = (siteUrl || '').trim();
+      if (!url) { message.warning('Nhập URL website trước'); return; }
+      source.url = url;
+    }
+    setBusyId('__create__');
+    const { status, body } = await apiPost('/api/admin/video/create', {
+      project_id: getActiveProject(), source, template: tplId || 'auto', duration,
     });
     setBusyId(null);
     if (status === 200 && body?.ok) {
-      message.success(body.hint || 'Đã tạo video minh hoạ — agent sẽ render trong ~5 phút');
-      setExplainerSlug(undefined);
+      message.success(body.hint || 'Đã tạo job video');
+      setCreateOpen(false);
+      setSiteUrl('');
       load();
     } else if (status === 409) {
-      message.info('Video minh hoạ cho bài này đang render — đợi vài phút rồi tải lại');
+      message.info('Đang render — đợi vài phút rồi tải lại');
+    } else if (body?.error === 'template_source_mismatch') {
+      message.error(body.hint || 'Template không hỗ trợ nguồn này');
     } else if (status === 404) {
-      message.error('Không tìm thấy bài viết đã xuất bản với slug này');
+      message.error('Không tìm thấy bài viết');
     } else {
-      message.error(body?.hint || body?.error || 'Không tạo được video minh hoạ');
+      message.error(body?.hint || body?.error || 'Không tạo được job');
     }
   };
 
@@ -77,6 +166,8 @@ export default function Video() {
         brand_accent: body.brand.brand_accent || body.brand.theme_color || '',
         address: body.brand.address || '',
         phone: body.brand.phone || '',
+        presenter_name: body.brand.presenter_name || '',
+        presenter_image_url: body.brand.presenter_image_url || '',
       });
     }
   }, []);
@@ -85,13 +176,47 @@ export default function Video() {
 
   const saveBrand = async () => {
     setBusyId('__brand__');
-    const { status, body } = await apiPost('/api/admin/video/brand', { project_id: getActiveProject(), ...brandForm });
+    // presenter_image_url is server-assigned (the upload endpoint owns it)
+    // — echoing it back through the save would be ignored anyway, so it
+    // never leaves the form state.
+    const { presenter_image_url: _dropped, ...savable } = brandForm;
+    const { status, body } = await apiPost('/api/admin/video/brand', { project_id: getActiveProject(), ...savable });
     setBusyId(null);
     if (status === 200 && body?.ok) {
       message.success('Đã lưu Brand video — video tiếp theo sẽ dùng DNA mới');
     } else {
       message.error(body?.error || 'Lưu thất bại');
     }
+  };
+
+  // Same file-reading helper as the logo upload (Brand.jsx / Overview.jsx):
+  // FileReader → data URL → JSON base64 POST. Returning false keeps antd
+  // Upload from POSTing the file itself — beforeUpload owns the send.
+  const uploadPresenter = async (file) => {
+    if (!file) return false;
+    if (file.size > 2 * 1024 * 1024) { message.error('Ảnh quá lớn (tối đa 2 MB).'); return false; }
+    setPresenterUploading(true);
+    const dataUrl = await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = () => resolve('');
+      fr.readAsDataURL(file);
+    });
+    if (!dataUrl) { message.error('Không đọc được tệp.'); setPresenterUploading(false); return false; }
+    const { status, body } = await apiPost('/api/admin/video/presenter', {
+      filename: file.name, content_type: file.type, base64: dataUrl,
+    });
+    setPresenterUploading(false);
+    if (status === 200 && body?.ok) {
+      setBrandForm((b) => ({ ...b, presenter_image_url: body.presenter_image_url }));
+      // hasPresenter just flipped — let the wizard refetch on next open.
+      tplCache.current = {};
+      setTplData((d) => ({ ...d, hasPresenter: true }));
+      message.success('Đã cập nhật ảnh người dẫn — template Thời sự đã mở khoá.');
+    } else {
+      message.error(body?.hint || body?.error || `Tải ảnh thất bại (${status})`);
+    }
+    return false;
   };
 
   const enqueueMissing = async () => {
@@ -109,38 +234,6 @@ export default function Video() {
   // Row actions: the page owns the per-row spinner, the shared hook owns
   // the request and the copy.
   const publishFb = async (id) => { setBusyId(id); await publish(id); setBusyId(null); };
-
-  const createBusiness = async () => {
-    setBusyId('__biz__');
-    const { status, body } = await apiPost('/api/admin/video/business', { project_id: getActiveProject() });
-    setBusyId(null);
-    if (status === 200 && body?.ok) {
-      message.success('Đã tạo job video doanh nghiệp — agent sẽ render trong chu kỳ 5 phút');
-      load();
-    } else if (status === 409) {
-      message.info('Video doanh nghiệp đang được render — tải lại sau vài phút');
-    } else {
-      message.error(body?.error || 'Không tạo được job');
-    }
-  };
-
-  const createWebsite = async () => {
-    const url = (siteUrl || '').trim();
-    if (!url) { message.warning('Nhập URL website trước'); return; }
-    setBusyId('__site__');
-    const { status, body } = await apiPost('/api/admin/video/website', { project_id: getActiveProject(), url });
-    setBusyId(null);
-    if (status === 200 && body?.ok) {
-      message.success('Đã tạo job — agent sẽ chụp trang, viết storyboard và render');
-      setSiteUrl('');
-      load();
-    } else if (status === 409) {
-      message.info('URL này đang được render — tải lại sau vài phút');
-    } else {
-      message.error(body?.hint || body?.error || 'Không tạo được job');
-    }
-  };
-
   const deleteVideo = async (id) => { setBusyId(id); await remove(id); setBusyId(null); };
 
   const columns = [
@@ -164,6 +257,10 @@ export default function Video() {
     {
       title: 'Bài viết', dataIndex: 'title', ellipsis: true,
       render: (t, r) => <Text strong={false} ellipsis={{ tooltip: t }} style={{ maxWidth: 320 }}>{t || r.slug}</Text>,
+    },
+    {
+      title: 'Template', dataIndex: 'template', width: 110,
+      render: (v) => <Text type="secondary">{tplLabel(v)}</Text>,
     },
     { title: 'Trạng thái', dataIndex: 'status', width: 170, render: (s, r) => <VideoStatusTag status={s} kind={r.kind} /> },
     {
@@ -229,56 +326,11 @@ export default function Video() {
         }
       />
       <Card
-        title={<Space><PictureOutlined /> Video minh hoạ nội dung bài viết</Space>}
-        style={{ marginBottom: 16 }}
-        extra={
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            45–75 giây · biểu đồ, sơ đồ quy trình, icon vẽ từ nội dung bài
-          </Text>
-        }
-      >
-        <Space wrap>
-          <Select
-            showSearch
-            allowClear
-            placeholder="Chọn bài viết đã xuất bản"
-            style={{ width: 420 }}
-            value={explainerSlug}
-            onChange={setExplainerSlug}
-            options={postOptions}
-            optionFilterProp="label"
-          />
-          <Button
-            type="primary"
-            icon={<PictureOutlined />}
-            loading={busyId === '__explainer__'}
-            onClick={createExplainer}
-          >
-            Tạo video minh hoạ
-          </Button>
-        </Space>
-        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
-          Khác với video tóm tắt: video minh hoạ giải thích nội dung bài bằng số liệu và sơ đồ.
-          Mỗi bài có một video minh hoạ; tạo lại sẽ thay bản cũ.
-        </Text>
-      </Card>
-      <Card
         title={<Space><VideoCameraOutlined /> Hàng chờ video</Space>}
         extra={
           <Space>
-            <Input
-              placeholder="https://website-khach.com — tạo video giới thiệu"
-              value={siteUrl}
-              onChange={(e) => setSiteUrl(e.target.value)}
-              onPressEnter={createWebsite}
-              style={{ width: 240 }}
-              allowClear
-            />
-            <Button icon={<GlobalOutlined />} loading={busyId === '__site__'} onClick={createWebsite}>
-              Video từ URL
-            </Button>
-            <Button icon={<AppstoreOutlined />} loading={busyId === '__biz__'} onClick={createBusiness}>
-              Video doanh nghiệp
+            <Button type="primary" icon={<VideoCameraOutlined />} onClick={openCreate}>
+              Tạo video
             </Button>
             <Button icon={<ClockCircleOutlined />} loading={busyId === '__all__'} onClick={enqueueMissing}>
               Render tất cả bài thiếu
@@ -314,6 +366,29 @@ export default function Video() {
               <Input addonBefore="#" addonAfter="màu brand" value={brandForm.brand_accent}
                 onChange={(e) => setBrandForm({ ...brandForm, brand_accent: e.target.value })}
                 placeholder="1677ff" style={{ marginBottom: 12 }} />
+              <Input addonBefore="Người dẫn" value={brandForm.presenter_name}
+                onChange={(e) => setBrandForm({ ...brandForm, presenter_name: e.target.value })}
+                placeholder="Tên hiện trên bản tin (template Thời sự)" maxLength={120} style={{ marginBottom: 12 }} />
+              <Space align="center">
+                <Upload
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={uploadPresenter}
+                >
+                  <Button icon={<UploadOutlined />} loading={presenterUploading}>Ảnh người dẫn</Button>
+                </Upload>
+                {brandForm.presenter_image_url ? (
+                  <Tooltip title="Ảnh người dẫn hiện tại">
+                    <img
+                      src={brandForm.presenter_image_url}
+                      alt="Người dẫn"
+                      style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, display: 'block' }}
+                    />
+                  </Tooltip>
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>Chưa có — template Thời sự cần ảnh này</Text>
+                )}
+              </Space>
             </Col>
             <Col span={12}>
               <Input addonBefore="📍" value={brandForm.address}
@@ -327,10 +402,108 @@ export default function Video() {
           </Row>
         ) : (
           <Text type="secondary">
-            Tagline: {brandForm.video_tagline || '(chưa đặt)'} · Màu: {brandForm.brand_accent || '(mặc định)'} · Địa chỉ: {brandForm.address || '(trống)'} · ĐT: {brandForm.phone || '(trống)'}
+            Tagline: {brandForm.video_tagline || '(chưa đặt)'} · Màu: {brandForm.brand_accent || '(mặc định)'} · Địa chỉ: {brandForm.address || '(trống)'} · ĐT: {brandForm.phone || '(trống)'} · Người dẫn: {brandForm.presenter_name || '(chưa có)'}{brandForm.presenter_image_url ? ' · có ảnh' : ''}
           </Text>
         )}
       </Card>
+      <Modal
+        open={createOpen}
+        title="Tạo video mới"
+        onCancel={() => setCreateOpen(false)}
+        onOk={submitCreate}
+        okText="Tạo video"
+        cancelText="Huỷ"
+        confirmLoading={busyId === '__create__'}
+        width={560}
+        destroyOnClose
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%', marginTop: 8 }}>
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>Nguồn nội dung</Text>
+            <Segmented value={srcType} onChange={onSourceChange} options={SOURCE_OPTIONS} />
+            <div style={{ marginTop: 12 }}>
+              {srcType === 'post' && (
+                <Select
+                  showSearch
+                  allowClear
+                  placeholder="Chọn bài viết đã xuất bản"
+                  style={{ width: '100%' }}
+                  value={createSlug}
+                  onChange={setCreateSlug}
+                  options={postOptions}
+                  optionFilterProp="label"
+                />
+              )}
+              {srcType === 'url' && (
+                <Input
+                  placeholder="https://website-khach.com — agent sẽ chụp trang làm video"
+                  value={siteUrl}
+                  onChange={(e) => setSiteUrl(e.target.value)}
+                  allowClear
+                />
+              )}
+              {srcType === 'business' && (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Video giới thiệu doanh nghiệp — dùng sẵn Brand video (tagline, màu, địa chỉ, số điện thoại)
+                  trong khối Brand video bên dưới trang.
+                </Text>
+              )}
+            </div>
+          </div>
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>Template</Text>
+            {tplLoading ? <Spin size="small" /> : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {tplData.templates.map((t) => {
+                  const srcOk = t.id === 'auto' || (t.sources || []).includes(srcType);
+                  const presenterOk = !t.needsPresenter || tplData.hasPresenter;
+                  const disabled = !srcOk || !presenterOk;
+                  const selected = tplId === t.id;
+                  const card = (
+                    <div
+                      onClick={() => { if (!disabled) pickTemplate(t); }}
+                      style={{
+                        border: `1px solid ${selected ? '#1677ff' : '#d9d9d9'}`,
+                        borderRadius: 8,
+                        padding: '8px 10px',
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        opacity: disabled ? 0.45 : 1,
+                        background: selected ? '#e6f4ff' : '#fff',
+                      }}
+                    >
+                      <Text strong style={{ fontSize: 13, display: 'block' }}>
+                        {t.id === 'auto' ? 'Tự động (để engine chọn)' : t.label}
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{t.desc}</Text>
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        {t.defaultDuration ? `~${t.defaultDuration}s` : 'Thời lượng tự động'}
+                      </Text>
+                    </div>
+                  );
+                  return !presenterOk ? (
+                    <Tooltip key={t.id} title="Chưa có ảnh người dẫn — thêm trong Brand video bên dưới">
+                      {card}
+                    </Tooltip>
+                  ) : (
+                    <div key={t.id} style={{ display: 'contents' }}>{card}</div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>Thời lượng: {duration}s</Text>
+            <Slider
+              min={15}
+              max={45}
+              step={5}
+              value={duration}
+              onChange={setDuration}
+              tooltip={{ formatter: (v) => `${v}s` }}
+            />
+          </div>
+        </Space>
+      </Modal>
       <Modal
         open={!!viewing}
         title={viewing?.title || viewing?.slug}

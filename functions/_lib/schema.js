@@ -726,4 +726,15 @@ ALTER TABLE video_jobs ADD COLUMN kind TEXT NOT NULL DEFAULT 'post';  -- post | 
 -- Website promo jobs, see migration 009. kind='website' renders a promo
 -- from a live URL; source_url records where the material came from.
 ALTER TABLE video_jobs ADD COLUMN source_url TEXT;
+
+-- User-chosen video templates, see migration 011. The admin wizard lets
+-- the operator pick a template + duration per job; NULL template means
+-- 'auto' (the agent's engine picks). projects.presenter_* is the
+-- talking-head name/photo that presenter templates (news_anchor)
+-- render. The runner tolerates \`duplicate column name\`, so baseline +
+-- 011 converge on old and new DBs.
+ALTER TABLE video_jobs ADD COLUMN template TEXT;
+ALTER TABLE video_jobs ADD COLUMN duration INTEGER;
+ALTER TABLE projects ADD COLUMN presenter_name TEXT;
+ALTER TABLE projects ADD COLUMN presenter_image_url TEXT;
 `;

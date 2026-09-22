@@ -8,6 +8,7 @@
 import { json, nowSec, newId, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
 import { explainerRef } from '../../../_lib/video_jobs.js';
+import { parseTemplateParam, clampVideoDuration } from '../../../_lib/video_templates.js';
 
 export const onRequestPost = async ({ env, request }) => {
   const gate = await adminGate(env, request); if (gate) return gate;
@@ -38,12 +39,16 @@ export const onRequestPost = async ({ env, request }) => {
     await env.DB.prepare('DELETE FROM video_jobs WHERE id = ?').bind(existing.id).run().catch(() => {});
   }
 
+  const tpl = parseTemplateParam(body?.template);
+  if (!tpl.ok) return json(400, { error: 'unknown_template' });
+  const duration = clampVideoDuration(body?.duration);
+
   const id = newId();
   const t = nowSec();
   await env.DB.prepare(
-    `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, attempts, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 'explainer', 'pending', 0, ?, ?)`
-  ).bind(id, post.project_id || projectId, ref, post.slug, t, t).run();
+    `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, template, duration, attempts, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 'explainer', 'pending', ?, ?, 0, ?, ?)`
+  ).bind(id, post.project_id || projectId, ref, post.slug, tpl.template, duration, t, t).run();
 
   audit(env, 'admin', 'video.explainer_create', post.id, { job_id: id });
   return json(200, { ok: true, job_id: id, hint: 'Agent sẽ render video minh hoạ trong chu kỳ 5 phút tới.' });

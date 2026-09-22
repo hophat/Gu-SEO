@@ -35,7 +35,16 @@ process.env.ADMIN_TOKEN = 'test-token';
 process.env.GUROUTER_API_KEY = 'test-key';
 
 let scriptStub = null;
-globalThis.fetch = async (url) => {
+// The last prompt handed to the model — the template tests check what the
+// storyboard request said, not just what it got back.
+let lastPrompt = null;
+globalThis.fetch = async (url, opts) => {
+  if (String(url).includes('/chat/completions')) {
+    // Store the user message itself, not the wire JSON — the assertions match
+    // the prompt's own quoting, not its escaping.
+    const body = JSON.parse(opts?.body || '{}');
+    lastPrompt = body?.messages?.[1]?.content || '';
+  }
   if (scriptStub && String(url).includes('/chat/completions')) {
     return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify(scriptStub) } }] }) };
   }
@@ -50,8 +59,9 @@ const {
 // MIN/MAX_SCENES are aliased because both modules export them with different
 // values (a free-form plan allowed 5-9, a 20s story wants 3-8) and a bare
 // name here silently mixed the two.
-const { ICON_NAMES, icon, sceneInner, statSize } = await import('../video-agent/scenes.mjs');
+const { ICON_NAMES, icon, sceneInner, statSize, wantsBackground } = await import('../video-agent/scenes.mjs');
 const { MIN_SHOT_BYTES, pickShowcaseLinks } = await import('../video-agent/assets.mjs');
+const { TEMPLATES, templateById, intentForTemplate } = await import('../video-agent/templates.mjs');
 const {
   DURATION, INTENTS, MAX_TEXT_WORDS, beatSlots, intentFromSignals, reviewStoryboard,
   sanitizeStoryboard, storyboardFromContent, wordCount, narrationBudget,
@@ -831,6 +841,65 @@ if (!HAS_FFMPEG) {
     ok('the narration fits the slot the story gave it');
     r.done();
   }
+
+  {
+    // A chosen template pins the intent: the model answered 'listicle' but
+    // the job carries template 'summary', and summary is what renders —
+    // the model's answer cannot move the video off the user's choice.
+    const r = postRig();
+    lastPrompt = null;
+    scriptStub = {
+      intent: 'listicle', duration: 20,
+      scenes: [
+        { type: 'hook', text: 'Mở đầu', say: 'Mở đầu.', duration: 3 },
+        { type: 'bars', text: 'Số liệu', say: 'Số liệu.', duration: 5,
+          items: [{ label: 'Bao bì', value: 12 }, { label: 'Vận chuyển', value: 7 }] },
+        { type: 'cta', text: 'Xem thêm', say: 'Xem thêm.', duration: 3 },
+      ],
+    };
+    const lines = await captureLogs(() => renderOne({ ...STORY_JOB, template: 'summary' }, r.deps));
+    scriptStub = null;
+
+    assert.ok(lines.some((l) => /intent: summary \(template "summary" chosen by the user\)/.test(l)),
+      'the template, not the classifier, names the intent');
+    assert.ok(lastPrompt.includes('Intent bắt buộc do người dùng chọn: summary'),
+      'the model is told the intent is fixed');
+    assert.ok(lastPrompt.includes('Dàn ý beat cho intent "summary"'),
+      'and is handed the summary beat outline');
+    assert.ok(lines.some((l) => /bars:not_in_summary/.test(l)),
+      'the listicle scene is refused by the summary vocabulary — the model did not move the intent');
+    const composed = readFileSync(join(r.work, 'index.html'), 'utf8');
+    assert.match(composed, /class="ex keypoints"/, 'the rendered video carries the summary card');
+    assert.equal(r.seen.delivers.length, 1, 'the video is still delivered');
+    ok('a chosen template pins the intent even when the model answers another');
+    r.done();
+  }
+
+  {
+    // The news template without a presenter photo: the portrait fetch fails
+    // (network is disabled here), the anchor beats degrade, and the bulletin
+    // still renders — on the headline, not on a missing face.
+    const r = postRig();
+    scriptStub = null;
+    const lines = await captureLogs(() => renderOne({
+      ...STORY_JOB,
+      template: 'news_anchor',
+      project: { ...STORY_JOB.project, presenter_name: 'Minh Anh', presenter_image_url: 'https://lagi.example/mc.jpg' },
+    }, r.deps));
+
+    assert.ok(lines.some((l) => /intent: news \(template "news_anchor" chosen by the user\)/.test(l)),
+      'the news template pins the news intent');
+    assert.ok(lines.some((l) => /presenter: download failed/.test(l)),
+      'a failed portrait fetch is logged, not silent');
+    const composed = readFileSync(join(r.work, 'index.html'), 'utf8');
+    assert.match(composed, /class="hl-kick"/, 'the bulletin still opens on the headline card');
+    // The stylesheet always defines the anchor classes; the scene markup is
+    // what must not carry one.
+    assert.doesNotMatch(composed, /class="ex anchor"/, 'and no anchor is drawn without the presenter photo');
+    assert.equal(r.seen.delivers.length, 1, 'the video is still delivered');
+    ok('a presenter-less news bulletin degrades to headline cards and still ships');
+    r.done();
+  }
 }
 
 // ── storyboard: the story decides, the narration fits ────────────────
@@ -855,7 +924,7 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
   for (const [job, text, want, why] of cases) {
     assert.equal(intentFromSignals(job, text).intent, want, `${why} should classify as ${want}`);
   }
-  assert.ok(INTENTS.length === 9, 'the nine intents of the strategy are all present');
+  assert.ok(INTENTS.length === 12, 'the nine strategy intents plus the three the templates added');
   ok('intent is classified from content even with no model');
 }
 
@@ -865,7 +934,8 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
     const slots = beatSlots(intent, 20);
     const total = slots.reduce((a, b) => a + b.duration, 0);
     assert.ok(Math.abs(total - 20) < 0.4, `${intent} beats must add up to the target (${total})`);
-    assert.equal(slots[0].types[0], 'hook', `${intent} must open on a hook`);
+    // News opens on the headline — a bulletin has no curiosity hook.
+    assert.ok(['hook', 'headline'].includes(slots[0].types[0]), `${intent} must open on a hook or a headline`);
     assert.ok(slots.at(-1).types.includes('cta'), `${intent} must close on a call to action`);
   }
   assert.equal(beatSlots('product_demo', 999).reduce((a, b) => a + b.duration, 0) <= DURATION.max + 0.4, true,
@@ -981,7 +1051,7 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
         project: { name: 'Gulagi', publishing_url: 'https://gulagi.com', address: '12 Lê Lợi', brand: { cta: 'Thử ngay' } } },
       intent, {});
     assert.ok(sb.scenes.length >= SB_MIN_SCENES && sb.scenes.length <= SB_MAX_SCENES, `${intent} fallback has a sane length`);
-    assert.equal(sb.scenes[0].type, 'hook', `${intent} fallback opens on a hook`);
+    assert.ok(['hook', 'headline'].includes(sb.scenes[0].type), `${intent} fallback opens on a hook or a headline`);
     assert.equal(sb.scenes.at(-1).type, 'cta', `${intent} fallback closes on a CTA`);
     assert.ok(sb.scenes.every((s) => s.text && wordCount(s.text) <= MAX_TEXT_WORDS), `${intent} fallback text is caption-sized`);
     // The gate must not have to eat a beat: two beats that want the same
@@ -996,6 +1066,177 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
     assert.deepEqual(again, sb, `${intent} fallback is deterministic`);
   }
   ok('with no model, every intent still yields a caption-sized story that opens and closes right');
+}
+
+// ── user-chosen templates ────────────────────────────────────────────
+// The catalog is the contract with the platform's admin UI: ids, the intent
+// each pins, and the degrade path when a promised ingredient (the presenter
+// photo) is not there.
+console.log('\n--- User-chosen templates (catalog · forced intent · new scenes) ---\n');
+
+{
+  assert.equal(TEMPLATES.length, 12, 'the catalog ships the twelve rows the platform mirrors');
+  assert.equal(templateById('nope'), null, 'an unknown template id resolves to null');
+  assert.equal(templateById(null), null, 'and so does an absent one');
+  assert.equal(templateById('auto').id, 'auto', 'a known id resolves to its row');
+  for (const t of TEMPLATES) {
+    const intent = intentForTemplate(t, {});
+    assert.ok(intent === null || INTENTS.includes(intent), `${t.id} resolves to a real intent or none`);
+  }
+  assert.equal(intentForTemplate(templateById('auto'), {}), null, 'auto leaves the choice to the engine');
+  assert.equal(intentForTemplate(null, {}), null, 'no template leaves the choice to the engine');
+  assert.equal(intentForTemplate(templateById('product'), { source_url: 'https://x.example' }), 'product_demo',
+    'a product template with a live URL demos it');
+  assert.equal(intentForTemplate(templateById('product'), {}), 'product_promotion',
+    'and without one it promotes instead');
+  assert.equal(intentForTemplate(templateById('news_anchor'), {}), 'news');
+  assert.equal(intentForTemplate(templateById('qa'), {}), 'qa');
+  ok('template ids resolve to intents, auto/unknown to none, product forks on the URL');
+}
+
+{
+  // An anchor with nobody to show is a headline — recorded, not silent.
+  const noFace = sanitizeStoryboard({
+    scenes: [
+      { type: 'anchor', text: 'Phóng viên tại hiện trường', asset: 'presenter', name: 'Minh Anh' },
+      { type: 'photo', text: 'Hiện trường', asset: 'photo:0' },
+      { type: 'quote', text: 'Nguồn tin cho biết' },
+      { type: 'cta', text: 'Xem thêm' },
+    ],
+  }, { source: STORY_ARTICLE, intent: 'news', target: 30, assets: { 'photo:0': 'a.jpg' } });
+  assert.ok(noFace.dropped.some((d) => d.type === 'anchor' && d.reason === 'no_presenter'),
+    'the presenter-less anchor is recorded as degraded');
+  assert.equal(noFace.storyboard.scenes[0].type, 'headline', 'and kept as a headline, not dropped outright');
+  assert.ok(!noFace.storyboard.scenes.some((s) => s.type === 'anchor'), 'no anchor survives without the photo');
+
+  const withFace = sanitizeStoryboard({
+    scenes: [
+      { type: 'headline', text: 'Tin mới nhất' },
+      { type: 'anchor', text: 'Phóng viên tại hiện trường', asset: 'presenter', name: 'Minh Anh' },
+      { type: 'photo', text: 'Hiện trường', asset: 'photo:0' },
+      { type: 'cta', text: 'Xem thêm' },
+    ],
+  }, { source: STORY_ARTICLE, intent: 'news', target: 30, assets: { presenter: 'assets/presenter.jpg', 'photo:0': 'a.jpg' } });
+  assert.ok(withFace.storyboard.scenes.some((s) => s.type === 'anchor' && s.asset === 'presenter'),
+    'with the photo, the anchor survives');
+
+  // A keypoints card needs at least two items to be a list at all.
+  const thin = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'a' },
+      { type: 'keypoints', text: 'Ý chính', items: [{ label: 'chỉ một' }] },
+      { type: 'cta', text: 'b' },
+    ],
+  }, { source: STORY_ARTICLE, intent: 'summary', target: 20 });
+  assert.ok(thin.dropped.some((d) => d.reason === 'too_few_items'), 'a one-row keypoints is refused');
+  assert.ok(!thin.storyboard.scenes.some((s) => s.type === 'keypoints'), 'and never drawn');
+  const full = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'a' },
+      { type: 'keypoints', text: 'Ý chính', items: [{ label: 'một' }, { label: 'hai' }, { label: 'ba' }] },
+      { type: 'cta', text: 'b' },
+    ],
+  }, { source: STORY_ARTICLE, intent: 'summary', target: 20 });
+  assert.ok(full.storyboard.scenes.some((s) => s.type === 'keypoints' && s.items.length === 3),
+    'three rows is a list and survives');
+
+  const unknown = sanitizeStoryboard({
+    scenes: [{ type: 'hook', text: 'a' }, { type: 'hologram', text: 'b' }, { type: 'cta', text: 'c' }],
+  }, { source: STORY_ARTICLE, intent: 'summary', target: 20 });
+  assert.ok(unknown.dropped.some((d) => d.reason === 'unknown_type'), 'an unknown scene type is still refused');
+  ok('the gate degrades anchors without a presenter and refuses thin lists');
+}
+
+{
+  // The quality gate's opener rule: a news piece leads with the headline.
+  const news = reviewStoryboard({ intent: 'news', scenes: [
+    { type: 'headline', text: 'Tin mới', say: 'x', duration: 5 },
+    { type: 'photo', text: 'Hiện trường', say: 'x', duration: 6 },
+    { type: 'quote', text: 'Nguồn tin', say: 'x', duration: 5 },
+    { type: 'cta', text: 'Xem thêm', say: 'x', duration: 4 },
+  ] });
+  assert.equal(news.ok, true, `a headline opener passes (${news.problems.join(', ')})`);
+  const stillBad = reviewStoryboard({ intent: 'news', scenes: [
+    { type: 'quote', text: 'a', say: 'x', duration: 10 }, { type: 'cta', text: 'b', say: 'x', duration: 10 },
+  ] });
+  assert.ok(stillBad.problems.includes('does_not_open_on_a_hook'), 'a quote still cannot open');
+  ok('the review accepts a headline opener and still refuses prose');
+}
+
+{
+  // The new cards: each draws its own markup, escapes every field, and the
+  // anchor's equalizer is static — the same scene twice, byte-identical.
+  const PRESENTER = { presenter: 'assets/presenter.jpg' };
+  assert.match(sceneInner({ type: 'anchor', text: 'Bản tin tối', name: 'Minh Anh' }, '#e8590c', PRESENTER),
+    /class="anchor-img" src="assets\/presenter\.jpg"/, 'the presenter photo renders in the lower third');
+  const noImg = sceneInner({ type: 'anchor', text: 'Bản tin tối', name: 'Minh Anh' }, '#e8590c', {});
+  assert.match(noImg, /class="anchor-initials"[^>]*>MA</, 'and initials stand in when it is missing');
+  assert.match(noImg, /<svg class="anchor-eq"/, 'with static level bars');
+  const anchorA = sceneInner({ type: 'anchor', text: 'x', name: 'y' }, '#e8590c', PRESENTER);
+  assert.equal(anchorA, sceneInner({ type: 'anchor', text: 'x', name: 'y' }, '#e8590c', PRESENTER),
+    'the anchor card is deterministic');
+  assert.match(sceneInner({ type: 'headline', text: 'Tin nóng', kicker: 'KHẨN' }, '#e8590c'),
+    /class="hl-kick"[^>]*>KHẨN</, 'the headline carries its kicker badge');
+  assert.match(sceneInner({ type: 'headline', text: 'Tin nóng' }, '#e8590c'),
+    /hl-ticker/, 'and a ticker strip');
+  assert.match(sceneInner({ type: 'headline', text: 'Tin nóng' }, '#e8590c'), />TIN MỚI</, 'kicker defaults when absent');
+  const kp = sceneInner({ type: 'keypoints', text: '3 ý chính', items: [{ label: 'a' }, { label: 'b' }, { label: 'c' }] }, '#e8590c');
+  assert.match(kp, /class="kp-n"[^>]*>1<[\s\S]*class="kp-n"[^>]*>2<[\s\S]*class="kp-n"[^>]*>3</, 'the points are numbered');
+  assert.match(sceneInner({ type: 'question', text: 'Có gì mới?' }, '#e8590c'), /qa-badge[^>]*>\?</, 'the question wears a ?');
+  assert.match(sceneInner({ type: 'answer', text: 'Xem đây' }, '#e8590c'), /data-icon="check"/, 'the answer wears a tick');
+  assert.ok(wantsBackground('headline'), 'a headline reads over a full-bleed photo');
+  assert.ok(!wantsBackground('anchor'), 'the lower third does not');
+  ok('the new renderers draw their cards');
+
+  const hostile = [
+    { type: 'anchor', text: '<script>alert(1)</script>', name: '<script>alert(2)</script>', role: '<script>alert(3)</script>' },
+    { type: 'headline', text: '<script>alert(4)</script>', kicker: '<script>alert(5)</script>' },
+    { type: 'keypoints', text: '<script>alert(6)</script>', items: [{ label: '<script>alert(7)</script>' }, { label: 'b' }] },
+    { type: 'question', text: '<script>alert(8)</script>' },
+    { type: 'answer', text: '<script>alert(9)</script>' },
+  ];
+  for (const scene of hostile) {
+    assert.doesNotMatch(sceneInner(scene, '#e8590c', PRESENTER), /<script/i,
+      `${scene.type} must escape every string it draws`);
+  }
+  ok('every field of the new scenes is escaped into the markup');
+}
+
+{
+  // The deterministic fallback for the three template intents — with and
+  // without the presenter photo the news beats hinge on.
+  const tplJob = {
+    title: 'Tin mới về giá xăng', body_markdown: STORY_ARTICLE,
+    highlights: ['Ý thứ nhất ở đây', 'Ý thứ hai ở đây', 'Ý thứ ba ở đây'],
+    project: { name: 'Lagi Food', presenter_name: 'Minh Anh', brand: { cta: 'Xem thêm' } },
+  };
+  for (const intent of ['news', 'summary', 'qa']) {
+    for (const assets of [{}, { presenter: 'assets/presenter.jpg' }]) {
+      const sb = storyboardFromContent(tplJob, intent, assets);
+      assert.ok(sb.scenes.length >= SB_MIN_SCENES && sb.scenes.length <= SB_MAX_SCENES,
+        `${intent} fallback has a sane length`);
+      assert.equal(sb.scenes.at(-1).type, 'cta', `${intent} fallback closes on a CTA`);
+      assert.ok(sb.scenes.every((s) => s.text && wordCount(s.text) <= MAX_TEXT_WORDS),
+        `${intent} fallback text is caption-sized`);
+      const { storyboard: gated, dropped } = sanitizeStoryboard(sb, { source: tplJob.body_markdown, intent, target: 20, assets });
+      assert.equal(dropped.filter((d) => d.reason === 'repeat_of_previous').length, 0,
+        `${intent} fallback hands no repeats to the gate`);
+      assert.ok(gated.scenes.length >= SB_MIN_SCENES, `${intent} survives the gate`);
+      if (intent === 'news') {
+        assert.equal(sb.scenes.some((s) => s.type === 'anchor'), !!assets.presenter,
+          'the anchor exists exactly when the presenter photo does');
+        assert.equal(gated.scenes.some((s) => s.type === 'anchor'), !!assets.presenter);
+      }
+      if (intent === 'summary') {
+        assert.ok(gated.scenes.some((s) => s.type === 'keypoints'), 'the summary carries its keypoints card');
+      }
+    }
+  }
+  assert.ok(reviewStoryboard(sanitizeStoryboard(
+    storyboardFromContent(tplJob, 'news', { presenter: 'assets/presenter.jpg' }),
+    { source: tplJob.body_markdown, intent: 'news', target: 30, assets: { presenter: 'assets/presenter.jpg' } },
+  ).storyboard).ok, 'the news fallback passes the quality gate');
+  ok('the template fallbacks produce sane stories with or without a presenter');
 }
 
 console.log(`\nALL VIDEO AGENT TESTS PASSED (${passed} checks)`);
