@@ -74,7 +74,7 @@ export function useVideoJobs({ noun = 'video', poll = true } = {}) {
       return true;
     }
     message.error(body?.error === 'already_enqueued'
-      ? 'Đã có job đăng — xem tab Bài đăng mạng xã hội'
+      ? 'Bài này đang được đăng — xem tab Bài đăng mạng xã hội'
       : body?.error || 'Đăng thất bại');
     return false;
   }, [noun, reload]);

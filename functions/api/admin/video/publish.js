@@ -24,11 +24,14 @@ export const onRequestPost = async ({ env, request }) => {
   }
   if (!job.project_id) return json(400, { error: 'project_missing' });
 
+  // `repost: true` — this is a human pressing the button. A video that was
+  // posted once, or whose automatic enqueue was missed, must be postable
+  // again; only a job actually in flight is refused.
   const q = await enqueueSocialPost(env, {
-    projectId: job.project_id, blogPostId: job.blog_post_id, channel: 'facebook_video',
+    projectId: job.project_id, blogPostId: job.blog_post_id, channel: 'facebook_video', repost: true,
   });
   if (!q.enqueued) {
-    return json(409, { error: 'already_enqueued', hint: 'Bài này đã có job đăng video — xem tab Bài đăng mạng xã hội.' });
+    return json(409, { error: 'already_enqueued', hint: 'Video này đang được đăng — xem tab Bài đăng mạng xã hội.' });
   }
   audit(env, 'admin', 'video.publish_manual', job.blog_post_id, { channel: 'facebook_video', job_id: jobId });
 

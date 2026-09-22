@@ -132,7 +132,10 @@ console.log('--- Admin queue hook (polling · status copy) ---\n');
   responses = [{ status: 409, body: { error: 'already_enqueued' } }];
   assert.equal(await out.publish('j1'), false);
   await c.settle(2);
-  assert.match(messageLog.at(-1).text, /Đã có job đăng/, 'a duplicate publish explains itself instead of showing the code');
+  // The copy says "đang được đăng" because that is now the only case the API
+  // refuses: a finished post is re-postable by hand (see enqueueSocialPost's
+  // `repost`), so the message must not claim a job exists when none does.
+  assert.match(messageLog.at(-1).text, /đang được đăng/, 'a duplicate publish explains itself instead of showing the code');
   ok('publish reloads, names the kind and explains a duplicate');
 
   responses = [{ status: 500, body: { error: 'r2_delete_failed', detail: 'R2 said no' } }];

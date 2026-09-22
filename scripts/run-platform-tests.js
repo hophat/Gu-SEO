@@ -206,6 +206,30 @@ async function testQueue() {
   assert.equal(again.processed, 0, 'published job must not be claimed again');
   ok('published job is not drained twice');
 
+  // The manual button asks again. Without this a video that was posted once
+  // could never be posted again, and the button could not recover a missed
+  // automatic enqueue — which is the whole reason it exists. Every
+  // facebook_video row in production was terminal when this was found.
+  const reposted = await enqueueSocialPost(env, { projectId: PROJECT, blogPostId: POST, channel: 'facebook', repost: true });
+  assert.equal(reposted.enqueued, true, 'a published row must be re-postable by hand');
+  const reset = await env.__get('SELECT status, attempts, external_url, published_at FROM social_posts WHERE blog_post_id = ? AND channel = ?', POST, 'facebook');
+  assert.equal(reset.status, 'pending', 'the finished row is reset rather than blocked');
+  assert.equal(reset.attempts, 0, 'with a fresh attempt budget');
+  assert.equal(reset.external_url, null, 'and no stale link from the previous post');
+  assert.equal(reset.published_at, null);
+  // A job actually in flight is still refused: that is what the message means.
+  const busy = await enqueueSocialPost(env, { projectId: PROJECT, blogPostId: POST, channel: 'facebook', repost: true });
+  assert.equal(busy.enqueued, false, 'a job in flight must not be enqueued twice');
+  // And the automatic path stays idempotent.
+  const auto = await enqueueSocialPost(env, { projectId: PROJECT, blogPostId: POST, channel: 'facebook' });
+  assert.equal(auto.enqueued, false, 'the automatic fan-out must not re-post on its own');
+  ok('a finished post can be re-posted by hand, and only by hand');
+
+  // Put the fixture back the way the rest of the suite expects it. The drain
+  // is project-wide, so a row left `pending` here is picked up by a later
+  // test's drain and reads as that test's own failure.
+  await env.DB.prepare("UPDATE social_posts SET status = 'published' WHERE blog_post_id = ? AND channel = 'facebook'").bind(POST).run();
+
   // Credential failure: stop retrying, raise needs_reconnect.
   await enqueueSocialPost(env, { projectId: OTHER, blogPostId: POST_B, channel: 'facebook' });
   const credDispatch = async () => {

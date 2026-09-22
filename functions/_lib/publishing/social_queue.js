@@ -43,14 +43,31 @@ export function isCredentialError(err) {
   return /token|quyền|permission/i.test(msg) && /hết hạn|không hợp lệ|chưa có quyền|not set|missing/i.test(msg);
 }
 
-export async function enqueueSocialPost(env, { projectId, blogPostId, channel = 'facebook' }) {
+const SOCIAL_COLUMNS = `(id, project_id, blog_post_id, channel, status, attempts, max_attempts, next_attempt_at, created_at, updated_at)`;
+const SOCIAL_VALUES = `(?, ?, ?, ?, 'pending', 0, 5, ?, ?, ?)`;
+
+// `repost` is for a HUMAN asking again — the admin "Đăng Facebook" button.
+// Without it the UNIQUE(blog_post_id, channel) index makes "one row per post
+// and channel" permanent, so a video that was posted once could never be
+// posted again, and — the contradiction that caused this — the manual button
+// could not recover a missed automatic enqueue, which is precisely what it
+// exists for. A terminal row (published, skipped, failed) is reset to
+// pending; a row that is genuinely in flight is left alone and reports
+// `enqueued: false`. The automatic fan-out does not pass it, so a retried
+// blog publish stays idempotent.
+export async function enqueueSocialPost(env, { projectId, blogPostId, channel = 'facebook', repost = false }) {
   if (!env?.DB || !blogPostId) return { enqueued: false };
   const t = nowSec();
-  const r = await env.DB.prepare(
-    `INSERT OR IGNORE INTO social_posts
-       (id, project_id, blog_post_id, channel, status, attempts, max_attempts, next_attempt_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 'pending', 0, 5, ?, ?, ?)`
-  ).bind(newId(), projectId || null, blogPostId, channel, t, t, t).run().catch(() => null);
+  const sql = repost
+    ? `INSERT INTO social_posts ${SOCIAL_COLUMNS} VALUES ${SOCIAL_VALUES}
+       ON CONFLICT(blog_post_id, channel) DO UPDATE SET
+         status = 'pending', attempts = 0, next_attempt_at = excluded.next_attempt_at,
+         error = NULL, needs_reconnect = 0,
+         external_id = NULL, external_url = NULL, published_at = NULL,
+         updated_at = excluded.updated_at
+       WHERE social_posts.status IN ('published', 'skipped', 'failed')`
+    : `INSERT OR IGNORE INTO social_posts ${SOCIAL_COLUMNS} VALUES ${SOCIAL_VALUES}`;
+  const r = await env.DB.prepare(sql).bind(newId(), projectId || null, blogPostId, channel, t, t, t).run().catch(() => null);
   return { enqueued: !!(r?.meta?.changes) };
 }
 
