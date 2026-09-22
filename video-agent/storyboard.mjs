@@ -256,7 +256,7 @@ const NEEDS_ASSETS = new Set([
 
 // The single gate every storyboard passes through. Returns a storyboard that
 // is safe to draw plus a report of what was changed — a drop is never silent.
-export function sanitizeStoryboard(sb, { source = '', intent = 'educational', target = DURATION.default, assets = {} } = {}) {
+export function sanitizeStoryboard(sb, { source = '', intent = 'educational', target = DURATION.default, assets = {}, presenterName = '' } = {}) {
   const dropped = [];
   const template = BEATS[intent] || BEATS.educational;
   const allowed = new Set(template.flatMap((b) => b.types));
@@ -305,6 +305,9 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
 
     kept.push({
       ...raw, type, text, asset, items,
+      // The anchor's name is the project's, not the model's — a model never
+      // saw presenter_name, so whatever it writes here would be invented.
+      name: type === 'anchor' && presenterName ? presenterName : raw.name,
       say: clampWords(raw.say, 0), // budget is applied below, once durations exist
     });
   }
@@ -400,6 +403,16 @@ export function reviewStoryboard(sb) {
     if (wordCount(s.say) > narrationBudget(s.duration)) problems.push(`narration_too_long:${i}`);
   }
   return { ok: problems.length === 0, problems };
+}
+
+// Beats that allow exactly one scene type are the intent's signature: a
+// summary without keypoints, a bulletin without a headline, a Q&A without
+// a question is just a generic video wearing the template's name. Hook and
+// CTA close every story, so they are not signatures.
+export function signatureTypes(intent) {
+  return [...new Set((BEATS[intent] || [])
+    .filter((b) => b.types.length === 1 && !['hook', 'cta'].includes(b.types[0]))
+    .map((b) => b.types[0]))];
 }
 
 // ── deterministic fallback ───────────────────────────────────────────

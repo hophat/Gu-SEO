@@ -23,7 +23,7 @@ import { spawnSync } from 'node:child_process';
 import { esc, sceneInner, wantsBackground } from './scenes.mjs';
 import {
   DURATION, INTENTS, MIN_SCENES, beatSlots, clampDuration, clampWords, intentFromSignals,
-  reviewStoryboard, sanitizeStoryboard, storyboardFromContent, wordCount,
+  reviewStoryboard, sanitizeStoryboard, signatureTypes, storyboardFromContent, wordCount,
 } from './storyboard.mjs';
 import { collectAssets, downloadLogo } from './assets.mjs';
 import { templateById, intentForTemplate } from './templates.mjs';
@@ -1080,9 +1080,11 @@ export async function renderOne(job, deps = {}) {
 
   // A chosen template cannot be overridden by the model's answer.
   const intent = forced || (INTENTS.includes(raw?.intent) ? raw.intent : suggested.intent);
+  const presenterName = String(job.project?.presenter_name || '').trim();
+  const gateOpts = { source: storySource, intent, target, assets, presenterName };
   let { storyboard, dropped } = sanitizeStoryboard(
     raw || storyboardFromContent({ ...job, body_markdown: storySource }, intent, assets),
-    { source: storySource, intent, target, assets },
+    gateOpts,
   );
   if (dropped.length) log(`storyboard: dropped ${dropped.map((d) => `${d.type}:${d.reason}`).join(', ')}`);
 
@@ -1091,8 +1093,22 @@ export async function renderOne(job, deps = {}) {
     log('storyboard: too thin after the gate — deriving from the content');
     ({ storyboard, dropped } = sanitizeStoryboard(
       storyboardFromContent({ ...job, body_markdown: storySource }, intent, assets),
-      { source: storySource, intent, target, assets },
+      gateOpts,
     ));
+  }
+
+  // A forced intent is the user's promise of a shape: a summary that lost
+  // its keypoints card to the gate is no longer a summary. Rebuild from the
+  // deterministic board, which still knows how to fill the signature beats.
+  if (forced) {
+    const missing = signatureTypes(intent).filter((t) => !storyboard.scenes.some((s) => s.type === t));
+    if (missing.length) {
+      log(`storyboard: template "${tpl.id}" lost ${missing.join(', ')} — rebuilding from the content`);
+      ({ storyboard, dropped } = sanitizeStoryboard(
+        storyboardFromContent({ ...job, body_markdown: storySource }, intent, assets),
+        gateOpts,
+      ));
+    }
   }
 
   // 3. The check the spec asks for, made mechanical.

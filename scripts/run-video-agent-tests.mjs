@@ -64,7 +64,7 @@ const { MIN_SHOT_BYTES, pickShowcaseLinks } = await import('../video-agent/asset
 const { TEMPLATES, templateById, intentForTemplate } = await import('../video-agent/templates.mjs');
 const {
   DURATION, INTENTS, MAX_TEXT_WORDS, beatSlots, intentFromSignals, reviewStoryboard,
-  sanitizeStoryboard, storyboardFromContent, wordCount, narrationBudget,
+  sanitizeStoryboard, signatureTypes, storyboardFromContent, wordCount, narrationBudget,
   MIN_SCENES: SB_MIN_SCENES, MAX_SCENES: SB_MAX_SCENES,
 } = await import('../video-agent/storyboard.mjs');
 const { carouselPrefix, carouselSlideKey } = await import('../functions/_lib/video_jobs.js');
@@ -900,6 +900,31 @@ if (!HAS_FFMPEG) {
     ok('a presenter-less news bulletin degrades to headline cards and still ships');
     r.done();
   }
+
+  {
+    // The model's summary board survives the gate as hook→quote→cta —
+    // valid, but it is not a summary: the numbered card the template
+    // promised is gone. The deterministic board still has it.
+    const r = postRig();
+    scriptStub = {
+      intent: 'summary', duration: 20,
+      scenes: [
+        { type: 'hook', text: 'Mở đầu', say: 'Mở đầu.', duration: 3 },
+        { type: 'quote', text: 'Chi phí là vấn đề', say: 'Chi phí là vấn đề.', duration: 5 },
+        { type: 'cta', text: 'Đọc tiếp', say: 'Đọc tiếp.', duration: 3 },
+      ],
+    };
+    const lines = await captureLogs(() => renderOne({ ...STORY_JOB, template: 'summary' }, r.deps));
+    scriptStub = null;
+
+    assert.ok(lines.some((l) => /lost keypoints — rebuilding/.test(l)),
+      'a summary that lost its card is rebuilt, not shipped');
+    const composed = readFileSync(join(r.work, 'index.html'), 'utf8');
+    assert.match(composed, /class="ex keypoints"/, 'the rebuilt summary carries its numbered card');
+    assert.equal(r.seen.delivers.length, 1, 'and still delivers');
+    ok('a forced template rebuilds when its signature scene is gone');
+    r.done();
+  }
 }
 
 // ── storyboard: the story decides, the narration fits ────────────────
@@ -1237,6 +1262,32 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
     { source: tplJob.body_markdown, intent: 'news', target: 30, assets: { presenter: 'assets/presenter.jpg' } },
   ).storyboard).ok, 'the news fallback passes the quality gate');
   ok('the template fallbacks produce sane stories with or without a presenter');
+}
+
+{
+  // Single-type middle beats are what makes a template recognisable; the
+  // hook and CTA belong to every story and so sign nothing.
+  assert.deepEqual(signatureTypes('summary'), ['keypoints']);
+  assert.deepEqual(signatureTypes('news'), ['headline']);
+  assert.deepEqual(signatureTypes('qa'), ['question']);
+  assert.deepEqual(signatureTypes('storytelling'), [], 'a story makes no single-shape promise');
+
+  // The anchor's name is the project's, not the model's — the model never
+  // saw presenter_name, so whatever it writes is overridden at the gate.
+  const named = sanitizeStoryboard({
+    scenes: [
+      { type: 'headline', text: 'Tin mới' },
+      { type: 'anchor', text: 'Dẫn bản tin', asset: 'presenter', name: 'Bản tin' },
+      { type: 'cta', text: 'Xem thêm' },
+    ],
+  }, { source: STORY_ARTICLE, intent: 'news', target: 30, assets: { presenter: 'p.jpg' }, presenterName: 'Minh Anh' });
+  assert.equal(named.storyboard.scenes.find((s) => s.type === 'anchor').name, 'Minh Anh',
+    'the presenter name is forced onto the anchor card');
+  const unnamed = sanitizeStoryboard({
+    scenes: [{ type: 'anchor', text: 'Dẫn', asset: 'presenter', name: 'Bản tin' }, { type: 'cta', text: 'Xem' }],
+  }, { source: STORY_ARTICLE, intent: 'news', target: 30, assets: { presenter: 'p.jpg' } });
+  assert.equal(unnamed.storyboard.scenes[0].name, 'Bản tin', 'without a project name the model text stays');
+  ok('signature beats are named per intent, and the anchor wears the project presenter name');
 }
 
 console.log(`\nALL VIDEO AGENT TESTS PASSED (${passed} checks)`);
