@@ -91,6 +91,21 @@ console.log('--- Admin queue hook (polling · status copy) ---\n');
   v.unmount();
 }
 
+// ── the Programmatic SEO action cell has room for its buttons ────────
+{
+  // The keyword table carries `ellipsis` columns, so @rc-component/table
+  // forces table-layout:fixed here too. Measured with the real antd: a
+  // pending row (a number and four icon buttons) needs 132px plus 16px of
+  // small-table cell padding = 148. The column was 150 — two pixels of slack
+  // — so adding the delete button would have spilled it into the neighbour.
+  const prog = readFileSync(join(ROOT, 'src/admin/pages/Prog.jsx'), 'utf8');
+  const col = prog.match(/title: 'Ưu tiên'[\s\S]{0,200}?width: (\d+)/);
+  assert.ok(col, 'the Programmatic SEO action column must carry an explicit width');
+  assert.ok(Number(col[1]) >= 148,
+    `the Prog action cell needs >= 148px for four buttons, got ${col[1]}`);
+  ok('the Programmatic SEO action cell is wide enough for its buttons');
+}
+
 // ── Carousel page: polls while the agent is still working ────────────
 {
   requests = []; responses = [jobsResponse(CAROUSEL_PENDING)]; intervals = [];

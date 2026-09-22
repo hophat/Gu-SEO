@@ -4,6 +4,13 @@
 // PATCH — update priority or status on a single row.
 //   { id, priority?, status? }
 //   Use this to pin/demote keywords or to retry failed ones.
+// DELETE — drop one keyword from the queue.
+//   ?id=<id>
+//   This removes the QUEUE ROW only. A keyword that already produced a page
+//   keeps it: functions/p/[slug].js serves prog_pages, so the page is live
+//   content and deleting it is a different, destructive decision (it would
+//   404 a public URL and drop it from the sitemap). The response says which
+//   page was left alone so the UI can tell the operator.
 import { json, nowSec, audit } from '../../../_lib/util.js';
 import { requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 
@@ -83,4 +90,40 @@ export const onRequestPatch = async ({ request, env }) => {
   ).bind(...binds).run();
   audit(env, 'admin', 'prog_queue_patch', id, body);
   return json(200, { ok: true, changed: r?.meta?.changes || 0 });
+};
+
+export const onRequestDelete = async ({ request, env }) => {
+  const auth = await requireAdminAsync(env, request);
+  if (!auth) return json(401, { error: 'unauthorized' });
+  const tenant = await resolveTenantContext(env, request, auth);
+  const pid = tenant?.activeProjectId || null;
+
+  const id = String(new URL(request.url).searchParams.get('id') || '').trim();
+  if (!id) return json(400, { error: 'missing_id' });
+
+  const row = pid
+    ? await env.DB.prepare(
+        `SELECT k.id, k.status, k.page_id, p.slug AS page_slug
+           FROM prog_keywords k LEFT JOIN prog_pages p ON p.id = k.page_id
+          WHERE k.id = ? AND k.project_id = ? LIMIT 1`
+      ).bind(id, pid).first().catch(() => null)
+    : await env.DB.prepare(
+        `SELECT k.id, k.status, k.page_id, p.slug AS page_slug
+           FROM prog_keywords k LEFT JOIN prog_pages p ON p.id = k.page_id
+          WHERE k.id = ? LIMIT 1`
+      ).bind(id).first().catch(() => null);
+  if (!row) return json(404, { error: 'not_found' });
+
+  // A row the generator is holding right now: deleting it would leave the
+  // in-flight write updating a row that no longer exists. It is transient —
+  // the operator retries in a moment.
+  if (row.status === 'processing') {
+    return json(409, { error: 'is_generating', hint: 'Từ khóa này đang được tạo trang — đợi một lát rồi xoá.' });
+  }
+
+  const r = await env.DB.prepare(
+    `DELETE FROM prog_keywords WHERE id=?${pid ? ' AND project_id=?' : ''}`
+  ).bind(...(pid ? [id, pid] : [id])).run();
+  audit(env, 'admin', 'prog_queue_delete', id, { page_id: row.page_id || null });
+  return json(200, { ok: true, changed: r?.meta?.changes || 0, page_slug: row.page_slug || null });
 };

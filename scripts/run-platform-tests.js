@@ -44,6 +44,7 @@ import {
   carouselRef, carouselPrefix, carouselSlideKey, explainerRef, postIdFromRef, postIdFromRefSql,
 } from '../functions/_lib/video_jobs.js';
 import { onRequestPost as createExplainerJob } from '../functions/api/admin/video/explainer.js';
+import { onRequestDelete as deleteProgKeyword } from '../functions/api/admin/prog/queue.js';
 import { onRequestPost as claimVideoJob } from '../functions/api/admin/video/claim.js';
 import { renderCoverSvg, isRenderableSpec, fallbackCoverSpec } from '../functions/_lib/cover_svg.js';
 import { onRequestGet as coverSvgRoute } from '../functions/cover/[slug].svg.js';
@@ -2352,6 +2353,49 @@ async function testExplainerVideoJobs() {
   ok('re-creating a finished explainer replaces it and keeps the sentinel');
 }
 
+// ── S. programmatic SEO queue ───────────────────────────────────────
+// The Prog page had no way to remove a keyword at all. Deleting must drop
+// the QUEUE ROW and leave the page it produced: functions/p/[slug].js serves
+// prog_pages, so that page is live content with a URL and a sitemap entry —
+// removing it is a different, destructive decision the operator has not made.
+async function testProgQueueDelete() {
+  console.log('\nS. Programmatic SEO queue');
+  const env = await freshEnv();
+  const t = Math.floor(Date.now() / 1000);
+
+  const addKeyword = (id, status, pageId = null) => env.DB.prepare(
+    `INSERT INTO prog_keywords (id, project_id, keyword, canonical, score, priority, intent, status, page_id, attempts, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 70, 0, 'commercial', ?, ?, 0, ?, ?)`
+  ).bind(id, PROJECT, `kw ${id}`, `kw-${id}`, status, pageId, t, t).run();
+
+  await addKeyword('pk_done', 'done', 'pp_1');
+  await addKeyword('pk_busy', 'processing');
+  await env.DB.prepare(
+    `INSERT INTO prog_pages (id, slug, keyword, title, meta_description, body_markdown, status, created_at, published_at)
+     VALUES ('pp_1', 'thiet-ke-web', 'kw pk_done', 'T', 'D', '# B', 'published', ?, ?)`
+  ).bind(t, t).run();
+
+  const del = (query, token) => deleteProgKeyword({
+    env, request: adminReq(`https://x/api/admin/prog/queue${query}`, token === undefined ? {} : { token }),
+  });
+
+  assert.equal((await del('?id=pk_done', '')).status, 401, 'deleting a keyword needs the admin gate');
+  assert.equal((await del('')).status, 400, 'an id is required');
+  assert.equal((await del('?id=nope')).status, 404, 'an unknown id is a 404');
+  assert.equal((await del('?id=pk_busy')).status, 409,
+    'a keyword the generator is holding right now is refused, not half-deleted');
+  assert.ok(await env.__get("SELECT id FROM prog_keywords WHERE id='pk_busy'"), 'and it is still there');
+  ok('the delete endpoint is gated, validates its input, and refuses a row in flight');
+
+  const res = await (await del('?id=pk_done')).json();
+  assert.equal(res.ok, true);
+  assert.equal(res.page_slug, 'thiet-ke-web', 'the response names the page it left alone');
+  assert.ok(!(await env.__get("SELECT id FROM prog_keywords WHERE id='pk_done'")), 'the queue row is gone');
+  assert.ok(await env.__get("SELECT id FROM prog_pages WHERE id='pp_1'"),
+    'the page the keyword produced is NOT deleted — it is live content');
+  ok('deleting a keyword drops the queue row and keeps its page');
+}
+
 async function main() {
   console.log('--- Platform tests (migrations · queue · carousel · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy · cover) ---');
   await testMigrations();
@@ -2376,6 +2420,7 @@ async function main() {
   await testEmailPolicy();
   await testCarouselVideoJobs();
   await testExplainerVideoJobs();
+  await testProgQueueDelete();
   await testCoverSpecFallback();
   console.log(`\nALL PLATFORM TESTS PASSED (${passed} checks)`);
 }

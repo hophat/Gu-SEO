@@ -14,9 +14,9 @@
 //      /api/admin/prog/pull-keywords (POST), /api/admin/prog/generate-next (POST)
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Button, Tag, Space, Typography, message, Input, Modal, Form, Row, Col, Select, InputNumber, Statistic, Progress, Alert, Tooltip, Popconfirm, Image, Steps } from 'antd';
-import { PlusOutlined, ReloadOutlined, ThunderboltOutlined, SearchOutlined, EyeOutlined, ArrowUpOutlined, ArrowDownOutlined, CloseOutlined, RedoOutlined, LinkOutlined, FireOutlined, CheckCircleOutlined, LoadingOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, ThunderboltOutlined, SearchOutlined, EyeOutlined, ArrowUpOutlined, ArrowDownOutlined, CloseOutlined, RedoOutlined, LinkOutlined, FireOutlined, CheckCircleOutlined, LoadingOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
-import { apiGet, apiPost, api } from '../api.js';
+import { apiGet, apiPost, api, apiDel } from '../api.js';
 import { useProjectUrl } from '../lib/projectUrl.js';
 
 const { Text } = Typography;
@@ -135,6 +135,38 @@ export default function Prog() {
     else message.error(r.body?.error || 'Lỗi');
   };
 
+  // Delete drops the queue row only. A keyword that already produced a page
+  // keeps it — functions/p/[slug].js serves prog_pages, so the page is live
+  // content, and the confirm says so before the operator clicks.
+  const removeKeyword = async (r) => {
+    const res = await apiDel(`/api/admin/prog/queue?id=${encodeURIComponent(r.id)}`);
+    if (res.status === 200 && res.body?.ok) {
+      message.success(res.body.page_slug
+        ? `Đã xoá từ khóa — trang /p/${res.body.page_slug} vẫn giữ nguyên`
+        : 'Đã xoá từ khóa khỏi hàng đợi');
+      refresh();
+    } else {
+      message.error(res.body?.hint || res.body?.error || 'Xoá thất bại');
+    }
+  };
+
+  const delButton = (r) => (
+    <Popconfirm
+      title="Xoá từ khóa khỏi hàng đợi?"
+      description={r.page_slug
+        ? `Chỉ xoá khỏi hàng đợi. Trang /p/${r.page_slug} vẫn giữ nguyên.`
+        : 'Từ khóa này chưa tạo trang nào.'}
+      okText="Xoá"
+      okButtonProps={{ danger: true }}
+      cancelText="Huỷ"
+      onConfirm={() => removeKeyword(r)}
+    >
+      <Tooltip title="Xoá khỏi hàng đợi">
+        <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+      </Tooltip>
+    </Popconfirm>
+  );
+
   // ── generate ────────────────────────────────────────────────────
   const generateOne = async (silent = false) => {
     const { status, body } = await apiPost('/api/admin/prog/generate-next', {});
@@ -197,7 +229,11 @@ export default function Prog() {
       render: (i) => { const m = INTENT_META[i]; return m ? <Tag color={m.color}>{m.text}</Tag> : <Text type="secondary">—</Text>; } },
     { title: 'Điểm', dataIndex: 'score', key: 'score', width: 70,
       render: (s) => s != null ? <Tag color={s >= 60 ? 'green' : s >= 40 ? 'gold' : 'default'}>{s}</Tag> : '—' },
-    { title: 'Ưu tiên', dataIndex: 'priority', key: 'priority', width: 150,
+    // 200px, not 150: the keyword table carries `ellipsis` columns, which
+    // makes @rc-component/table force the whole table to table-layout:fixed,
+    // so a cell that is too narrow spills into its neighbour — the same
+    // failure that hid the video delete button on hover. Measured below.
+    { title: 'Ưu tiên', dataIndex: 'priority', key: 'priority', width: 200,
       render: (p, r) => {
         if (statusFilter === 'pending') {
           return (
@@ -206,6 +242,7 @@ export default function Prog() {
               <Tooltip title="Tăng ưu tiên +10"><Button size="small" type="text" icon={<ArrowUpOutlined />} onClick={() => patch(r.id, { priority: (p || 0) + 10 })} /></Tooltip>
               <Tooltip title="Giảm ưu tiên −10"><Button size="small" type="text" icon={<ArrowDownOutlined />} onClick={() => patch(r.id, { priority: (p || 0) - 10 })} /></Tooltip>
               <Tooltip title="Bỏ qua (đánh dấu thất bại)"><Button size="small" type="text" danger icon={<CloseOutlined />} onClick={() => patch(r.id, { status: 'failed' })} /></Tooltip>
+              {delButton(r)}
             </Space>
           );
         }
@@ -214,10 +251,18 @@ export default function Prog() {
             <Space size={2}>
               <Text style={{ width: 28, display: 'inline-block', textAlign: 'right' }}>{p ?? 0}</Text>
               <Tooltip title="Thử lại"><Button size="small" type="text" icon={<RedoOutlined />} onClick={() => patch(r.id, { status: 'pending' })} /></Tooltip>
+              {delButton(r)}
             </Space>
           );
         }
-        return p != null ? p : '—';
+        // A finished keyword used to show nothing to click; it can now be
+        // dropped from the queue without touching the page it produced.
+        return (
+          <Space size={2}>
+            <Text style={{ width: 28, display: 'inline-block', textAlign: 'right' }}>{p ?? 0}</Text>
+            {delButton(r)}
+          </Space>
+        );
       } },
     { title: 'Trạng thái', dataIndex: 'status', key: 'status', width: 120,
       render: (s) => { const m = STATUS_META[s] || STATUS_META.pending; return <Tag color={m.color}>{m.text}</Tag>; } },
