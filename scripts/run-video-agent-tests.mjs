@@ -43,15 +43,14 @@ globalThis.fetch = async (url) => {
 };
 
 const {
-  composeCarouselSlideHtml, composeExplainerHtml, composeHtml, LOUDNESS, makeBgm, masterLoudness,
-  narrationFor, parsePlan, renderCarousel, renderOne, slideQueries,
+  composeCarouselSlideHtml, composeStoryboardHtml, fitNarration, LOUDNESS, makeBgm,
+  masterLoudness, renderCarousel, renderOne, slideQueries,
 } = await import('../video-agent/render-video.mjs');
-const {
-  ICON_NAMES, MAX_SCENES, MIN_SCENES, icon, planFromMarkdown, sanitizePlan, sceneInner, statSize,
-} = await import('../video-agent/explainer.mjs');
-// Aliased: explainer.mjs and storyboard.mjs both export MIN/MAX_SCENES with
-// different values (the old free-form plan allowed 5-9, a 20s story wants
-// 3-8), and a bare name here silently mixed the two.
+// Scene renderers live in scenes.mjs; the story rules in storyboard.mjs.
+// MIN/MAX_SCENES are aliased because both modules export them with different
+// values (a free-form plan allowed 5-9, a 20s story wants 3-8) and a bare
+// name here silently mixed the two.
+const { ICON_NAMES, icon, sceneInner, statSize } = await import('../video-agent/scenes.mjs');
 const {
   DURATION, INTENTS, MAX_TEXT_WORDS, beatSlots, intentFromSignals, reviewStoryboard,
   sanitizeStoryboard, storyboardFromContent, wordCount,
@@ -551,71 +550,43 @@ if (!HAS_FFMPEG) {
 // The composition is what puts the bed under the voice — at the gain the
 // level above is tuned for, and only when there is a bed at all.
 {
-  const segs = [2, 2, 2, 2];
-  const withBed = composeHtml(JOB, SCRIPT, segs, null, '/tmp/bgm.mp3');
-  assert.match(withBed, /<audio class="clip" data-start="0" data-duration="9\.60" data-volume="0\.12" data-track-index="6" src="assets\/bgm\.mp3"><\/audio>/,
+  const bedStory = { intent: 'educational', duration: 20, scenes: [
+    { type: 'hook', text: 'a', say: 'a', duration: 4 },
+    { type: 'cta', text: 'b', say: 'b', duration: 4 },
+  ] };
+  const segs = [2, 2];
+  const withBed = composeStoryboardHtml(JOB, bedStory, segs, {}, null, '/tmp/bgm.mp3');
+  assert.match(withBed, /<audio class="clip" data-start="0" data-duration="8\.00" data-volume="0\.12" data-track-index="6" src="assets\/bgm\.mp3"><\/audio>/,
     'the bed must be a full-length track on its own channel at the documented gain');
-  assert.doesNotMatch(composeHtml(JOB, SCRIPT, segs, null, null), /assets\/bgm\.mp3/,
+  assert.doesNotMatch(composeStoryboardHtml(JOB, bedStory, segs, {}, null, null), /assets\/bgm\.mp3/,
     'no bed means no music track');
   ok('the composition carries the bed at the documented gain, and only when there is one');
 }
 
-// ── the explainer: the article explained, not just narrated ──────────
-// The point of this kind is that the video shows something the words do
-// not — charts, diagrams, icons — so the checks below are about markup
-// that actually draws, and about the one thing a model must not do here:
-// invent a number the article never said.
-console.log('\n--- Explainer composition (charts · diagrams · icons) ---\n');
+// ── scene renderers: what each scene actually draws ──────────────────
+// The vocabulary is the difference between a video and a slide deck, so the
+// checks are on the markup that puts pixels on screen — not on the class
+// name alone — and every string in every scene is untrusted.
+console.log('\n--- Scene renderers (graphics · device · photo · map) ---\n');
 
-const EXPLAINER_JOB = {
-  id: 'vj_exp', kind: 'explainer', slug: 'giam-chi-phi-bao-bi',
+const SCENE_JOB = {
+  id: 'vj_scene', kind: 'post', slug: 'giam-chi-phi-bao-bi',
   title: 'Giảm chi phí bao bì',
-  // Every number the plan below draws must appear here — the guard runs on
-  // this path too, so a fixture that invents one would silently lose a scene.
-  body_markdown: 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển chỉ 7%. '
-    + '65% shop đã đổi sang hộp giấy. Có 3 cách: đổi hộp, giảm lớp, mua số lượng lớn.',
+  body_markdown: 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển chỉ 7%. 65% shop đã đổi sang hộp giấy.',
   project: { name: 'Lagi Food', accent: '#e8590c', publishing_url: 'https://lagi.example/blog' },
 };
-const EXPLAINER_PLAN = {
-  title: 'Giảm chi phí bao bì',
-  scenes: [
-    { type: 'hook', say: 'Bao bì ăn mất lợi nhuận bạn không thấy.', text: 'Bao bì ăn mất lợi nhuận' },
-    { type: 'bars', say: 'Bao bì 12 phần trăm, vận chuyển 7 phần trăm.', title: 'Chi phí chiếm bao nhiêu', unit: '%',
-      items: [{ label: 'Bao bì', value: 12 }, { label: 'Vận chuyển', value: 7 }] },
-    { type: 'donut', say: 'Sáu lăm phần trăm shop đã đổi.', value: 65, label: 'shop đã đổi sang hộp giấy' },
-    { type: 'steps', say: 'Ba bước.', title: 'Các bước', items: [{ icon: 'cart', label: 'Đo lại hộp' }, { label: 'Chọn loại một lớp' }] },
-    { type: 'icons', say: 'Điểm chính.', title: 'Điểm chính', items: [{ icon: 'shield', label: 'Bền' }, { icon: 'leaf', label: 'Dễ phân huỷ' }] },
-    { type: 'compare', say: 'Nên và tránh.', title: 'Nên và tránh',
-      left: { title: 'Nên', items: ['Hộp một lớp'] }, right: { title: 'Tránh', items: ['Hộp ba lớp'] } },
-    { type: 'quote', say: 'Đổi hộp là cách rẻ nhất.', text: 'Đổi sang hộp giấy một lớp là cách rẻ nhất.' },
-    { type: 'outro', say: 'Đọc bài viết đầy đủ.', text: 'Đọc bài viết đầy đủ' },
-  ],
-};
-const explainerDeck = (job = EXPLAINER_JOB, plan = EXPLAINER_PLAN, segs = plan.scenes.map(() => 3)) =>
-  composeExplainerHtml(job, plan, segs, null, '/tmp/bgm.mp3');
+const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'assets/map.jpg', logo: 'assets/logo.png' };
 
 {
-  const html = explainerDeck();
-  assert.match(html, /^<!doctype html>/, 'the composition is a standalone document');
-  assert.match(html, /width=720, height=1280/, 'a vertical video is 9:16 at 720x1280');
-  assert.match(html, /data-width="720"/);
-  assert.match(html, /data-height="1280"/);
-  // One voice track per scene, in order: the composition maps audio to
-  // picture by index, so a missing or extra segment desyncs the whole video.
-  for (const i of EXPLAINER_PLAN.scenes.keys()) {
-    assert.match(html, new RegExp(`data-track-index="5" src="assets/seg${i}\\.mp3"`), `scene ${i} must carry its own narration`);
-  }
-  assert.equal((html.match(/data-track-index="5"/g) || []).length, EXPLAINER_PLAN.scenes.length,
-    'exactly one narration track per scene');
-  assert.match(html, /data-volume="0\.12" data-track-index="6" src="assets\/bgm\.mp3"/, 'the bed rides its own track');
-  ok('the explainer composition is 9:16 with one narration track per scene');
-}
-
-{
-  // What makes it an explainer rather than a slideshow of sentences: the
-  // scenes actually draw. Each primitive is asserted on the markup that
-  // puts pixels on screen, not on the class name alone.
-  const html = explainerDeck();
+  // Graphics belong to lessons. Each is asserted on the markup that draws.
+  const html = [
+    sceneInner({ type: 'bars', text: 'Chi phí', items: [{ label: 'Bao bì', value: 12 }, { label: 'Vận chuyển', value: 7 }] }, '#e8590c'),
+    sceneInner({ type: 'donut', text: 'Đã đổi', value: 65 }, '#e8590c'),
+    sceneInner({ type: 'steps', text: 'Các bước', items: [{ label: 'Đo hộp' }] }, '#e8590c'),
+    sceneInner({ type: 'icons', text: 'Điểm chính', items: [{ icon: 'shield', label: 'Bền' }] }, '#e8590c'),
+    sceneInner({ type: 'compare', text: 'Nên tránh', left: { title: 'Nên', items: ['Hộp 1 lớp'] }, right: { title: 'Tránh', items: ['Hộp 3 lớp'] } }, '#e8590c'),
+    sceneInner({ type: 'quote', text: 'Đổi hộp là cách rẻ nhất' }, '#e8590c'),
+  ].join('');
   assert.match(html, /class="bar-fill" style="width:100%/, 'the largest bar fills the track');
   assert.match(html, /class="bar-fill" style="width:58%/, 'and the others scale against it (7 of 12)');
   assert.match(html, /<svg viewBox="0 0 320 320"[\s\S]*stroke-dasharray="/, 'the donut is a drawn arc');
@@ -628,44 +599,81 @@ const explainerDeck = (job = EXPLAINER_JOB, plan = EXPLAINER_PLAN, segs = plan.s
   // would run off the frame, so length has to choose the size.
   assert.ok(statSize('1.250.000') < statSize('40'), 'a long number steps down so it cannot overflow the frame');
   assert.equal(sceneInner({ type: 'not-a-scene' }, '#fff'), '', 'an unknown scene draws nothing instead of throwing');
-  ok('every scene type draws its own graphic, not just text');
+  ok('every graphic scene draws its own graphic, not just text');
 }
 
 {
-  // Determinism is what makes a snapshot at any moment reproducible — the
-  // same property the carousel deck is pinned on.
-  const a = explainerDeck(), b = explainerDeck();
-  assert.equal(a, b, 'the same plan must compose the same document');
-  const accented = composeExplainerHtml({ ...EXPLAINER_JOB, project: { name: 'Blog' } }, EXPLAINER_PLAN, EXPLAINER_PLAN.scenes.map(() => 3));
-  assert.match(accented, /#1677ff/, 'a project with no accent falls back to the default');
-  assert.match(a, /#e8590c/, 'the project accent drives the palette');
-  ok('the same plan always composes the same document, with the brand accent');
+  // The visual scenes are the point of the rework: a video about a product
+  // has to show the product. Each one is asserted on the asset it embeds.
+  assert.match(sceneInner({ type: 'ui_demo', text: 'Website 2 phút', asset: 'site:0' }, '#e8590c', ASSETS),
+    /class="device-shot" src="assets\/site0\.png"/, 'a demo puts the real screenshot inside the phone frame');
+  assert.match(sceneInner({ type: 'ui_demo', text: 'x' }, '#e8590c', {}), /class="claim"/,
+    'a demo with no screenshot degrades to the claim rather than a broken frame');
+  assert.match(sceneInner({ type: 'before_after', text: 'Thay đổi', asset: 'hero', asset2: 'site:0' }, '#e8590c', ASSETS),
+    /assets\/hero\.jpg[\s\S]*assets\/site0\.png/, 'before/after shows both real images');
+  assert.match(sceneInner({ type: 'before_after', text: 'x', asset: 'hero' }, '#e8590c', ASSETS),
+    /ba-img[\s\S]*ba-img/, 'with one asset it reuses it rather than inventing a second');
+  assert.match(sceneInner({ type: 'location', text: '12 Lê Lợi', asset: 'map' }, '#e8590c', ASSETS),
+    /class="loc-map"><img src="assets\/map\.jpg"/, 'a location scene embeds the captured map');
+  assert.match(sceneInner({ type: 'rating', text: 'Khách rất hài lòng', value: 5 }, '#e8590c', ASSETS),
+    /class="stars"/, 'a rating draws stars');
+  assert.match(sceneInner({ type: 'product_reveal', text: 'Gulagi' }, '#e8590c', ASSETS),
+    /class="reveal-logo" src="assets\/logo\.png"/, 'a product reveal uses the brand logo when there is one');
+  assert.match(sceneInner({ type: 'result', text: 'Khách đặt bàn online', value: 30, unit: ' ngày' }, '#e8590c', ASSETS),
+    /class="res-n"[\s\S]*>30</, 'a result shows the real number when the source had one');
+  assert.match(sceneInner({ type: 'cta', text: 'Thử miễn phí', url: 'https://gulagi.com' }, '#e8590c', ASSETS),
+    /class="outro">Thử miễn phí<\/p><p class="sub">gulagi\.com/, 'a CTA carries one action and the site');
+  assert.match(sceneInner({ type: 'photo', text: 'Quán ven sông' }, '#e8590c', ASSETS), /class="photo-cap"/,
+    'a photo scene is a caption over the picture');
+  ok('the visual scenes embed real assets, and degrade instead of breaking');
 }
 
 {
-  // Every string in a plan is model output derived from an article, so every
-  // one of them is untrusted. Checked per primitive and per field rather
+  // Determinism is what makes a snapshot at any moment reproducible.
+  const a = sceneInner({ type: 'ui_demo', text: 'Demo', asset: 'site:0' }, '#e8590c', ASSETS);
+  const b = sceneInner({ type: 'ui_demo', text: 'Demo', asset: 'site:0' }, '#e8590c', ASSETS);
+  assert.equal(a, b, 'the same scene must draw the same markup');
+  assert.match(sceneInner({ type: 'bars', text: 'x', items: [{ label: 'a', value: 1 }, { label: 'b', value: 2 }] }, '#e8590c'), /#e8590c/,
+    'the project accent drives the palette');
+  assert.match(sceneInner({ type: 'bars', text: 'x', items: [{ label: 'a', value: 1 }, { label: 'b', value: 2 }] }), /#1677ff/,
+    'a project with no accent falls back to the default');
+  ok('the same scene always draws the same markup, with the brand accent');
+}
+
+{
+  // Every string in a storyboard is model output derived from a source, so
+  // every one of them is untrusted. Checked per scene and per field rather
   // than on one sample: a single unescaped label is enough to inject markup
   // into the page hyperframes renders.
   const hostile = [
     { type: 'hook', text: '<script>alert(1)</script>' },
-    { type: 'stat', value: 1, label: '<script>alert(2)</script>', unit: '<script>alert(3)</script>' },
-    { type: 'bars', title: '<script>alert(4)</script>', items: [{ label: '<script>alert(5)</script>', value: 1 }] },
-    { type: 'donut', value: 1, label: '<script>alert(6)</script>' },
-    { type: 'line', title: '<script>alert(7)</script>', items: [{ label: '<script>alert(8)</script>', value: 1 }, { label: 'b', value: 2 }] },
-    { type: 'steps', title: '<script>alert(9)</script>', items: [{ label: '<script>alert(10)</script>', detail: '<script>alert(11)</script>' }] },
-    { type: 'timeline', title: '<script>alert(12)</script>', items: [{ label: '<script>alert(13)</script>', text: '<script>alert(14)</script>' }] },
-    { type: 'icons', title: '<script>alert(15)</script>', items: [{ icon: 'star', label: '<script>alert(16)</script>' }] },
-    { type: 'compare', title: '<script>alert(17)</script>',
-      left: { title: '<script>alert(18)</script>', items: ['<script>alert(19)</script>'] }, right: { title: 'R', items: ['x'] } },
-    { type: 'quote', text: '<script>alert(20)</script>', source: '<script>alert(21)</script>' },
-    { type: 'outro', text: '<script>alert(22)</script>', url: 'https://x/<script>alert(23)</script>' },
+    { type: 'problem', text: '<script>alert(2)</script>' },
+    { type: 'product_reveal', text: '<script>alert(3)</script>' },
+    { type: 'ui_demo', text: '<script>alert(4)</script>' },
+    { type: 'feature', text: '<script>alert(5)</script>' },
+    { type: 'result', text: '<script>alert(6)</script>', unit: '<script>alert(7)</script>' },
+    { type: 'before_after', text: '<script>alert(8)</script>' },
+    { type: 'photo', text: '<script>alert(9)</script>' },
+    { type: 'location', text: '<script>alert(10)</script>' },
+    { type: 'rating', text: '<script>alert(11)</script>' },
+    { type: 'cta', text: '<script>alert(12)</script>', url: 'https://x/<script>alert(13)</script>' },
+    { type: 'stat', value: 1, label: '<script>alert(14)</script>', unit: '<script>alert(15)</script>' },
+    { type: 'bars', title: '<script>alert(16)</script>', items: [{ label: '<script>alert(17)</script>', value: 1 }] },
+    { type: 'donut', value: 1, label: '<script>alert(18)</script>' },
+    { type: 'line', title: '<script>alert(19)</script>', items: [{ label: '<script>alert(20)</script>', value: 1 }, { label: 'b', value: 2 }] },
+    { type: 'steps', title: '<script>alert(21)</script>', items: [{ label: '<script>alert(22)</script>', detail: '<script>alert(23)</script>' }] },
+    { type: 'timeline', title: '<script>alert(24)</script>', items: [{ label: '<script>alert(25)</script>', text: '<script>alert(26)</script>' }] },
+    { type: 'icons', title: '<script>alert(27)</script>', items: [{ icon: 'star', label: '<script>alert(28)</script>' }] },
+    { type: 'compare', title: '<script>alert(29)</script>', left: { title: '<script>alert(30)</script>', items: ['<script>alert(31)</script>'] }, right: { title: 'R', items: ['x'] } },
+    { type: 'quote', text: '<script>alert(32)</script>', source: '<script>alert(33)</script>' },
   ];
   for (const scene of hostile) {
-    assert.doesNotMatch(sceneInner(scene, '#e8590c'), /<script/i,
+    assert.doesNotMatch(sceneInner(scene, '#e8590c', ASSETS), /<script/i,
       `${scene.type} must escape every string it draws`);
   }
-  const composed = composeExplainerHtml(EXPLAINER_JOB, { title: 'x', scenes: hostile.slice(0, 2) }, [2, 2]);
+  const composed = composeStoryboardHtml(SCENE_JOB,
+    { intent: 'educational', duration: 20, scenes: [{ type: 'hook', text: '<script>alert(34)</script>', say: 'x', duration: 5 }, { type: 'cta', text: 'ok', say: 'y', duration: 5 }] },
+    [2, 2], ASSETS);
   assert.match(composed, /&lt;script&gt;/, 'hostile text is escaped rather than dropped');
   // The shell legitimately carries its own <script> tags, so this looks for
   // the injected payload rather than for any script at all.
@@ -673,147 +681,100 @@ const explainerDeck = (job = EXPLAINER_JOB, plan = EXPLAINER_PLAN, segs = plan.s
   ok('every field of every scene is escaped into the markup');
 }
 
-// ── the number guard: a video may not invent statistics ──────────────
 {
-  const article = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển chỉ 7%.';
-  const { plan: clean, dropped } = sanitizePlan({
-    scenes: [
-      { type: 'hook', text: 'H' },
-      { type: 'stat', value: 12, unit: '%', label: 'bao bì' },
-      { type: 'stat', value: 99, unit: '%', label: 'bịa ra' },
-      { type: 'bars', title: 'B', items: [{ label: 'a', value: 12 }, { label: 'b', value: 7 }, { label: 'c', value: 99 }] },
-      { type: 'donut', value: 12345, label: 'bịa' },
-      { type: 'nonsense' },
-      { type: 'outro', text: 'O' },
-    ],
-  }, article);
+  // The composition contract hyperframes reads.
+  const html = composeStoryboardHtml(SCENE_JOB,
+    { intent: 'educational', duration: 20, scenes: [
+      { type: 'hook', text: 'a', say: 'a', duration: 4 },
+      { type: 'bars', text: 'b', say: 'b', duration: 5, items: [{ label: 'x', value: 12 }, { label: 'y', value: 7 }] },
+      { type: 'cta', text: 'c', say: 'c', duration: 4 }] },
+    [3, 3, 3], ASSETS, null, 'assets/bgm.mp3');
 
-  assert.deepEqual(clean.scenes.map((s) => s.type), ['hook', 'stat', 'bars', 'outro'], 'only scenes with sourced numbers survive');
-  assert.equal(JSON.stringify(clean).includes('99'), false, 'an invented number must never reach the frame');
-  assert.equal(JSON.stringify(clean).includes('12345'), false, 'nor an invented donut');
-  assert.deepEqual(clean.scenes.find((s) => s.type === 'bars').items.map((i) => i.value), [12, 7],
-    'a bar the article never mentioned is dropped, the sourced ones stay');
-  assert.ok(dropped.some((d) => d.reason === 'number_not_in_article'), 'and the drop is reported, not silent');
-  assert.ok(dropped.some((d) => d.reason === 'unknown_type'), 'an unknown scene type is dropped too');
-  ok('a plan may only show numbers the article actually contains');
+  assert.match(html, /^<!doctype html>/, 'the composition is a standalone document');
+  assert.match(html, /width=720, height=1280/, 'a vertical video is 9:16 at 720x1280');
+  assert.match(html, /data-width="720"[\s\S]*data-height="1280"/, 'and declares its composition size');
+  assert.equal((html.match(/data-track-index="5"/g) || []).length, 3, 'exactly one narration track per scene');
+  assert.match(html, /data-track-index="5" src="assets\/seg2\.mp3"/, 'in scene order');
+  assert.match(html, /data-volume="0\.12" data-track-index="6" src="assets\/bgm\.mp3"/, 'the bed rides its own track');
+  // A hook reads better over a photo; a chart must not, or the numbers stop
+  // being readable.
+  assert.match(html, /id="s0"[\s\S]*clip bgi[\s\S]*id="s1"/, 'the hook gets a full-bleed background');
+  assert.doesNotMatch(html.slice(html.indexOf('id="s1"'), html.indexOf('id="s2"')), /clip bgi/,
+    'the chart does not — a photo behind a chart is what makes it unreadable');
+  assert.match(html, /tl\.seek\(0\)/, 'the timeline is seekable, so a snapshot at any moment is reproducible');
+  ok('the composition declares 9:16, one narration track per scene, and backgrounds only where they read');
 }
 
-{
-  // Thousand separators differ between prose and a plan; "1.000.000" in
-  // the article is the same number as "1000000" in the chart.
-  const { plan: clean } = sanitizePlan(
-    { scenes: [{ type: 'stat', value: 1000000, label: 'doanh thu' }, { type: 'outro', text: 'o' }] },
-    'Doanh thu đạt 1.000.000 đồng mỗi tháng.');
-  assert.equal(clean.scenes[0].type, 'stat', 'the same number written differently must still match');
-  ok('thousands separators do not turn a real number into a fabricated one');
-}
-
-{
-  // The model is asked for an icon from a fixed list, but it is a model:
-  // an unknown name has to degrade to something drawable, not to a hole.
-  assert.ok(ICON_NAMES.length >= 20, 'there is a real icon set to draw from');
-  assert.match(icon('definitely-not-an-icon'), /data-icon="star"/, 'an unknown icon falls back');
-  assert.match(icon('shield'), /data-icon="shield"/, 'a known one is drawn');
-  const { plan: clean } = sanitizePlan({ scenes: [{ type: 'icons', items: [{ icon: 'nope', label: 'x' }] }, { type: 'outro', text: 'o' }] }, 'article');
-  assert.equal(clean.scenes[0].items[0].icon, 'star', 'and the plan is repaired before it is drawn');
-  ok('an icon the model invented degrades to a real one');
-}
-
-// ── the fallback: no model, still a video ────────────────────────────
-{
-  const md = `# Giảm chi phí bao bì
-
-Chi phí bao bì chiếm 12% doanh thu. Vận chuyển chỉ 7%.
-
-- Đổi sang hộp một lớp
-- Giảm số lớp giấy
-- Mua số lượng lớn
-
-Một câu dài khác để làm quote cho video này nhé bạn.`;
-  const plan = planFromMarkdown(md, 'Giảm chi phí bao bì');
-  assert.ok(plan.scenes.length >= MIN_SCENES, `the fallback must be long enough to be a video (${plan.scenes.length} scenes)`);
-  assert.ok(plan.scenes.length <= MAX_SCENES, 'and short enough to render');
-  assert.equal(plan.scenes[0].type, 'hook', 'it opens on the article title');
-  assert.equal(plan.scenes.at(-1).type, 'outro', 'and closes with the call to read');
-  assert.ok(plan.scenes.some((s) => s.type === 'bars'), 'the numbers in the article become a chart');
-  assert.ok(plan.scenes.some((s) => s.type === 'steps'), 'and the bullet list becomes steps');
-
-  const { plan: clean, dropped } = sanitizePlan(plan, md);
-  assert.equal(dropped.length, 0, 'the fallback is sourced from the article, so the guard has nothing to drop');
-  assert.equal(clean.scenes.length, plan.scenes.length);
-  assert.equal(JSON.stringify(planFromMarkdown(md, 'Giảm chi phí bao bì')), JSON.stringify(plan), 'and it is deterministic');
-  ok('with no model at all the article still yields a full, truthful explainer plan');
-
-  // Both of these came out of a real render, not a hunch: the first fallback
-  // used whole sentences as chart labels, which wrapped over three lines and
-  // crowded the bars, and the read ran to 79s against a 75s budget.
-  const bars = plan.scenes.find((s) => s.type === 'bars');
-  for (const item of bars.items) {
-    assert.ok(item.label.length <= 27, `a bar label is a phrase, not a sentence (got "${item.label}")`);
-    assert.doesNotMatch(item.label, /[.!?]$/, 'and it does not end like a sentence');
-  }
-  const spoken = plan.scenes.map((s) => narrationFor(s)).join(' ');
-  // Vietnamese TTS at this rate measures ~8.5 chars/second, so 75s is about
-  // 640 characters. The fallback has no model to pace it, so the budget is
-  // enforced here instead.
-  assert.ok(spoken.length <= 640,
-    `the fallback must fit the 45-75s budget (${spoken.length} chars ≈ ${Math.round(spoken.length / 8.5)}s)`);
-  // "12%" and "12" are different claims; the chart keeps the one the article
-  // made. One bar per clause is the fallback's contract, so each number here
-  // gets its own sentence.
-  const pct = planFromMarkdown('Doanh thu tăng 12%. Chi phí giảm 7%.', 'T');
-  assert.equal(pct.scenes.find((s) => s.type === 'bars').unit, '%', 'a percentage stays a percentage');
-  const counts = planFromMarkdown('Shop có 12 chi nhánh. Đội ngũ thêm 7 người.', 'T');
-  assert.equal(counts.scenes.find((s) => s.type === 'bars').unit, '', 'a count does not become a percentage');
-  assert.equal(planFromMarkdown('Chỉ một câu có 12 và 7 cùng lúc.', 'T').scenes.some((s) => s.type === 'bars'), false,
-    'one clause yields one number, so a single sentence cannot fill a chart');
-  ok('the fallback reads as a chart, and fits the time budget without a model pacing it');
-}
-
-{
-  // narrationFor is what keeps the audio count equal to the scene count
-  // when the model forgets to write "say".
-  for (const scene of EXPLAINER_PLAN.scenes) {
-    const line = narrationFor({ ...scene, say: undefined });
-    assert.ok(line && line.trim().length > 0, `${scene.type} must have something to say even without "say"`);
-  }
-  ok('every scene can narrate itself, so voice and picture never desync');
-}
-
-// ── renderOne drives the explainer path end to end ───────────────────
+// ── renderOne drives the storyboard path end to end ──────────────────
 if (!HAS_FFMPEG) {
-  console.log('… explainer renderOne checks skipped: no ffmpeg on this machine');
+  console.log('… storyboard renderOne checks skipped: no ffmpeg on this machine');
 } else {
+  const STORY_JOB = {
+    id: 'vj_story', kind: 'post', slug: 'giam-chi-phi-bao-bi',
+    title: 'Giảm chi phí bao bì',
+    body_markdown: 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển chỉ 7%.',
+    project: { name: 'Lagi Food', accent: '#e8590c', publishing_url: 'https://lagi.example/blog' },
+  };
+  const STORY_SB = {
+    intent: 'educational', duration: 20,
+    scenes: [
+      { type: 'hook', text: 'Bao bì ăn mất lợi nhuận', say: 'Bao bì ăn mất lợi nhuận bạn không thấy.', duration: 3 },
+      { type: 'bars', text: 'Chi phí chiếm bao nhiêu', say: 'Bao bì 12 phần trăm, vận chuyển 7 phần trăm.', duration: 5,
+        items: [{ label: 'Bao bì', value: 12 }, { label: 'Vận chuyển', value: 7 }] },
+      { type: 'cta', text: 'Đọc bài viết đầy đủ', say: 'Đọc bài viết đầy đủ để biết thêm.', duration: 3 },
+    ],
+  };
+
   {
     const r = postRig();
-    scriptStub = EXPLAINER_PLAN;
-    await silently(() => renderOne(EXPLAINER_JOB, r.deps));
+    scriptStub = STORY_SB;
+    await silently(() => renderOne(STORY_JOB, r.deps));
     scriptStub = null;
 
     assert.equal(r.seen.delivers.length, 1, 'one deliver call');
     assert.equal(r.seen.delivers[0].path, '/api/admin/video/deliver');
-    assert.equal(r.seen.delivers[0].header, EXPLAINER_JOB.id);
+    assert.equal(r.seen.delivers[0].header, STORY_JOB.id, 'the bytes travel under the job id');
     assert.ok(r.seen.spawns.some((s) => s.cmd === 'npx' && s.args.includes('render')), 'the render ran');
-    // What was rendered is the explainer composition, not a teaser.
     const composed = readFileSync(join(r.work, 'index.html'), 'utf8');
-    assert.match(composed, /class="bar-fill"/, 'the rendered document carries a chart');
-    assert.match(composed, /assets\/seg7\.mp3/, 'and narration for the last scene');
-    assert.equal((composed.match(/data-track-index="5"/g) || []).length, EXPLAINER_PLAN.scenes.length);
-    ok('renderOne renders the explainer composition and delivers it');
+    assert.match(composed, /class="bar-fill"/, 'the rendered document carries the chart the model asked for');
+    assert.equal((composed.match(/data-track-index="5"/g) || []).length, 3, 'one narration track per scene');
+    ok('renderOne renders the storyboard and delivers it');
     r.done();
   }
 
   {
-    // GuRouter is down (the test fetch refuses everything): the job must
-    // still produce a video, derived from the article.
+    // GuRouter down (the test fetch refuses everything): the job must still
+    // produce a video, derived from the content.
     const r = postRig();
     scriptStub = null;
-    const lines = await captureLogs(() => renderOne(EXPLAINER_JOB, r.deps));
+    const lines = await captureLogs(() => renderOne(STORY_JOB, r.deps));
     assert.equal(r.seen.delivers.length, 1, 'a model outage must not cost the job');
-    assert.ok(lines.some((l) => /deriving scenes from the article/.test(l)), 'and it says so rather than pretending');
+    assert.ok(lines.some((l) => /storyboard failed/.test(l)), 'and it says so rather than pretending');
+    assert.ok(lines.some((l) => /intent: /.test(l)), 'the intent is still decided, from signals');
     const composed = readFileSync(join(r.work, 'index.html'), 'utf8');
-    assert.match(composed, /data-track-index="5"/, 'the fallback composition still narrates');
-    ok('with GuRouter down the explainer falls back to the article instead of failing');
+    assert.match(composed, /data-track-index="5"/, 'the fallback storyboard still narrates');
+    ok('with GuRouter down the storyboard falls back to the content instead of failing');
+    r.done();
+  }
+
+  {
+    // The story decides the length: a slot the voice overruns is fixed by
+    // saying less, not by stretching the video.
+    const r = postRig();
+    scriptStub = STORY_SB;
+    // renderOne creates this; calling fitNarration on its own does not.
+    mkdirSync(join(r.work, 'assets'), { recursive: true });
+    const sb = { intent: 'educational', duration: 20, scenes: [
+      { type: 'hook', text: 'a', say: 'a', duration: 2 },
+      { type: 'cta', text: 'b', say: 'b', duration: 2 },
+    ] };
+    const { storyboard } = sanitizeStoryboard(sb, { source: '', intent: 'educational', target: 20, assets: {} });
+    const { segs, total } = fitNarration(storyboard, r.work, r.deps.spawn, () => {});
+    // The fake voice is a 2s tone; the slots after rescaling are ~10s each,
+    // so nothing overruns and the scenes keep their story length.
+    assert.ok(segs.every((s) => s > 1.5), 'every scene was actually spoken');
+    assert.ok(Math.abs(total - 20) < 1, `the video is the story's length (${total}s), not the voice's`);
+    ok('the narration fits the slot the story gave it');
     r.done();
   }
 }

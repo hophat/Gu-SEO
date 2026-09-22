@@ -20,10 +20,12 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, statSync, r
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { esc, sceneInner, wantsBackground } from './scenes.mjs';
 import {
-  MAX_SCENES, MIN_SCENES, sceneInner, sanitizePlan, planFromMarkdown,
-} from './explainer.mjs';
-import { captureSite, collectMedia, downloadLogo } from './assets.mjs';
+  DURATION, INTENTS, MIN_SCENES, beatSlots, clampDuration, clampWords, intentFromSignals,
+  reviewStoryboard, sanitizeStoryboard, storyboardFromContent, wordCount,
+} from './storyboard.mjs';
+import { captureSite, collectAssets, collectMedia, downloadLogo } from './assets.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const HF_VERSION = '0.8.56';
@@ -101,11 +103,222 @@ async function reportFailure(job, message) {
   } catch { /* delivery of the failure notice is best-effort */ }
 }
 
-// ── 2. script — GuRouter chat completion, strict JSON ────────────────
+// ── 2. storyboard — the story, written to fit the video ───────────────
+// One call returns both the intent and the scenes. The prompt is handed the
+// suggested intent's beat template with its seconds, so the model fills a
+// shape instead of inventing one, and it is told which assets exist so it
+// references real material rather than describing it.
+export function parseStoryboard(raw) {
+  const { parsed } = repairJson(raw);
+  if (!parsed) return null;
+  const scenes = Array.isArray(parsed.scenes) ? parsed.scenes : null;
+  if (!scenes) return null;
+  return {
+    intent: String(parsed.intent || ''),
+    duration: Number(parsed.duration) || undefined,
+    scenes,
+  };
+}
+
+const INTENT_BRIEF = `Chọn MỘT trong các intent sau, dựa trên nội dung thật:
+- product_demo: đang cho xem một sản phẩm/website/dịch vụ số
+- product_promotion: đang bán một sản phẩm
+- local_business: quán/cửa hàng/địa điểm cụ thể
+- educational: dạy một kiến thức
+- storytelling: kể một câu chuyện có vấn đề và chuyển biến
+- announcement: công bố điều gì mới
+- testimonial: khách hàng nói
+- before_after: trước và sau
+- listicle: danh sách đếm được`;
+
+const SCENE_BRIEF = `Các loại cảnh được phép (chỉ dùng trong danh sách của intent đã chọn):
+- hook {text} — câu mở gây tò mò, tối đa 8 từ, KHÔNG mở bằng tên thương hiệu
+- problem {text} — nỗi đau của người xem
+- product_reveal {text, asset} — tên sản phẩm + logo/ảnh
+- ui_demo {text, asset} — ẢNH CHỤP THẬT trong khung điện thoại
+- feature {text, icon} — một điểm mạnh
+- result {text, value?, unit?} — kết quả
+- before_after {text, asset, asset2} — hai ảnh thật cạnh nhau
+- photo {text, asset} — ảnh thật tràn màn hình
+- location {text, asset} — bản đồ + địa chỉ
+- rating {text, value} — sao + một câu đánh giá
+- cta {text, url} — MỘT hành động duy nhất
+- quote {text} — một câu đắt
+- stat {text, value, unit} · bars {text, items:[{label,value}]} · donut {text, value}
+- line {text, items:[{label,value}]} · steps {text, items:[{label}]} · icons {text, items:[{icon,label}]}
+- compare {text, left:{title,items}, right:{title,items}}
+
+LUẬT BẮT BUỘC:
+1. "text" tối đa 8 từ, là CAPTION chứ không phải câu. Không xuống dòng dài dòng.
+2. "say" là lời đọc cho cảnh đó, ngắn thôi — xem số giây của cảnh trong dàn ý bên dưới.
+3. CHỈ dùng asset có trong danh sách. Không bịa ảnh.
+4. CHỈ dùng con số CÓ TRONG NỘI DUNG. Không làm tròn, không suy diễn.
+5. Cảnh đầu là hook, cảnh cuối là cta. Không lặp hai cảnh cùng loại liền nhau.
+6. Người xem phải hiểu nội dung khi TẮT TIẾNG — hình phải mang thông tin.`;
+
+async function writeStoryboard(job, { source, suggested, assets, target }) {
+  if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
+  const slots = beatSlots(suggested, target);
+  const outline = slots.map((s) => `  ${s.beat} (~${s.duration}s): ${s.types.join(' | ')}`).join('\n');
+  const assetList = Object.keys(assets).length
+    ? Object.keys(assets).map((k) => `  ${k}`).join('\n')
+    : '  (không có asset thật nào — đừng dùng cảnh cần asset)';
+
+  const user = `Nội dung nguồn:
+Tiêu đề: ${job.title || job.project?.name || ''}
+Mô tả: ${job.meta_description || job.project?.description || ''}
+Nội dung: ${String(source || '').slice(0, 4000)}
+${job.project?.address ? `Địa chỉ: ${job.project.address}\n` : ''}${job.project?.phone ? `Điện thoại: ${job.project.phone}\n` : ''}
+
+${INTENT_BRIEF}
+
+Intent gợi ý từ tín hiệu nội dung: ${suggested}. Chỉ đổi nếu bạn chắc chắn intent khác đúng hơn.
+
+Dàn ý beat cho intent "${suggested}" (tổng ~${target}s):
+${outline}
+
+Asset thật đang có (dùng đúng tên này ở trường "asset"):
+${assetList}
+
+${SCENE_BRIEF}
+
+Trả JSON: {"intent":"${suggested}","duration":${target},"scenes":[{"type":"...","text":"...","say":"...","duration":số,"asset":"tên asset nếu cần","motion":"zoom|pan|reveal|none","icon":"tên icon nếu cần"}]}
+
+VÍ DỤ (video website từ Google Maps, có asset site:0):
+{"intent":"product_demo","duration":20,"scenes":[
+ {"type":"hook","text":"Google Maps đã có mọi thứ","say":"Quán bạn đã có trên Google Maps.","duration":2.5,"motion":"zoom"},
+ {"type":"problem","text":"Nhưng khách không đặt được","say":"Nhưng khách vẫn không đặt được bàn.","duration":3,"motion":"none"},
+ {"type":"ui_demo","text":"Website trong 2 phút","say":"Gulagi dựng website ngay từ dữ liệu đó.","duration":5,"asset":"site:0","motion":"scroll"},
+ {"type":"result","text":"Khách đặt bàn online","say":"Khách đặt bàn trực tiếp trên web.","duration":3,"motion":"none"},
+ {"type":"cta","text":"Thử miễn phí","say":"Thử Gulagi miễn phí hôm nay.","duration":3,"motion":"none"}]}
+
+Trả JSON:`;
+
+  const r = await fetch(`${GUROUTER_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${GUROUTER_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: GUROUTER_MODEL,
+      messages: [
+        { role: 'system', content: 'Bạn là đạo diễn video ngắn (TikTok/Reels). Bạn kể chuyện bằng HÌNH, không bằng chữ. Chỉ trả JSON thuần.' },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.7, max_tokens: 2500, response_format: { type: 'json_object' },
+    }),
+  }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
+  if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  const data = await r.json();
+  const raw = data?.choices?.[0]?.message?.content || '';
+  const sb = parseStoryboard(raw);
+  if (!sb) throw new Error('storyboard_schema_bad: ' + String(raw).slice(0, 150));
+  return sb;
+}
+
+// `only` re-speaks just those indices and measures the rest from disk —
+// fitting the narration must not pay for eight segments to fix one.
+export function speakSegments(segTexts, work, spawn, { only = null } = {}) {
+  const segs = [];
+  for (const [i, text] of segTexts.entries()) {
+    const mp3 = join(work, 'assets', `seg${i}.mp3`);
+    if (only && !only.includes(i)) { segs.push(audioSeconds(mp3)); continue; }
+    const ok = (f) => existsSync(f) && statSync(f).size > 500;
+    let done = false, lastErr = '';
+    // The endpoint throttles bursts: space every attempt out, escalate
+    // the backoff, and keep the last stderr for the failure report.
+    for (const voice of [VOICE, 'vi-VN-HoaiMyNeural']) {
+      for (let attempt = 0; attempt < 3 && !done; attempt++) {
+        const r = spawn('edge-tts', ['--voice', voice, '--rate=+8%', '--text', text, '--write-media', mp3], { encoding: 'utf8' });
+        if (ok(mp3)) { done = true; break; }
+        lastErr = (r.stderr || r.stdout || '').toString().slice(-120);
+        spawn('sleep', [String(4 + attempt * 4)]);
+      }
+      if (done) break;
+    }
+    if (!done) throw new Error(`edge-tts failed for segment ${i} (both voices): ${lastErr}`);
+    segs.push(audioSeconds(mp3));
+    spawn('sleep', ['2']); // pace consecutive calls — no bursts
+  }
+  log(`tts: ${segs.map((d) => d.toFixed(1) + 's').join(' + ')}`);
+  return segs;
+}
+
+// `deps` are test seams (scripts/run-video-agent-tests.mjs drives this path
+// with a temp workspace and faked TTS + render + deliver): what the agent
+// hands to the platform is the end of a chain — TTS, composition, render,
+// mastering — and only a real run of the whole chain shows which file that
+// is. Production calls it with the job alone.
+// ── 2b. narration fitting ─────────────────────────────────────────────
+// The storyboard owns the length; the voice has to fit inside it. When a
+// segment overruns its slot the fix is to say less and speak again — once —
+// not to stretch the video. If it still overruns, the scene grows and the
+// total is reported rather than silently ignored.
+export function fitNarration(sb, work, spawn, log = () => {}) {
+  const texts = () => sb.scenes.map((s) => s.say || s.text);
+  let segs = speakSegments(texts(), work, spawn);
+  const over = sb.scenes
+    .map((s, i) => ({ s, i, seg: segs[i] }))
+    .filter((x) => x.seg > x.s.duration * 1.15);
+
+  if (over.length) {
+    for (const x of over) {
+      const spoken = wordCount(x.s.say || x.s.text);
+      x.s.say = clampWords(x.s.say || x.s.text, Math.max(3, Math.floor(spoken * (x.s.duration / x.seg))));
+    }
+    log(`tts: ${over.length} segment(s) overran their slot — saying less and speaking again`);
+    segs = speakSegments(texts(), work, spawn, { only: over.map((x) => x.i) });
+  }
+
+  // A scene is never shorter than the voice in it.
+  sb.scenes.forEach((s, i) => {
+    s.duration = Math.round(Math.max(s.duration, (segs[i] || 0) + 0.35) * 10) / 10;
+  });
+  const total = Math.round(sb.scenes.reduce((a, s) => a + s.duration, 0) * 10) / 10;
+  if (total > DURATION.max) {
+    log(`tts: total ${total}s is over the ${DURATION.max}s ceiling — the story was written long`);
+  }
+  return { segs, total };
+}
+
+// ── 4. composition — one shell for every kind ────────────────────────
+// Scene markup comes from video-agent/scenes.mjs; this only times it against
+// the narration and hands it to the shared shell. No animation is invented
+// here beyond the per-scene motion the storyboard asked for: charts are
+// static SVG, so a snapshot at any moment stays reproducible.
+export function composeStoryboardHtml(job, sb, segs, assets = {}, logoSrc = null, bgmSrc = null) {
+  const accent = job.project?.accent || ACCENT;
+  const scenes = sb.scenes;
+  const GAP = 0.35;
+  let t = 0;
+  const sceneHtml = [];
+  const bgEls = [];
+  for (const [i, s] of scenes.entries()) {
+    s.start = t;
+    // The storyboard's slot, never shorter than the voice inside it.
+    s.dur = Math.max(s.duration, (segs[i] || 0) + GAP);
+    sceneHtml.push(`<div id="s${i}" class="clip scene" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="0">${sceneInner(s, accent, assets)}</div>`);
+    // A real photo behind the prose scenes. Charts and device shots need a
+    // clean surface, and a background under them is what makes them unreadable.
+    const bgAsset = wantsBackground(s.type) ? (assets[s.asset] || assets.hero || assets['photo:0']) : null;
+    if (bgAsset) {
+      s.bgId = `bg${bgEls.length}`;
+      bgEls.push(s);
+      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img src="${esc(bgAsset)}" alt=""/></div>`);
+    }
+    t += s.dur;
+  }
+  const total = scenes.reduce((a, s) => a + s.dur, 0);
+  const audioHtml = scenes.map((s, i) =>
+    `<audio class="clip" data-start="${s.start.toFixed(2)}" data-duration="${(segs[i] || 0).toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
+  ).join('\n  ');
+
+  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: scenes, logoSrc, bgmSrc });
+}
+
+// ── 2c. carousel script — five static slides need their own three lines ─
 // Post videos are a TEASER, not a replacement: hook on the most
 // interesting bit, 3 concrete takeaways, then an open question whose
 // answer lives in the article — the video sells the read.
-async function writeScript(job) {
+async function writeCarouselScript(job) {
   if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
   const sys = `Bạn là creator video ngắn tóm tắt bài blog (TikTok/Reels). Mục tiêu: khiến người xem MUỐN ĐỌC bài gốc. Chỉ trả JSON thuần, không markdown.`;
   const user = `Viết kịch bản video ~30 giây tóm tắt bài blog sau.
@@ -198,215 +411,6 @@ function parseScript(raw) {
   };
 }
 
-// ── 2c. explainer plan — the article's structure, not its prose ───────
-// The LLM fills a typed plan; video-agent/explainer.mjs draws it. Two
-// rules the model cannot be trusted with, so the code enforces them:
-// every number must exist in the article (sanitizePlan), and the video
-// must stay inside the scene budget. A plan that fails either is repaired
-// or replaced by planFromMarkdown — the job never dies for want of a model.
-export function parsePlan(raw) {
-  const { parsed } = repairJson(raw);
-  if (!parsed) return null;
-  const scenes = Array.isArray(parsed.scenes) ? parsed.scenes
-    : Array.isArray(parsed.shots) ? parsed.shots
-    : null;
-  if (!scenes) return null;
-  return { title: String(parsed.title || '').trim(), scenes };
-}
-
-async function writePlan(job) {
-  if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
-  // The plan needs the whole argument, not the teaser's 3500-char skim.
-  const article = String(job.body_markdown || '').slice(0, 8000);
-  const sys = `Bạn là đạo diễn video giải thích (explainer) cho bài blog tiếng Việt.
-Nhiệm vụ: đọc bài rồi chia nó thành các CẢNH, mỗi cảnh nói một ý và có cách hiển thị phù hợp.
-Chỉ trả JSON thuần, không markdown, không giải thích.`;
-
-  const user = `Bài viết:
-Tiêu đề: ${job.title}
-Mô tả: ${job.meta_description || ''}
-Nội dung: ${article}
-
-Trả JSON đúng dạng:
-{"title":"...","scenes":[{...}]}
-
-Mỗi cảnh có "type", "say" (lời đọc tiếng Việt, 1-2 câu, tự nhiên như người kể), và dữ liệu của loại đó:
-
-- {"type":"hook","say":"...","text":"câu mở, tối đa 12 từ"}
-- {"type":"stat","say":"...","value":40,"unit":"%","label":"nhãn ngắn","icon":"clock"}
-- {"type":"bars","say":"...","title":"...","unit":"%","items":[{"label":"...","value":30}]}
-- {"type":"donut","say":"...","value":65,"label":"nhãn ngắn"}
-- {"type":"line","say":"...","title":"...","items":[{"label":"2023","value":12}]}
-- {"type":"steps","say":"...","title":"...","items":[{"icon":"cart","label":"bước ngắn"}]}
-- {"type":"timeline","say":"...","title":"...","items":[{"label":"mốc","text":"chuyện gì"}]}
-- {"type":"icons","say":"...","title":"...","items":[{"icon":"shield","label":"ý ngắn"}]}
-- {"type":"compare","say":"...","title":"...","left":{"title":"Nên","items":["..."]},"right":{"title":"Tránh","items":["..."]}}
-- {"type":"quote","say":"...","text":"câu đắt nhất trong bài"}
-- {"type":"outro","say":"...","text":"Đọc bài viết đầy đủ"}
-
-ICON hợp lệ: check, x, clock, dollar, trend, users, cart, shield, phone, pin, star, zap, leaf, tool, book, truck, home, calendar, message, heart, target, key, box, globe, award, percent.
-
-QUY TẮC BẮT BUỘC:
-1. CHỈ dùng con số CÓ TRONG BÀI. Tuyệt đối không bịa, không làm tròn, không suy diễn. Nếu bài không có số thì đừng dùng cảnh stat/bars/donut/line.
-2. ${MIN_SCENES}-${MAX_SCENES} cảnh, bắt đầu bằng hook, kết thúc bằng outro.
-3. "say" của tất cả các cảnh cộng lại khoảng 45-75 giây đọc (khoảng 200-240 từ).
-4. Mỗi cảnh chỉ một ý. Đừng lặp lại cùng một số ở hai cảnh.
-5. Tiếng Việt tự nhiên, không emoji, không markdown.
-
-VÍ DỤ (bài về chi phí bao bì):
-{"title":"Giảm chi phí bao bì","scenes":[
- {"type":"hook","say":"Bao bì đang ăn mất một phần lợi nhuận mà bạn không thấy.","text":"Bao bì ăn mất lợi nhuận bạn không thấy"},
- {"type":"bars","say":"Khảo sát cho thấy bao bì chiếm 12 phần trăm, trong khi vận chuyển chỉ 7 phần trăm.","title":"Chi phí chiếm bao nhiêu","unit":"%","items":[{"label":"Bao bì","value":12},{"label":"Vận chuyển","value":7}]},
- {"type":"quote","say":"Đổi sang hộp giấy một lớp là cách rẻ nhất để bắt đầu.","text":"Đổi sang hộp giấy một lớp là cách rẻ nhất để bắt đầu."},
- {"type":"outro","say":"Đọc bài viết đầy đủ để xem bảng giá từng loại.","text":"Đọc bài viết đầy đủ"}]}
-
-Trả JSON:`;
-
-  const r = await fetch(`${GUROUTER_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${GUROUTER_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: GUROUTER_MODEL,
-      messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
-      temperature: 0.6, max_tokens: 3000, response_format: { type: 'json_object' },
-    }),
-  }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
-  if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  const data = await r.json();
-  const raw = data?.choices?.[0]?.message?.content || '';
-  const plan = parsePlan(raw);
-  if (!plan) throw new Error('plan_schema_bad: ' + String(raw).slice(0, 150));
-
-  const { plan: clean, dropped } = sanitizePlan(plan, job.body_markdown || '');
-  if (dropped.length) {
-    log(`plan: dropped ${dropped.length} scene(s) — ${dropped.map((d) => `${d.type}:${d.reason}`).join(', ')}`);
-  }
-  if (clean.scenes.length < MIN_SCENES) {
-    throw new Error(`plan_too_thin: only ${clean.scenes.length} scene(s) survived the number guard`);
-  }
-  return clean;
-}
-
-// What a scene says out loud when the model left "say" out. Deterministic,
-// so the segment count always matches the scene count — the composition
-// maps audio by index, and a mismatch would desync voice from picture.
-export function narrationFor(s) {
-  const items = (arr) => (Array.isArray(arr) ? arr : []);
-  switch (s?.type) {
-    case 'hook': return String(s.text || '');
-    case 'stat': return `${s.value}${s.unit || ''} ${s.label || ''}`.trim();
-    case 'donut': return `${s.value} phần trăm ${s.label || ''}`.trim();
-    case 'bars':
-    case 'line':
-      return [s.title, ...items(s.items).map((i) => `${i.label} ${i.value}${s.unit || ''}`)].filter(Boolean).join('. ');
-    case 'steps': return items(s.items).map((i, n) => `${n + 1}. ${i.label}`).join('. ');
-    case 'timeline': return items(s.items).map((i) => `${i.label}: ${i.text || ''}`).join('. ');
-    case 'icons': return [s.title, ...items(s.items).map((i) => i.label)].filter(Boolean).join('. ');
-    case 'compare':
-      return [s.title, s.left?.title, ...items(s.left?.items), s.right?.title, ...items(s.right?.items)]
-        .filter(Boolean).join('. ');
-    case 'quote': return String(s.text || '');
-    case 'outro': return String(s.text || 'Đọc bài viết đầy đủ');
-    default: return '';
-  }
-}
-
-// ── 2b. business script — per-project promo (AI Video Post) ──────────
-// Creator-grade prompt: the LLM writes as a short-form video director,
-// not a brochure. Rules: hook on the pain (never the brand name),
-// concrete numbers over adjectives, banned corporate vocabulary, CTA
-// with urgency. The Brand DNA sets the voice; the template sets the
-// visuals; the LLM only supplies the words.
-const BANNED_WORDS = ['chuyên nghiệp', 'giải pháp', 'tối ưu', 'uy tín', 'chất lượng cao', 'nâng tầm', 'đẳng cấp', 'trải nghiệm khách hàng'];
-
-function scriptQuality(script) {
-  const text = [script.hook, script.reveal, ...(script.points || []), script.cta].join(' ').toLowerCase();
-  const bad = BANNED_WORDS.filter((w) => text.includes(w));
-  if (bad.length) return `contains clichéd wording: ${bad.join(', ')}`;
-  if (!script.hook || script.hook.length < 8) return 'hook too weak';
-  if ((script.points || []).length < 3) return 'needs 3 points';
-  return null;
-}
-
-async function writeBusinessScript(job) {
-  if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
-  const p = job.project || {};
-  const sys = `Bạn là đạo diễn video ngắn (TikTok/Reels) chuyên về doanh nghiệp địa phương. Bạn viết kịch bản khiến người xem DỪNG LƯỚT trong 1.5 giây đầu. Chỉ trả JSON thuần, không markdown, không giải thích.`;
-  const brief = (attempt) => `Viết kịch bản video 20 giây cho doanh nghiệp này.
-
-Doanh nghiệp: ${p.name || job.title}
-Loại hình: ${p.brand?.business_type || '(xem mô tả)'}
-Mô tả: ${(p.description || job.body_markdown || '').slice(0, 600)}
-Khách hàng: ${p.brand?.audience || 'khách địa phương'}
-Khu vực: ${p.brand?.service_area || ''}
-Điểm mạnh gợi ý (tham khảo, phải viết lại bằng ngôn ngữ người bán): ${(job.highlights || []).join('; ') || '(tự rút từ mô tả)'}
-
-CẤU TRÚC (mỗi dòng 1 scene, ≤ 9 từ/dòng):
-- hook: 1 con số bất ngờ HOẶC câu hỏi đánh thẳng vào nỗi đau khách. CẤM mở đầu bằng tên thương hiệu.
-- reveal: tên thương hiệu + 1 câu định vị (tên sẽ do video tự hiển thị, câu này để GIỌNG ĐỌC: "tên — tagline").
-- points: đúng 3 lý do chọn quán/shop. Mỗi lý do phải CỤ THỂ (con số, chi tiết cảm quan, thời gian) — không phải tính từ chung chung.
-- cta: hành động ngay (ghé thử / gọi / nhắn tin), có lý do.
-
-QUY TẮC:
-1. Nghe như người bán nói với khách quen, KHÔNG nghe như tờ rơi quảng cáo.
-2. Cấm các từ: ${BANNED_WORDS.join(', ')}.
-3. Tiếng Việt tự nhiên theo giọng: ${p.brand?.tone || 'thân thiện, gần gũi'}.
-4. Không emoji, không markdown, không dấu chấm than quá 1 cái.
-
-VÍ DỤ ĐÚNG CHUẨN (quán bánh xèo):
-{"hook":"78% khách tìm quán ăn trên Google trước khi đến","reveal":"Bánh Xèo ABC — giòn rụm đúng điệu miền Tây","points":["Bánh chiên tại chỗ, bột nhào mỗi sáng","Nước mắm pha riêng theo công thức 20 năm","No căng chỉ với 25 nghìn một cái"],"cta":"Ghé 123 Nguyễn Văn A trước 9 giờ tối"}
-
-VÍ DỤ DỞ (cấm): "Chúng tôi cung cấp giải pháp chuyên nghiệp tối ưu trải nghiệm khách hàng"
-
-Trả JSON: {"hook":"...","reveal":"...","points":["...","...","..."],"cta":"..."}`;
-  const call = async (nudge) => {
-    const r = await fetch(`${GUROUTER_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${GUROUTER_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: GUROUTER_MODEL,
-        messages: [{ role: 'system', content: sys }, { role: 'user', content: brief() + (nudge ? '\n\nBẢN TRƯỚC bị loại vì sáo rỗng. Viết lại: cụ thể hơn, người bán hơn, có con số thật.' : '') }],
-        temperature: nudge ? 0.9 : 0.7, max_tokens: 800, response_format: { type: 'json_object' },
-      }),
-    }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
-    if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-    const data = await r.json();
-    return data?.choices?.[0]?.message?.content || '';
-  };
-  // Two attempts: the first pass, then a punchier retry if the quality
-  // gate flags clichés or a weak hook. Best effort — a passing script
-  // wins; if both fail the gate, the second one still ships (a mediocre
-  // video beats no video for the operator).
-  let script = null, lastParsed = null;
-  for (const nudge of [false, true]) {
-    const raw = await call(nudge);
-    const parsed = parseScript(raw);
-    lastParsed = parsed;
-    const reveal = String(parsed.reveal || parsed.tagline || '').trim();
-    const points = (parsed.points || parsed.highlights || [])
-      .map((s) => String(s || '').trim()).filter(Boolean).slice(0, 3);
-    const candidate = {
-      hook: String(parsed.hook || '').trim(),
-      reveal,
-      points,
-      cta: String(parsed.cta || p.brand?.cta || 'Ghé thăm chúng tôi hôm nay').trim(),
-    };
-    const problem = scriptQuality(candidate);
-    if (!problem) { script = candidate; break; }
-    log(`script rejected (${problem}) — retrying punchier`);
-  }
-  if (!script) {
-    // Both attempts flagged — ship the retry anyway with DNA fallbacks.
-    script = {
-      hook: String(lastParsed?.hook || '').trim() || `${p.name || 'Chúng tôi'} đang chờ bạn`,
-      reveal: String(lastParsed?.reveal || lastParsed?.tagline || p.name || '').trim(),
-      points: (lastParsed?.points || job.highlights || []).slice(0, 3).map((s) => String(s).trim()).filter(Boolean),
-      cta: String(lastParsed?.cta || p.brand?.cta || 'Ghé thăm chúng tôi hôm nay').trim(),
-    };
-  }
-  return script;
-}
-
 // ── 3. tts — edge-tts per segment, duration via ffprobe ──────────────
 function tts(text, outPath) {
   const r = spawnSync('edge-tts', ['--voice', VOICE, '--rate=+8%', '--text', text, '--write-media', outPath], { encoding: 'utf8' });
@@ -421,9 +425,6 @@ function audioSeconds(file) {
   return d;
 }
 
-// ── 4. composition helpers ────────────────────────────────────────────
-function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c])); }
-// Lighten/darken a hex colour by amt (-1..1) — used for brand gradients.
 function shade(hex, amt) {
   const m = String(hex || '').match(/^#([0-9a-f]{6})$/i);
   if (!m) return amt < 0 ? '#0a0c10' : '#152238';
@@ -436,152 +437,24 @@ function shade(hex, amt) {
 // question → "đọc bài viết" outro. Scenes timed to TTS; the question
 // scene is the curiosity gap that sells the read. Exported so the test
 // can check the music track the shell emits (and its gain).
-export function composeHtml(job, script, segs, logoSrc = null, bgmSrc = null) {
-  const brand = job.project?.name || 'Blog';
-  const outroUrl = (job.project?.publishing_url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
-  const accent = job.project?.accent || ACCENT;
-  const hasHero = existsSync(join(WORK, 'assets', 'hero.jpg'));
-  const GAP = 0.4;
-  const READ_CTA = 'Đọc bài viết để biết thêm chi tiết';
-  const scenes = [
-    { kind: 'hook', seg: segs[0] },
-    { kind: 'points', seg: segs[1] },
-    { kind: 'question', seg: segs[2] },
-    { kind: 'outro', seg: segs[3] },
+// Per-scene motion, declared by the storyboard and never invented here: a
+// scene that asked for nothing gets the plain fade. Motion supports the
+// story (a scroll shows the product working); it is not decoration.
+function motionFor(i, s) {
+  const st = s.start.toFixed(2);
+  const du = s.dur.toFixed(2);
+  const out = [
+    `tl.fromTo("#s${i}", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, ${st});`,
+    `tl.to("#s${i}", { opacity: 0, duration: 0.3 }, ${(s.start + s.dur - 0.35).toFixed(2)});`,
   ];
-  let t = 0;
-  const sceneHtml = [];
-  const bgEls = [];
-  for (const [i, s] of scenes.entries()) {
-    s.start = t;
-    s.dur = s.seg + GAP;
-    const inner = s.kind === 'hook'
-      ? `<div class="badge">${esc(brand)}</div><h1 class="hook">${esc(script.hook)}</h1>`
-      : s.kind === 'points'
-        ? script.points.map((pt, n) => `<p class="hl"><span class="hn">${n + 1}</span>${esc(pt)}</p>`).join('')
-        : s.kind === 'question'
-          ? `<p class="question">${esc(script.question)}</p>`
-          : `<p class="outro">${esc(READ_CTA)}</p><p class="sub">${esc(outroUrl)}</p>`;
-    sceneHtml.push(`<div id="s${i}" class="clip scene" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="0">${inner}</div>`);
-    if (hasHero && (s.kind === 'points' || s.kind === 'question')) {
-      s.bgId = `bg${bgEls.length}`;
-      bgEls.push(s);
-      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img src="assets/hero.jpg" alt=""/></div>`);
-    }
-    t += s.dur;
-  }
-  const total = scenes.reduce((a, s) => a + s.dur, 0);
-  const audioHtml = scenes.map((s, i) =>
-    `<audio class="clip" data-start="${s.start.toFixed(2)}" data-duration="${s.seg.toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
-  ).join('\n  ');
-
-  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: scenes, logoSrc, bgmSrc });
+  const inner = `#s${i} .device-shot, #s${i} .ba-img, #s${i} .loc-map img, #s${i} .bgi img`;
+  if (s.motion === 'zoom') out.push(`tl.fromTo("${inner}", { scale: 1.0 }, { scale: 1.12, duration: ${du}, ease: "none" }, ${st});`);
+  if (s.motion === 'pan') out.push(`tl.fromTo("${inner}", { xPercent: -4 }, { xPercent: 4, duration: ${du}, ease: "none" }, ${st});`);
+  if (s.motion === 'scroll') out.push(`tl.fromTo("#s${i} .device-shot", { yPercent: 0, scale: 1.02 }, { yPercent: -20, scale: 1.02, duration: ${du}, ease: "none" }, ${st});`);
+  if (s.motion === 'reveal') out.push(`tl.fromTo("#s${i} .ex", { clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0% 0)", duration: 0.7, ease: "power3.out" }, ${st});`);
+  return out.join('\n  ');
 }
 
-// Business composition — the creator storyboard:
-//   [0-2s]  HOOK — số bất ngờ / nỗi đau (chưa có tên brand)
-//   [2-6s]  REVEAL — badge + tên + tagline trên ảnh thật
-//   [6-11s] 3 lý do cụ thể (số / chi tiết cảm quan)
-//   [11-14s] 📍 địa chỉ ☎ điện thoại (im lặng, fixed beat)
-//   [14-16s] CTA
-// Scene backgrounds come from the real imagery collected off the
-// project's website (media[]), one image per scene, R2 hero as fallback.
-function composeBusinessHtml(job, script, segs, media = [], logoSrc = null, bgmSrc = null) {
-  const p = job.project || {};
-  const brand = p.name || 'Doanh nghiệp';
-  const accent = p.accent || ACCENT;
-  const outroUrl = (p.publishing_url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
-  const hasHero = existsSync(join(WORK, 'assets', 'hero.jpg'));
-  // Which scenes get a photo background, and which collected image.
-  const bgFor = { hook: -1, reveal: 0, points: 1, contact: 2, outro: 3 };
-
-  const sceneDefs = [
-    { kind: 'hook', seg: segs[0] },
-    { kind: 'reveal', seg: segs[1] },
-    { kind: 'points', seg: segs[2] },
-    { kind: 'contact', seg: 3.0, silent: true },
-    { kind: 'cta', seg: segs[segs.length - 1] },
-  ];
-  const GAP = 0.4;
-  let t = 0;
-  const sceneHtml = [];
-  const bgEls = [];
-  for (const [i, s] of sceneDefs.entries()) {
-    s.start = t;
-    s.dur = s.seg + GAP;
-    let inner = '';
-    if (s.kind === 'hook') {
-      // The scroll-stopper: big, alone, no branding yet.
-      inner = `<h1 class="hook">${esc(script.hook)}</h1>`;
-    } else if (s.kind === 'reveal') {
-      inner = `<div class="badge">${esc(brand)}</div><h1 class="hook">${esc(p.name || brand)}</h1><p class="tagline">${esc(script.reveal)}</p>`;
-    } else if (s.kind === 'points') {
-      inner = script.points.map((h, n) => `<p class="hl"><span class="hn">${n + 1}</span>${esc(h)}</p>`).join('');
-    } else if (s.kind === 'contact') {
-      inner = `${p.address ? `<p class="contact">📍 ${esc(p.address)}</p>` : ''}${p.phone ? `<p class="contact">☎ ${esc(p.phone)}</p>` : ''}`;
-    } else {
-      inner = `<p class="outro">${esc(script.cta)}</p><p class="sub">${esc(outroUrl)}</p>`;
-    }
-    sceneHtml.push(`<div id="s${i}" class="clip scene" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="0">${inner}</div>`);
-    // Background: a real site image for this scene, else the R2 hero.
-    // The hook scene stays on the pure brand gradient — it must read
-    // clean before the brand reveal.
-    const siteImg = media[bgFor[s.kind]];
-    const bgSrc = siteImg ? `assets/media/img${bgFor[s.kind]}.jpg`
-      : (hasHero && s.kind !== 'hook' ? 'assets/hero.jpg' : null);
-    if (bgSrc && s.kind !== 'hook') {
-      s.bgId = `bg${bgEls.length}`;
-      bgEls.push(s);
-      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img src="${bgSrc}" alt=""/></div>`);
-    }
-    t += s.dur;
-  }
-  const total = sceneDefs.reduce((a, s) => a + s.dur, 0);
-  const voiced = sceneDefs.filter((s) => !s.silent);
-  const audioHtml = voiced.map((s, i) =>
-    `<audio class="clip" data-start="${s.start.toFixed(2)}" data-duration="${s.seg.toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
-  ).join('\n  ');
-
-  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: sceneDefs, logoSrc, bgmSrc });
-}
-
-// Explainer composition — the article explained, one scene at a time.
-// Each scene's markup comes from video-agent/explainer.mjs; this function
-// only times it against the narration and hands it to the shared shell.
-// No GSAP here beyond the shell's fade: charts are static SVG, so a
-// snapshot at any moment is reproducible.
-export function composeExplainerHtml(job, plan, segs, logoSrc = null, bgmSrc = null) {
-  const accent = job.project?.accent || ACCENT;
-  const scenes = (plan?.scenes || []).slice(0, MAX_SCENES);
-  const GAP = 0.35;
-  const hasHero = existsSync(join(WORK, 'assets', 'hero.jpg'));
-  let t = 0;
-  const sceneHtml = [];
-  const bgEls = [];
-  for (const [i, s] of scenes.entries()) {
-    s.start = t;
-    // A scene with no narration still gets a beat, or the cut is invisible.
-    s.dur = Math.max(1.5, (segs[i] || 0)) + GAP;
-    sceneHtml.push(`<div id="s${i}" class="clip scene" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="0">${sceneInner(s, accent)}</div>`);
-    // A photo sits behind prose only. Charts need a clean surface, and the
-    // hook/quote scenes are the two that read better with a real image.
-    if (hasHero && (s.type === 'hook' || s.type === 'quote')) {
-      s.bgId = `bg${bgEls.length}`;
-      bgEls.push(s);
-      sceneHtml.push(`<div id="${s.bgId}" class="clip bgi" data-start="${t.toFixed(2)}" data-duration="${s.dur.toFixed(2)}" data-track-index="1"><img src="assets/hero.jpg" alt=""/></div>`);
-    }
-    t += s.dur;
-  }
-  const total = scenes.reduce((a, s) => a + s.dur, 0);
-  const audioHtml = scenes.map((s, i) =>
-    `<audio class="clip" data-start="${s.start.toFixed(2)}" data-duration="${(segs[i] || 0).toFixed(2)}" data-track-index="5" src="assets/seg${i}.mp3"></audio>`
-  ).join('\n  ');
-
-  return businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta: scenes, logoSrc, bgmSrc });
-}
-
-// Shared HTML shell — both compositions render inside the same brand
-// frame so post videos and business promos stay visually consistent.
 function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, logoSrc, bgmSrc }) {
   const A = accent || ACCENT;
   const meta = sceneMeta || [];
@@ -674,6 +547,42 @@ function businessShell({ accent, total, sceneHtml, audioHtml, bgEls, sceneMeta, 
   .quote-mark { font-size:150px; line-height:0.55; font-weight:800; }
   .quote-t { color:#fff; font-size:44px; font-weight:600; line-height:1.35; max-width:580px; }
   .quote-s { color:#9fb3c8; font-size:28px; margin-top:16px; }
+  /* ── visual scenes ─────────────────────────────────────────────────── */
+  .kicker { color:${A}; font-size:28px; font-weight:700; letter-spacing:0.08em;
+    text-transform:uppercase; margin-bottom:14px; }
+  .claim { color:#fff; font-size:56px; font-weight:700; line-height:1.25; max-width:600px;
+    text-shadow:0 2px 18px rgba(0,0,0,0.75); }
+  .reveal { gap:26px; }
+  .reveal-logo { max-width:280px; max-height:120px; object-fit:contain; }
+  .reveal-name { color:#fff; font-size:58px; font-weight:800; letter-spacing:-0.02em; }
+  .device { width:430px; height:800px; border-radius:38px; background:#0b0e13;
+    border:3px solid rgba(255,255,255,0.18); padding:14px; position:relative;
+    box-shadow:0 24px 60px rgba(0,0,0,0.55); overflow:hidden; }
+  .device-notch { position:absolute; top:14px; left:50%; transform:translateX(-50%);
+    width:120px; height:18px; border-radius:0 0 12px 12px; background:#0b0e13; z-index:2; }
+  .device-shot { width:100%; height:100%; object-fit:cover; border-radius:26px; display:block; }
+  .caption { color:#eaf1f8; font-size:30px; font-weight:600; margin-top:20px; max-width:600px; }
+  .feat-ico { display:flex; }
+  .feat-t { color:#fff; font-size:50px; font-weight:700; line-height:1.25; max-width:560px; }
+  .res-n { color:#fff; font-weight:800; line-height:1; letter-spacing:-0.03em; }
+  .res-u { font-size:0.5em; margin-left:6px; }
+  .res-t { color:#eaf1f8; font-size:42px; font-weight:600; max-width:580px; }
+  .ba { gap:16px; }
+  .ba-col { position:relative; width:100%; border-radius:14px; overflow:hidden;
+    background:rgba(255,255,255,0.05); }
+  .ba-lab { position:absolute; top:10px; left:12px; z-index:2; font-size:22px; font-weight:700;
+    color:#fff; background:rgba(0,0,0,0.55); padding:4px 12px; border-radius:999px; }
+  .ba-img { width:100%; height:300px; object-fit:cover; display:block; }
+  .ba-empty { display:block; width:100%; height:300px; background:rgba(255,255,255,0.08); }
+  .ba-mid { width:100%; height:4px; background:${A}; border-radius:999px; }
+  .photo-cap { color:#fff; font-size:48px; font-weight:700; line-height:1.25; max-width:600px;
+    text-shadow:0 2px 18px rgba(0,0,0,0.8); }
+  .loc { gap:18px; }
+  .loc-map { width:100%; border-radius:16px; overflow:hidden; border:2px solid rgba(255,255,255,0.15); }
+  .loc-map img { width:100%; height:420px; object-fit:cover; display:block; }
+  .loc-t { color:#fff; font-size:36px; font-weight:600; max-width:580px; }
+  .stars { display:flex; gap:8px; }
+  .rate-t { color:#fff; font-size:40px; font-weight:600; max-width:560px; line-height:1.3; }
 </style></head>
 <body><div id="root" data-composition-id="main" data-start="0"
   data-duration="${total.toFixed(2)}" data-width="720" data-height="1280">
@@ -684,11 +593,7 @@ ${logoSrc ? `<img class="clip brandlogo" data-start="0" data-duration="${total.t
 </div>
 <script>
   const tl = gsap.timeline({ paused: true });
-  ${(sceneHtml).map((_, i) => {
-    const s = meta[i] || { start: 0, dur: 3 };
-    return `tl.fromTo("#s${i}", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, ${s.start.toFixed(2)});
-  tl.to("#s${i}", { opacity: 0, duration: 0.3 }, ${(s.start + s.dur - 0.35).toFixed(2)});`;
-  }).join('\n  ')}
+${meta.map((s, i) => motionFor(i, s)).join('\n  ')}
   ${(bgEls || []).map((s) => `tl.fromTo("#${s.bgId}", { scale: 1.0 }, { scale: 1.12, duration: ${s.dur.toFixed(2)}, ease: "none" }, ${s.start.toFixed(2)});`).join('\n  ')}
   window.__timelines = window.__timelines || {};
   window.__timelines["main"] = tl;
@@ -991,7 +896,7 @@ export async function renderCarousel(job, deps = {}) {
   log('writing script via GuRouter…');
   let script;
   try {
-    script = await writeScript(job);
+    script = await writeCarouselScript(job);
   } catch (e) {
     // LLM down (429/quota) — derive the slides from the article itself
     // instead of failing the job. Hook = title, points = the first 3
@@ -1052,41 +957,16 @@ export async function renderCarousel(job, deps = {}) {
   log(`done → ${out.prefix} (${out.slides?.length || slides.length} slides)`);
 }
 
-// ── 5. render + deliver one job ───────────────────────────────────────
-// TTS per scene, one file per entry in `segTexts` — the composition maps
-// audio to scenes by index, so the count must match exactly. edge-tts
-// occasionally returns an empty file (network hiccup): retry, then fall
-// back to the companion voice before giving up.
-export function speakSegments(segTexts, work, spawn) {
-  const segs = [];
-  for (const [i, text] of segTexts.entries()) {
-    const mp3 = join(work, 'assets', `seg${i}.mp3`);
-    const ok = (f) => existsSync(f) && statSync(f).size > 500;
-    let done = false, lastErr = '';
-    // The endpoint throttles bursts: space every attempt out, escalate
-    // the backoff, and keep the last stderr for the failure report.
-    for (const voice of [VOICE, 'vi-VN-HoaiMyNeural']) {
-      for (let attempt = 0; attempt < 3 && !done; attempt++) {
-        const r = spawn('edge-tts', ['--voice', voice, '--rate=+8%', '--text', text, '--write-media', mp3], { encoding: 'utf8' });
-        if (ok(mp3)) { done = true; break; }
-        lastErr = (r.stderr || r.stdout || '').toString().slice(-120);
-        spawn('sleep', [String(4 + attempt * 4)]);
-      }
-      if (done) break;
-    }
-    if (!done) throw new Error(`edge-tts failed for segment ${i} (both voices): ${lastErr}`);
-    segs.push(audioSeconds(mp3));
-    spawn('sleep', ['2']); // pace consecutive calls — no bursts
-  }
-  log(`tts: ${segs.map((d) => d.toFixed(1) + 's').join(' + ')}`);
-  return segs;
-}
-
-// `deps` are test seams (scripts/run-video-agent-tests.mjs drives this path
-// with a temp workspace and faked TTS + render + deliver): what the agent
-// hands to the platform is the end of a chain — TTS, composition, render,
-// mastering — and only a real run of the whole chain shows which file that
-// is. Production calls it with the job alone.
+// ── 6. render + deliver one job ───────────────────────────────────────
+// One path for every kind. `kind` decides where the content comes from
+// (an article, a brand kit, a live URL); the intent decides how the story is
+// told. Only a carousel still takes its own route — it produces slides, not
+// a video.
+//
+// `deps` are test seams (scripts/run-video-agent-tests.mjs drives this with a
+// temp workspace and faked TTS + render + deliver): what the agent hands to
+// the platform is the end of a chain, and only a real run of the whole chain
+// shows which file that is. Production calls it with the job alone.
 export async function renderOne(job, deps = {}) {
   const work = deps.work || WORK;
   const spawn = deps.spawn || spawnSync;
@@ -1096,96 +976,72 @@ export async function renderOne(job, deps = {}) {
   rmSync(join(work, 'snapshots'), { recursive: true, force: true });
   mkdirSync(join(work, 'assets'), { recursive: true });
 
-  // Carousel: static 4:5 slides (1080×1350) exported with hyperframes
-  // snapshot — no TTS, no video. Same script as the post teaser.
   if (job.kind === 'carousel') {
     await renderCarousel(job, deps);
     return;
   }
 
-  const isBusiness = job.kind === 'business' || job.kind === 'website';
-  const isExplainer = job.kind === 'explainer';
-  let siteText = null;
+  // 1. What is there to show? Asset-first: the story is written after the
+  // material is known, so it can only reference what actually exists.
+  const target = clampDuration(Number(E('VIDEO_DURATION')) || DURATION.default);
+  const source = job.body_markdown || job.project?.description || '';
+  const suggested = intentFromSignals(job, source);
+  log(`intent: ${suggested.intent} (${suggested.reason})`);
 
-  // Website promos: screenshot the live site + scrape its text as the
-  // storyboard source. Shots become the scene backgrounds.
-  let media = [];
+  let siteText = null;
   if (job.kind === 'website' && job.source_url) {
-    log(`capturing ${job.source_url}…`);
     const site = await captureSite(job.source_url, work, log);
     if (site.text) siteText = site.text;
-    // Screenshots double as the media pool (img{n}.jpg naming).
-    let n = 0;
-    for (const shot of site.shots) {
-      copyFileSync(shot, join(work, 'assets', 'media', `img${n}.jpg`));
-      n++;
-    }
-    log(`captured ${site.shots.length} screenshot(s)`);
+    site.shots.forEach((shot, n) => {
+      copyFileSync(shot, join(work, 'assets', `site${n}.png`));
+    });
+  }
+  const assets = await collectAssets({ job, intent: suggested.intent, work, log });
+  if (siteText) assets.siteText = true;
+
+  // 2. The story. A model writes it; the code owns the budgets it must fit.
+  const storySource = siteText || source;
+  let raw = null;
+  try {
+    log('writing storyboard via GuRouter…');
+    raw = await writeStoryboard(job, { source: storySource, suggested: suggested.intent, assets, target });
+    log(`storyboard ok (intent ${raw.intent || suggested.intent}, ${raw.scenes.length} scenes)`);
+  } catch (e) {
+    log(`storyboard failed (${String(e?.message || e).slice(0, 140)}) — deriving from the content`);
   }
 
-  // The narration source is the only thing that differs by kind; the TTS
-  // loop, the imagery, the music, the render and the master are shared.
-  let script = null;
-  let plan = null;
-  if (isExplainer) {
-    log('writing explainer plan via GuRouter…');
-    try {
-      plan = await writePlan(job);
-      log(`plan ok (${plan.scenes.length} scenes: ${plan.scenes.map((s) => s.type).join(', ')})`);
-    } catch (e) {
-      // GuRouter down, out of quota, or a plan the number guard gutted:
-      // derive the scenes from the article itself, the way the carousel
-      // already does. A model outage must not cost the job.
-      log(`plan failed (${String(e?.message || e).slice(0, 120)}) — deriving scenes from the article`);
-      plan = planFromMarkdown(job.body_markdown, job.title);
-    }
-  } else {
-    log('writing script via GuRouter…');
-    const scriptSource = siteText ? { ...job, body_markdown: siteText } : job;
-    script = isBusiness ? await writeBusinessScript(scriptSource) : await writeScript(job);
-    log(`script ok (${job.kind})`);
-  }
-
-  const READ_CTA = 'Đọc bài viết để biết thêm chi tiết';
-  const segTexts = isExplainer
-    ? plan.scenes.map((s) => String(s.say || narrationFor(s)).trim() || ' ')
-    : isBusiness
-      ? [script.hook, `${job.project?.name || ''}. ${script.reveal}`, script.points.join(' '), script.cta]
-      : [script.hook, script.points.join(' '), script.question, READ_CTA];
-  const segs = speakSegments(segTexts, work, spawn);
-
-  // Real imagery: post videos scrape the project's website for scene
-  // backgrounds, falling back to the R2 hero the claim payload carries.
-  // An explainer skips the scrape — its scenes are charts, and a photo
-  // behind a chart is what makes numbers unreadable.
-  if (!isBusiness && !isExplainer) {
-    media = await collectMedia(job, work, log);
-  }
-  const heroB64 = job.hero_image_base64 || job.project?.hero_image_base64;
-  if (!media.length && heroB64) {
-    writeFileSync(join(work, 'assets', 'hero.jpg'), Buffer.from(heroB64, 'base64'));
-  }
-
-  // Brand logo — downloaded once, overlaid on every scene by the shell.
-  const logoSrc = await downloadLogo(job.project?.logo_url, work, log);
-
-  // Background music — synthesised ambient pad trimmed to the video
-  // length, mixed well under the voice (data-volume in the composition).
-  const bgmSrc = makeBgm(
-    segs.reduce((a, s) => a + s + 0.4, 0),
-    `${job.slug}-${job.kind}`,
-    join(work, 'assets', 'bgm.mp3')
+  const intent = INTENTS.includes(raw?.intent) ? raw.intent : suggested.intent;
+  let { storyboard, dropped } = sanitizeStoryboard(
+    raw || storyboardFromContent({ ...job, body_markdown: storySource }, intent, assets),
+    { source: storySource, intent, target, assets },
   );
+  if (dropped.length) log(`storyboard: dropped ${dropped.map((d) => `${d.type}:${d.reason}`).join(', ')}`);
+
+  // Too little survived to be a story — take the deterministic one instead.
+  if (storyboard.scenes.length < MIN_SCENES) {
+    log('storyboard: too thin after the gate — deriving from the content');
+    ({ storyboard, dropped } = sanitizeStoryboard(
+      storyboardFromContent({ ...job, body_markdown: storySource }, intent, assets),
+      { source: storySource, intent, target, assets },
+    ));
+  }
+
+  // 3. The check the spec asks for, made mechanical.
+  const review = reviewStoryboard(storyboard);
+  if (!review.ok) log(`storyboard: quality gate — ${review.problems.join(', ')}`);
+  else log(`storyboard: ${storyboard.scenes.length} scenes, ${storyboard.duration}s`);
+
+  // 4. Narration, written to fit and measured.
+  const { segs, total } = fitNarration(storyboard, work, spawn, log);
+  log(`video: ${total}s · ${storyboard.scenes.map((s) => s.type).join(' → ')}`);
+
+  const logoSrc = assets.logo || await downloadLogo(job.project?.logo_url, work, log);
+  const bgmSrc = makeBgm(total, `${job.slug}-${job.kind}`, join(work, 'assets', 'bgm.mp3'));
   if (bgmSrc) log('bgm: ambient pad mixed in');
   else log('bgm: none (VIDEO_MUSIC=off, or ffmpeg missing/failed) — voice only');
 
   log('composing…');
-  const html = isExplainer
-    ? composeExplainerHtml(job, plan, segs, logoSrc, bgmSrc)
-    : isBusiness
-      ? composeBusinessHtml(job, script, segs, media, logoSrc, bgmSrc)
-      : composeHtml(job, script, segs, logoSrc, bgmSrc);
-  writeFileSync(join(work, 'index.html'), html);
+  writeFileSync(join(work, 'index.html'), composeStoryboardHtml(job, storyboard, segs, assets, logoSrc, bgmSrc));
 
   log('rendering (hyperframes)…');
   const ren = spawn('npx', ['-y', `hyperframes@${HF_VERSION}`, 'render'], { cwd: work, encoding: 'utf8', timeout: 15 * 60 * 1000 });
@@ -1197,9 +1053,9 @@ export async function renderOne(job, deps = {}) {
     .map((f) => ({ f, m: statSync(join(renders, f)).mtimeMs }))
     .sort((a, b) => b.m - a.m)[0]?.f;
   if (!mp4) throw new Error('render produced no mp4');
-  const raw = join(renders, mp4);
-  const mastered = masterLoudness(raw, join(renders, 'master.mp4'));
-  const bytes = readFileSync(mastered || raw);
+  const rawMp4 = join(renders, mp4);
+  const mastered = masterLoudness(rawMp4, join(renders, 'master.mp4'));
+  const bytes = readFileSync(mastered || rawMp4);
   log(`${mastered ? `mastered to ${LOUDNESS.i} LUFS` : 'loudness master skipped'} ` +
     `(${(bytes.length / 1024).toFixed(0)}KB) → delivering`);
 
@@ -1212,7 +1068,6 @@ export async function renderOne(job, deps = {}) {
   if (!up.ok || out.status !== 'done') throw new Error(`deliver failed: HTTP ${up.status} ${JSON.stringify(out).slice(0, 200)}`);
   log(`done → ${out.video_key}`);
 }
-
 // ── main — batch loop (VIDEO_BATCH jobs per invocation) ───────────────
 // Gated on being the entry point: the test suite imports this module for
 // the pure slide helpers, and importing must not claim a job or exit.

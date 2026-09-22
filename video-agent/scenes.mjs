@@ -1,42 +1,42 @@
-// Explainer scene vocabulary — turns a *structured plan* into markup.
+// Scene renderers — what each kind of scene actually draws.
 //
-// The LLM never writes HTML. It fills a typed plan (see PLAN SCHEMA below)
-// and this module draws it. That split is what makes the video
-// deterministic, testable without Chrome, and impossible to break with a
-// stray character from an article.
+// The vocabulary is split in two. `graphic` scenes draw a chart or a diagram
+// and belong to lessons; `visual` scenes show something real — a screenshot
+// in a device frame, a photo, a map, a before/after — and belong to anything
+// that is selling something. A storyboard picks from the vocabulary its
+// intent allows (video-agent/storyboard.mjs), and this module draws whatever
+// it is handed.
 //
-// Drawing rules learned from the 720px canvas:
+// Drawing rules, learned on the 720px canvas:
 //   - SVG carries SHAPES only (arcs, polylines, arrows). Labels are HTML.
 //     SVG <text> cannot wrap, and Vietnamese labels are long.
-//   - Everything is a pure function of (scene, accent): same input, same
-//     string out, so a snapshot at any time is reproducible.
+//   - Everything is a pure function of (scene, accent, asset): same input,
+//     same string out, so a snapshot at any time is reproducible.
 //
 // Icons: a subset of Feather (MIT, © Cole Bemis) inlined as path data —
 // no network, no icon font, no CDN.
 //
-// PLAN SCHEMA
-//   { title, scenes: [ { type, say, ... } ] }
-//   hook     { text }
-//   stat     { value, unit?, label, icon? }
-//   bars     { title?, unit?, items: [{ label, value }] }
-//   donut    { value, label }                    // value = percent 0-100
-//   line     { title?, unit?, items: [{ label, value }] }
-//   steps    { title?, items: [{ icon?, label }] }
-//   timeline { title?, items: [{ label, text }] }
-//   icons    { title?, items: [{ icon, label }] }
-//   compare  { title?, left: {title, items[]}, right: {title, items[]} }
-//   quote    { text, source? }
-//   outro    { text, url? }
-
-export const SCENE_TYPES = [
-  'hook', 'stat', 'bars', 'donut', 'line', 'steps', 'timeline', 'icons', 'compare', 'quote', 'outro',
-];
-
-// A 45-75s video at ~3.3 words/second of Vietnamese TTS. Five scenes is the
-// shortest thing that still explains anything; nine is where the render
-// time and the viewer's patience both run out.
-export const MIN_SCENES = 5;
-export const MAX_SCENES = 9;
+// SCENE SCHEMA (see storyboard.mjs for which intent allows which)
+//   hook            { text }
+//   problem         { text }
+//   product_reveal  { text, asset? }
+//   ui_demo         { text, asset }
+//   feature         { text, icon? }
+//   result          { text, value?, unit? }
+//   before_after    { text, asset, asset2? }
+//   photo           { text, asset }
+//   location        { text, asset }
+//   rating          { text, value? }
+//   cta             { text, url? }
+//   stat            { value, unit?, label, icon? }
+//   bars            { title?, unit?, items: [{ label, value }] }
+//   donut           { value, label }
+//   line            { title?, unit?, items: [{ label, value }] }
+//   steps           { title?, items: [{ icon?, label }] }
+//   timeline        { title?, items: [{ label, text }] }
+//   icons           { title?, items: [{ icon, label }] }
+//   compare         { title?, left: {title, items[]}, right: {title, items[]} }
+//   quote           { text, source? }
 
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
@@ -268,9 +268,116 @@ export function outroCard(s, accent) {
 // Dispatch one scene to its primitive. Unknown types render nothing —
 // sanitizePlan drops them before this point, but a stray one must not
 // throw inside a render.
-export function sceneInner(scene, accent = '#1677ff') {
+
+// ── visual scenes — the ones that show something real ────────────────
+
+export function hookCard(s) {
+  return `<div class="ex"><h1 class="hook">${esc(s.text)}</h1></div>`;
+}
+
+export function problemCard(s) {
+  return `<div class="ex"><p class="kicker">Vấn đề</p><h1 class="claim">${esc(s.text)}</h1></div>`;
+}
+
+// The product itself: a logo when there is one, otherwise the name alone.
+export function productReveal(s, logo) {
+  return `<div class="ex reveal">
+    ${logo ? `<img class="reveal-logo" src="${esc(logo)}" alt=""/>` : ''}
+    <p class="reveal-name">${esc(s.text)}</p>
+  </div>`;
+}
+
+// A real screenshot inside a phone frame — the difference between showing a
+// product and describing one. The frame is CSS, the screen is the real shot.
+export function uiDemo(s, asset) {
+  if (!asset) return `<div class="ex"><h1 class="claim">${esc(s.text)}</h1></div>`;
+  return `<div class="ex demo">
+    <div class="device">
+      <span class="device-notch"></span>
+      <img class="device-shot" src="${esc(asset)}" alt=""/>
+    </div>
+    <p class="caption">${esc(s.text)}</p>
+  </div>`;
+}
+
+export function featureCard(s, accent) {
+  return `<div class="ex feature">
+    <span class="feat-ico" style="color:${accent}">${icon(s.icon || 'check', 84)}</span>
+    <p class="feat-t">${esc(s.text)}</p>
+  </div>`;
+}
+
+// The payoff. A real number when the source had one, otherwise the claim.
+export function resultCard(s, accent) {
+  const value = s.value === undefined || s.value === null || s.value === '' ? '' : fmtNum(s.value);
+  return `<div class="ex result">
+    ${value ? `<p class="res-n" style="font-size:${statSize(value + (s.unit || ''))}px">${esc(value)}<span class="res-u" style="color:${accent}">${esc(s.unit || '')}</span></p>` : ''}
+    <p class="res-t">${esc(s.text)}</p>
+  </div>`;
+}
+
+// Two real images, one divider. Without a second asset the same picture is
+// reused rather than inventing one.
+export function beforeAfter(s, a1, a2) {
+  const panel = (label, src) => `<div class="ba-col">
+      <span class="ba-lab">${label}</span>
+      ${src ? `<img class="ba-img" src="${esc(src)}" alt=""/>` : '<span class="ba-empty"></span>'}
+    </div>`;
+  return `<div class="ex ba">
+    ${panel('Trước', a1)}
+    <span class="ba-mid"></span>
+    ${panel('Sau', a2)}
+    ${s.text ? `<p class="caption">${esc(s.text)}</p>` : ''}
+  </div>`;
+}
+
+export function photoCard(s) {
+  return `<div class="ex"><p class="photo-cap">${esc(s.text)}</p></div>`;
+}
+
+export function locationCard(s, asset) {
+  return `<div class="ex loc">
+    ${asset ? `<div class="loc-map"><img src="${esc(asset)}" alt=""/></div>` : ''}
+    <p class="loc-t">${esc(s.text)}</p>
+  </div>`;
+}
+
+export function ratingCard(s, accent) {
+  const n = Math.max(1, Math.min(5, Math.round(Number(s.value) || 5)));
+  const stars = Array.from({ length: 5 }, (_, i) => icon('star', 44)
+    .replace('class="ico"', `class="ico" style="color:${i < n ? accent : 'rgba(255,255,255,0.25)'}"`)).join('');
+  return `<div class="ex rate"><div class="stars">${stars}</div><p class="rate-t">${esc(s.text)}</p></div>`;
+}
+
+export function ctaCard(s) {
+  const url = String(s.url || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  return `<div class="ex"><p class="outro">${esc(s.text)}</p>${url ? `<p class="sub">${esc(url)}</p>` : ''}</div>`;
+}
+
+// Scenes that read better over a full-bleed photo than on the gradient.
+export function wantsBackground(type) {
+  return ['hook', 'problem', 'photo', 'quote'].includes(type);
+}
+
+// Dispatch one scene to its renderer. Unknown types render nothing —
+// sanitizeStoryboard drops them before this point, but a stray one must not
+// throw inside a render.
+export function sceneInner(scene, accent = '#1677ff', assets = {}) {
+  const asset = scene?.asset ? assets[scene.asset] : null;
+  const asset2 = scene?.asset2 ? assets[scene.asset2] : null;
   switch (scene?.type) {
-    case 'hook': return `<h1 class="hook">${esc(scene.text)}</h1>`;
+    case 'hook': return hookCard(scene);
+    case 'problem': return problemCard(scene);
+    case 'product_reveal': return productReveal(scene, asset || assets.logo);
+    case 'ui_demo': return uiDemo(scene, asset);
+    case 'feature': return featureCard(scene, accent);
+    case 'result': return resultCard(scene, accent);
+    case 'before_after': return beforeAfter(scene, asset, asset2 || asset);
+    case 'photo': return photoCard(scene);
+    case 'location': return locationCard(scene, asset);
+    case 'rating': return ratingCard(scene, accent);
+    case 'cta':
+    case 'outro': return ctaCard(scene);
     case 'stat': return statCard(scene, accent);
     case 'bars': return barChart(scene, accent);
     case 'donut': return donut(scene, accent);
@@ -280,210 +387,6 @@ export function sceneInner(scene, accent = '#1677ff') {
     case 'icons': return iconGrid(scene, accent);
     case 'compare': return compare(scene, accent);
     case 'quote': return quoteCard(scene, accent);
-    case 'outro': return outroCard(scene, accent);
     default: return '';
   }
-}
-
-// ── the truth guard ──────────────────────────────────────────────────
-// A plan may only show numbers the article actually contains. An LLM that
-// invents "tăng 47%" makes the video lie about the source, which is worse
-// than a plainer video. Digits are compared with all separators stripped,
-// so "1.000.000" and "1000000" match and "3,5" matches "3.5".
-export function numbersIn(text) {
-  const out = new Set();
-  for (const m of String(text || '').matchAll(/\d[\d.,]*/g)) {
-    const digits = m[0].replace(/[^\d]/g, '');
-    if (digits) out.add(digits.replace(/^0+(?=\d)/, ''));
-  }
-  return out;
-}
-
-const numOf = (v) => String(v ?? '').replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '');
-
-function keepNumbers(items, have) {
-  return (Array.isArray(items) ? items : []).filter((i) => have.has(numOf(i?.value)));
-}
-
-// Returns { plan, dropped } — a plan that is safe to draw. Never throws:
-// a bad plan degrades to a shorter one, and the caller falls back to the
-// article if too little survives.
-export function sanitizePlan(plan, article) {
-  const have = numbersIn(article);
-  const dropped = [];
-  const scenes = [];
-
-  for (const [index, raw] of (Array.isArray(plan?.scenes) ? plan.scenes : []).entries()) {
-    const type = raw?.type;
-    if (!SCENE_TYPES.includes(type)) { dropped.push({ index, type: String(type), reason: 'unknown_type' }); continue; }
-
-    if (type === 'stat') {
-      if (!raw.label || !have.has(numOf(raw.value))) { dropped.push({ index, type, reason: 'number_not_in_article' }); continue; }
-      scenes.push(raw);
-    } else if (type === 'donut') {
-      if (!have.has(numOf(raw.value))) { dropped.push({ index, type, reason: 'number_not_in_article' }); continue; }
-      scenes.push(raw);
-    } else if (type === 'bars' || type === 'line') {
-      const items = keepNumbers(raw.items, have);
-      const lost = (raw.items?.length || 0) - items.length;
-      if (items.length < 2) { dropped.push({ index, type, reason: 'too_few_verified_numbers', lost }); continue; }
-      if (lost) dropped.push({ index, type, reason: 'some_numbers_not_in_article', lost });
-      scenes.push({ ...raw, items });
-    } else if (type === 'icons') {
-      scenes.push({ ...raw, items: (raw.items || []).map((i) => ({ ...i, icon: ICON_PATHS[i?.icon] ? i.icon : DEFAULT_ICON })) });
-    } else if (type === 'compare') {
-      if (!raw.left?.items?.length && !raw.right?.items?.length) { dropped.push({ index, type, reason: 'empty' }); continue; }
-      scenes.push(raw);
-    } else if (type === 'steps' || type === 'timeline') {
-      if (!(raw.items || []).length) { dropped.push({ index, type, reason: 'empty' }); continue; }
-      scenes.push(raw);
-    } else if (type === 'hook' || type === 'quote') {
-      if (!raw.text) { dropped.push({ index, type, reason: 'empty' }); continue; }
-      scenes.push(raw);
-    } else {
-      scenes.push(raw);
-    }
-  }
-
-  // One hook at the front, one outro at the end, and a length the video
-  // budget can carry.
-  const trimmed = scenes.slice(0, MAX_SCENES);
-  if (scenes.length > MAX_SCENES) dropped.push({ index: MAX_SCENES, type: '(rest)', reason: 'over_max_scenes', lost: scenes.length - MAX_SCENES });
-  return { plan: { title: plan?.title || '', scenes: trimmed }, dropped };
-}
-
-// ── deterministic fallback ───────────────────────────────────────────
-// GuRouter can be down, rate-limited or simply wrong. The carousel already
-// answers that by deriving its slides from the article itself, and an
-// explainer must do the same: every scene below is lifted from the text, so
-// it passes the number guard by construction and the job never fails for
-// want of a model.
-function cut(s, max) {
-  const t = String(s || '').trim().replace(/\s+/g, ' ');
-  if (t.length <= max) return t;
-  const slice = t.slice(0, max);
-  const sp = slice.lastIndexOf(' ');
-  return (sp > max * 0.6 ? slice.slice(0, sp) : slice).trim() + '…';
-}
-
-function stripMarkdown(md) {
-  return String(md || '')
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/^#{1,6}\s*/gm, '')
-    .replace(/[*_`>]/g, ' ');
-}
-
-// Icons for the fallback grid, in a fixed rotation so the same article
-// always draws the same grid.
-const FALLBACK_ICONS = ['check', 'clock', 'trend', 'shield', 'users', 'star'];
-
-// A year is not a statistic. "Trong năm 2026, 53% người dùng sẽ rời bỏ" must
-// chart 53, not 2026 — taking the first number in the sentence put a 2026 bar
-// next to a 25 bar and made every real number invisible. Prefer a number the
-// sentence marks as a quantity (followed by %), then the first that is not a
-// bare year.
-export function pickNumber(sentence) {
-  const s = String(sentence || '');
-  const all = [...s.matchAll(/\d[\d.,]*/g)].map((m) => m[0]);
-  if (!all.length) return null;
-  const isYear = (t) => /^(19|20)\d{2}$/.test(t.replace(/[.,]/g, ''));
-  const percent = all.find((t) => new RegExp(`${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*%`).test(s));
-  return percent || all.find((t) => !isYear(t)) || all[0];
-}
-
-// A chart label is a phrase, not the sentence the number came from. Reading
-// a whole sentence into a 210px column wraps it over three lines and crowds
-// the bars out — measured on a real render. So take the words that follow
-// the number ("…53% người dùng sẽ rời bỏ" → "người dùng sẽ rời bỏ"), and
-// fall back to the words before it when the number ends the clause.
-function labelNear(sentence, token) {
-  const s = String(sentence || '');
-  // A label is not a sentence: no trailing full stop, no leading punctuation.
-  const tidy = (t) => t.replace(/[.!?…:;,]+$/u, '').trim();
-  const idx = s.indexOf(token);
-  if (idx < 0) return tidy(cut(s, 26));
-  const after = s.slice(idx + token.length).replace(/^[^\p{L}]+/u, '').trim();
-  const before = s.slice(0, idx).replace(/[^\p{L}\d]+$/u, '').trim();
-  return tidy(cut(after.length >= 10 ? after : (before || after), 26));
-}
-
-export function planFromMarkdown(md, title = '') {
-  const text = stripMarkdown(md);
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-  const bullets = lines
-    .filter((l) => /^([-*+]|\d+[.)])\s+/.test(l))
-    .map((l) => l.replace(/^([-*+]|\d+[.)])\s+/, '').trim())
-    .filter((l) => l.length > 8);
-  // Every fragment is a candidate for a number; only the longer ones are
-  // good enough to quote. A short "Vận chuyển chỉ 7%." is real data and
-  // must not be filtered out just because it is brief.
-  const parts = text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter((s) => s.length > 8);
-
-  // Numbers with a phrase from the clause they came from — never a number
-  // the article does not contain, and never a whole sentence as a label.
-  const seen = new Set();
-  const nums = [];
-  for (const s of parts) {
-    const token = pickNumber(s);
-    if (!token) continue;
-    const digits = token.replace(/[^\d]/g, '');
-    if (!digits || seen.has(digits)) continue;
-    seen.add(digits);
-    // Remember whether the article wrote this as a percentage, so the chart
-    // can say "53%" instead of a bare "53" that reads as a count.
-    nums.push({
-      label: labelNear(s, token),
-      value: token,
-      percent: new RegExp(`${token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*%`).test(s),
-    });
-    // Four bars fit the frame with room for a wrapped label; a fifth starts
-    // squeezing the chart and lengthening the read.
-    if (nums.length >= 4) break;
-  }
-
-  // Headings are the second source of short points, used when the bullets
-  // have already been spent on the steps scene.
-  const headings = String(md || '').split('\n').map((l) => l.trim())
-    .filter((l) => /^#{2,4}\s+\S/.test(l))
-    .map((l) => l.replace(/^#+\s+/, '').trim())
-    .filter((l) => l.length > 6 && l.length < 70);
-
-  const scenes = [{ type: 'hook', text: cut(title || lines[0] || 'Bài viết', 70) }];
-  // A chart shares one unit; only claim '%' when every bar is a percentage.
-  const barsUnit = nums.length && nums.every((n) => n.percent) ? '%' : '';
-  if (nums.length >= 2) {
-    scenes.push({
-      type: 'bars', title: 'Những con số trong bài', unit: barsUnit,
-      items: nums.map(({ label, value }) => ({ label, value })),
-    });
-  }
-
-  // Steps and icons must not read the same list back to back — the first
-  // fallback showed the same three bullets twice in a 79s video.
-  let usedBullets = 0;
-  if (bullets.length >= 3) {
-    scenes.push({ type: 'steps', title: 'Các bước chính', items: bullets.slice(0, 3).map((l) => ({ label: cut(l, 40) })) });
-    usedBullets = 3;
-  }
-  const spare = bullets.slice(usedBullets).length >= 2 ? bullets.slice(usedBullets) : headings;
-  if (spare.length >= 2) {
-    scenes.push({
-      type: 'icons',
-      title: 'Điểm chính',
-      items: spare.slice(0, 4).map((l, i) => ({ icon: FALLBACK_ICONS[i % FALLBACK_ICONS.length], label: cut(l, 26) })),
-    });
-  }
-  const quote = parts.filter((s) => s.length > 30).sort((a, b) => b.length - a.length)[0];
-  if (quote) scenes.push({ type: 'quote', text: cut(quote, 110) });
-
-  // A video shorter than MIN_SCENES is not worth rendering; fill from the
-  // remaining headings, then from the numbers one at a time.
-  for (const n of nums.slice(1, 4)) {
-    if (scenes.length >= MIN_SCENES) break;
-    scenes.push({ type: 'stat', value: n.value, label: n.label, unit: n.percent ? '%' : '', icon: 'trend' });
-  }
-  scenes.push({ type: 'outro', text: 'Đọc bài viết đầy đủ' });
-  return { title: title || '', scenes: scenes.slice(0, MAX_SCENES) };
 }
