@@ -31,8 +31,11 @@ const REFRESH_HOUR = (env) => parseInt(env.REFRESH_HOUR, 10) || 7;
 
 // How many per-project tick calls run in parallel. Chains are independent
 // (D1 rows are keyed by project_id) and each call is one HTTP connection —
-// 4 keeps the Pages project comfortably inside its subrequest budget.
-const FANOUT_CONCURRENCY = 4;
+// 6 spends 12 of the invocation's 50 subrequests and shortens the daily
+// fan-out window: on 2026-09-23 the 39-project sweep was still running when
+// the scheduled invocation hit its ceiling and died mid-window, stranding 21
+// freshly created jobs. A shorter window is one less thing that can kill it.
+const FANOUT_CONCURRENCY = 6;
 
 export default {
   async scheduled(event, env, ctx) {
@@ -66,6 +69,22 @@ export default {
       ctx.waitUntil(safe('prog', runTask(env, 'prog', { source: 'daily_prog', limit: 10 })));
     } else if (topOfHour && day === 1 && hour === REFRESH_HOUR(env)) {
       ctx.waitUntil(safe('refresh', runTask(env, 'refresh', { source: 'weekly_refresh', limit: 2 })));
+    } else if (minute === 40) {
+      // Daily orphan net. When the blog fan-out dies mid-window (the edge
+      // kills an invocation with no response bytes for ~100-120s — 2026-09-23
+      // lost 21 jobs this way, all status 'created' with error NULL, because
+      // /blog/text only writes the row AFTER the model answers), nothing
+      // retries them and the project silently misses its post. tick's
+      // blogChain() already resumes 'created'/'text_done'/'image_done' jobs —
+      // this call just gives it a reason to run again. One unfiltered call;
+      // the tick's internal budget marks the run 'partial' rather than
+      // dying, and whatever is left is caught the next day.
+      //
+      // :40, not :10/:15/:30: the daily fan-out starts at the top of the
+      // hour and can run ~17 minutes (batches of 6 × ~100s); a net call
+      // inside that window would double-process chains the fan-out is
+      // still working on. :30 was also ruled out for the same overlap.
+      ctx.waitUntil(safe('blog_resume', runTask(env, 'blog', { source: 'cron_resume', all: true })));
     }
   },
 

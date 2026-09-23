@@ -553,6 +553,36 @@ async function testCronRouting() {
     assert.equal(perProject.length, 2, 'one blog tick call per project');
     assert.deepEqual(perProject.map((p) => p.project_id).sort(), ['p1', 'p2']);
     ok('blog fan-out issues one tick call per project');
+
+    // The :40 orphan net: when the daily fan-out dies mid-window (2026-09-23
+    // lost 21 jobs this way — all 'created', error NULL, nothing retried
+    // them), tick's blogChain() resumes interrupted chains. Pin that the
+    // net fires at :40 and is one unfiltered call, and that it never fires
+    // in the hour's other ticks.
+    const at40 = await runAt('2026-09-15T01:40:00Z');
+    assert.ok(at40.includes('blog'), 'the :40 orphan net must run the blog task');
+    assert.ok(at40.includes('social'), 'the :40 tick still drains social');
+    tasks.length = 0;
+    globalThis.fetch = async (u, init) => {
+      const payload = init?.body ? JSON.parse(init.body) : {};
+      tasks.push(payload);
+      if (payload.dry_run) return jsonRes({ ok: true, projects: [{ id: 'p1', slug: 'a' }, { id: 'p2', slug: 'b' }] });
+      return jsonRes({ ok: true, projects_processed: 1, results: [] });
+    };
+    const pending40 = [];
+    await worker.scheduled(
+      { scheduledTime: new Date('2026-09-15T01:40:00Z').getTime() },
+      { ADMIN_TOKEN: 't', BLOG_URL: 'https://x/api/admin/blog' },
+      { waitUntil: (p) => pending40.push(p) }
+    );
+    await Promise.allSettled(pending40);
+    const resumeCalls = tasks.filter((p) => p.task === 'blog');
+    assert.equal(resumeCalls.length, 1, 'the resume must be a single unfiltered call');
+    assert.equal(resumeCalls[0].project_id, undefined, 'the resume call must not be project-scoped');
+    ok(':40 orphan net is a single unfiltered blog call');
+
+    const at4045 = await runAt('2026-09-15T01:45:00Z');
+    assert.deepEqual(at4045, ['social'], 'the orphan net must not fire at :45');
   } finally {
     globalThis.fetch = realFetch;
     console.log = realLog;

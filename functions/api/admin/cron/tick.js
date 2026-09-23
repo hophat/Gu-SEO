@@ -127,6 +127,10 @@ export const onRequestPost = async ({ request, env }) => {
   });
 };
 
+// blogChain resumes interrupted chains (text_done → image_done → publish,
+// created → text → …). Resumed outcomes carry resumed:true so the fan-out
+// summary shows the daily run picked a broken job back up instead of
+// silently generating a second one.
 async function blogChain(call, env, proj) {
   const today = new Date().toISOString().slice(0, 10);
   const existingRun = await env.DB.prepare(
@@ -162,9 +166,9 @@ async function blogChain(call, env, proj) {
     // need to resume it directly instead.
     if (existingRun.status === 'created') {
       const textRes = await call('/api/admin/blog/text', { job_id: jobId });
-      if (!textRes.ok) return { project_id: proj.id, slug: proj.slug, status: 'failed', step: 'text_resume', job_id: jobId };
+      if (!textRes.ok) return { project_id: proj.id, slug: proj.slug, status: 'failed', step: 'text_resume', job_id: jobId, resumed: true };
       const imgRes = await call('/api/admin/blog/image', { job_id: jobId });
-      if (!imgRes.ok) return { project_id: proj.id, slug: proj.slug, status: 'failed', step: 'image_resume', job_id: jobId };
+      if (!imgRes.ok) return { project_id: proj.id, slug: proj.slug, status: 'failed', step: 'image_resume', job_id: jobId, resumed: true };
       if (proj.approval_mode === 'approval') {
         return { project_id: proj.id, slug: proj.slug, status: 'pending_approval', job_id: jobId, resumed: true };
       }
