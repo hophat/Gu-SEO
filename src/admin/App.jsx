@@ -226,13 +226,15 @@ function AdminShell() {
   return (
     <ConfigProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
       <AntApp>
-        <Layout style={{ minHeight: '100vh' }}>
+        <Layout className="admin-layout" style={{ minHeight: '100vh' }}>
           <Sider
             collapsible
             collapsed={collapsed}
             onCollapse={setCollapsed}
             width={240}
+            collapsedWidth={72}
             breakpoint="lg"
+            className="admin-sider"
             style={{ overflow: 'auto', height: '100vh', position: 'sticky', top: 0, borderRight: '1px solid rgba(0,0,0,0.06)' }}
           >
             <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
@@ -249,34 +251,42 @@ function AdminShell() {
             />
           </Sider>
 
-          <Layout>
-            <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-              <Space size="middle">
+          <Layout className="admin-main-layout">
+            <Header className="admin-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+              <Space className="admin-header-context" size="middle" wrap>
                 {user?.role === 'super_admin' && projects.length > 0 && (
                   <Select
                     value={activeProject?.id}
                     onChange={switchProject}
-                    style={{ width: 200 }}
+                    className="admin-project-select"
                     options={projects.map((p) => ({ value: p.id, label: p.site_name || p.slug }))}
                   />
                 )}
                 {user?.role !== 'super_admin' && activeProject && (
-                  <Badge count={activeProject.site_name || activeProject.slug} style={{ backgroundColor: '#1677ff' }} />
+                  <Badge className="admin-context-badge" count={activeProject.site_name || activeProject.slug} style={{ backgroundColor: '#1677ff' }} />
                 )}
-                {user?.role === 'super_admin' && <Badge count="Quản trị hệ thống" style={{ backgroundColor: '#52c41a' }} />}
+                {user?.role === 'super_admin' && <Badge className="admin-context-badge" count="Quản trị hệ thống" style={{ backgroundColor: '#52c41a' }} />}
                 {user?.role !== 'super_admin' && user?.plan_tier === 'free' && (
-                  <Badge count={`Free · ${user?.post_count || 0}/${user?.post_limit || 100} bài`} style={{ backgroundColor: '#faad14' }} />
+                  <Badge className="admin-context-badge" count={`Free · ${user?.post_count || 0}/${user?.post_limit || 100} bài`} style={{ backgroundColor: '#faad14' }} />
                 )}
               </Space>
-              <Space size="small">
-                <Button icon={<RocketOutlined />} onClick={() => setWizardOpen(true)}>Trình thiết lập</Button>
-                <Button type="text" icon={theme === 'dark' ? <SunOutlined /> : <MoonOutlined />} onClick={toggle} />
+              <Space className="admin-header-actions" size="small" wrap>
+                <Button className="admin-setup-button" aria-label="Trình thiết lập" title="Trình thiết lập" icon={<RocketOutlined />} onClick={() => setWizardOpen(true)}>
+                  <span className="admin-setup-label">Trình thiết lập</span>
+                </Button>
+                <Button
+                  type="text"
+                  aria-label={theme === 'dark' ? 'Chuyển giao diện sáng' : 'Chuyển giao diện tối'}
+                  title={theme === 'dark' ? 'Chuyển giao diện sáng' : 'Chuyển giao diện tối'}
+                  icon={theme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+                  onClick={toggle}
+                />
                 <Dropdown menu={userMenu} placement="bottomRight">
-                  <Space style={{ cursor: 'pointer' }}>
+                  <Space className="admin-user-menu" style={{ cursor: 'pointer' }}>
                     <Avatar size="small" style={{ backgroundColor: '#1677ff' }}>
                       {user?.email?.[0]?.toUpperCase() || 'A'}
                     </Avatar>
-                    {!collapsed && <span style={{ fontSize: 13 }}>{user?.email}</span>}
+                    <span className="admin-user-email" style={{ fontSize: 13 }}>{user?.email}</span>
                   </Space>
                 </Dropdown>
               </Space>

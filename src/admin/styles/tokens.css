@@ -6,6 +6,16 @@
  * it needs these variables to render correctly. Values mirror
  * public/admin.css so both shells look identical.
  */
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
 :root {
   --bg: #f5f5f5;
   --bg-soft: #fafafa;
@@ -27,12 +37,122 @@
   --good-rgb: 82, 196, 26;
   --warn-rgb: 250, 173, 20;
   --bad-rgb: 255, 77, 79;
-  --display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
   --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
   --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.admin-header-context,
+.admin-header-actions,
+.admin-context-badge,
+.admin-context-badge .ant-badge-count {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-header-context,
+.admin-header-actions {
+  overflow: visible;
+}
+
+.admin-header {
+  height: auto;
+  min-height: 64px;
+  line-height: normal;
+  padding: 8px clamp(12px, 2vw, 24px) !important;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.admin-header-context {
+  flex: 1 1 340px;
+}
+
+.admin-header-actions {
+  flex: 0 1 auto;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.admin-project-select {
+  width: min(200px, 100%) !important;
+  max-width: 100%;
+}
+
+.admin-context-badge,
+.admin-context-badge .ant-badge-count {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-user-menu {
+  max-width: min(260px, 28vw);
+  overflow: hidden;
+}
+
+.admin-user-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1199px) {
+  .admin-user-email {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-header {
+    gap: 8px;
+  }
+
+  .admin-header-context,
+  .admin-header-actions {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
+  .admin-header-actions {
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
+  .admin-project-select {
+    width: min(160px, 100%) !important;
+    max-width: 100%;
+  }
+
+  .admin-context-badge,
+  .admin-context-badge .ant-badge-count {
+    max-width: min(120px, 28vw);
+  }
+
+  .admin-setup-label {
+    display: none;
+  }
+
+  .admin-setup-button {
+    width: 36px;
+    min-width: 36px;
+    padding-inline: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .admin-context-badge,
+  .admin-context-badge .ant-badge-count {
+    max-width: 92px;
+  }
+
+  .admin-header-actions {
+    gap: 4px !important;
+  }
 }
 
 :root[data-theme='dark'] {
