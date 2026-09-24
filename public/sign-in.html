@@ -2,16 +2,45 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="robots" content="noindex,nofollow" />
 <link rel="icon" type="image/png" href="/favicon.png" sizes="64x64" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
 <title>GU SEO — Programmatic SEO Infrastructure</title>
 <meta name="description" content="The autonomous content engine that scales brands across every surface of search." />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" />
 <style>
+  @font-face {
+    font-family: "Geist";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/_fonts/geist.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "Geist";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/_fonts/geist-vietnamese.woff2") format("woff2");
+    unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+  }
+  @font-face {
+    font-family: "Geist Mono";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/_fonts/geist-mono.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: "Geist Mono";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/_fonts/geist-mono-vietnamese.woff2") format("woff2");
+    unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+  }
   :root {
     --bg: #000000;
     --bg-1: #0a0a0a;
@@ -24,8 +53,8 @@
     --text-quaternary: #2f3336;
     --accent: #ffffff;
     --accent-hover: #cccccc;
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,10 +65,9 @@
     line-height: 1.4;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    selection-background-color: #fff;
-    selection-color: #000;
     font-feature-settings: 'cv11', 'ss01', 'ss03';
   }
+  ::selection { background-color: #fff; color: #000; }
 
   /* ── Ambient Background Layer (Very Subtle, X-like) ── */
   .ambient-bg {
@@ -95,6 +123,7 @@
   /* ── Header (X-style minimal sticky nav) ── */
   header.nav {
     position: sticky; top: 0; z-index: 50;
+    padding-top: env(safe-area-inset-top, 0px);
     background: rgba(0, 0, 0, 0.72);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -670,16 +699,374 @@
     box-shadow: 0 0 1px rgba(0,0,0,0.5);
   }
 
+  /* ── Mobile app shell: safe areas, compact nav, no horizontal overflow ── */
+  section[id] { scroll-margin-top: calc(76px + env(safe-area-inset-top, 0px)); }
+  body { min-width: 0; }
+  .nav-inner, .block-inner, .logo-wall-inner, .stats-grid { min-width: 0; }
+  .mobile-dock { display: none; }
+
+  @media (max-width: 1000px) {
+    .block-grid-2 { grid-template-columns: 1fr; gap: 32px; }
+    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .feature-grid > *, .eco-grid > *, .footer-grid > * { min-width: 0; }
+  }
+
+  @media (max-width: 1000px) {
+    html { scroll-padding-top: 0; }
+    body {
+      overflow-x: clip;
+      padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    }
+    .nav-inner {
+      width: 100%;
+      height: 64px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+      gap: 10px;
+    }
+    .brand {
+      min-width: 0;
+      flex: 1 1 auto;
+      gap: 8px;
+      font-size: 1rem;
+      white-space: nowrap;
+    }
+    .brand img {
+      width: 30px !important;
+      height: 30px !important;
+      flex: 0 0 30px;
+    }
+    .nav-actions {
+      min-width: 0;
+      flex: 0 0 auto;
+      gap: 7px;
+    }
+    .nav-actions .btn-ghost { display: none; }
+    .nav-actions .btn-primary {
+      min-height: 42px;
+      padding: 8px 13px;
+      font-size: 0.76rem;
+      white-space: nowrap;
+    }
+    .lang-toggle-btn {
+      height: 42px;
+      min-width: 48px;
+      justify-content: center;
+      padding: 0 8px;
+      font-size: 0.68rem;
+    }
+    .hero {
+      width: 100%;
+      max-width: none;
+      padding-top: 52px;
+      padding-bottom: 0;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+    .hero-status {
+      max-width: 100%;
+      margin-bottom: 24px;
+      padding: 6px 10px;
+      font-size: 0.64rem;
+      line-height: 1.3;
+      text-align: left;
+    }
+    .display-1 {
+      max-width: 100%;
+      font-size: clamp(2.25rem, 12vw, 4.2rem);
+      line-height: 0.98;
+      overflow-wrap: anywhere;
+    }
+    .hero-sub {
+      max-width: 42rem;
+      margin-bottom: 28px;
+      font-size: 1rem;
+      line-height: 1.55;
+    }
+    .hero-cta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+      width: 100%;
+      margin-bottom: 0;
+    }
+    .hero-cta a {
+      width: 100%;
+      min-height: 50px;
+      justify-content: center;
+      padding-inline: 18px;
+    }
+    .logo-wall-section {
+      padding-top: 30px;
+      padding-bottom: 30px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+    .logo-wall-label {
+      margin-bottom: 20px;
+      font-size: 0.68rem;
+      line-height: 1.4;
+    }
+    .logo-grid {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      justify-content: flex-start;
+      margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+      margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+      padding-bottom: 4px;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+    }
+    .logo-grid::-webkit-scrollbar { display: none; }
+    .logo-item {
+      flex: 0 0 auto;
+      min-height: 42px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 0.9rem;
+      scroll-snap-align: start;
+    }
+    .big-type-section {
+      padding-top: 52px;
+      padding-bottom: 52px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+    .big-type {
+      font-size: clamp(2.1rem, 11vw, 4.4rem);
+      line-height: 1;
+      overflow-wrap: anywhere;
+    }
+    .big-type-sub {
+      margin-top: 20px;
+      font-size: 1rem;
+    }
+    section.block {
+      padding-top: 56px;
+      padding-bottom: 56px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+    .block-inner { width: 100%; }
+    .section-eyebrow {
+      margin-bottom: 12px;
+      font-size: 0.7rem;
+    }
+    .display-2 {
+      font-size: clamp(1.9rem, 8.5vw, 3rem);
+      overflow-wrap: anywhere;
+    }
+    .section-title { margin-bottom: 18px; }
+    .section-lede {
+      font-size: 0.98rem;
+      line-height: 1.6;
+    }
+    .feature-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 12px;
+      margin-top: 28px;
+      border: 0;
+    }
+    .feature-card {
+      min-width: 0;
+      padding: 24px 20px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+    .feature-icon { margin-bottom: 16px; }
+    .feature-title { font-size: 1.08rem; }
+    .feature-desc { font-size: 0.9rem; }
+    .workflow-steps {
+      grid-template-columns: minmax(0, 1fr);
+      margin-top: 28px;
+      border: 0;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .workflow-step,
+    .workflow-step:nth-child(1),
+    .workflow-step:nth-child(2),
+    .workflow-step:nth-child(3),
+    .workflow-step:nth-child(4) {
+      min-width: 0;
+      border-right: 0;
+      border-bottom: 1px solid var(--border);
+      padding: 26px 20px;
+    }
+    .workflow-step:last-child { border-bottom: 0; }
+    .step-title { font-size: 1.12rem; }
+    .step-desc {
+      margin-bottom: 18px;
+      font-size: 0.9rem;
+    }
+    .step-connector { display: none; }
+    .stats-strip {
+      padding-top: 34px;
+      padding-bottom: 34px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+    .stats-grid {
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .stats-grid > div {
+      min-width: 0;
+      padding: 22px 8px;
+      background: #080808;
+    }
+    .stat-num { font-size: clamp(1.8rem, 9vw, 2.8rem); }
+    .stat-label {
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .eco-grid {
+      gap: 12px;
+      margin-top: 28px;
+    }
+    .eco-card {
+      padding: 24px 20px;
+      border-radius: 16px;
+    }
+    .eco-card-head { margin-bottom: 18px; }
+    .eco-name { font-size: 1.35rem; }
+    .eco-desc {
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+    .contact-section {
+      padding-top: 68px;
+      padding-bottom: 68px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+    .contact-headline {
+      font-size: clamp(2rem, 10vw, 3.2rem);
+      overflow-wrap: anywhere;
+    }
+    .contact-sub { font-size: 0.95rem; }
+    .contact-buttons {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      width: 100%;
+    }
+    .contact-buttons a {
+      width: 100%;
+      min-height: 50px;
+      justify-content: center;
+    }
+    footer.page-footer {
+      padding-top: 36px;
+      padding-bottom: 44px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+    .footer-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 28px;
+    }
+    .footer-bottom {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .ambient-video { display: none; }
+    .ambient-bg {
+      background:
+        radial-gradient(circle at 50% 0%, rgba(100, 116, 139, 0.12), transparent 42%),
+        #000;
+    }
+    .mobile-dock {
+      position: fixed;
+      z-index: 49;
+      right: max(10px, env(safe-area-inset-right, 0px));
+      bottom: max(10px, env(safe-area-inset-bottom, 0px));
+      left: max(10px, env(safe-area-inset-left, 0px));
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 2px;
+      padding: 7px;
+      border: 1px solid var(--border-strong);
+      border-radius: 18px;
+      background: rgba(10, 10, 10, 0.9);
+      box-shadow: 0 10px 36px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .dock-link {
+      min-width: 0;
+      min-height: 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 5px 2px;
+      border-radius: 12px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.58rem;
+      line-height: 1.1;
+      text-align: center;
+      transition: color 180ms cubic-bezier(0.2, 0.8, 0.2, 1), background 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .dock-link:hover,
+    .dock-link:focus-visible {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+      outline: none;
+    }
+    .dock-index {
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      letter-spacing: 0.04em;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .nav-inner {
+      padding-left: max(12px, env(safe-area-inset-left, 0px));
+      padding-right: max(12px, env(safe-area-inset-right, 0px));
+    }
+    .brand { font-size: 0.9rem; }
+    .brand img {
+      width: 28px !important;
+      height: 28px !important;
+      flex-basis: 28px;
+    }
+    .nav-actions { gap: 5px; }
+    .lang-toggle-btn { padding-inline: 6px; }
+    .nav-actions .btn-primary {
+      padding-inline: 10px;
+      font-size: 0.7rem;
+    }
+    .display-1 { font-size: 2.18rem; }
+    .dock-link { font-size: 0.54rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
 </style>
 </head>
-<body>
+<body id="top">
 
-<div class="ambient-bg">
-  <video class="ambient-video" autoplay loop muted playsinline poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23000000' width='100' height='100'/%3E%3C/svg%3E">
-    <source src="https://upload.wikimedia.org/wikipedia/commons/7/72/Dynamic_Simulation_of_Air_Particles_%28Bifr%C3%B6st%29.webm" type="video/webm" />
-  </video>
-  <!-- ambient grain removed for pure X-style minimalism -->
-</div>
+<div class="ambient-bg" aria-hidden="true"></div>
 
 <header class="nav">
   <div class="nav-inner">
@@ -695,7 +1082,7 @@
       <li><a class="nav-link" href="#contact" data-i18n="nav_contact">Contact</a></li>
     </ul>
     <div class="nav-actions">
-      <button id="lang-switcher" class="lang-toggle-btn" type="button" aria-label="Toggle language">
+      <button id="lang-switcher" class="lang-toggle-btn" type="button" data-i18n-aria-label="lang_toggle" aria-label="Toggle language">
 <span id="lang-flag" class="lang-icon"><svg class="flag-icon" width="16" height="12" viewBox="0 0 60 30" style="border-radius:2px;display:inline-block;vertical-align:middle;"><clipPath id="s"><path d="M0,0 v30 h60 v-30 z"/></clipPath><clipPath id="t"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><g clip-path="url(#s)"><path d="M0,0 v30 h60 v-30 z" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#t)" stroke="#c8102e" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#c8102e" stroke-width="6"/></g></svg></span>
 <span id="lang-current">EN</span>
       </button>
@@ -704,6 +1091,29 @@
     </div>
   </div>
 </header>
+
+<nav class="mobile-dock" data-i18n-aria-label="nav_menu" aria-label="Điều hướng nhanh">
+  <a class="dock-link" href="#top">
+    <span class="dock-index">01</span>
+    <span data-i18n="nav_home">Trang chủ</span>
+  </a>
+  <a class="dock-link" href="#workflow">
+    <span class="dock-index">02</span>
+    <span data-i18n="nav_workflow">Quy Trình</span>
+  </a>
+  <a class="dock-link" href="#technology">
+    <span class="dock-index">03</span>
+    <span data-i18n="nav_tech">Công Nghệ</span>
+  </a>
+  <a class="dock-link" href="#metrics">
+    <span class="dock-index">04</span>
+    <span data-i18n="nav_metrics">Chỉ Số</span>
+  </a>
+  <a class="dock-link" href="#contact">
+    <span class="dock-index">05</span>
+    <span data-i18n="nav_contact">Liên Hệ</span>
+  </a>
+</nav>
 
 <section class="hero">
   <div class="hero-status">
@@ -867,7 +1277,7 @@
             </svg>
           </div>
           <h3 class="step-title" data-i18n="step4_title">Đăng Bài Hàng Ngày</h3>
-          <p class="step-desc">
+          <p class="step-desc" data-i18n="step4_desc">
             Đúng 08:00 mỗi sáng (giờ VN), cron Worker tự động kích hoạt: viết 900–1.300 từ, sinh ảnh bìa Flux, chèn link nội bộ, ping IndexNow và đẩy webhook sang trang đích.
           </p>
         </div>
@@ -1090,6 +1500,9 @@
       nav_eco: "Hệ Sinh Thái",
       nav_metrics: "Chỉ Số",
       nav_contact: "Liên Hệ",
+      nav_home: "Trang chủ",
+      nav_menu: "Điều hướng nhanh",
+      lang_toggle: "Đổi ngôn ngữ",
       nav_signin: "Đăng nhập",
       nav_start: "Đăng Ký Free",
       hero_status: "PRODUCTION · v1.3.14 · CLOUDFLARE EDGE",
@@ -1155,6 +1568,9 @@
       nav_eco: "Ecosystem",
       nav_metrics: "Metrics",
       nav_contact: "Contact",
+      nav_home: "Home",
+      nav_menu: "Quick navigation",
+      lang_toggle: "Toggle language",
       nav_signin: "Sign in",
       nav_start: "Start Free Tier",
       hero_status: "PRODUCTION · v1.3.14 · CLOUDFLARE EDGE",
@@ -1214,11 +1630,19 @@
     }
   };
 
-  let curLang = localStorage.getItem('ps_home_lang') || 'en';
+  let curLang = 'en';
+  try {
+    const savedLang = localStorage.getItem('ps_home_lang');
+    if (savedLang === 'vi' || savedLang === 'en') curLang = savedLang;
+  } catch (error) {
+    console.warn('Language preference unavailable; using English.', error);
+  }
 
   function apply(lang) {
     curLang = lang;
-    try { localStorage.setItem('ps_home_lang', lang); } catch {}
+    try { localStorage.setItem('ps_home_lang', lang); } catch (error) {
+      console.warn('Language preference could not be saved.', error);
+    }
     document.documentElement.lang = lang;
 
     const data = dict[lang] || dict.en;
@@ -1241,6 +1665,11 @@
     document.querySelectorAll('[data-i18n-html]').forEach(el => {
       const key = el.getAttribute('data-i18n-html');
       if (data[key]) el.innerHTML = data[key];
+    });
+
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+      const key = el.getAttribute('data-i18n-aria-label');
+      if (data[key]) el.setAttribute('aria-label', data[key]);
     });
   }
 
