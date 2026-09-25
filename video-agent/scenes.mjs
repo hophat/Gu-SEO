@@ -320,17 +320,19 @@ export function resultCard(s, accent) {
   </div>`;
 }
 
-// Two real images, one divider. Without a second asset the same picture is
-// reused rather than inventing one.
+// Two distinct real images, one divider. A missing or repeated second asset
+// stays visibly empty; duplicating the first image would imply a fake result.
 export function beforeAfter(s, a1, a2) {
+  const first = a1 || null;
+  const second = a2 && a2 !== a1 ? a2 : null;
   const panel = (label, src) => `<div class="ba-col">
       <span class="ba-lab">${label}</span>
       ${src ? `<img class="ba-img" src="${esc(src)}" alt=""/>` : '<span class="ba-empty"></span>'}
     </div>`;
   return `<div class="ex ba">
-    ${panel('Trước', a1)}
+    ${panel('Trước', first)}
     <span class="ba-mid"></span>
-    ${panel('Sau', a2)}
+    ${panel('Sau', second)}
     ${s.text ? `<p class="caption">${esc(s.text)}</p>` : ''}
   </div>`;
 }
@@ -426,26 +428,30 @@ export function wantsBackground(type) {
   return ['hook', 'problem', 'photo', 'quote', 'headline'].includes(type);
 }
 
+function sceneAsset(assets, key) {
+  return key && Object.prototype.hasOwnProperty.call(assets || {}, key) ? assets[key] : null;
+}
+
 // Dispatch one scene to its renderer. Unknown types render nothing —
 // sanitizeStoryboard drops them before this point, but a stray one must not
 // throw inside a render.
 export function sceneInner(scene, accent = '#1677ff', assets = {}) {
-  const asset = scene?.asset ? assets[scene.asset] : null;
-  const asset2 = scene?.asset2 ? assets[scene.asset2] : null;
+  const asset = sceneAsset(assets, scene?.asset);
+  const asset2 = sceneAsset(assets, scene?.asset2);
   switch (scene?.type) {
     case 'hook': return hookCard(scene);
     case 'problem': return problemCard(scene);
-    case 'product_reveal': return productReveal(scene, asset || assets.logo);
+    case 'product_reveal': return productReveal(scene, asset || sceneAsset(assets, 'logo'));
     case 'ui_demo': return uiDemo(scene, asset);
     case 'feature': return featureCard(scene, accent);
     case 'result': return resultCard(scene, accent);
-    case 'before_after': return beforeAfter(scene, asset, asset2 || asset);
+    case 'before_after': return beforeAfter(scene, asset, asset2);
     case 'photo': return photoCard(scene);
     case 'location': return locationCard(scene, asset);
     case 'rating': return ratingCard(scene, accent);
     case 'cta':
     case 'outro': return ctaCard(scene);
-    case 'anchor': return anchorCard(scene, assets.presenter, accent);
+    case 'anchor': return anchorCard(scene, sceneAsset(assets, 'presenter'), accent);
     case 'headline': return headlineCard(scene, accent);
     case 'stat': return statCard(scene, accent);
     case 'bars': return barChart(scene, accent);

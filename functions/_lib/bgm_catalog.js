@@ -2,7 +2,7 @@
 // the mix. The admin wizard lists these tracks (with an in-browser preview),
 // stores the picked id on video_jobs.bgm, and the claim hands the agent a
 // playable URL. Three stored shapes:
-//   NULL    → 'auto' — the agent synthesises its ambient pad (default)
+//   NULL    → 'auto' — claim chọn một track Mixkit phù hợp với template
 //   'none'  → muted by operator choice — voice only
 //   <id>    → a track below; the agent fetches music/<id>.mp3 from R2,
 //             trims it to the video length and fades it under the voice
@@ -35,8 +35,29 @@ export const BGM_TRACKS = [
 
 export const BGM_NONE = 'none';
 
+// Auto vẫn dùng catalog đã có, không tổng hợp pad mới. Map chỉ chọn màu
+// nhạc; file luôn đến từ allow-list Mixkit phía trên.
+const AUTO_BGM_BY_TEMPLATE = {
+  news_anchor: 'sports-highlights',
+  story: 'silent-descent',
+  product: 'deep-urban',
+  launch: 'driving-ambition',
+  local: 'beautiful-dream',
+  explainer: 'hazy-after-hours',
+  listicle: 'gimme-groove',
+  review: 'beautiful-dream',
+  before_after: 'driving-ambition',
+  qa: 'serene-view',
+  summary: 'serene-view',
+  auto: 'serene-view',
+};
+
 export function bgmTrackById(id) {
   return BGM_TRACKS.find((t) => t.id === id) || null;
+}
+
+export function autoBgmTrack(template = '') {
+  return bgmTrackById(AUTO_BGM_BY_TEMPLATE[String(template || 'auto')] || AUTO_BGM_BY_TEMPLATE.auto);
 }
 
 // Public path a track streams from — the same URL previews in the wizard
@@ -46,8 +67,8 @@ export function bgmTrackPath(track) {
   return `/image/music/${track.file}`;
 }
 
-// Request param → stored value. 'auto'/absent stores NULL (the pad), 'none'
-// stores the mute sentinel, anything else must be a catalog id.
+// Request param → stored value. 'auto'/absent stores NULL (claim chọn track),
+// 'none' stores the mute sentinel, anything else must be a catalog id.
 export function parseBgmParam(raw) {
   const v = String(raw ?? '').trim();
   if (!v || v === 'auto') return { ok: true, bgm: null };

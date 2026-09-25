@@ -2,7 +2,7 @@
 --
 -- The create-video wizard offers a catalog of royalty-free tracks
 -- (functions/_lib/bgm_catalog.js). video_jobs.bgm stores the choice:
---   NULL    → 'auto', the agent synthesises its ambient pad
+--   NULL    → 'auto', claim picks a matching free catalog track
 --   'none'  → muted by choice, voice only
 --   <id>    → a catalog track; the claim resolves it to a playable URL
 --             (/image/music/<file>, R2) for the off-platform agent

@@ -7,6 +7,20 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.22.0 — 2026-09-25
+
+Video mặc định kể đủ bài, dùng hình thật và nhạc nền free.
+
+### Changed
+- Default video length lên 60 giây, band hợp lệ 15–90 giây; lời đọc tự co theo từng beat thay vì kéo dài video.
+- Đọc toàn bộ nội dung bài viết và visible text của website; fallback phủ đủ 12 intent, có quality gate trước TTS.
+- Auto BGM chọn track Mixkit theo template; fetch lỗi chuyển sang voice-only, không tổng hợp pad.
+- Before/after, logo, background và scene asset được kiểm tra thật; retry TTS không dùng audio cũ.
+
+### Fixed
+- Duration beat cộng chính xác, CTA/source tail không bị cắt khi fitting.
+- Lỗi asset key kế thừa, scene data rỗng, sparse source và whitespace-only source không làm hỏng fallback.
+
 ## 1.21.0 — 2026-09-22
 
 Video kể chuyện theo intent — 20 giây, có hình thật, không còn slideshow.

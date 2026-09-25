@@ -140,11 +140,11 @@ export function parseTemplateParam(value) {
   return t ? { ok: true, template: t.id, def: t } : { ok: false };
 }
 
-// 15–45s is the band every template is authored for; anything outside is
-// clamped rather than rejected so a stray slider value never 400s.
+// 15–90s covers legacy short templates and the 60s comprehensive default.
+// Values outside the band are clamped rather than rejected.
 export function clampVideoDuration(value) {
   if (value === undefined || value === null || value === '') return null;
   const n = Math.round(Number(value));
   if (!Number.isFinite(n)) return null;
-  return Math.min(45, Math.max(15, n));
+  return Math.min(90, Math.max(15, n));
 }

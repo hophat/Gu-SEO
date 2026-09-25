@@ -83,6 +83,35 @@ export function pickShowcaseLinks(html, siteUrl, limit = 2) {
   return scored.sort((a, b) => Number(b.good) - Number(a.good)).slice(0, limit).map((s) => s.href);
 }
 
+// Strip markup without throwing away the page's actual prose. Headings alone
+// are too thin for a 60s narration; website/product jobs need the body copy
+// too, while scripts, styles, and SVG source would only add noise.
+export function extractVisibleText(html = '') {
+  const source = String(html || '');
+  const body = source.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] || source;
+  return body
+    .replace(/<(script|style|noscript|template|svg|canvas)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<\/?(?:address|article|aside|blockquote|br|button|div|figcaption|figure|footer|form|h[1-6]|header|li|main|nav|ol|p|pre|section|td|th|tr|ul)\b[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      try { return String.fromCodePoint(parseInt(hex, 16)); } catch { return ''; }
+    })
+    .replace(/&#(\d+);/g, (_, dec) => {
+      try { return String.fromCodePoint(Number(dec)); } catch { return ''; }
+    })
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n');
+}
+
 // Homepage + up to two same-origin nav pages, text scraped for the storyboard.
 export async function captureSite(siteUrl, work, log = () => {}) {
   const outDir = join(work, 'assets', 'media');
@@ -113,8 +142,10 @@ export async function captureSite(siteUrl, work, log = () => {}) {
   const desc = (html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)?.[1] || '');
   const headings = [...html.matchAll(/<h[12][^>]*>([^<]{4,90})<\/h[12]>/gi)]
     .map((m) => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean).slice(0, 8);
-  log(`site: ${shots.length} screenshot(s) of ${siteUrl}`);
-  return { shots, text: [title, desc, ...headings].filter(Boolean).join('\n') };
+  const visibleText = extractVisibleText(html);
+  const pageText = visibleText || [title, desc, ...headings].filter(Boolean).join('\n');
+  log(`site: ${shots.length} screenshot(s) of ${siteUrl}; ${pageText.length} chars of page text`);
+  return { shots, text: [title, desc, pageText].filter(Boolean).join('\n') };
 }
 
 // Real images from the project's own website — og:image first, then the

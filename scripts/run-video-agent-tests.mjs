@@ -10,7 +10,7 @@
 // input producing the same HTML (what makes a snapshot at any --at time
 // deterministic).
 //
-// For the post video it measures with ffmpeg: the real music bed (a bed
+// For the post video it measures with ffmpeg: the real catalog music bed (a bed
 // nobody can hear is indistinguishable from no music at all, and the first
 // version rendered 17 dB too quiet to notice) and the loudness of the
 // finished mix (a real render measured -29 LUFS, ~15 LU under what social
@@ -53,15 +53,15 @@ globalThis.fetch = async (url, opts) => {
 
 const {
   composeCarouselSlideHtml, composeStoryboardHtml, fitNarration, LOUDNESS, makeBgm,
-  cutBgm, prepareBgm,
+  cutBgm, prepareBgm, speakSegments,
   masterLoudness, renderCarousel, renderOne, slideQueries,
 } = await import('../video-agent/render-video.mjs');
 // Scene renderers live in scenes.mjs; the story rules in storyboard.mjs.
 // MIN/MAX_SCENES are aliased because both modules export them with different
-// values (a free-form plan allowed 5-9, a 20s story wants 3-8) and a bare
+// values (a free-form plan allowed 5-9, the 60s default story wants 3-8) and a bare
 // name here silently mixed the two.
 const { ICON_NAMES, icon, sceneInner, statSize, wantsBackground } = await import('../video-agent/scenes.mjs');
-const { MIN_SHOT_BYTES, pickShowcaseLinks } = await import('../video-agent/assets.mjs');
+const { MIN_SHOT_BYTES, pickShowcaseLinks, extractVisibleText } = await import('../video-agent/assets.mjs');
 const { TEMPLATES, templateById, intentForTemplate } = await import('../video-agent/templates.mjs');
 const {
   DURATION, INTENTS, MAX_TEXT_WORDS, beatSlots, intentFromSignals, reviewStoryboard,
@@ -346,7 +346,7 @@ const POST_SECONDS = 9.6;
 
 // `raw` decides what the faked render leaves behind, i.e. the ways the master
 // can fail: a mix with audio, a silent picture, an unreadable file.
-function postRig({ raw = 'quiet', renderFails = false } = {}) {
+function postRig({ raw = 'quiet', renderFails = false, checkFails = false } = {}) {
   const work = mkdtempSync(join(tmpdir(), 'render-one-'));
   const seen = { spawns: [], delivers: [] };
   const deps = {
@@ -360,7 +360,8 @@ function postRig({ raw = 'quiet', renderFails = false } = {}) {
       }
       if (cmd === 'sleep') return { status: 0, stdout: '', stderr: '' };
       if (cmd === 'npx') {
-        if (renderFails) return { status: 1, stdout: '', stderr: 'chrome exploded' };
+        if (args.includes('check') && checkFails) return { status: 1, stdout: '', stderr: 'layout check failed' };
+        if (args.includes('render') && renderFails) return { status: 1, stdout: '', stderr: 'chrome exploded' };
         const renders = join(opts.cwd, 'renders');
         mkdirSync(renders, { recursive: true });
         const out = join(renders, 'post_2026-01-01_00-00-00.mp4');
@@ -404,6 +405,8 @@ if (!HAS_FFMPEG) {
     assert.equal(post.path, '/api/admin/video/deliver');
     assert.equal(post.header, POST_JOB.id, 'the bytes travel under the job id');
     assert.ok(r.seen.spawns.some((s) => s.cmd === 'npx' && s.args.includes('render')), 'the render ran');
+    assert.ok(r.seen.spawns.some((s) => s.cmd === 'npx' && s.args.includes('check') && s.args.includes('--at-transitions')),
+      'the check samples transition seams before render');
 
     const raws = r.raws();
     assert.equal(raws.length, 1, 'the render left one raw mp4 behind');
@@ -444,6 +447,23 @@ if (!HAS_FFMPEG) {
     r.done();
   }
   ok('an unmasterable mix is delivered as rendered and the skip is logged, never silent');
+
+  // ── a failed layout check blocks render and deliver ───────────────
+  {
+    const r = postRig({ checkFails: true });
+    scriptStub = POST_SCRIPT;
+    try {
+      await assert.rejects(() => renderOne(POST_JOB, r.deps), /hyperframes check failed/,
+        'layout validation must block a bad composition');
+    } finally {
+      scriptStub = null;
+    }
+    assert.ok(r.seen.spawns.some((s) => s.cmd === 'npx' && s.args.includes('check')), 'check ran');
+    assert.ok(!r.seen.spawns.some((s) => s.cmd === 'npx' && s.args.includes('render')), 'render was not attempted');
+    assert.equal(r.seen.delivers.length, 0, 'no bytes were delivered');
+    r.done();
+  }
+  ok('a failed HyperFrames check stops before render and delivery');
 
   // ── a carousel job still takes the carousel path ───────────────────
   {
@@ -511,11 +531,13 @@ if (!HAS_FFMPEG) {
   ok('a catalog track is looped/trimmed to the video with real fades');
 
   // prepareBgm is the one decision point: 'none' mutes, a fetchable URL
-  // becomes the bed, an unreachable one falls back to the pad. fetch is
+  // becomes the bed, an unreachable one degrades to voice-only. fetch is
   // stubbed to refuse network for the whole suite — for the fetchable
   // case, swap in a local response carrying real MP3 bytes and put the
   // stub back after.
   const pWork = mkdtempSync(join(tmpdir(), 'bgm-job-'));
+  assert.equal(await prepareBgm({ bgm: null }, TOTAL, pWork), null,
+    'a missing catalog URL never falls back to a synthetic pad');
   assert.equal(await prepareBgm({ bgm: 'none' }, TOTAL, pWork), null,
     "'none' must mute the bed, not fall back to the pad");
 
@@ -538,16 +560,16 @@ if (!HAS_FFMPEG) {
     globalThis.fetch = noNet;
   }
 
-  // A dead URL must degrade to the pad, loudly logged, never silently
-  // dropped — the suite's refusing stub plays the dead host.
+  // A dead URL degrades to voice-only, loudly logged, never to a synthetic pad.
   const logs = [];
+  rmSync(join(pWork, 'assets', 'bgm.mp3'), { force: true });
   const fellBack = await prepareBgm(
     { bgm: 'x', bgm_url: 'https://agent.test/image/music/gone.mp3', slug: 's', kind: 'post' }, TOTAL, pWork, (m) => logs.push(m));
-  assert.ok(fellBack && existsSync(fellBack), 'a dead track URL falls back to the pad');
-  assert.ok(logs.some((m) => m.includes('falling back')), 'the fallback is logged, not silent');
+  assert.equal(fellBack, null, 'a dead track URL returns voice-only');
+  assert.ok(logs.some((m) => m.includes('voice only')), 'the voice-only fallback is logged, not silent');
   rmSync(srcDir, { recursive: true, force: true });
   rmSync(pWork, { recursive: true, force: true });
-  ok('prepareBgm: none mutes, a fetched track mixes, a dead URL falls back to the pad');
+  ok('prepareBgm: none mutes, a fetched track mixes, a dead URL returns voice-only');
 
   rmSync(dir, { recursive: true, force: true });
 
@@ -685,8 +707,10 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
     'a demo with no screenshot degrades to the claim rather than a broken frame');
   assert.match(sceneInner({ type: 'before_after', text: 'Thay đổi', asset: 'hero', asset2: 'site:0' }, '#e8590c', ASSETS),
     /assets\/hero\.jpg[\s\S]*assets\/site0\.png/, 'before/after shows both real images');
-  assert.match(sceneInner({ type: 'before_after', text: 'x', asset: 'hero' }, '#e8590c', ASSETS),
-    /ba-img[\s\S]*ba-img/, 'with one asset it reuses it rather than inventing a second');
+  const oneSided = sceneInner({ type: 'before_after', text: 'x', asset: 'hero' }, '#e8590c', ASSETS);
+  assert.equal((oneSided.match(/class="ba-img"/g) || []).length, 1,
+    'one-sided before/after does not duplicate the first image');
+  assert.match(oneSided, /class="ba-empty"/, 'the missing side is explicit instead of fabricated');
   assert.match(sceneInner({ type: 'location', text: '12 Lê Lợi', asset: 'map' }, '#e8590c', ASSETS),
     /class="loc-map"><img src="assets\/map\.jpg"/, 'a location scene embeds the captured map');
   assert.match(sceneInner({ type: 'rating', text: 'Khách rất hài lòng', value: 5 }, '#e8590c', ASSETS),
@@ -699,6 +723,37 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
     /class="outro">Thử miễn phí<\/p><p class="sub">gulagi\.com/, 'a CTA carries one action and the site');
   assert.match(sceneInner({ type: 'photo', text: 'Quán ven sông' }, '#e8590c', ASSETS), /class="photo-cap"/,
     'a photo scene is a caption over the picture');
+  const degradedComparison = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'before_after', text: 'So sánh', asset: 'hero' },
+      { type: 'cta', text: 'Kết' },
+    ],
+  }, { intent: 'before_after', target: 20, assets: { hero: 'hero.jpg' } });
+  assert.equal(degradedComparison.storyboard.scenes[1].type, 'ui_demo',
+    'one-sided before/after degrades before rendering');
+  assert.ok(degradedComparison.dropped.some((d) => d.reason === 'before_after_needs_distinct_assets'));
+  const completeComparison = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'before_after', text: 'So sánh', asset: 'hero', asset2: 'site:0' },
+      { type: 'cta', text: 'Kết' },
+    ],
+  }, { intent: 'before_after', target: 20, assets: { hero: 'hero.jpg', 'site:0': 'site.png' } });
+  assert.equal(completeComparison.storyboard.scenes[1].type, 'before_after',
+    'distinct assets preserve the comparison scene');
+  const hostileKeys = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'before_after', text: 'So sánh', asset: 'toString', asset2: 'toString' },
+      { type: 'cta', text: 'Kết' },
+    ],
+  }, { intent: 'before_after', target: 20, assets: { hero: 'hero.jpg' } });
+  assert.equal(hostileKeys.storyboard.scenes[1].type, 'ui_demo',
+    'inherited object keys are not accepted as assets');
+  assert.ok(hostileKeys.dropped.some((d) => d.reason === 'before_after_needs_distinct_assets'));
+  assert.doesNotMatch(sceneInner({ type: 'ui_demo', text: 'Demo', asset: 'toString' }, '#e8590c', {}), /\[object/,
+    'scene rendering never reads an inherited asset key');
   ok('the visual scenes embed real assets, and degrade instead of breaking');
 }
 
@@ -782,14 +837,14 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
     'the chart does not — a photo behind a chart is what makes it unreadable');
   assert.match(html, /tl\.seek\(0\)/, 'the timeline is seekable, so a snapshot at any moment is reproducible');
 
-  // Motion is declared by the storyboard and never invented: a scene that
-  // asked for nothing gets the plain fade, so the video does not animate
-  // just because it can.
+  // Ảnh thật luôn có camera move chậm. "motion" chọn zoom/pan/scroll/reveal;
+  // cảnh không có ảnh chỉ nhận transition, không sinh selector ảnh rỗng.
   const moving = composeStoryboardHtml(SCENE_JOB, { intent: 'product_demo', duration: 20, scenes: [
     { type: 'hook', text: 'a', say: 'a', duration: 3, motion: 'zoom' },
     { type: 'ui_demo', text: 'b', say: 'b', duration: 5, asset: 'site:0', motion: 'scroll' },
     { type: 'cta', text: 'c', say: 'c', duration: 3 }] }, [2, 2, 2], ASSETS);
-  assert.match(moving, /tl\.fromTo\("#s1 \.device-shot", \{ yPercent: 0[^;]*yPercent: -20/, 'a scroll demo scrolls the real screenshot');
+  assert.match(moving, /tl\.fromTo\("#s1 \.device-shot", \{ yPercent: 0, scale: 1\.08[^;]*yPercent: -12/,
+    'a scroll demo glides slowly through the real screenshot');
   // The background is a SIBLING of the scene, so a zoom must name the scene's
   // own background id. The first version of this assertion pinned
   // `#s0 … .bgi img` — a selector that can never match — so it stayed green
@@ -799,8 +854,19 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
   assert.ok(zoom, 'a zoom tween is emitted');
   assert.match(zoom[1], /#bg0 img/, 'it targets the scene\'s own background, which is a sibling');
   assert.doesNotMatch(zoom[1], /#s0 \.bgi/, 'never a descendant selector that cannot match');
-  assert.doesNotMatch(moving.slice(moving.indexOf('#s2 .device-shot')), /^.{0,4}tl/, 'a scene that asked for no motion gets none');
-  ok('the composition declares 9:16, one narration track per scene, and only the motion the story asked for');
+  const ctaTimeline = moving.slice(moving.indexOf('tl.fromTo("#s2"'), moving.indexOf('window.__timelines'));
+  assert.doesNotMatch(ctaTimeline, /scale: 1\.035|xPercent|yPercent: 0/,
+    'a text-only CTA gets no invented camera target');
+  assert.match(moving, /filter: "blur\(12px\)"/, 'scene handoffs share one soft blur transition');
+  assert.match(moving, /tl\.fromTo\("#s1"[^\n]*duration: 0\.50/, 'incoming opacity resolves before the visual tail ends');
+  assert.match(moving, /id="s1"[^>]*data-duration="5\.50"/,
+    'the outgoing visual overlaps the incoming beat and holds 0.05s past the resolved fade');
+  const logoMotion = composeStoryboardHtml(SCENE_JOB, { intent: 'product_demo', duration: 20, scenes: [
+    { type: 'product_reveal', text: 'Gulagi', say: 'Gulagi', duration: 5, motion: 'zoom' },
+    { type: 'cta', text: 'Kết', say: 'Kết', duration: 3 }] }, [2, 2], ASSETS, 'assets/logo.png');
+  assert.match(logoMotion, /tl\.fromTo\("#s0 \.reveal-logo"/,
+    'a fallback product logo receives the camera move too');
+  ok('image motion targets real media, and scene transitions hand off without empty selectors');
 }
 
 // ── which page becomes the product demo ──────────────────────────────
@@ -824,6 +890,20 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
     'a page with no links yields no shots instead of throwing');
   ok('the screenshot that becomes the demo is chosen by what the link says');
 
+  const pageCopy = extractVisibleText(`
+    <html><body>
+      <h1>Tiêu đề sản phẩm</h1>
+      <p>Đoạn mở đầu có đủ ngữ cảnh và chi tiết.</p>
+      <p>Đoạn giữa giải thích cách hoạt động chi tiết hơn.</p>
+      <p>KẾT LUẬN CỦA TRANG nằm ở cuối bài.</p>
+      <script>const secret = 'KHONG_DOC';</script>
+    </body></html>`);
+  assert.match(pageCopy, /Đoạn mở đầu/);
+  assert.match(pageCopy, /Đoạn giữa/);
+  assert.match(pageCopy, /KẾT LUẬN CỦA TRANG/);
+  assert.doesNotMatch(pageCopy, /KHONG_DOC/, 'site text excludes script payloads');
+  ok('website capture keeps full visible body copy, not only title and headings');
+
   // A page that failed to render is still a valid PNG. The floor is pinned to
   // the measurements, because lowering it back to 5000 is exactly how a
   // blank screenshot ended up inside the phone frame on a live job.
@@ -846,8 +926,10 @@ if (!HAS_FFMPEG) {
     intent: 'educational', duration: 20,
     scenes: [
       { type: 'hook', text: 'Bao bì ăn mất lợi nhuận', say: 'Bao bì ăn mất lợi nhuận bạn không thấy.', duration: 3 },
+      { type: 'stat', text: 'Chi phí', say: 'Chi phí đang tăng nhanh.', value: 12, duration: 4 },
       { type: 'bars', text: 'Chi phí chiếm bao nhiêu', say: 'Bao bì 12 phần trăm, vận chuyển 7 phần trăm.', duration: 5,
         items: [{ label: 'Bao bì', value: 12 }, { label: 'Vận chuyển', value: 7 }] },
+      { type: 'quote', text: 'Kết luận', say: 'Kết luận là cần đo lại từng chi phí.', duration: 4 },
       { type: 'cta', text: 'Đọc bài viết đầy đủ', say: 'Đọc bài viết đầy đủ để biết thêm.', duration: 3 },
     ],
   };
@@ -864,9 +946,56 @@ if (!HAS_FFMPEG) {
     assert.ok(r.seen.spawns.some((s) => s.cmd === 'npx' && s.args.includes('render')), 'the render ran');
     const composed = readFileSync(join(r.work, 'index.html'), 'utf8');
     assert.match(composed, /class="bar-fill"/, 'the rendered document carries the chart the model asked for');
-    assert.equal((composed.match(/data-track-index="5"/g) || []).length, 3, 'one narration track per scene');
+    assert.equal((composed.match(/data-track-index="5"/g) || []).length, 5, 'one narration track per scene');
     ok('renderOne renders the storyboard and delivers it');
     r.done();
+  }
+
+  {
+    // A repaired model response can still be structurally invalid. It must
+    // never reach TTS or delivery just because it has three scenes.
+    const r = postRig();
+    scriptStub = { intent: 'educational', duration: 20, scenes: [
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'stat', text: 'Số liệu', value: 12 },
+      { type: 'steps', text: 'Các bước', items: [{ label: 'Bước một' }, { label: 'Bước hai' }] },
+    ] };
+    const lines = await captureLogs(() => renderOne(STORY_JOB, r.deps));
+    scriptStub = null;
+    assert.equal(r.seen.delivers.length, 1, 'an invalid repaired script falls back and still completes');
+    assert.ok(lines.some((l) => /quality gate.*deriving/.test(l)), 'the invalid script is rejected before TTS');
+    assert.equal((readFileSync(join(r.work, 'index.html'), 'utf8').match(/data-track-index="5"/g) || []).length, 5,
+      'the deterministic fallback supplies the missing story beats');
+    ok('a truncated but repaired storyboard cannot bypass the release gate');
+    r.done();
+  }
+
+  {
+    // A failed logo is not a logo. A product story with no other real visual
+    // must fail before TTS instead of rendering a text-only product reveal.
+    const r = postRig();
+    scriptStub = {
+      intent: 'product_demo', duration: 20,
+      scenes: [
+        { type: 'hook', text: 'Mở đầu', say: 'Mở đầu sản phẩm.', duration: 3 },
+        { type: 'product_reveal', text: 'Sản phẩm', say: 'Đây là sản phẩm.', duration: 5 },
+        { type: 'feature', text: 'Tính năng', say: 'Tính năng nổi bật.', duration: 4 },
+        { type: 'result', text: 'Kết quả', say: 'Kết quả tốt.', duration: 4 },
+        { type: 'cta', text: 'Kết', say: 'Xem ngay.', duration: 3 },
+      ],
+    };
+    const noAssetJob = {
+      ...STORY_JOB,
+      template: 'product',
+      project: { ...STORY_JOB.project, logo_url: 'https://assets.test/logo.png' },
+    };
+    await assert.rejects(() => renderOne(noAssetJob, r.deps), /storyboard_quality_failed/,
+      'a failed logo cannot pass the product asset gate');
+    assert.equal(r.seen.spawns.filter((s) => s.cmd === 'edge-tts').length, 0,
+      'the failed logo is rejected before TTS');
+    scriptStub = null;
+    r.done();
+    ok('a failed logo cannot masquerade as a rendered product visual');
   }
 
   {
@@ -906,6 +1035,89 @@ if (!HAS_FFMPEG) {
   }
 
   {
+    const ctaWork = mkdtempSync(join(tmpdir(), 'cta-tail-'));
+    mkdirSync(join(ctaWork, 'assets'), { recursive: true });
+    const spoken = [];
+    const timedSpawn = (cmd, args) => {
+      if (cmd === 'edge-tts') {
+        const text = args[args.indexOf('--text') + 1] || '';
+        spoken.push(text);
+        const seconds = Math.max(1, Math.min(40, wordCount(text) * 0.4));
+        spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `sine=f=440:d=${seconds}`,
+          '-b:a', '128k', args[args.indexOf('--write-media') + 1]]);
+        return { status: 0, stdout: '', stderr: '' };
+      }
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    const ctaBoard = { intent: 'product_promotion', duration: 15, scenes: [
+      { type: 'hook', text: 'Mở đầu', say: Array(100).fill('ngữ cảnh').join(' '), duration: 5 },
+      { type: 'feature', text: 'Tính năng', say: Array(80).fill('chi tiết').join(' '), duration: 4 },
+      { type: 'cta', text: 'Bắt đầu', say: 'Hãy mở trang ngay và đặt lịch CTA_ACTION', duration: 3 },
+    ] };
+    const fittedCta = fitNarration(ctaBoard, ctaWork, timedSpawn, () => {});
+    assert.match(fittedCta.segs.length ? ctaBoard.scenes.at(-1).say : '', /CTA_ACTION/,
+      'CTA action survives global narration shortening');
+    assert.ok(fittedCta.total <= 15, 'CTA preservation still respects the hard duration ceiling');
+    assert.ok(spoken.some((text) => text.includes('CTA_ACTION')));
+    rmSync(ctaWork, { recursive: true, force: true });
+    ok('global TTS fitting protects the CTA action tail');
+  }
+
+  {
+    const gapWork = mkdtempSync(join(tmpdir(), 'gap-boundary-'));
+    mkdirSync(join(gapWork, 'assets'), { recursive: true });
+    const gapSpawn = (cmd, args) => {
+      if (cmd === 'edge-tts') {
+        const text = args[args.indexOf('--text') + 1] || '';
+        const seconds = text.startsWith('LONG') && wordCount(text) >= 10 ? 5.5 : 1.2;
+        spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `sine=f=440:d=${seconds}`,
+          '-b:a', '128k', args[args.indexOf('--write-media') + 1]]);
+        return { status: 0, stdout: '', stderr: '' };
+      }
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    const gapBoard = { intent: 'storytelling', duration: 15, scenes: [
+      { type: 'hook', text: 'Mở đầu', say: `LONG ${Array(9).fill('ngữcảnh').join(' ')}`, duration: 5 },
+      { type: 'problem', text: 'Vấn đề', say: 'vấn đề ngắn', duration: 5 },
+      { type: 'result', text: 'Kết quả', say: 'kết quả ngắn', duration: 5 },
+    ] };
+    const gapFit = fitNarration(gapBoard, gapWork, gapSpawn, () => {});
+    assert.ok(gapFit.total <= 15, 'a 0.35s gap is included in the initial overrun test');
+    assert.ok(wordCount(gapBoard.scenes[0].say) < 10, 'the boundary case re-speaks the first segment');
+    rmSync(gapWork, { recursive: true, force: true });
+    ok('narration fitting respects per-scene gap at the hard boundary');
+  }
+
+  {
+    const retryWork = mkdtempSync(join(tmpdir(), 'tts-retry-'));
+    const retryAssets = join(retryWork, 'assets');
+    mkdirSync(retryAssets, { recursive: true });
+    const retryFile = join(retryAssets, 'seg0.mp3');
+    spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=2', '-b:a', '128k', retryFile]);
+    let edgeCalls = 0;
+    let staleAtFirstAttempt = false;
+    const retrySpawn = (cmd, args) => {
+      if (cmd === 'edge-tts') {
+        const file = args[args.indexOf('--write-media') + 1];
+        edgeCalls++;
+        if (edgeCalls === 1) {
+          staleAtFirstAttempt = existsSync(file);
+          return { status: 1, stdout: '', stderr: 'temporary tts failure' };
+        }
+        spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=1', '-b:a', '128k', file]);
+        return { status: 0, stdout: '', stderr: '' };
+      }
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    const retrySegments = speakSegments(['new words'], retryWork, retrySpawn);
+    assert.equal(staleAtFirstAttempt, false, 'a failed TTS attempt removes stale media before retrying');
+    assert.equal(edgeCalls, 2, 'the retry actually runs a fresh TTS attempt');
+    assert.ok(retrySegments[0] > 0 && retrySegments[0] < 2, 'the fresh segment, not stale audio, is measured');
+    rmSync(retryWork, { recursive: true, force: true });
+    ok('TTS retries cannot reuse stale audio after a failed attempt');
+  }
+
+  {
     // A chosen template pins the intent: the model answered 'listicle' but
     // the job carries template 'summary', and summary is what renders —
     // the model's answer cannot move the video off the user's choice.
@@ -920,7 +1132,9 @@ if (!HAS_FFMPEG) {
         { type: 'cta', text: 'Xem thêm', say: 'Xem thêm.', duration: 3 },
       ],
     };
-    const lines = await captureLogs(() => renderOne({ ...STORY_JOB, template: 'summary' }, r.deps));
+    const tailMarker = 'MARKER_KET_BAI_VI_PHAI_DUOC_GUI_TOAN_BO';
+    const longArticle = `${STORY_JOB.body_markdown}\n${'Chi tiết phần giữa của bài viết. '.repeat(180)}\n${tailMarker}.`;
+    const lines = await captureLogs(() => renderOne({ ...STORY_JOB, body_markdown: longArticle, template: 'summary' }, r.deps));
     scriptStub = null;
 
     assert.ok(lines.some((l) => /intent: summary \(template "summary" chosen by the user\)/.test(l)),
@@ -929,6 +1143,12 @@ if (!HAS_FFMPEG) {
       'the model is told the intent is fixed');
     assert.ok(lastPrompt.includes('Dàn ý beat cho intent "summary"'),
       'and is handed the summary beat outline');
+    assert.ok(lastPrompt.includes('80–95%') && lastPrompt.includes('TẤT CẢ ý chính'),
+      'the prompt asks for a full spoken script, not caption-length teasers');
+    assert.ok(lastPrompt.includes(tailMarker),
+      'the full article reaches the model past the old 4000-character cutoff');
+    assert.match(lastPrompt, /"duration":20/, 'the example follows the selected template duration');
+    assert.doesNotMatch(lastPrompt, /"duration":60/, 'a short template never gets a 60s example by accident');
     assert.ok(lines.some((l) => /bars:not_in_summary/.test(l)),
       'the listicle scene is refused by the summary vocabulary — the model did not move the intent');
     const composed = readFileSync(join(r.work, 'index.html'), 'utf8');
@@ -1017,18 +1237,113 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
 }
 
 {
+  // Auto mode kể bài đầy đủ trong một nhịp thoáng; template cũ vẫn dùng
+  // thời lượng riêng. Trần 90s cho phép mở rộng nếu bài thực sự có nhiều ý.
+  assert.deepEqual(DURATION, { min: 15, max: 90, default: 60 });
+
   // The inversion: beats get the story's seconds, and the video is that long.
   for (const intent of INTENTS) {
     const slots = beatSlots(intent, 20);
     const total = slots.reduce((a, b) => a + b.duration, 0);
-    assert.ok(Math.abs(total - 20) < 0.4, `${intent} beats must add up to the target (${total})`);
+    assert.equal(Math.round(total * 10) / 10, 20, `${intent} beats must add up exactly to the target (${total})`);
     // News opens on the headline — a bulletin has no curiosity hook.
     assert.ok(['hook', 'headline'].includes(slots[0].types[0]), `${intent} must open on a hook or a headline`);
     assert.ok(slots.at(-1).types.includes('cta'), `${intent} must close on a call to action`);
   }
+  for (const target of [15, 60, 90]) {
+    for (const intent of INTENTS) {
+      const total = beatSlots(intent, target).reduce((a, b) => a + b.duration, 0);
+      assert.equal(Math.round(total * 10) / 10, target, `${intent} at ${target}s keeps the exact duration`);
+    }
+  }
   assert.equal(beatSlots('product_demo', 999).reduce((a, b) => a + b.duration, 0) <= DURATION.max + 0.4, true,
     'a silly target is still clamped to the ceiling');
   ok('every intent opens on a hook, closes on a CTA, and fits the ceiling');
+
+  const modelOverride = sanitizeStoryboard({
+    duration: 90,
+    scenes: [
+      { type: 'hook', text: 'Mở đầu ngắn', say: 'Mở đầu ngắn.' },
+      { type: 'cta', text: 'Xem ngay', say: 'Xem ngay.' },
+    ],
+  }, { source: '', intent: 'educational', target: 20, assets: {} });
+  assert.equal(modelOverride.storyboard.duration, 20, 'model duration cannot override the requested template');
+  assert.ok(Math.abs(modelOverride.storyboard.scenes.reduce((a, s) => a + s.duration, 0) - 20) < 0.4,
+    'requested duration survives model output');
+  const skewedDurations = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu', say: 'Mở đầu', duration: 100 },
+      { type: 'problem', text: 'Vấn đề', say: 'Vấn đề', duration: 1 },
+      { type: 'cta', text: 'Xem ngay', say: 'Xem ngay', duration: 1 },
+    ],
+  }, { source: '', intent: 'educational', target: 15, assets: {} });
+  assert.equal(skewedDurations.storyboard.duration, 15, 'skewed model beats stay within a short target');
+  assert.equal(skewedDurations.storyboard.scenes.reduce((a, s) => a + s.duration, 0), 15,
+    'minimum scene floors do not inflate the target');
+  const storySkewedDurations = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu', duration: 0.1 },
+      { type: 'problem', text: 'Vấn đề', duration: 10 },
+      { type: 'quote', text: 'Trích dẫn', duration: 0.1 },
+      { type: 'photo', text: 'Ảnh', duration: 10 },
+      { type: 'result', text: 'Kết quả', duration: 0.1 },
+      { type: 'cta', text: 'Kết', duration: 10 },
+    ],
+  }, { source: '', intent: 'storytelling', target: 15, assets: {} });
+  assert.equal(storySkewedDurations.storyboard.duration, 15, 'storytelling duration floor stays bounded');
+  assert.equal(storySkewedDurations.storyboard.scenes.reduce((a, s) => a + s.duration, 0), 15,
+    'storytelling minimum floors renormalize exactly');
+  const sparseSource = [
+    'Nền tảng đo được 12 phần trăm chi phí vận chuyển trong tháng đầu.',
+    'Kết quả thử nghiệm đạt 7 phần trăm và cần hành động tiếp theo.',
+  ].join(' ');
+  const sparseSanitized = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'stat', text: 'Chi phí', value: 12 },
+      { type: 'quote', text: 'Kết quả' },
+      { type: 'bars', text: 'So sánh', items: [{ label: 'Vận chuyển', value: 12 }, { label: 'Kết quả', value: 7 }] },
+      { type: 'donut', text: 'Tỷ lệ', value: 12 },
+      { type: 'line', text: 'Xu hướng', items: [{ label: 'Đầu', value: 12 }, { label: 'Sau', value: 7 }] },
+      { type: 'steps', text: 'Các bước', items: [{ label: 'Đo' }, { label: 'Cải thiện' }] },
+      { type: 'cta', text: 'Bắt đầu' },
+    ],
+  }, { source: sparseSource, intent: 'educational', target: 90, assets: {} });
+  const sparseNarration = sparseSanitized.storyboard.scenes.map((s) => s.say);
+  assert.equal(sparseNarration.filter((s) => s === `${sparseSource.split('. ')[0]}.`).length, 1,
+    'sparse source sentence is not repeated across scenes');
+  assert.equal(new Set(sparseNarration).size, sparseNarration.length,
+    'sparse fallback keeps narration beats distinct');
+  const missingSay = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Một ý ngắn' },
+      { type: 'result', text: 'Kết quả rõ' },
+      { type: 'cta', text: 'Đăng ký ngay' },
+    ],
+  }, { source: STORY_ARTICLE, intent: 'educational', target: 20, assets: {} });
+  assert.ok(missingSay.storyboard.scenes.every((s) => wordCount(s.say) >= 3),
+    'missing say falls back to source detail, not the caption alone');
+  assert.match(missingSay.storyboard.scenes.at(-1).say, /Đăng ký ngay/,
+    'missing CTA narration keeps the action instead of inheriting the article conclusion');
+}
+
+{
+  const malformedCards = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'steps', text: 'Các bước', items: [] },
+      { type: 'icons', text: 'Lợi ích', items: [{ label: '' }] },
+      { type: 'compare', text: 'So sánh', left: { items: ['có'] }, right: { items: [] } },
+      { type: 'timeline', text: 'Dòng thời gian', items: [] },
+      { type: 'donut', text: 'Tỷ lệ', value: 99 },
+      { type: 'cta', text: 'Kết' },
+    ],
+  }, { source: 'Số liệu 12 phần trăm. Kết quả 7 phần trăm.', intent: 'educational', target: 20, assets: {} });
+  assert.equal(malformedCards.storyboard.scenes.length, 2,
+    'a card with no drawable data is removed instead of rendering an empty panel');
+  for (const reason of ['steps_needs_items', 'icons_needs_items', 'compare_needs_both_sides', 'timeline_needs_items', 'number_not_in_source']) {
+    assert.ok(malformedCards.dropped.some((d) => d.reason === reason), `malformed ${reason} is reported`);
+  }
 }
 
 {
@@ -1103,6 +1418,7 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
       { type: 'hook', text: 'Google Maps của bạn đã có mọi thứ' },
       { type: 'problem', text: 'Nhưng chưa có website' },
       { type: 'ui_demo', text: 'Gulagi dựng site', asset: 'site:0' },
+      { type: 'feature', text: 'Đặt bàn nhanh' },
       { type: 'result', text: '30 ngày nội dung' },
       { type: 'cta', text: 'Thử miễn phí' },
     ],
@@ -1117,6 +1433,26 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
   }, { intent: 'product_demo', target: 20, assets: {} }).storyboard;
   assert.ok(reviewStoryboard(noAsset).problems.some((p) => p.startsWith('no_real_asset')),
     'a product demo with nothing to show is rejected, not shipped as a slide deck');
+  const assetOnIgnoredScene = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'product_reveal', text: 'Sản phẩm' },
+      { type: 'result', text: 'Kết quả', asset: 'site:0' },
+      { type: 'feature', text: 'Tính năng' },
+      { type: 'quote', text: 'Cảm nhận' },
+      { type: 'cta', text: 'Kết' },
+    ],
+  }, { intent: 'product_demo', target: 20, assets: { 'site:0': 'site.png' } }).storyboard;
+  assert.ok(reviewStoryboard(assetOnIgnoredScene, { assets: { 'site:0': 'site.png' } }).problems.some((p) => p.startsWith('no_real_asset')),
+    'an asset on a result card cannot satisfy the product visual gate');
+
+  const logoOnly = sanitizeStoryboard(storyboardFromContent(
+    { title: 'Sản phẩm có logo', body_markdown: 'Một sản phẩm có vấn đề rõ ràng và cách giải quyết cụ thể.', project: { name: 'Gulagi' } },
+    'product_demo', {}, 20), { source: 'Một sản phẩm có vấn đề rõ ràng và cách giải quyết cụ thể.', intent: 'product_demo', target: 20, assets: {} }).storyboard;
+  assert.equal(reviewStoryboard(logoOnly, { hasLogo: true }).ok, true,
+    'a real logo counts as the product visual when no screenshot exists');
+  assert.ok(reviewStoryboard(logoOnly).problems.some((p) => p.startsWith('no_real_asset')),
+    'logo-only acceptance requires an explicit logo signal');
 
   const wall = { intent: 'educational', scenes: [
     { type: 'hook', text: 'a', duration: 4 }, { type: 'quote', text: 'b', duration: 4 },
@@ -1129,7 +1465,20 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
   ] };
   assert.ok(reviewStoryboard(openOnly).problems.includes('does_not_open_on_a_hook'), 'a video must open on a hook');
   assert.ok(reviewStoryboard(openOnly).problems.includes('does_not_end_on_a_cta') === false, 'and the CTA is last here');
-  ok('the quality gate refuses a slideshow, and a hook and CTA are not counted as one');
+  const missingBeat = reviewStoryboard({ intent: 'educational', scenes: [
+    { type: 'hook', text: 'Mở đầu', duration: 4 },
+    { type: 'stat', text: 'Số liệu', value: 12, duration: 4 },
+    { type: 'cta', text: 'Kết', duration: 4 },
+  ] });
+  assert.ok(missingBeat.problems.includes('missing_beat:point'));
+  assert.ok(missingBeat.problems.includes('missing_beat:conclusion'));
+  const wrongOrder = reviewStoryboard({ intent: 'educational', scenes: [
+    { type: 'hook', text: 'Mở đầu', duration: 4 },
+    { type: 'cta', text: 'Kết', duration: 4 },
+    { type: 'steps', text: 'Sai thứ tự', duration: 4 },
+  ] });
+  assert.ok(wrongOrder.problems.some((p) => p.startsWith('missing_beat:')), 'beat order cannot skip required story beats');
+  ok('the quality gate refuses a slideshow, missing beats, and a hook and CTA that do not form a story');
 }
 
 {
@@ -1153,6 +1502,172 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
       intent, {});
     assert.deepEqual(again, sb, `${intent} fallback is deterministic`);
   }
+  const fallbackAssets = {
+    'site:0': 'site.png', 'photo:0': 'photo.png', map: 'map.png', presenter: 'presenter.png',
+  };
+  for (const intent of INTENTS) {
+    const fallback = storyboardFromContent(
+      { title: 'Tối ưu website bán hàng', body_markdown: STORY_ARTICLE, highlights: ['Nhanh hơn', 'Rẻ hơn', 'Đẹp hơn'],
+        project: { name: 'Gulagi', publishing_url: 'https://gulagi.com', address: '12 Lê Lợi', brand: { cta: 'Thử ngay' }, presenter_name: 'Mai' } },
+      intent, fallbackAssets, 20);
+    const sanitizedFallback = sanitizeStoryboard(fallback, { source: STORY_ARTICLE, intent, target: 20, assets: fallbackAssets }).storyboard;
+    const { dropped } = sanitizeStoryboard(fallback, { source: STORY_ARTICLE, intent, target: 20, assets: fallbackAssets });
+    assert.equal(dropped.filter((d) => d.reason.startsWith('not_in_') || d.reason === 'no_text').length, 0,
+      `${intent} fallback uses types and captions allowed by its beat`);
+    const fallbackReview = reviewStoryboard(sanitizedFallback, { hasLogo: false, assets: fallbackAssets });
+    assert.equal(fallbackReview.ok, true, `${intent} fallback passes the full quality gate: ${fallbackReview.problems.join(', ')}`);
+  }
+  const newsWithoutPresenter = sanitizeStoryboard(
+    storyboardFromContent({ title: 'Tin mới', body_markdown: STORY_ARTICLE }, 'news', { 'photo:0': 'news.jpg' }, 20),
+    { source: STORY_ARTICLE, intent: 'news', target: 20, assets: { 'photo:0': 'news.jpg' } },
+  ).storyboard;
+  assert.equal(reviewStoryboard(newsWithoutPresenter, { assets: { 'photo:0': 'news.jpg' } }).ok, true,
+    'a news bulletin without a presenter has a valid non-anchor substitute');
+  for (const localAssets of [{ 'site:0': 'site.png' }, { logo: 'logo.png' }, { map: 'map.png' }]) {
+    const localStoryboard = sanitizeStoryboard(
+      storyboardFromContent({ title: 'Cửa hàng', body_markdown: STORY_ARTICLE, project: { name: 'Cửa hàng', address: '12 Lê Lợi' } }, 'local_business', localAssets, 20),
+      { source: STORY_ARTICLE, intent: 'local_business', target: 20, assets: localAssets },
+    ).storyboard;
+    assert.equal(reviewStoryboard(localStoryboard, { hasLogo: Boolean(localAssets.logo), assets: localAssets }).ok, true,
+      `local fallback has a visual middle for ${Object.keys(localAssets).join(',')}`);
+  }
+  const onePhotoFallback = storyboardFromContent(
+    { title: 'So sánh', body_markdown: 'Trước đây chậm. Sau khi dùng nhanh.' },
+    'before_after', { 'photo:0': 'before.jpg' }, 20);
+  const onePhotoSanitized = sanitizeStoryboard(onePhotoFallback, {
+    source: 'Trước đây chậm. Sau khi dùng nhanh.', intent: 'before_after', target: 20, assets: { 'photo:0': 'before.jpg' },
+  });
+  assert.notEqual(onePhotoSanitized.storyboard.scenes.find((s) => s.type === 'result')?.asset, 'photo:0',
+    'one-sided fallback does not reuse the before image');
+  const twoPhotoFallback = storyboardFromContent(
+    { title: 'So sánh', body_markdown: 'Trước đây chậm. Sau khi dùng nhanh.' },
+    'before_after', { 'photo:0': 'before.jpg', 'photo:1': 'after.jpg' }, 20);
+  const comparison = twoPhotoFallback.scenes.find((s) => s.type === 'before_after');
+  assert.equal(comparison?.asset, 'photo:0');
+  assert.equal(comparison?.asset2, 'photo:1');
+  const siteComparison = storyboardFromContent(
+    { title: 'So sánh', body_markdown: 'Trước đây chậm. Sau khi dùng nhanh.' },
+    'before_after', { 'site:0': 'before.png', 'site:1': 'after.png' }, 20)
+    .scenes.find((s) => s.type === 'before_after');
+  assert.equal(siteComparison?.asset, 'site:0');
+  const malformedHighlights = storyboardFromContent(
+    { title: 'Bài viết', body_markdown: 'Câu một đủ ý. Câu hai đủ ý. Câu ba đủ ý.', highlights: 'không phải mảng' },
+    'educational', {}, 20);
+  assert.ok(malformedHighlights.scenes.every((s) => s.text && s.say),
+    'a malformed highlights payload cannot crash the deterministic fallback');
+
+  const boundarySource = [
+    'Câu 1 mở đầu có ngữ cảnh rõ ràng.',
+    'Câu 2 giải thích chi tiết thứ nhất.',
+    'Câu 3 trình bày cách làm cụ thể.',
+    'Câu 4 cho biết kết quả đo lại.',
+    'Câu 5 kết luận và hành động tiếp theo.',
+  ].join(' ');
+  const boundaryFallback = storyboardFromContent(
+    { title: 'Bài biên giới', body_markdown: boundarySource, project: { name: 'Gulagi' } },
+    'product_demo', {}, 20);
+  for (const sentence of boundarySource.split(/(?<=[.!?])\s+/)) {
+    assert.equal(boundaryFallback.scenes.filter((s) => s.say.includes(sentence.replace(/[.!?]$/, ''))).length, 1,
+      `fallback assigns boundary detail once: ${sentence}`);
+  }
+  const completeArticle = [
+    'Mở đầu bài nói rõ vấn đề cần giải quyết.',
+    'Nền tảng dữ liệu cho thấy chi phí đang tăng.',
+    'Chi tiết quan trọng nằm ở cách đo chỉ số.',
+    'Phương pháp sau đây áp dụng từng bước rõ ràng.',
+    'Kết quả thực tế đã được đo lại và ghi nhận.',
+    'Kết luận cần ưu tiên hành động quan trọng nhất.',
+  ].join(' ');
+  const shortFallback = storyboardFromContent(
+    { title: 'Bài ngắn', body_markdown: STORY_ARTICLE }, 'educational', {}, 20);
+  assert.equal(shortFallback.duration, 20, 'fallback honours a chosen template duration');
+  assert.ok(Math.abs(shortFallback.scenes.reduce((sum, s) => sum + s.duration, 0) - 20) < 0.4,
+    'short template fallback does not silently expand to the 60s default');
+  const fullFallback = storyboardFromContent(
+    { title: 'Bài viết đầy đủ', body_markdown: completeArticle,
+      project: { name: 'Gulagi', publishing_url: 'https://gulagi.com', brand: { cta: 'Đọc tiếp' } } },
+    'educational', {});
+  const fullNarration = fullFallback.scenes.map((s) => s.say).join(' ');
+  assert.match(fullNarration, /Phương pháp sau đây/, 'fallback keeps a detail from the middle of the article');
+  assert.match(fullNarration, /Kết luận cần ưu tiên/, 'and reaches the article conclusion, not only its opening');
+  for (const sentence of completeArticle.split(/(?<=[.!?])\s+/)) {
+    assert.ok(fullNarration.includes(sentence.replace(/[.!?]$/, '')),
+      `fallback covers article detail: ${sentence}`);
+  }
+  const sparseFallback = storyboardFromContent(
+    { title: 'Một câu ngắn', body_markdown: 'Một câu ngắn chứa đủ một ý chính của bài viết.' },
+    'educational', {}, 60);
+  assert.ok(new Set(sparseFallback.scenes.map((s) => s.say)).size > 1,
+    'sparse source does not repeat the same narration across every beat');
+  const longTitleFallback = storyboardFromContent(
+    { title: 'Một tiêu đề rất dài có nhiều từ khóa và chi tiết', body_markdown: 'Câu mở đầu chứa một chi tiết quan trọng cần kể ngay. Câu thứ hai nói thêm chi tiết. Câu thứ ba nói thêm chi tiết. Câu thứ tư nói thêm chi tiết. Câu kết luận chứa hành động cần ưu tiên.' },
+    'educational', {}, 15);
+  assert.match(longTitleFallback.scenes[0].say, /Câu mở/,
+    'a long hook title cannot consume the opening source fact');
+  assert.ok(wordCount(longTitleFallback.scenes[0].say) <= narrationBudget(longTitleFallback.scenes[0].duration));
+
+  const sparseSummary = sanitizeStoryboard(
+    storyboardFromContent({ title: 'Tóm tắt', body_markdown: '   ' }, 'summary', {}, 15),
+    { source: '   ', intent: 'summary', target: 15, assets: {} },
+  );
+  assert.equal(sparseSummary.storyboard.scenes.find((s) => s.type === 'keypoints')?.items.length >= 2, true,
+    'an empty summary source still produces drawable keypoints');
+  assert.equal(reviewStoryboard(sparseSummary.storyboard, { assets: {} }).ok, true,
+    'sparse summary does not fail the beat gate');
+  const whitespaceVoice = sanitizeStoryboard(
+    storyboardFromContent({ title: 'Khách hàng nói gì', body_markdown: '   ' }, 'testimonial', { 'photo:0': 'photo.png' }, 15),
+    { source: '   ', intent: 'testimonial', target: 15, assets: { 'photo:0': 'photo.png' } },
+  );
+  assert.ok(whitespaceVoice.storyboard.scenes.some((s) => s.type === 'quote' && s.text.length > 0),
+    'whitespace-only source falls back to the title, not an empty quote');
+  assert.equal(reviewStoryboard(whitespaceVoice.storyboard, { assets: { 'photo:0': 'photo.png' } }).ok, true,
+    'whitespace-only testimonial still passes with its real photo');
+
+  const missingDurationSay = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'quote', text: 'Một chi tiết quan trọng' },
+      { type: 'result', text: 'Kết luận' },
+      { type: 'cta', text: 'Kết' },
+    ],
+  }, { source: 'Câu nguồn rất dài có nhiều chi tiết quan trọng cần kể hết. Câu nguồn thứ hai kết luận vấn đề.', intent: 'educational', target: 20, assets: {} });
+  assert.ok(missingDurationSay.storyboard.scenes.every((s) => s.say.trim().length > 0),
+    'a missing scene duration never truncates source narration to empty text');
+  assert.ok(missingDurationSay.storyboard.scenes.every((s) => s.duration >= 1.5),
+    'a missing scene duration still gets a minimum slot');
+  const excerptedSay = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'result', text: 'Kết luận' },
+      { type: 'cta', text: 'Kết' },
+    ],
+  }, { source: `${'Một chi tiết mở đầu rất dài. '.repeat(8)}Kết luận cần ưu tiên hành động.`, intent: 'educational', target: 15, assets: {} });
+  assert.match(excerptedSay.storyboard.scenes[1].say, /…|Kết luận/,
+    'bounded source excerpts use a pause or keep a recognizable conclusion');
+
+  const droppedSource = sanitizeStoryboard({
+    scenes: [
+      { type: 'not_a_scene', text: 'Scene sẽ bị loại', say: 'Câu loại không được dùng.' },
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'cta', text: 'Bắt đầu' },
+    ],
+  }, { source: 'Câu nguồn thứ nhất giải thích ngữ cảnh. Câu nguồn thứ hai nêu kết quả.', intent: 'educational', target: 20, assets: {} });
+  assert.match(droppedSource.storyboard.scenes[0].say, /Câu nguồn thứ nhất giải thích ngữ cảnh\./,
+    'a dropped scene cannot consume the first source detail');
+  assert.match(droppedSource.storyboard.scenes[0].say, /Câu nguồn thứ hai nêu kết quả\./,
+    'the surviving source detail keeps its own bounded narration');
+  const sparseMissingSay = sanitizeStoryboard({
+    scenes: [
+      { type: 'hook', text: 'Mở đầu' },
+      { type: 'quote', text: 'Ý một' },
+      { type: 'result', text: 'Ý hai' },
+      { type: 'cta', text: 'Kết' },
+    ],
+  }, { source: 'Câu nguồn thứ nhất giải thích ngữ cảnh. Câu nguồn thứ hai nêu kết quả.', intent: 'educational', target: 20, assets: {} });
+  assert.ok(sparseMissingSay.storyboard.scenes.every((s) => s.say.trim().length > 0),
+    'an empty source bucket keeps the caption fallback');
+  assert.equal(new Set(sparseMissingSay.storyboard.scenes.map((s) => s.say)).size, sparseMissingSay.storyboard.scenes.length,
+    'missing-say buckets do not repeat a source sentence');
   ok('with no model, every intent still yields a caption-sized story that opens and closes right');
 }
 
