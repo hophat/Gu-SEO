@@ -179,9 +179,14 @@ export default function ChannelCards({ data, reload }) {
           </Space>
         }
         extra={
-          <Space>
+          <Space size={6}>
+            <Text type="secondary" style={{ fontSize: 12 }}>Tự động đăng</Text>
             <Switch
+              aria-label={`Tự động đăng ${c.label}`}
+              checkedChildren="Bật"
+              unCheckedChildren="Tắt"
               checked={c.enabled}
+              loading={!!busyKey('toggle')}
               onChange={(v) => toggle(c.channel, v)}
               disabled={!connected && ['facebook', 'instagram', 'threads', 'x', 'youtube'].includes(c.channel)}
             />
