@@ -7,6 +7,22 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.23.0 — 2026-09-25
+
+Hub-and-spoke, công cụ SEO nhúng được, và bộ tìm outreach.
+
+### Added
+- `/hubs` và `/hubs/<pillar>`: trang chủ đề theo `topic_seed`, mỗi pillar liệt kê toàn bộ bài trong cụm, có phân trang, breadcrumb và JSON-LD `ItemList`. Có wrapper `/<project>/hubs/...` cho host dùng chung.
+- Mỗi bài viết trỏ ngược lên hub của nó ("Thuộc chủ đề: …"), breadcrumb JSON-LD thêm hub vào giữa Blog và bài, và `/blog` có rail chủ đề nổi bật. Header/footer mọi trang có link Chủ đề và Công cụ.
+- `/tools/seo-check`: kiểm tra SEO on-page 16 tiêu chí, render server-side (không cần JavaScript), có chế độ `?embed=1` để nhúng iframe kèm link trở về. Mọi URL người dùng nhập đi qua `_lib/safe_fetch.js`: chặn IP nội bộ, chỉ cổng 80/443, kiểm tra lại từng chặng redirect, giới hạn 800KB/12s.
+- `scripts/outreach.mjs`: tìm unlinked mention (trang nhắc tên thương hiệu nhưng không link) và broken link (link chết có thể thay bằng trang của bạn), tôn trọng `robots.txt`, một request cho mỗi URL duy nhất, xuất Markdown hoặc JSON. Không gửi email, không đăng comment.
+- Index `idx_blog_topic_seed` trên `blog_posts` — `/hubs` và sitemap đều GROUP BY cột này.
+
+### Fixed
+- Sitemap im lặng bỏ sót URL: `fetchEntries` giới hạn cứng 5.000 bài blog và 10.000 prog page, nên trên kho 10.000 bài thì một nửa site mất đường đi từ sitemap và Google không còn tìm thấy. Đã bỏ cap, đặt trần 50.000 đúng giới hạn của Google, và chia urlset theo từng khối 5.000 URL (`/sitemap-pages.xml?part=N`) mà `/sitemap.xml` liệt kê đủ.
+- `dev-server.js` hardcode tên D1 là `pages-seo`, nên trên install đã đổi tên mọi query im lặng fail và mọi route trả về trang rỗng. Nay đọc `database_name` từ `wrangler.toml`.
+- Biểu thức chính quy `(?is)` làm hỏng bundle trên Node/V8 của dev server; chuyển sang cờ đặt sau literal.
+
 ## 1.22.1 — 2026-09-25
 
 Sửa lỗi kết nối Threads bằng luồng OAuth chính thức của Meta.

@@ -38,6 +38,11 @@ CREATE TABLE IF NOT EXISTS blog_posts (
 );
 CREATE INDEX IF NOT EXISTS idx_blog_status_published_at
   ON blog_posts(status, published_at DESC);
+-- Hub grouping. Both /hubs and the sitemap run GROUP BY topic_seed over
+-- every published post, so without this the hub page is a full table
+-- scan on a large archive — on the hot path of every cluster page.
+CREATE INDEX IF NOT EXISTS idx_blog_topic_seed
+  ON blog_posts(topic_seed);
 
 -- Slug renames (v1.0.5+). Maps old_slug -> new_slug; the /blog/<slug>
 -- handler does a 301 redirect when it finds a row here. Lets us clean

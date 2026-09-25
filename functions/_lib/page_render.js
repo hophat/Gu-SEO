@@ -28,7 +28,7 @@ export function themeStyle(hex) {
   return `<style>:root{--brand:${hex};--brand-light:color-mix(in srgb,${hex} 12%,#fff);--brand-dark:color-mix(in srgb,${hex} 82%,#000);--link:${hex}}</style>`;
 }
 
-function jsonLD({ site, post, host, kind, settings, basePath = '', language = 'vi' }) {
+function jsonLD({ site, post, host, kind, settings, basePath = '', language = 'vi', pillar = null }) {
   const isArticle = kind === 'blog';
   const baseUrl = `https://${host}`;
   const orgId   = `${baseUrl}/#org`;
@@ -81,10 +81,15 @@ function jsonLD({ site, post, host, kind, settings, basePath = '', language = 'v
     },
     {
       '@type': 'BreadcrumbList',
+      // The cluster hub sits between the archive and the post when the
+      // post has one — same two-hop topology the visible links describe.
       itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Trang chủ', item: `${baseUrl}/` },
+        { '@type': 'ListItem', position: 1, name: 'Trang chủ', item: `${baseUrl}${basePath}/` },
         isArticle ? { '@type': 'ListItem', position: 2, name: 'Blog', item: `${baseUrl}${basePath}/blog` } : null,
-        { '@type': 'ListItem', position: isArticle ? 3 : 2, name: post.title },
+        isArticle && pillar?.slug
+          ? { '@type': 'ListItem', position: 3, name: pillar.label, item: `${baseUrl}${basePath}/hubs/${pillar.slug}` }
+          : null,
+        { '@type': 'ListItem', position: isArticle && pillar?.slug ? 4 : (isArticle ? 3 : 2), name: post.title },
       ].filter(Boolean),
     },
   ];
@@ -125,7 +130,7 @@ function extractFAQ(post) {
   }] : [];
 }
 
-export function renderContentPage({ env, request, post, kind, related = [], settings = {}, basePath = '', project = null }) {
+export function renderContentPage({ env, request, post, kind, related = [], settings = {}, basePath = '', project = null, pillar = null }) {
   const host = new URL(request.url).hostname;
   const site = brand(env, project);
   const locale = projectLocale(project?.language);
@@ -184,6 +189,15 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   </ul>
 </aside>` : '';
 
+  // The other half of the hub-and-spoke link: the hub page links down
+  // to every entry, and this links back up. One direction alone leaves
+  // the hub's own authority stranded on the hub.
+  const pillarHTML = (kind === 'blog' && pillar?.slug) ? `
+<nav class="post-hub" aria-label="Chủ đề">
+  <a href="${effectiveBasePath}/hubs/${esc(pillar.slug)}">Thuộc chủ đề: ${esc(pillar.label)}</a>
+  ${pillar.count ? `<span class="hub-count">${pillar.count} bài</span>` : ''}
+</nav>` : '';
+
   const gv = String(settings?.google_site_verification || '').trim();
   const bv = String(settings?.bing_site_verification   || '').trim();
   const verifyMetas = [
@@ -194,7 +208,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   const preloadHero = `<link rel="preload" as="image" href="${heroSrc}" fetchpriority="high" />`;
 
   const faqSchema = extractFAQ(post);
-  const ldGraph = jsonLD({ site, post: { ...post, urlPath: effectiveUrlPath }, host: effectiveHost, kind, settings, basePath: effectiveBasePath, language: locale.htmlLang });
+  const ldGraph = jsonLD({ site, post: { ...post, urlPath: effectiveUrlPath }, host: effectiveHost, kind, settings, basePath: effectiveBasePath, language: locale.htmlLang, pillar });
   const ldExtra = faqSchema.length ? `,${faqSchema.map(f => JSON.stringify(f)).join(',')}` : '';
   const ldJson = ldGraph.replace('}', `${ldExtra}}`);
 
@@ -288,13 +302,15 @@ ${themeStyle(site.themeColor)}
     <nav class="header-nav">
       <a href="${esc(site.homeUrl)}">Trang chủ</a>
       <a href="${effectiveBasePath}/blog" class="active">Blog</a>
+      <a href="${effectiveBasePath}/hubs">Chủ đề</a>
+      <a href="${effectiveBasePath}/tools/seo-check">Công cụ</a>
       ${site.isGulagi ? `<a href="${esc(site.ctaSignupUrl)}" class="header-cta">Tạo website ngay</a>` : ''}
     </nav>
   </div>
 </header>
 
 <main class="post-shell">
-  <div class="crumb"><a href="${esc(site.homeUrl)}">Trang chủ</a>${kind === 'blog' ? ` · <a href="${effectiveBasePath}/blog">Blog</a>` : ''} · <span>${esc(post.title.slice(0, 40))}…</span></div>
+  <div class="crumb"><a href="${esc(site.homeUrl)}">Trang chủ</a>${kind === 'blog' ? ` · <a href="${effectiveBasePath}/blog">Blog</a>` : ''}${pillar?.slug ? ` · <a href="${effectiveBasePath}/hubs/${esc(pillar.slug)}">${esc(pillar.label)}</a>` : ''} · <span>${esc(post.title.slice(0, 40))}…</span></div>
   <h1 class="post-title">${esc(post.title)}</h1>
   <div class="post-meta">
     <span class="post-date">${esc(dateStr)}</span>
@@ -356,6 +372,7 @@ ${themeStyle(site.themeColor)}
     </div>
   </div>
   ${relatedHTML}
+  ${pillarHTML}
 </main>
 
 ${site.isGulagi ? `<div class="sticky-cta" id="sticky-cta">

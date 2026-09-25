@@ -6,10 +6,24 @@ import workerModule from './functions_dist/index.js';
 
 const PORT = 8788;
 
+// The D1 database name lives in wrangler.toml, which is per-install and
+// gitignored. Hardcoding a name meant every query silently failed against
+// a renamed database — the shim swallowed the error and every route
+// rendered as if the site were empty.
+function localDbName() {
+  try {
+    const toml = fs.readFileSync(path.join(process.cwd(), 'wrangler.toml'), 'utf8');
+    const block = toml.split('[[d1_databases]]')[1] || '';
+    const m = block.match(/database_name\s*=\s*"([^"]+)"/);
+    if (m) return m[1];
+  } catch { /* no wrangler.toml */ }
+  return 'pages-seo';
+}
+
 function execSql(command) {
   try {
     const out = execFileSync('npx', [
-      'wrangler', 'd1', 'execute', 'pages-seo',
+      'wrangler', 'd1', 'execute', localDbName(),
       '--local',
       '--command', command,
       '--json'

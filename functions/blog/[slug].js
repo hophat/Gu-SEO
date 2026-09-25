@@ -3,6 +3,7 @@ import { renderContentPage } from '../_lib/page_render.js';
 import { loadSettings } from '../_lib/settings.js';
 import { resolveProjectForRequest, resolveProjectBySlug } from '../_lib/project_scope.js';
 import { edgeCached } from '../_lib/util.js';
+import { resolvePillar, pillarSlug } from '../_lib/hubs.js';
 
 // The live render — reached only on an edge-cache miss. Public, identical
 // for every visitor, so the wrapper below is free to store the result.
@@ -49,10 +50,10 @@ async function renderPost({ env, request, params }) {
   // similarity scores and good enough for sites with a few dozen posts.
   const postSql = projectId
     ? `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
-              keywords, status, published_at
+              keywords, status, published_at, topic_seed
          FROM blog_posts WHERE slug = ? AND project_id = ? LIMIT 1`
     : `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
-              keywords, status, published_at
+              keywords, status, published_at, topic_seed
          FROM blog_posts WHERE slug = ? LIMIT 1`;
   const relatedSql = projectId
     ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
@@ -100,7 +101,16 @@ async function renderPost({ env, request, params }) {
     }
   }
 
-  return new Response(renderContentPage({ env, request, post, kind: 'blog', related, settings, basePath, project }), {
+  // Resolve the post's cluster so the page can link up to its hub.
+  // Only posts that actually carry a topic_seed get one; the rest render
+  // exactly as before. It is a third D1 read on the page path, which is
+  // why the result is edge-cached with everything else and degrades to
+  // null rather than throwing.
+  const pillar = post.topic_seed
+    ? await resolvePillar(env, pillarSlug(post.topic_seed), projectId).catch(() => null)
+    : null;
+
+  return new Response(renderContentPage({ env, request, post, kind: 'blog', related, pillar, settings, basePath, project }), {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'public, max-age=600, s-maxage=3600',

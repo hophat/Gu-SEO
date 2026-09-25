@@ -12,6 +12,7 @@ import { esc, edgeCached } from '../_lib/util.js';
 import { loadSettings } from '../_lib/settings.js';
 import { themeStyle } from '../_lib/page_render.js';
 import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost } from '../_lib/project_scope.js';
+import { listPillars } from '../_lib/hubs.js';
 
 // Page size for /blog and /blog/page/N. Matches the embed widget's
 // default so the SERP archive feels the same as the embed.
@@ -53,13 +54,18 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
     : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
        FROM blog_posts WHERE status='published'
        ORDER BY published_at DESC LIMIT ? OFFSET ?`;
-  const [totalRow, r] = await Promise.all([
+  // Three independent reads in one wave: the total, this page of posts,
+  // and the pillar list that feeds the hub rail. The rail is what gives
+  // /blog a spine — without it every entry is one hop from the archive
+  // and nothing links to the cluster pages.
+  const [totalRow, r, pillars] = await Promise.all([
     (projectId
       ? env.DB.prepare(totalSql).bind(projectId)
       : env.DB.prepare(totalSql)).first().catch(() => ({ n: 0 })),
     (projectId
       ? env.DB.prepare(pageSql).bind(projectId, PAGE_SIZE, offset)
       : env.DB.prepare(pageSql).bind(PAGE_SIZE, offset)).all(),
+    listPillars(env, projectId).catch(() => []),
   ]);
   const total = totalRow?.n || 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -108,6 +114,18 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
         </div>
       </li>`;
   }).join('');
+
+  // Hub rail: the top clusters, each a link to its /hubs/<pillar> page.
+  // Capped at eight so the archive still reads as an archive — a wall of
+  // cluster links above the post list is just a second sitemap on screen.
+  const railPillars = (pillars || []).slice(0, 8);
+  const railHTML = railPillars.length ? `
+<nav class="hub-rail" aria-label="Chủ đề nổi bật">
+  <a class="hub-rail-all" href="${bp}/hubs">Tất cả chủ đề</a>
+  <ul>
+    ${railPillars.map((pl) => `<li><a href="${bp}/hubs/${esc(pl.slug)}">${esc(pl.label)}</a> <span class="hub-count">${pl.count}</span></li>`).join('\n    ')}
+  </ul>
+</nav>` : '';
 
   const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
   const effectiveBaseUrl = customHost ? `https://${customHost}` : baseUrl;
@@ -237,6 +255,7 @@ ${themeStyle(project?.theme_color)}
     <nav class="header-nav">
       <a href="${esc(homeUrl)}">Trang chủ</a>
       <a href="${bp}/blog" class="active">Blog</a>
+      <a href="${bp}/hubs">Chủ đề</a>
       ${isGulagi ? `<a href="${esc(homeUrl)}" class="header-cta">Tạo website ngay</a>` : ''}
     </nav>
   </div>
@@ -262,6 +281,7 @@ ${themeStyle(project?.theme_color)}
       <button type="submit" class="blog-search-go" aria-label="Search">→</button>
     </form>
   </header>
+  ${railHTML}
   ${posts.length ? `<ul id="blog-list">${items}</ul>` : `<ul id="blog-list" hidden></ul><p id="blog-noposts" class="lede">${isVi ? 'Các bài viết sẽ sớm xuất hiện.' : 'First post lands soon.'}</p>`}
   <div id="blog-empty" class="blog-empty" hidden></div>
   ${pagerHTML}
@@ -399,6 +419,8 @@ ${themeStyle(project?.theme_color)}
     <div class="footer-links">
       <a href="${esc(homeUrl)}">Trang chủ</a>
       <a href="${bp}/blog">Blog</a>
+      <a href="${bp}/hubs">Chủ đề</a>
+      <a href="${bp}/tools/seo-check">Công cụ</a>
       <a href="${bp}/feed.xml">RSS</a>
     </div>
     <div class="footer-copy">© ${new Date().getFullYear()} ${esc(siteName)}. Bảo lưu mọi quyền.</div>

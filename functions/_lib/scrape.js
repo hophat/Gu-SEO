@@ -35,7 +35,7 @@ const ENTITY_MAP = {
   '&ldquo;': '“', '&rdquo;': '”',
 };
 const ENTITY_RE = /&(?:amp|lt|gt|quot|apos|nbsp|hellip|mdash|ndash|lsquo|rsquo|ldquo|rdquo|#39|#x?[0-9a-fA-F]+);/g;
-function decode(s) {
+export function decode(s) {
   return String(s || '').replace(ENTITY_RE, (m) => {
     if (m in ENTITY_MAP) return ENTITY_MAP[m];
     // Numeric entity: &#dec; or &#xhex;
@@ -51,7 +51,7 @@ function decode(s) {
   });
 }
 
-function extractMeta(html, name) {
+export function extractMeta(html, name) {
   // <meta name|property="X" content="Y">  or reverse order
   const re1 = new RegExp(`<meta[^>]+(?:name|property)\\s*=\\s*["']${name}["'][^>]*content\\s*=\\s*["']([^"']+)["']`, 'i');
   const re2 = new RegExp(`<meta[^>]+content\\s*=\\s*["']([^"']+)["'][^>]*(?:name|property)\\s*=\\s*["']${name}["']`, 'i');
@@ -59,7 +59,7 @@ function extractMeta(html, name) {
   return decode(m ? m[1] : '').trim();
 }
 
-function extractAll(html, selector) {
+export function extractAll(html, selector) {
   // selector: 'h1' | 'h2' | 'h3'
   const re = new RegExp(`<${selector}\\b[^>]*>([\\s\\S]*?)<\\/${selector}>`, 'gi');
   const out = [];
