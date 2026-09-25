@@ -286,7 +286,10 @@ header.nav {
 
 /* ── Logo wall ─────────────────────────────────────────────────── */
 .logo-wall-section { padding: clamp(40px, 5vw, 56px) 0; background: var(--bg-alt); }
-.logo-wall-label { font-size: 0.8rem; color: var(--muted-2); margin-bottom: 22px; text-align: center; }
+.logo-wall-label {
+  font-size: 0.8rem; font-weight: 500; letter-spacing: 0.05em;
+  color: var(--muted); margin-bottom: 24px; text-align: center;
+}
 .logo-grid { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 34px; }
 .logo-wall-loading { font-size: 0.86rem; color: var(--muted-2); }
 .shop-logo {
@@ -371,7 +374,15 @@ header.nav {
 @keyframes bar-rise { from { transform: scaleY(0.02); transform-origin: bottom; } }
 .proof-day { font-family: var(--font-mono); font-size: 0.66rem; color: var(--muted-2); text-align: center; }
 
-.proof-foot { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-top: 26px; }
+/* Sits outside .proof-shell, so it carries the column itself. */
+.proof-foot {
+  display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between;
+  max-width: var(--shell); margin: 30px auto 0; padding: 20px var(--gutter) 0;
+  border-top: 1px solid var(--line-2);
+}
+.proof-foot > span { font-size: 0.82rem; line-height: 1.45; color: var(--muted); max-width: 56ch; }
+.proof-foot a { font-size: 0.86rem; font-weight: 500; color: var(--blue); }
+.proof-foot a:hover { text-decoration: underline; }
 .proof-updated { font-size: 0.82rem; color: var(--muted-2); }
 .proof-summary { display: flex; gap: 32px; }
 .proof-actions { display: flex; gap: 10px; }
@@ -382,7 +393,14 @@ header.nav {
 .showcase-kicker { font-size: 0.86rem; font-weight: 600; color: var(--blue); }
 .showcase-title { font-size: clamp(1.9rem, 3.6vw, 2.9rem); font-weight: 600; line-height: 1.1; letter-spacing: -0.024em; margin-top: 14px; }
 .showcase-lede { color: var(--muted); }
-.showcase-note { display: flex; align-items: center; gap: 10px; font-size: 0.78rem; color: var(--muted-2); margin-top: 16px; }
+.showcase-note {
+  display: flex; align-items: flex-start; gap: 9px;
+  margin-top: 18px; font-size: 0.82rem; line-height: 1.45; color: var(--muted);
+}
+.showcase-note::before {
+  content: ""; flex: none; width: 6px; height: 6px; margin-top: 0.55em;
+  border-radius: 50%; background: var(--blue); opacity: 0.5;
+}
 .showcase-loading, .showcase-empty { color: var(--muted-2); padding: 28px 0; }
 .showcase-content[hidden], .showcase-loading[hidden] { display: none; }
 
