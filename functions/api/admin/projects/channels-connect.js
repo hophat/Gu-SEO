@@ -1,28 +1,28 @@
 // GET /api/admin/projects/channels-connect?channel=threads
 //
-// Step 1 of the Meta-channel connect for a specific channel. Reuses the
-// Facebook Login dialog (same Meta app) with a channel-appropriate scope
-// set, and signs the channel into the state so the callback stores the
-// token under the right vault key.
+// Step 1 of channel connect. Facebook/Instagram use Facebook Login; Threads
+// uses its Authorization Window and separate app credentials. Signed state
+// binds the callback to project and channel.
 //
 //   channel=facebook    → classic Page connect (existing behaviour)
-//   channel=threads     → + threads_basic, threads_content_publish
+//   channel=threads     → Threads Authorization Window + Threads app credentials
 //   channel=instagram   → + instagram_basic, instagram_content_publish
 //
-// Instagram and Threads both need the base Page scopes too: the token
-// must still resolve /me/accounts for the Instagram link lookup, and the
-// Threads dialog rides on the same login.
+// Instagram rides on Facebook Page scopes. Threads uses its own Authorization
+// Window, app ID, secret, redirect URI, and permission namespace.
 import { adminGate, requireAdminAsync, resolveTenantContext } from '../../../_lib/auth.js';
 import { getAdminToken } from '../../../_lib/admin_token.js';
 import { track } from '../../../_lib/events.js';
 import {
-  getAppId, getAppSecret, buildAuthUrl, fbRedirectUri, signState, getApiVersion,
+  getAppId, getAppSecret, getThreadsAppId, getThreadsAppSecret,
+  buildAuthUrl, fbRedirectUri, signState, getApiVersion,
   FB_SCOPES, THREADS_SCOPES, INSTAGRAM_SCOPES,
 } from '../../../_lib/publishing/facebook_oauth.js';
+import { buildThreadsAuthUrl, threadsRedirectUri } from '../../../_lib/publishing/threads.js';
 
 const SCOPES_BY_CHANNEL = {
   facebook: FB_SCOPES,
-  threads: [...FB_SCOPES, ...THREADS_SCOPES],
+  threads: THREADS_SCOPES,
   instagram: [...FB_SCOPES, ...INSTAGRAM_SCOPES],
 };
 
@@ -43,6 +43,28 @@ export const onRequestGet = async ({ env, request }) => {
     });
   }
 
+  const adminToken = await getAdminToken(env);
+  const state = await signState(adminToken, pid, channel);
+  await track(env, { event: 'channel_connect_started', projectId: pid, props: { channel } });
+
+  if (channel === 'threads') {
+    const threadsAppId = await getThreadsAppId(env);
+    const threadsAppSecret = await getThreadsAppSecret(env);
+    if (!threadsAppId || !threadsAppSecret) {
+      return new Response(JSON.stringify({
+        error: 'threads_app_not_configured',
+        detail: 'Nhập Threads App ID và Threads App Secret riêng trong Settings trước khi kết nối.',
+      }), { status: 400, headers: { 'content-type': 'application/json' } });
+    }
+    const dialogUrl = buildThreadsAuthUrl({
+      appId: threadsAppId,
+      redirectUri: threadsRedirectUri(request),
+      state,
+      scopes: THREADS_SCOPES,
+    });
+    return new Response(null, { status: 302, headers: { location: dialogUrl, 'cache-control': 'no-store' } });
+  }
+
   const appId = await getAppId(env);
   const appSecret = await getAppSecret(env);
   if (!appId || !appSecret) {
@@ -52,10 +74,6 @@ export const onRequestGet = async ({ env, request }) => {
     }), { status: 400, headers: { 'content-type': 'application/json' } });
   }
 
-  await track(env, { event: 'channel_connect_started', projectId: pid, props: { channel } });
-
-  const adminToken = await getAdminToken(env);
-  const state = await signState(adminToken, pid, channel);
   const version = await getApiVersion(env);
   const dialogUrl = buildAuthUrl({
     appId, redirectUri: fbRedirectUri(request), state, version, scopes: SCOPES_BY_CHANNEL[channel],

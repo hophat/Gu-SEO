@@ -18,7 +18,7 @@
 // App credentials: App ID is a setting (not secret); App Secret lives in
 // the vault.
 
-import { getVaultSecret } from '../secret_vault.js';
+import { getVaultSecret, setVaultSecret } from '../secret_vault.js';
 
 const GRAPH = 'https://graph.facebook.com';
 const DIALOG = 'https://www.facebook.com';
@@ -29,12 +29,13 @@ const DIALOG = 'https://www.facebook.com';
 const DEFAULT_VERSION = 'v23.0';
 
 export const FB_SCOPES = ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts'];
-// Threads publishes through the same Meta app but its own scopes; adding
-// them unconditionally would fail the dialog for apps without a Threads
-// use case, so the connect route appends them per requested channel.
+// Threads permissions live in a separate app and Authorization Window. Keep
+// them listed here only as the shared, validated allow-list; the Threads
+// connect route never sends them through Facebook Login.
 export const THREADS_SCOPES = ['threads_basic', 'threads_content_publish'];
 export const INSTAGRAM_SCOPES = ['instagram_basic', 'instagram_content_publish'];
 export const FB_APP_SECRET_NAME = 'FACEBOOK_APP_SECRET';
+export const THREADS_APP_SECRET_NAME = 'THREADS_APP_SECRET';
 
 export async function getApiVersion(env) {
   if (env?.FACEBOOK_API_VERSION && /^v\d+\.\d+$/.test(String(env.FACEBOOK_API_VERSION).trim())) {
@@ -147,6 +148,35 @@ export async function getAppSecret(env) {
   if (env?.FACEBOOK_APP_SECRET && String(env.FACEBOOK_APP_SECRET).trim()) return String(env.FACEBOOK_APP_SECRET).trim();
   const v = await getVaultSecret(env, FB_APP_SECRET_NAME);
   return v ? String(v).trim() : '';
+}
+
+// Threads exposes a separate app ID and secret from Facebook Login. Using
+// the Facebook app credentials with the Threads authorization window makes
+// Meta reject otherwise valid Threads permissions as invalid scopes.
+export async function getThreadsAppId(env) {
+  if (env?.THREADS_APP_ID && String(env.THREADS_APP_ID).trim()) return String(env.THREADS_APP_ID).trim();
+  if (!env?.DB) return '';
+  const row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'threads_app_id' LIMIT 1").first().catch(() => null);
+  return String(row?.value || '').trim();
+}
+
+export async function setThreadsAppId(env, value) {
+  const v = String(value || '').trim();
+  const t = Math.floor(Date.now() / 1000);
+  await env.DB.prepare(
+    `INSERT INTO settings (key, value, updated_at) VALUES ('threads_app_id', ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+  ).bind(v, t).run();
+}
+
+export async function getThreadsAppSecret(env) {
+  if (env?.THREADS_APP_SECRET && String(env.THREADS_APP_SECRET).trim()) return String(env.THREADS_APP_SECRET).trim();
+  const v = await getVaultSecret(env, THREADS_APP_SECRET_NAME);
+  return v ? String(v).trim() : '';
+}
+
+export async function setThreadsAppSecret(env, value) {
+  await setVaultSecret(env, THREADS_APP_SECRET_NAME, String(value || '').trim());
 }
 
 // ── signed state ───────────────────────────────────────────────────

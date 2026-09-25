@@ -1,26 +1,88 @@
 // Threads publishing via the official Threads API (graph.threads.net).
 //
-// Same Meta app as Facebook/Instagram; the operator approves the
-// threads_basic + threads_content_publish scopes during the same
-// "Kết nối" flow. The user access token is exchanged for a long-lived
-// one at connect time (GET /access_token with client_secret) and stored
-// in the vault under THREADS_TOKEN__<project_id>.
+// Threads uses its own Authorization Window, Threads App ID, and Threads
+// App secret. Do not send Threads permissions through Facebook Login: Meta
+// reports that permission namespace as invalid for the Facebook app dialog.
+// The short-lived token is exchanged for a long-lived token at connect time
+// and stored in the vault under THREADS_TOKEN__<project_id>.
 //
 // Flow (documented contract, v1.0):
-//   1. POST /{threads-user-id}/threads        → { id: container }
+//   1. threads.com/oauth/authorize → callback code
+//   2. graph.threads.com/oauth/access_token → short-lived token
+//   3. graph.threads.net/v1.0/access_token → long-lived token
+//   4. POST /{threads-user-id}/threads        → { id: container }
 //      media_type TEXT | IMAGE | VIDEO; text ≤ 500 chars; the first URL
 //      in text becomes the link preview
-//   2. POST /{threads-user-id}/threads_publish?creation_id=…  → { id }
+//   5. POST /{threads-user-id}/threads_publish?creation_id=…  → { id }
 //
 // The threads_user_id comes from the channel config; when absent we read
 // GET /me/threads_profile (Threads' self endpoint for the token holder).
 
 import { getVaultSecret } from '../secret_vault.js';
-import { getApiVersion } from './facebook_oauth.js';
+import { THREADS_SCOPES } from './facebook_oauth.js';
 import { describeGraphError } from './facebook.js';
 import { adaptArticleForChannel } from './adapter.js';
 
 const GRAPH = 'https://graph.threads.net';
+const AUTH_URL = 'https://threads.com/oauth/authorize';
+const TOKEN_URL = 'https://graph.threads.com/oauth/access_token';
+
+export function threadsRedirectUri(request) {
+  const u = new URL(request.url);
+  return `${u.protocol}//${u.host}/api/admin/projects/channels-callback`;
+}
+
+export function buildThreadsAuthUrl({ appId, redirectUri, state, scopes = THREADS_SCOPES }) {
+  const p = new URLSearchParams({
+    client_id: String(appId || ''),
+    redirect_uri: String(redirectUri || ''),
+    scope: scopes.join(','),
+    response_type: 'code',
+  });
+  if (state) p.set('state', String(state));
+  return `${AUTH_URL}?${p.toString()}`;
+}
+
+function threadsOAuthError(res, data, fallback) {
+  if (data?.error) {
+    const err = new Error(data.error.message || data.error.error_message || fallback);
+    err.graph = data.error;
+    throw err;
+  }
+  if (!res.ok) throw new Error(`${fallback}: HTTP ${res.status}`);
+}
+
+export async function exchangeThreadsCodeForToken({ appId, appSecret, redirectUri, code }) {
+  const body = new URLSearchParams({
+    client_id: String(appId || ''),
+    client_secret: String(appSecret || ''),
+    code: String(code || ''),
+    grant_type: 'authorization_code',
+    redirect_uri: String(redirectUri || ''),
+  });
+  const res = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+  const data = await res.json();
+  threadsOAuthError(res, data, 'Threads token exchange failed');
+  if (!data?.access_token) throw new Error('Threads không trả về access token.');
+  return data;
+}
+
+export async function exchangeThreadsLongLived({ appSecret, shortToken }) {
+  const q = new URLSearchParams({
+    grant_type: 'th_exchange_token',
+    client_secret: String(appSecret || ''),
+    access_token: String(shortToken || ''),
+  });
+  const res = await fetch(`${GRAPH}/v1.0/access_token?${q.toString()}`);
+  const data = await res.json();
+  threadsOAuthError(res, data, 'Threads long-lived token exchange failed');
+  if (!data?.access_token) throw new Error('Threads không trả về long-lived token.');
+  return data.access_token;
+}
 
 export function threadsTokenName(projectId) {
   return `THREADS_TOKEN__${projectId}`;

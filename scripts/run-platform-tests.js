@@ -21,7 +21,13 @@ import { adaptArticleForChannel, xWeightedLengthWithUrls } from '../functions/_l
 import {
   describeGraphError, buildFacebookMessage, parseFacebookConfig, projectPublicBase, verifyFacebookPage,
 } from '../functions/_lib/publishing/facebook.js';
-import { signState, verifyState, buildAuthUrl, listManagedPages } from '../functions/_lib/publishing/facebook_oauth.js';
+import {
+  signState, verifyState, buildAuthUrl, listManagedPages,
+  getThreadsAppId, setThreadsAppId, getThreadsAppSecret, setThreadsAppSecret,
+} from '../functions/_lib/publishing/facebook_oauth.js';
+import {
+  buildThreadsAuthUrl, threadsRedirectUri, exchangeThreadsCodeForToken, exchangeThreadsLongLived,
+} from '../functions/_lib/publishing/threads.js';
 import { sanitizeEmbedSettings, snippetFor, embedWidgetOptions } from '../functions/_lib/embed_settings.js';
 import { buildAliasMap, syncSitemapAliases } from '../functions/_lib/links/aliases.js';
 import { onRequestGet as attention } from '../functions/api/admin/attention.js';
@@ -413,6 +419,62 @@ async function testHelpers() {
   assert.match(q.get('scope'), /pages_manage_posts/);
   assert.match(q.get('scope'), /pages_show_list/);
   ok('auth url carries the required scopes and params');
+
+  // Threads uses a separate Authorization Window and app credentials. Never
+  // mix Facebook Login permissions into this URL: Meta rejects them as
+  // invalid scopes.
+  const threadsAuthUrl = buildThreadsAuthUrl({
+    appId: 'threads-123',
+    redirectUri: 'https://seo.test/api/admin/projects/channels-callback',
+    state: 'thread-state',
+  });
+  const threadsUrl = new URL(threadsAuthUrl);
+  assert.equal(threadsUrl.origin, 'https://threads.com');
+  assert.equal(threadsUrl.pathname, '/oauth/authorize');
+  assert.equal(threadsUrl.searchParams.get('client_id'), 'threads-123');
+  assert.equal(threadsUrl.searchParams.get('response_type'), 'code');
+  assert.equal(threadsUrl.searchParams.get('scope'), 'threads_basic,threads_content_publish');
+  assert.doesNotMatch(threadsUrl.searchParams.get('scope'), /pages_/);
+  assert.equal(
+    threadsRedirectUri(new Request('https://seo.test/api/admin/projects/channels-connect?channel=threads')),
+    'https://seo.test/api/admin/projects/channels-callback',
+  );
+
+  const oauthCalls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    oauthCalls.push({ url: String(url), options });
+    if (String(url).includes('/oauth/access_token') && !String(url).includes('th_exchange_token')) {
+      return new Response(JSON.stringify({ access_token: 'short', user_id: 'u_threads' }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ access_token: 'long' }), { status: 200 });
+  };
+  try {
+    const short = await exchangeThreadsCodeForToken({
+      appId: 'threads-123', appSecret: 'secret', redirectUri: 'https://seo.test/cb', code: 'code-1',
+    });
+    assert.equal(short.access_token, 'short');
+    assert.equal(oauthCalls[0].url, 'https://graph.threads.com/oauth/access_token');
+    const shortBody = new URLSearchParams(oauthCalls[0].options.body);
+    assert.equal(shortBody.get('grant_type'), 'authorization_code');
+    assert.equal(shortBody.get('client_id'), 'threads-123');
+    const long = await exchangeThreadsLongLived({ appSecret: 'secret', shortToken: 'short' });
+    assert.equal(long, 'long');
+    const longUrl = new URL(oauthCalls[1].url);
+    assert.equal(longUrl.origin + longUrl.pathname, 'https://graph.threads.net/v1.0/access_token');
+    assert.equal(longUrl.searchParams.get('grant_type'), 'th_exchange_token');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  ok('Threads OAuth uses its own endpoint, credentials, scopes, and token grants');
+
+  const threadsEnv = await freshEnv();
+  await setThreadsAppId(threadsEnv, 'threads-db-id');
+  await setThreadsAppSecret(threadsEnv, 'threads-secret');
+  assert.equal(await getThreadsAppId(threadsEnv), 'threads-db-id');
+  assert.equal(await getThreadsAppSecret(threadsEnv), 'threads-secret');
+  assert.equal(await getThreadsAppId({ THREADS_APP_ID: 'env-id' }), 'env-id');
+  ok('Threads app credentials have independent settings and environment overrides');
 
   // embed settings whitelist
   const s = sanitizeEmbedSettings({

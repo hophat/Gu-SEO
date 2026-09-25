@@ -24,6 +24,7 @@ import {
 } from '../../../_lib/publishing/facebook.js';
 import {
   getAppId, setAppId, getAppSecret, readPendingPages, clearPendingPages,
+  getThreadsAppId, setThreadsAppId, getThreadsAppSecret, setThreadsAppSecret,
   FB_APP_SECRET_NAME, getApiVersion,
 } from '../../../_lib/publishing/facebook_oauth.js';
 import {
@@ -63,6 +64,8 @@ export const onRequestGet = async ({ env, request }) => {
 
   const appId = await getAppId(env);
   const appSecret = await getAppSecret(env);
+  const threadsAppId = await getThreadsAppId(env);
+  const threadsAppSecret = await getThreadsAppSecret(env);
   const youtubeApp = await getYoutubeAppState(env);
   // Pending Page list is only a count here — the tokens stay server-side
   // and are fetched through the `pages` action when the picker opens.
@@ -92,7 +95,14 @@ export const onRequestGet = async ({ env, request }) => {
       set: !!(scoped || global),
       source: scoped ? 'project' : (global ? 'global' : 'unset'),
     },
-    app: { app_id: appId, api_version: await getApiVersion(env), id_set: !!appId, secret_set: !!appSecret },
+    app: {
+      app_id: appId,
+      threads_app_id: threadsAppId,
+      api_version: await getApiVersion(env),
+      id_set: !!appId,
+      secret_set: !!appSecret,
+      threads_secret_set: !!threadsAppSecret,
+    },
     youtube_app: youtubeApp,
     // A tenant may connect their own Page but must not touch the shared
     // Meta app credentials.
@@ -130,6 +140,7 @@ export const onRequestPost = async ({ env, request }) => {
     if (superGate.error) return superGate.error;
 
     if (typeof body?.app_id === 'string') await setAppId(env, body.app_id);
+    if (typeof body?.threads_app_id === 'string') await setThreadsAppId(env, body.threads_app_id);
     // Graph API version is a setting so a Meta deprecation doesn't need a
     // redeploy. Blank clears it back to the built-in default.
     if (typeof body?.api_version === 'string') {
@@ -147,8 +158,24 @@ export const onRequestPost = async ({ env, request }) => {
       await setVaultSecret(env, FB_APP_SECRET_NAME, val);
       secretState = val ? 'stored' : 'cleared';
     }
-    audit(env, 'admin', 'fb_app_save', pid, { secret: secretState });
-    return json(200, { ok: true, app_id: await getAppId(env), api_version: await getApiVersion(env), secret: secretState });
+    let threadsSecretState = 'unchanged';
+    if (typeof body?.threads_app_secret === 'string') {
+      const val = body.threads_app_secret.trim();
+      await setThreadsAppSecret(env, val);
+      threadsSecretState = val ? 'stored' : 'cleared';
+    }
+    audit(env, 'admin', 'fb_app_save', pid, {
+      secret: secretState,
+      threads_secret: threadsSecretState,
+    });
+    return json(200, {
+      ok: true,
+      app_id: await getAppId(env),
+      threads_app_id: await getThreadsAppId(env),
+      api_version: await getApiVersion(env),
+      secret: secretState,
+      threads_secret: threadsSecretState,
+    });
   }
 
   if (body?.action === 'save_youtube_app') {

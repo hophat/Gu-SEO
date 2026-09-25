@@ -7,6 +7,15 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.22.1 — 2026-09-25
+
+Sửa lỗi kết nối Threads bằng luồng OAuth chính thức của Meta.
+
+### Fixed
+- Threads dùng Threads App ID/Secret riêng, `threads.com/oauth/authorize`, endpoint `graph.threads.com`, và grant `th_exchange_token`; không gửi quyền Threads qua Facebook Login.
+- Callback Threads dùng redirect URI riêng và kiểm tra profile trước khi lưu token.
+- Settings nhận Threads App ID/Secret; secret chỉ lưu vault, không trả về client.
+
 ## 1.22.0 — 2026-09-25
 
 Video mặc định kể đủ bài, dùng hình thật và nhạc nền free.

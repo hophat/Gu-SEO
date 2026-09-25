@@ -5,9 +5,9 @@
 // for the picker); this route is for channels whose token is the user
 // token itself:
 //
-//   threads → code → short-lived token → long-lived token
-//             (GET /access_token with client_secret — the Threads token
-//             exchange, NOT the fb_exchange_token grant) →
+//   threads → Threads Authorization Window code → short-lived token →
+//             POST graph.threads.com/oauth/access_token → long-lived token
+//             (GET graph.threads.net/v1.0/access_token) →
 //             GET me/threads_profile → store THREADS_TOKEN__<pid> +
 //             threads_user_id in project_channels → connected.
 //
@@ -15,13 +15,12 @@
 // legacy 3-part state is treated as facebook and handed to the existing
 // callback semantics by simply redirecting there.
 import { getAdminToken } from '../../../_lib/admin_token.js';
-import {
-  getAppId, getAppSecret, fbRedirectUri, verifyState, getApiVersion,
-  exchangeCodeForToken,
-} from '../../../_lib/publishing/facebook_oauth.js';
+import { getThreadsAppId, getThreadsAppSecret, verifyState } from '../../../_lib/publishing/facebook_oauth.js';
 import { setVaultSecret } from '../../../_lib/secret_vault.js';
 import { connectChannel } from '../../../_lib/channels.js';
-import { verifyThreadsToken } from '../../../_lib/publishing/threads.js';
+import {
+  verifyThreadsToken, exchangeThreadsCodeForToken, exchangeThreadsLongLived, threadsRedirectUri,
+} from '../../../_lib/publishing/threads.js';
 import { track } from '../../../_lib/events.js';
 
 function backToPublishing(status, detail = '') {
@@ -89,30 +88,15 @@ export const onRequestGet = async ({ env, request }) => {
     return done('error', 'Instagram kết nối qua Facebook Page (token dùng chung). Kết nối Facebook trước, sau đó bật kênh Instagram.');
   }
 
-  const appId = await getAppId(env);
-  const appSecret = await getAppSecret(env);
-  if (!appId || !appSecret) return done('error', 'Chưa cấu hình App ID/Secret.');
+  const appId = await getThreadsAppId(env);
+  const appSecret = await getThreadsAppSecret(env);
+  if (!appId || !appSecret) return done('error', 'Chưa cấu hình Threads App ID/Secret.');
 
   try {
-    const version = await getApiVersion(env);
-    const shortToken = await exchangeCodeForToken({
-      appId, appSecret, redirectUri: fbRedirectUri(request), code, version,
+    const short = await exchangeThreadsCodeForToken({
+      appId, appSecret, redirectUri: threadsRedirectUri(request), code,
     });
-
-    // Threads long-lived exchange: GET /{version}/access_token with the
-    // short-lived token + app secret (client_credentials-style, different
-    // from Facebook's fb_exchange_token grant).
-    const exQ = new URLSearchParams({
-      grant_type: 'th_conversion',
-      client_secret: appSecret,
-      access_token: shortToken,
-    });
-    const exRes = await fetch(`https://graph.threads.net/${'v1.0'}/access_token?${exQ.toString()}`);
-    const exData = await exRes.json().catch(() => ({}));
-    if (exData?.error) {
-      return done('error', exData.error?.message || 'Threads từ chối đổi token.');
-    }
-    const longToken = exData?.access_token || shortToken;
+    const longToken = await exchangeThreadsLongLived({ appSecret, shortToken: short.access_token });
 
     const profile = await verifyThreadsToken({ token: longToken });
     if (!profile?.id) return done('error', 'Không đọc được Threads profile từ token.');

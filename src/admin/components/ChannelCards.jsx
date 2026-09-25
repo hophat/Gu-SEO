@@ -43,10 +43,12 @@ const CHANNEL_INFO = {
   },
   threads: {
     color: '#101010',
-    connectHint: 'Kết nối tài khoản Threads (cùng tài khoản Meta). Token được đổi sang loại dài hạn và lưu mã hoá.',
+    connectHint: 'Kết nối tài khoản Threads bằng Threads App riêng. Token được đổi sang loại dài hạn và lưu mã hoá.',
     requirements: [
-      'Meta App cần quyền threads_basic, threads_content_publish.',
-      'App ở chế độ Development: chỉ admin/developer/tester của app kết nối được.',
+      'Trong Settings nhập Threads App ID và Threads App Secret.',
+      'Meta App cần use case Access the Threads API và quyền threads_basic, threads_content_publish.',
+      'Redirect URI: /api/admin/projects/channels-callback.',
+      'Threads App ID khác Facebook App ID; dùng nhầm sẽ báo Invalid Scopes.',
       'Mỗi bài giới hạn 500 ký tự — hệ thống tự cắt đủ dài.',
     ],
   },

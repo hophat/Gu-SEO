@@ -425,6 +425,8 @@ function FacebookAppConfig() {
   const [loading, setLoading] = useState(true);
   const [appId, setAppId] = useState('');
   const [appSecret, setAppSecret] = useState('');
+  const [threadsAppId, setThreadsAppId] = useState('');
+  const [threadsAppSecret, setThreadsAppSecret] = useState('');
   const [apiVersion, setApiVersion] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -434,6 +436,7 @@ function FacebookAppConfig() {
     if (status === 200 && body?.ok) {
       setCfg(body);
       setAppId(body.app?.app_id || '');
+      setThreadsAppId(body.app?.threads_app_id || '');
       setApiVersion(body.app?.api_version || '');
     }
     setLoading(false);
@@ -443,19 +446,28 @@ function FacebookAppConfig() {
 
   const save = async () => {
     setSaving(true);
-    const body = { action: 'save_app', app_id: appId, api_version: apiVersion };
+    const body = {
+      action: 'save_app',
+      app_id: appId,
+      threads_app_id: threadsAppId,
+      api_version: apiVersion,
+    };
     if (appSecret.trim()) body.app_secret = appSecret.trim();
+    if (threadsAppSecret.trim()) body.threads_app_secret = threadsAppSecret.trim();
     const r = await apiPost('/api/admin/projects/publishing', body);
     setSaving(false);
     if (r.status === 200 && r.body?.ok) {
-      message.success('Đã lưu thông tin Meta App');
+      message.success('Đã lưu thông tin Meta/Threads App');
       setAppSecret('');
+      setThreadsAppSecret('');
       load();
     } else message.error(r.body?.detail || r.body?.error || 'Lưu thất bại');
   };
 
   const redirectUri = `${window.location.origin}/api/admin/projects/fb-callback`;
+  const threadsRedirectUri = `${window.location.origin}/api/admin/projects/channels-callback`;
   const appReady = cfg?.app?.id_set && cfg?.app?.secret_set;
+  const threadsAppReady = cfg?.app?.threads_app_id && cfg?.app?.threads_secret_set;
 
   return (
     <Card loading={loading}>
@@ -463,8 +475,8 @@ function FacebookAppConfig() {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="Thông tin Meta App dùng chung cho toàn nền tảng"
-        description="Mỗi dự án kết nối Facebook Page riêng ở trang Kênh xuất bản. App ID/Secret dưới đây là của nền tảng, không phải của từng khách hàng."
+        message="Thông tin Meta/Threads App dùng chung cho toàn nền tảng"
+        description="Facebook và Threads có App ID/Secret riêng. Mỗi dự án kết nối tài khoản riêng ở trang Kênh xuất bản; thông tin dưới đây thuộc nền tảng."
       />
 
       <Row gutter={12}>
@@ -483,6 +495,30 @@ function FacebookAppConfig() {
           </Form.Item>
         </Col>
       </Row>
+      <Row gutter={12}>
+        <Col xs={24} md={10}>
+          <Form.Item
+            label="Threads App ID"
+            extra="Lấy ở App settings → Basic, không dùng Facebook App ID"
+            style={{ marginBottom: 8 }}
+          >
+            <Input value={threadsAppId} onChange={(e) => setThreadsAppId(e.target.value)} placeholder="Threads App ID" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={14}>
+          <Form.Item
+            label="Threads App Secret"
+            extra="Lưu mã hoá AES-GCM, không hiển thị lại"
+            style={{ marginBottom: 8 }}
+          >
+            <Input.Password
+              value={threadsAppSecret}
+              onChange={(e) => setThreadsAppSecret(e.target.value)}
+              placeholder={cfg?.app?.threads_secret_set ? '•••••••• (để trống nếu giữ nguyên)' : 'Threads App secret'}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
       <Form.Item
         label="Graph API version"
         extra="Chỉ đổi khi Meta thông báo version cũ sắp hết hỗ trợ. Để trống dùng mặc định."
@@ -492,8 +528,9 @@ function FacebookAppConfig() {
       </Form.Item>
 
       <Space>
-        <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={save}>Lưu thông tin Meta App</Button>
-        <Tag color={appReady ? 'success' : 'warning'}>{appReady ? 'Đã cấu hình' : 'Chưa cấu hình'}</Tag>
+        <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={save}>Lưu thông tin App</Button>
+        <Tag color={appReady ? 'success' : 'warning'}>{appReady ? 'Facebook sẵn sàng' : 'Facebook chưa cấu hình'}</Tag>
+        <Tag color={threadsAppReady ? 'success' : 'warning'}>{threadsAppReady ? 'Threads sẵn sàng' : 'Threads chưa cấu hình'}</Tag>
       </Space>
 
       <Divider />
@@ -524,7 +561,19 @@ function FacebookAppConfig() {
                   </ul>
                 </div>
                 <div>
-                  <Text strong>3. Thêm Facebook Login + Redirect URI</Text>
+                  <Text strong>3. Thiết lập Threads API</Text>
+                   <div style={{ marginTop: 4 }}>
+                    Trong Meta App, thêm use case <Text code>Access the Threads API</Text>. Thêm quyền <Text code>threads_basic</Text> và <Text code>threads_content_publish</Text>.
+                    Lấy <b>Threads App ID</b> và <b>Threads App secret</b> ở <b>App settings → Basic</b>, nhập vào hai ô phía trên.
+                   </div>
+                   <div style={{ marginTop: 4 }}>Đăng ký redirect URI Threads:</div>
+                   <Space.Compact style={{ width: '100%', marginTop: 6 }}>
+                     <Input readOnly value={threadsRedirectUri} style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12 }} />
+                     <Button icon={<CopyOutlined />} onClick={() => { navigator.clipboard.writeText(threadsRedirectUri); message.success('Đã copy'); }}>Copy</Button>
+                   </Space.Compact>
+                 </div>
+                 <div>
+                   <Text strong>4. Thêm Facebook Login + Redirect URI</Text>
                   <div style={{ marginTop: 4 }}>
                     <b>Products → Add product → Facebook Login → Set up</b>, rồi vào <b>Facebook Login → Settings</b>, dán vào <b>Valid OAuth Redirect URIs</b>:
                   </div>
@@ -541,9 +590,9 @@ function FacebookAppConfig() {
                   />
                 </div>
                 <div>
-                  <Text strong>4. Lấy App ID + App Secret</Text>
+                  <Text strong>5. Lấy App ID + App Secret</Text>
                   <div style={{ marginTop: 4 }}>
-                    <b>App settings → Basic</b>. App ID hiện trên đầu trang; App Secret bấm <b>Show</b> (có thể phải nhập lại mật khẩu Facebook).
+                    <b>App settings → Basic</b>. Facebook App ID/Secret ở đầu trang; Threads App ID/Secret là cặp riêng trong cùng trang. App Secret bấm <b>Show</b> (có thể phải nhập lại mật khẩu Facebook).
                   </div>
                 </div>
               </Space>
@@ -568,7 +617,7 @@ function FacebookAppConfig() {
                   <li><b>App icon</b> 1024×1024</li>
                   <li><b>Data Deletion Callback</b> hoặc Instructions URL</li>
                   <li><b>App Category</b> + <b>Business Verification</b> (nếu Meta yêu cầu)</li>
-                  <li>Quyền cần xin: <Text code>pages_manage_posts</Text>, <Text code>pages_show_list</Text>, <Text code>pages_read_engagement</Text></li>
+                  <li>Quyền cần xin: <Text code>pages_manage_posts</Text>, <Text code>pages_show_list</Text>, <Text code>pages_read_engagement</Text>, <Text code>threads_basic</Text>, <Text code>threads_content_publish</Text></li>
                   <li>
                     <b>Screencast</b> cho mỗi quyền — quay đúng luồng: người dùng đăng nhập → cấp quyền →
                     bài viết được đăng lên Page → hiện bài trên Page. Meta từ chối rất nhiều hồ sơ thiếu phần này.
