@@ -292,8 +292,30 @@ header.nav {
   letter-spacing: normal; text-transform: none; text-wrap: balance;
   color: var(--muted);
 }
-.logo-grid { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 34px; }
+.logo-grid { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 14px; }
 .logo-wall-loading { font-size: 0.86rem; color: var(--muted-2); }
+
+/* The wall renders .logo-item > .logo-item-mark (+logo) + .logo-item-domain. */
+.logo-item {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 7px 15px 7px 7px; border-radius: var(--radius-pill);
+  background: var(--surface); box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.logo-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+.logo-item-mark {
+  position: relative; flex: none; overflow: hidden;
+  width: 34px; height: 34px; border-radius: 10px;
+  background: var(--bg-alt); color: var(--ink-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; font-weight: 600; line-height: 1;
+}
+.logo-item-mark img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.logo-item-domain {
+  font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted);
+  max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.logo-item:hover .logo-item-domain { color: var(--ink); }
 .shop-logo {
   width: 40px; height: 40px; position: relative; overflow: hidden;
   border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-card);
