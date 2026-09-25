@@ -5,20 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>404 · page not found</title>
 <meta name="robots" content="noindex" />
-<link rel="preload" href="/_fonts/instrument-serif-400.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/_fonts/geist.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/marketing.css" />
 <style>
   .nf { min-height: 70vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 40px 24px; }
   .nf-inner h1 {
-    font-family: var(--font-serif); font-weight: 400;
-    font-size: clamp(4rem, 12vw, 8rem); line-height: 1; margin: 0 0 8px;
+    font-family: var(--font-serif); font-weight: 600;
+    font-size: clamp(3.6rem, 11vw, 7rem); line-height: 1.02; letter-spacing: -0.03em;
+    margin: 0 0 10px;
   }
-  .nf-inner h1 em { font-style: italic; position: relative; }
-  .nf-inner h1 em::after {
-    content: ""; position: absolute; left: -2px; right: -2px; bottom: 0.08em;
-    height: 0.3em; z-index: -1; border-radius: 3px;
-    background: var(--highlight); transform: rotate(-0.6deg);
-  }
+  .nf-inner h1 em { font-style: normal; color: var(--accent); }
   .nf-inner p { color: var(--muted); margin: 0 0 28px; }
   .nf-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 </style>
