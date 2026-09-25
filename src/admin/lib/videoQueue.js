@@ -67,8 +67,10 @@ export function useVideoJobs({ noun = 'video', poll = true } = {}) {
   }, [poll, jobs, reload]);
 
   const publish = useCallback(async (id, channel = 'facebook') => {
-    const target = channel === 'youtube' || channel === 'youtube_video' ? 'youtube' : 'facebook';
-    const label = target === 'youtube' ? 'YouTube' : 'Facebook';
+    const target = channel === 'youtube' || channel === 'youtube_video'
+      ? 'youtube'
+      : (channel === 'threads' || channel === 'threads_video' ? 'threads' : 'facebook');
+    const label = target === 'youtube' ? 'YouTube' : (target === 'threads' ? 'Threads' : 'Facebook');
     const { status, body } = await apiPost('/api/admin/video/publish', { id, channel: target });
     if (status === 200 && body?.ok) {
       message.success(body.posted ? `Đã đăng ${noun} lên ${label}` : `Đã vào hàng chờ ${label} — cron sẽ xử lý`);

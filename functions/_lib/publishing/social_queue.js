@@ -49,6 +49,10 @@ export function isCredentialError(err) {
 const SOCIAL_COLUMNS = `(id, project_id, blog_post_id, channel, status, attempts, max_attempts, next_attempt_at, created_at, updated_at)`;
 const SOCIAL_VALUES = `(?, ?, ?, ?, 'pending', 0, 5, ?, ?, ?)`;
 
+// Channels that can post a rendered video or a carousel on their own, with no
+// blog post row behind the job ref.
+const ASSET_CHANNELS = new Set(['facebook_video', 'threads']);
+
 // `repost` is for a HUMAN asking again — the admin "Đăng Facebook" button.
 // Without it the UNIQUE(blog_post_id, channel) index makes "one row per post
 // and channel" permanent, so a video that was posted once could never be
@@ -140,7 +144,11 @@ export async function runSocialJob(env, id, { dispatch = dispatchPublication } =
     return { ok: false, error: 'blog_post_missing' };
   }
 
-  if (!job.post_id && job.channel !== 'facebook_video') {
+  // A rendered video or a carousel carries its own ref ("video:<id>",
+  // "carousel:<post_id>") instead of a blog post id. Channels that post the
+  // asset itself — Facebook, and Threads with the article link as text —
+  // can run without a post row; text-first channels cannot.
+  if (!job.post_id && !ASSET_CHANNELS.has(job.channel)) {
     const error = job.channel === 'youtube_video'
       ? 'youtube_requires_mp4_blog_post'
       : 'blog_post_missing';

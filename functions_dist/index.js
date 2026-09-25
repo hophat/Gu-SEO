@@ -84,7 +84,7 @@ async function edgeCached(request, waitUntil, build) {
 var EDGE_SMAXAGE;
 var init_util = __esm({
   "_lib/util.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     __name(nowSec, "nowSec");
     __name(newId, "newId");
     __name(json, "json");
@@ -138,7 +138,7 @@ function listSettingKeys() {
 var FALLBACK, KEYS, SETTINGS_CACHE_KEY;
 var init_settings = __esm({
   "_lib/settings.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     FALLBACK = {
       site_cta: /* @__PURE__ */ __name((env) => env.SITE_CTA || "Sign up to get started.", "site_cta"),
@@ -315,7 +315,7 @@ async function getSiteIdentity(env) {
 var CACHE;
 var init_site_identity = __esm({
   "_lib/site_identity.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_settings();
     CACHE = "__ps_site_identity_cache";
     __name(getSiteIdentity, "getSiteIdentity");
@@ -351,7 +351,7 @@ async function getAdminToken(env) {
 var CACHE_KEY;
 var init_admin_token = __esm({
   "_lib/admin_token.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_settings();
     CACHE_KEY = "__ps_admin_token_cache";
     __name(getAdminToken, "getAdminToken");
@@ -377,7 +377,7 @@ function configError(missing) {
 }
 var init_config = __esm({
   "_lib/config.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_site_identity();
     init_admin_token();
     __name(missingConfig, "missingConfig");
@@ -495,7 +495,7 @@ function readCookie(req, name) {
 var PBKDF2_ITER, PASSWORD_HASH_BYTES, SALT_BYTES, SESSION_DAYS, SESSION_COOKIE;
 var init_passwords = __esm({
   "_lib/passwords.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     PBKDF2_ITER = 1e5;
     PASSWORD_HASH_BYTES = 32;
     SALT_BYTES = 16;
@@ -655,7 +655,7 @@ async function resolveTenantContext(env, request, auth) {
 var DENIED_PROJECT_SENTINEL;
 var init_auth = __esm({
   "_lib/auth.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_config();
     init_passwords();
@@ -698,7 +698,7 @@ function bytesToBase64(bytes) {
 var MAX_ASSETS, MAX_ASSET_BYTES, onRequestGet;
 var init_export = __esm({
   "api/admin/cover/templates/export.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_settings();
@@ -834,7 +834,7 @@ async function uniqueName(env, baseName) {
 var MAX_BYTES, MAX_ASSETS2, MAX_TOTAL_BYTES, ALLOWED_MIME, onRequestPost;
 var init_import = __esm({
   "api/admin/cover/templates/import.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     MAX_BYTES = 10 * 1024 * 1024;
@@ -1069,7 +1069,7 @@ async function syncSitemapAliases(env, projectId = null) {
 var RESERVED, RESERVED_NAMES;
 var init_aliases = __esm({
   "_lib/links/aliases.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     RESERVED = {
       blog: { url: "/blog", description: "The main blog index of this site." },
@@ -1089,7 +1089,7 @@ var init_aliases = __esm({
 var onRequestPost2;
 var init_sync = __esm({
   "api/admin/aliases/sync.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_aliases();
@@ -1110,7 +1110,7 @@ var init_sync = __esm({
 var onRequestPost3;
 var init_delete_job = __esm({
   "api/admin/blog/delete-job.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestPost3 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -1240,7 +1240,7 @@ ${body}`;
 var EMBED_MODEL, SIMILARITY_THRESHOLD, RECENT_POSTS_TO_CHECK, MAX_TEXT_FOR_EMBED;
 var init_dedup = __esm({
   "_lib/dedup.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     EMBED_MODEL = "@cf/baai/bge-base-en-v1.5";
     SIMILARITY_THRESHOLD = 0.8;
     RECENT_POSTS_TO_CHECK = 50;
@@ -1257,7 +1257,7 @@ var init_dedup = __esm({
 var BATCH_LIMIT, onRequestPost4;
 var init_embed_backfill = __esm({
   "api/admin/blog/embed-backfill.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_dedup();
@@ -1454,7 +1454,7 @@ function buildBrandContext({ env, settings, post, request, extras, kind } = {}) 
 var FILTERS;
 var init_template = __esm({
   "_lib/template.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     FILTERS = {
       upper: /* @__PURE__ */ __name((v) => String(v ?? "").toUpperCase(), "upper"),
       lower: /* @__PURE__ */ __name((v) => String(v ?? "").toLowerCase(), "lower"),
@@ -1641,7 +1641,7 @@ function priceFor(prices, provider, direction) {
 var BUNDLED_PRICES, MODELS_DEV_MAP, CACHE_STALENESS_SEC;
 var init_prices = __esm({
   "_lib/prices.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_settings();
     init_util();
     BUNDLED_PRICES = {
@@ -1773,7 +1773,7 @@ async function checkBudget(env, source = "admin") {
 var CHARS_PER_TOKEN;
 var init_usage = __esm({
   "_lib/usage.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_settings();
     init_prices();
@@ -1935,7 +1935,7 @@ function closeTruncated(s) {
 var DEFAULT_SYS;
 var init_raw_llm = __esm({
   "_lib/raw_llm.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_ai();
     init_settings();
     init_usage();
@@ -2061,7 +2061,7 @@ async function describeKeys(env, names) {
 var PBKDF2_SALT, PBKDF2_ITER2, IV_BYTES, cachedKey, cachedTokenHash;
 var init_secret_vault = __esm({
   "_lib/secret_vault.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_admin_token();
     PBKDF2_SALT = new TextEncoder().encode("pages-seo:vault:v1");
     PBKDF2_ITER2 = 1e5;
@@ -2903,7 +2903,7 @@ function providerEnvKey(name) {
 var BANNED_PHRASES_BLOCK, CONCRETENESS_BLOCK, AGENT_MARKUP_HINT, SYSTEM_JSON_ONLY, WORKERS_AI_TEXT_MODEL, WORKERS_AI_IMAGE_MODEL, OPENAI_RESPONSES_URL, OPENAI_IMAGES_URL, OPENAI_TEXT_MODEL, OPENAI_IMAGE_MODEL, ANTHROPIC_URL, ANTHROPIC_TEXT_MODEL, GEMINI_TEXT_MODELS, GEMINI_IMAGE_MODEL, TEXT_PROVIDERS, IMAGE_PROVIDERS, PROVIDER_SECRET_NAMES;
 var init_ai = __esm({
   "_lib/ai.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_template();
     init_raw_llm();
     init_usage();
@@ -3045,7 +3045,7 @@ function sniffImageFormat(bytes) {
 var onRequestPost5;
 var init_image = __esm({
   "api/admin/blog/image.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -3132,7 +3132,7 @@ var init_image = __esm({
 var onRequestGet2;
 var init_jobs = __esm({
   "api/admin/blog/jobs.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestGet2 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -3165,7 +3165,7 @@ var init_jobs = __esm({
 var onRequestGet3;
 var init_list = __esm({
   "api/admin/blog/list.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestGet3 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -3197,7 +3197,7 @@ var init_list = __esm({
 var onRequestPost6;
 var init_post = __esm({
   "api/admin/blog/post.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestPost6 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -3291,7 +3291,7 @@ async function markTopicUsed(env, topicKey) {
 var TOPICS;
 var init_topics = __esm({
   "_lib/topics.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     TOPICS = [
       // ── on-page (writing for readers + Google) ─────────────────────
       { key: "on-page-seo-2026", category: "on-page", angle: "On-page SEO basics in 2026 \u2014 what still matters, what doesn't, and a checklist a small site can actually use." },
@@ -3383,7 +3383,7 @@ async function getIndexNowKey(env) {
 var CACHE_KEY2;
 var init_indexnow_key = __esm({
   "_lib/indexnow_key.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_settings();
     CACHE_KEY2 = "__ps_indexnow_key_cache";
     __name(getIndexNowKey, "getIndexNowKey");
@@ -3426,7 +3426,7 @@ async function pingIndexNow(env, urls, request = null, hostOverride = null) {
 var INDEXNOW_URL;
 var init_indexnow = __esm({
   "_lib/indexnow.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_indexnow_key();
     init_site_identity();
     INDEXNOW_URL = "https://api.indexnow.org/indexnow";
@@ -3587,7 +3587,7 @@ async function describeConfig(env) {
 var SCOPE_SITEMAP, SCOPE_INDEXING, GOOGLE_TOKEN_URL, TOKEN_CACHE;
 var init_google_indexing = __esm({
   "_lib/google_indexing.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_secret_vault();
     init_settings();
     init_site_identity();
@@ -3736,7 +3736,7 @@ function statusForScore(verdict, { forcePublish = false } = {}) {
 }
 var init_quality = __esm({
   "_lib/quality.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     __name(wordCount, "wordCount");
     __name(countMatches, "countMatches");
     __name(internalLinkCount, "internalLinkCount");
@@ -3942,7 +3942,7 @@ async function upsertProject(env, projectData) {
 }
 var init_projects = __esm({
   "_lib/projects.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     __name(normalizeCustomDomain, "normalizeCustomDomain");
     __name(getProject, "getProject");
@@ -4082,7 +4082,7 @@ async function listChannelStates(env, projectId) {
 var CHANNELS;
 var init_channels = __esm({
   "_lib/channels.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     CHANNELS = [
       { id: "facebook", label: "Facebook Page", legacy_type: "facebook" },
@@ -4290,7 +4290,7 @@ async function clearPendingPages(env, projectId) {
 var GRAPH, DIALOG, DEFAULT_VERSION, FB_SCOPES, THREADS_SCOPES, INSTAGRAM_SCOPES, FB_APP_SECRET_NAME, THREADS_APP_SECRET_NAME, PENDING_TTL_SEC;
 var init_facebook_oauth = __esm({
   "_lib/publishing/facebook_oauth.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_secret_vault();
     GRAPH = "https://graph.facebook.com";
     DIALOG = "https://www.facebook.com";
@@ -4373,7 +4373,7 @@ function carouselSlideRegex(prefix) {
 var CAROUSEL_KIND, CAROUSEL_REF_PREFIX, CAROUSEL_KEY_PREFIX, CAROUSEL_SLIDE_COUNT, EXPLAINER_KIND, EXPLAINER_REF_PREFIX, POST_BACKED_PREFIXES;
 var init_video_jobs = __esm({
   "_lib/video_jobs.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     CAROUSEL_KIND = "carousel";
     CAROUSEL_REF_PREFIX = "carousel:";
     CAROUSEL_KEY_PREFIX = "carousel/";
@@ -4746,7 +4746,7 @@ async function verifyFacebookPage({ env, projectId, pageId, token }) {
 var GRAPH2, MAX_FACEBOOK_MESSAGE_CHARS, MAX_FACEBOOK_HASHTAG_LENGTH, GENERIC_HASHTAGS;
 var init_facebook = __esm({
   "_lib/publishing/facebook.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_secret_vault();
     init_facebook_oauth();
     init_video_jobs();
@@ -4990,7 +4990,7 @@ async function verifyYoutubeChannel({ accessToken }) {
 var AUTH_ENDPOINT, TOKEN_ENDPOINT, CHANNELS_ENDPOINT, YOUTUBE_CLIENT_SECRET_NAME, YOUTUBE_SCOPES;
 var init_youtube_oauth = __esm({
   "_lib/publishing/youtube_oauth.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_secret_vault();
     AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
     TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -5373,7 +5373,7 @@ async function publishYoutubeVideo({ project, article, configJson, env, socialPo
 var UPLOAD_ENDPOINT, CHUNK_BYTES, MAX_CHUNKS_PER_RUN, MAX_VIDEO_BYTES, MAX_TITLE, MAX_DESCRIPTION, MAX_TAGS;
 var init_youtube = __esm({
   "_lib/publishing/youtube.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_youtube_oauth();
     init_secret_vault();
     init_video_jobs();
@@ -5610,7 +5610,7 @@ function adaptArticleForChannel(channel, project, article, cfg = {}) {
 var X_LIMIT, THREADS_LIMIT, IG_CAPTION_LIMIT, X_URL_ENTITY, X_URL_RE;
 var init_adapter = __esm({
   "_lib/publishing/adapter.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_facebook();
     X_LIMIT = 280;
     THREADS_LIMIT = 500;
@@ -5731,7 +5731,7 @@ function safeParse(json2) {
 var GRAPH3;
 var init_instagram = __esm({
   "_lib/publishing/instagram.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_secret_vault();
     init_facebook_oauth();
     init_facebook();
@@ -5888,7 +5888,7 @@ function safeParse2(json2) {
 var GRAPH4, AUTH_URL, TOKEN_URL;
 var init_threads = __esm({
   "_lib/publishing/threads.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_secret_vault();
     init_facebook_oauth();
     init_facebook();
@@ -6056,7 +6056,7 @@ async function publishToX({ project, article, configJson, env }) {
 var API, UPLOAD, X_TOKEN_NAMES;
 var init_x = __esm({
   "_lib/publishing/x.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_secret_vault();
     init_adapter();
     API = "https://api.twitter.com";
@@ -6225,7 +6225,7 @@ async function publishToWordPress({ endpointUrl, authHeader, article }) {
 }
 var init_publisher = __esm({
   "_lib/publishing/publisher.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_facebook();
     init_youtube();
     init_instagram();
@@ -6274,7 +6274,7 @@ async function trackOnce(env, { event, projectId, userId = null, props = null } 
 var EVENTS, KNOWN;
 var init_events = __esm({
   "_lib/events.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     EVENTS = [
       "signup",
@@ -6388,7 +6388,7 @@ async function runSocialJob(env, id, { dispatch = dispatchPublication } = {}) {
     await finishJob(env, id, { status: "failed", error: "blog_post_missing" });
     return { ok: false, error: "blog_post_missing" };
   }
-  if (!job.post_id && job.channel !== "facebook_video") {
+  if (!job.post_id && !ASSET_CHANNELS.has(job.channel)) {
     const error = job.channel === "youtube_video" ? "youtube_requires_mp4_blog_post" : "blog_post_missing";
     await finishJob(env, id, {
       status: job.channel === "youtube_video" ? "skipped" : "failed",
@@ -6536,10 +6536,10 @@ async function cancelSocialPost(env, { projectId = null, id }) {
   ).bind(t, id).run().catch(() => null);
   return { ok: !!r?.meta?.changes };
 }
-var BASE_DELAY_SEC, MAX_DELAY_SEC, SOCIAL_COLUMNS, SOCIAL_VALUES;
+var BASE_DELAY_SEC, MAX_DELAY_SEC, SOCIAL_COLUMNS, SOCIAL_VALUES, ASSET_CHANNELS;
 var init_social_queue = __esm({
   "_lib/publishing/social_queue.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_projects();
     init_publisher();
@@ -6551,6 +6551,7 @@ var init_social_queue = __esm({
     __name(isCredentialError, "isCredentialError");
     SOCIAL_COLUMNS = `(id, project_id, blog_post_id, channel, status, attempts, max_attempts, next_attempt_at, created_at, updated_at)`;
     SOCIAL_VALUES = `(?, ?, ?, ?, 'pending', 0, 5, ?, ?, ?)`;
+    ASSET_CHANNELS = /* @__PURE__ */ new Set(["facebook_video", "threads"]);
     __name(enqueueSocialPost, "enqueueSocialPost");
     __name(claimJob, "claimJob");
     __name(loadJobContext, "loadJobContext");
@@ -6728,7 +6729,7 @@ async function publicPathFor(env, projectId, request) {
 var CACHE_KEY3, PROJECT_LOCALES, SLUG_CACHE_KEY;
 var init_project_scope = __esm({
   "_lib/project_scope.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     CACHE_KEY3 = "__ps_project_scope_cache__";
     PROJECT_LOCALES = Object.freeze({
       vi: { htmlLang: "vi", ogLocale: "vi_VN" },
@@ -6887,7 +6888,7 @@ async function sendEmail(env, { to, subject, html: html2, replyTo = "" }) {
 var SmtpReader;
 var init_email_smtp = __esm({
   "_lib/email_smtp.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     __name(mailCredentials, "mailCredentials");
     __name(encodeSubject, "encodeSubject");
     SmtpReader = class {
@@ -7060,7 +7061,7 @@ async function sendPublishReport(env, { projectId, blogPostId, baseUrl = "" }) {
 var STATUS_LABEL, CHANNEL_LABEL;
 var init_report = __esm({
   "_lib/publishing/report.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_email_smtp();
     init_settings();
     STATUS_LABEL = {
@@ -7092,7 +7093,7 @@ var init_report = __esm({
 var onRequestPost7;
 var init_publish = __esm({
   "api/admin/blog/publish.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_topics();
@@ -7245,7 +7246,7 @@ async function ensureRedirectTable(env) {
 var onRequestPost8;
 var init_rename_slug = __esm({
   "api/admin/blog/rename-slug.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     __name(ensureRedirectTable, "ensureRedirectTable");
@@ -7296,7 +7297,7 @@ var init_rename_slug = __esm({
 var onRequestPost9;
 var init_retry_job = __esm({
   "api/admin/blog/retry-job.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestPost9 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -7388,7 +7389,7 @@ async function generateContent2({
 }
 var init_provider = __esm({
   "_lib/ai/provider.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_ai();
     init_util();
     __name(generateContent2, "generateContent");
@@ -7631,7 +7632,7 @@ async function scoreProjectTopics(env, project) {
 var COMMERCIAL_CUES;
 var init_project_topics = __esm({
   "_lib/project_topics.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_provider();
     __name(listProjectTopics, "listProjectTopics");
@@ -7890,7 +7891,7 @@ async function planSingleForToday(env, { preferredProvider = "", source = "cron-
 }
 var init_calendar_planner = __esm({
   "_lib/calendar_planner.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_settings();
     init_raw_llm();
@@ -7927,7 +7928,7 @@ async function nextDueSlot(env, projectId) {
 var onRequestPost10;
 var init_start = __esm({
   "api/admin/blog/start.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_topics();
@@ -8106,7 +8107,7 @@ function sanitiseMarkdownLinks(md, opts = {}) {
 var LINK_RX, BARE_URL_RX, SAFE_PROTOCOLS, DEFAULT_INTERNAL_PREFIXES;
 var init_sanitise = __esm({
   "_lib/links/sanitise.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     LINK_RX = /\[([^\]]+)\]\(([^)\s]+)\)/g;
     BARE_URL_RX = /(?<![("\w])(https?:\/\/[A-Za-z0-9._~:/?#@!$&'*+,;=%-]+)(?![\w"])/g;
     SAFE_PROTOCOLS = /^(https?:|mailto:|tel:)/i;
@@ -8226,7 +8227,7 @@ async function loadLinkTargets(env, selfSlug, { limit = TARGET_POOL_SIZE, pillar
 var MAX_LINKS_PER_POST, MAX_RELATED_LINKS, MIN_PHRASE_WORDS, MAX_PHRASE_WORDS, TARGET_POOL_SIZE;
 var init_internal_links = __esm({
   "_lib/internal_links.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     MAX_LINKS_PER_POST = 3;
     MAX_RELATED_LINKS = 3;
     MIN_PHRASE_WORDS = 3;
@@ -8246,7 +8247,7 @@ var init_internal_links = __esm({
 var onRequestPost11;
 var init_text = __esm({
   "api/admin/blog/text.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -8388,7 +8389,7 @@ var init_text = __esm({
 var onRequestPost12;
 var init_plan = __esm({
   "api/admin/calendar/plan.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_calendar_planner();
@@ -8469,7 +8470,7 @@ function measureHtml(html2) {
 var CACHE_TTL_SEC, MAX_URLS, MAX_HTML_CHARS, onRequestPost13;
 var init_scan = __esm({
   "api/admin/competitors/scan.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_projects();
@@ -8543,7 +8544,7 @@ function decodeBase64Png(b64) {
 var MAX_BYTES2, onRequestPost14;
 var init_apply = __esm({
   "api/admin/cover/apply.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     MAX_BYTES2 = 8 * 1024 * 1024;
@@ -8607,7 +8608,7 @@ var init_apply = __esm({
 var onRequestPost15;
 var init_render_server = __esm({
   "api/admin/cover/render-server.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestPost15 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -8696,7 +8697,7 @@ function fallbackCoverSpec() {
 var COVER_SPEC_SIZE;
 var init_cover_spec = __esm({
   "_lib/cover_spec.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     COVER_SPEC_SIZE = Object.freeze({ width: 1200, height: 630 });
     __name(isRenderableSpec, "isRenderableSpec");
     __name(normalizeCoverSpec, "normalizeCoverSpec");
@@ -8713,7 +8714,7 @@ function shrinkSpec(spec) {
 var MAX_SPEC_BYTES, onRequestGet4, onRequestPost16, onRequestPut, onRequestDelete;
 var init_templates = __esm({
   "api/admin/cover/templates.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_cover_spec();
@@ -8855,7 +8856,7 @@ function decodeBase642(b64) {
 var MAX_BYTES3, ALLOWED_KINDS, ALLOWED_MIME2, onRequestPost17, onRequestGet5, onRequestDelete2;
 var init_upload = __esm({
   "api/admin/cover/upload.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     MAX_BYTES3 = 10 * 1024 * 1024;
@@ -9052,7 +9053,7 @@ async function refreshStep(call, proj, limit, overBudget) {
 var CHAIN_START_BUDGET_MS, STEP_BUDGET_MS, onRequestPost18;
 var init_tick = __esm({
   "api/admin/cron/tick.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_projects();
@@ -9157,7 +9158,7 @@ var init_tick = __esm({
 var onRequestPost19;
 var init_weekly_digest = __esm({
   "api/admin/cron/weekly-digest.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_email_smtp();
@@ -9260,7 +9261,7 @@ async function clearNotice(env, kind) {
 var VALID_SEVERITIES;
 var init_notices = __esm({
   "_lib/notices.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     VALID_SEVERITIES = /* @__PURE__ */ new Set(["info", "warn", "error"]);
     __name(recordNotice, "recordNotice");
@@ -9364,7 +9365,7 @@ async function cfAttachStatus(env, request, hostname) {
 var CF_API, FALLBACK_PAGES_HOST;
 var init_cloudflare_domains = __esm({
   "_lib/cloudflare_domains.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     CF_API = "https://api.cloudflare.com/client/v4";
     FALLBACK_PAGES_HOST = "gu-seo.pages.dev";
     __name(cfCreds, "cfCreds");
@@ -9384,7 +9385,7 @@ var init_cloudflare_domains = __esm({
 var onRequestGet6, onRequestPost20;
 var init_requests = __esm({
   "api/admin/domains/requests.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_projects();
@@ -9505,7 +9506,7 @@ var init_requests = __esm({
 var onRequestPost21;
 var init_test = __esm({
   "api/admin/google-search-console/test.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_google_indexing();
@@ -9529,7 +9530,7 @@ var init_test = __esm({
 var onRequestPost22;
 var init_dismiss = __esm({
   "api/admin/notices/dismiss.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestPost22 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -9564,7 +9565,7 @@ var init_dismiss = __esm({
 var onRequestPost23;
 var init_generate_next = __esm({
   "api/admin/prog/generate-next.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -9857,7 +9858,7 @@ function canonicaliseKeyword(kw) {
 var TRANSACTIONAL, COMMERCIAL, INFORMATIONAL, NAVIGATIONAL, JUNK_PATTERNS, SPECIFICITY_MODIFIERS, HIGH_CTR_MODIFIERS;
 var init_keyword_score = __esm({
   "_lib/keyword_score.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     TRANSACTIONAL = [
       "buy",
       "purchase",
@@ -10038,7 +10039,7 @@ async function pullKeywords(seed, { limit = 50, expand = true, minScore = 0 } = 
 var ENDPOINT, LETTERS, PREFIXES, SUFFIXES;
 var init_keyword_puller = __esm({
   "_lib/keyword_puller.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_keyword_score();
     ENDPOINT = "https://suggestqueries.google.com/complete/search";
     LETTERS = "abcdefghijklmnopqrstuvwxyz".split("");
@@ -10055,7 +10056,7 @@ var init_keyword_puller = __esm({
 var onRequestPost24;
 var init_pull_keywords = __esm({
   "api/admin/prog/pull-keywords.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_keyword_puller();
@@ -10124,7 +10125,7 @@ var init_pull_keywords = __esm({
 var onRequestGet7, onRequestPatch, onRequestDelete3;
 var init_queue = __esm({
   "api/admin/prog/queue.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestGet7 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -10235,7 +10236,7 @@ var init_queue = __esm({
 var onRequestPost25;
 var init_upload2 = __esm({
   "api/admin/prog/upload.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_keyword_score();
@@ -10384,7 +10385,7 @@ async function testChannel(env, pid, channel, body) {
 var X_SECRET_FIELDS, X_NAME_BY_FIELD, onRequestGet8, onRequestPost26;
 var init_channels2 = __esm({
   "api/admin/projects/channels.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_secret_vault();
@@ -10545,7 +10546,7 @@ async function recordResult(env, projectId, channel, status, detail) {
 var onRequestGet9;
 var init_channels_callback = __esm({
   "api/admin/projects/channels-callback.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_admin_token();
     init_facebook_oauth();
     init_secret_vault();
@@ -10614,7 +10615,7 @@ var init_channels_callback = __esm({
 var SCOPES_BY_CHANNEL, onRequestGet10;
 var init_channels_connect = __esm({
   "api/admin/projects/channels-connect.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_auth();
     init_admin_token();
     init_events();
@@ -10685,7 +10686,7 @@ var init_channels_connect = __esm({
 var onRequestGet11, onRequestPost27;
 var init_domain = __esm({
   "api/admin/projects/domain.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_projects();
@@ -10841,7 +10842,7 @@ async function recordResult2(env, projectId, status, detail) {
 var onRequestGet12;
 var init_fb_callback = __esm({
   "api/admin/projects/fb-callback.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_admin_token();
     init_facebook_oauth();
     init_secret_vault();
@@ -10921,7 +10922,7 @@ var init_fb_callback = __esm({
 var onRequestGet13;
 var init_fb_connect = __esm({
   "api/admin/projects/fb-connect.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_auth();
     init_admin_token();
     init_events();
@@ -10974,7 +10975,7 @@ function decodeBase643(b64) {
 var MAX_BYTES4, ALLOWED_MIME3, onRequestPost28;
 var init_logo = __esm({
   "api/admin/projects/logo.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     MAX_BYTES4 = 2 * 1024 * 1024;
@@ -11039,7 +11040,7 @@ var init_logo = __esm({
 var MAX_NAME, onRequestGet14, onRequestPatch2;
 var init_profile = __esm({
   "api/admin/projects/profile.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     MAX_NAME = 120;
@@ -11157,7 +11158,7 @@ async function loadRow(env, projectId) {
 var PUBLISHER_TYPES, onRequestGet15, onRequestPost29;
 var init_publishing = __esm({
   "api/admin/projects/publishing.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_secret_vault();
@@ -11438,7 +11439,7 @@ async function recordResult3(env, projectId, status, detail) {
 var onRequestGet16;
 var init_youtube_callback = __esm({
   "api/admin/projects/youtube-callback.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_auth();
     init_util();
     init_admin_token();
@@ -11508,7 +11509,7 @@ var init_youtube_callback = __esm({
 var onRequestGet17;
 var init_youtube_connect = __esm({
   "api/admin/projects/youtube-connect.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_auth();
     init_util();
     init_admin_token();
@@ -11546,7 +11547,7 @@ var init_youtube_connect = __esm({
 var onRequestGet18;
 var init_gurouter_models = __esm({
   "api/admin/providers/gurouter-models.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -11610,7 +11611,7 @@ var init_gurouter_models = __esm({
 var onRequestPost30;
 var init_test2 = __esm({
   "api/admin/providers/test.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -11648,7 +11649,7 @@ var init_test2 = __esm({
 var onRequestPost31;
 var init_test_image = __esm({
   "api/admin/providers/test-image.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -11714,7 +11715,7 @@ async function weeklyRefreshCount(env, projectId) {
 var WEEKLY_CAP, onRequestPost32;
 var init_run = __esm({
   "api/admin/refresh/run.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -11894,7 +11895,7 @@ ${String(post.body_markdown || "").slice(0, 6e3)}`,
 var STALE_DAYS, REFRESH_COOLDOWN_DAYS, onRequestPost33;
 var init_scan2 = __esm({
   "api/admin/refresh/scan.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     STALE_DAYS = 90;
@@ -11952,7 +11953,7 @@ var init_scan2 = __esm({
 var onRequestPost34;
 var init_test3 = __esm({
   "api/admin/report/test.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_email_smtp();
@@ -11998,7 +11999,7 @@ var init_test3 = __esm({
 var onRequestPost35;
 var init_score = __esm({
   "api/admin/topics/score.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_projects();
@@ -12039,7 +12040,7 @@ async function fetchLatestSha() {
 var CF_API2, onRequestPost36;
 var init_apply2 = __esm({
   "api/admin/update/apply.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_settings();
@@ -12141,7 +12142,7 @@ function canonicalEmail(value) {
 var EMAIL_RX, MAX_EMAIL_LENGTH, GOOGLE_DOMAINS;
 var init_email_rules = __esm({
   "_lib/email_rules.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     EMAIL_RX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
     MAX_EMAIL_LENGTH = 254;
     __name(normalizeEmail, "normalizeEmail");
@@ -12157,7 +12158,7 @@ var init_email_rules = __esm({
 var onRequestPost37;
 var init_recanonicalize = __esm({
   "api/admin/users/recanonicalize.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_email_rules();
@@ -12235,7 +12236,7 @@ async function brandSave({ env, request }) {
 var onRequestGet19, onRequestPut2, onRequestPost38;
 var init_brand = __esm({
   "api/admin/video/brand.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestGet19 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -12291,7 +12292,7 @@ function clampVideoDuration(value) {
 var VIDEO_TEMPLATES;
 var init_video_templates = __esm({
   "_lib/video_templates.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     VIDEO_TEMPLATES = [
       {
         id: "auto",
@@ -12412,7 +12413,7 @@ var init_video_templates = __esm({
 var onRequestPost39;
 var init_business = __esm({
   "api/admin/video/business.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_video_templates();
@@ -12461,7 +12462,7 @@ var init_business = __esm({
 var onRequestPost40;
 var init_carousel = __esm({
   "api/admin/video/carousel.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_video_jobs();
@@ -12510,7 +12511,7 @@ var init_carousel = __esm({
 var MAX_SLIDES, onRequestPost41;
 var init_carousel_deliver = __esm({
   "api/admin/video/carousel-deliver.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_video_jobs();
@@ -12585,7 +12586,7 @@ function parseBgmParam(raw) {
 var BGM_LICENSE, BGM_TRACKS, BGM_NONE, AUTO_BGM_BY_TEMPLATE;
 var init_bgm_catalog = __esm({
   "_lib/bgm_catalog.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     BGM_LICENSE = {
       label: "Mixkit Free License",
       url: "https://mixkit.co/license/",
@@ -12636,7 +12637,7 @@ function bgmFields(bgm, requestUrl, template = "") {
 var QUEUE_WINDOW, POST_QUEUE_KINDS, onRequestPost42;
 var init_claim = __esm({
   "api/admin/video/claim.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_video_jobs();
@@ -12916,7 +12917,7 @@ async function insertJob(env, { projectId, ref, slug, kind, sourceUrl, template,
 var IN_FLIGHT, onRequestPost43;
 var init_create = __esm({
   "api/admin/video/create.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_video_templates();
@@ -13031,7 +13032,7 @@ var init_create = __esm({
 var onRequestPost44;
 var init_delete = __esm({
   "api/admin/video/delete.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_video_jobs();
@@ -13141,7 +13142,7 @@ async function sendVideoReadyEmail(env, { jobId, origin = "" }) {
 }
 var init_video_notify = __esm({
   "_lib/video_notify.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_email_smtp();
     __name(esc3, "esc");
     __name(sendVideoReadyEmail, "sendVideoReadyEmail");
@@ -13152,7 +13153,7 @@ var init_video_notify = __esm({
 var MAX_BYTES5, onRequestPost45;
 var init_deliver = __esm({
   "api/admin/video/deliver.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_projects();
@@ -13257,7 +13258,7 @@ var init_deliver = __esm({
 var onRequestPost46;
 var init_enqueue_missing = __esm({
   "api/admin/video/enqueue-missing.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestPost46 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -13303,7 +13304,7 @@ var init_enqueue_missing = __esm({
 var onRequestPost47;
 var init_explainer = __esm({
   "api/admin/video/explainer.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_video_jobs();
@@ -13356,7 +13357,7 @@ var init_explainer = __esm({
 var onRequestGet20;
 var init_list2 = __esm({
   "api/admin/video/list.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_video_jobs();
@@ -13419,7 +13420,7 @@ function decodeBase644(b64) {
 var MAX_BYTES6, ALLOWED_MIME4, onRequestPost48;
 var init_presenter = __esm({
   "api/admin/video/presenter.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     MAX_BYTES6 = 2 * 1024 * 1024;
@@ -13484,7 +13485,7 @@ var init_presenter = __esm({
 var onRequestPost49;
 var init_publish2 = __esm({
   "api/admin/video/publish.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_social_queue();
@@ -13501,7 +13502,7 @@ var init_publish2 = __esm({
       const jobId = String(body?.id || body?.job_id || "");
       if (!jobId) return json(400, { error: "missing_job_id" });
       const requestedChannel = String(body?.channel ?? "facebook").trim().toLowerCase();
-      const channel = requestedChannel === "youtube" || requestedChannel === "youtube_video" ? "youtube_video" : requestedChannel === "facebook" || requestedChannel === "facebook_video" ? "facebook_video" : null;
+      const channel = requestedChannel === "youtube" || requestedChannel === "youtube_video" ? "youtube_video" : requestedChannel === "facebook" || requestedChannel === "facebook_video" ? "facebook_video" : requestedChannel === "threads" || requestedChannel === "threads_video" ? "threads" : null;
       if (!channel) {
         return json(400, { error: "unknown_channel", channel: requestedChannel });
       }
@@ -13554,7 +13555,7 @@ var init_publish2 = __esm({
 var onRequestGet21;
 var init_templates2 = __esm({
   "api/admin/video/templates.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_video_templates();
@@ -13586,7 +13587,7 @@ var init_templates2 = __esm({
 var onRequestPost50;
 var init_website = __esm({
   "api/admin/video/website.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_video_templates();
@@ -13665,7 +13666,7 @@ function firstError(body) {
 var CF_API3, onRequestPost51;
 var init_delete2 = __esm({
   "api/install/d1/delete.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     CF_API3 = "https://api.cloudflare.com/client/v4";
     __name(cfFetch2, "cfFetch");
@@ -13734,7 +13735,7 @@ async function resolveAccount(token, accountIdHint) {
 var CF_API4, FREE_TIER_D1_CAP, onRequestPost52;
 var init_list3 = __esm({
   "api/install/d1/list.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     CF_API4 = "https://api.cloudflare.com/client/v4";
     FREE_TIER_D1_CAP = 10;
@@ -13878,7 +13879,7 @@ async function readOAuthCookie(env, request) {
 var COOKIE_NAME, COOKIE_PATH, TTL_SEC, PBKDF2_ITER3, SALT;
 var init_oauth_cookie = __esm({
   "_lib/oauth_cookie.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     COOKIE_NAME = "ps_gh";
     COOKIE_PATH = "/api";
     TTL_SEC = 60 * 60;
@@ -13897,7 +13898,7 @@ var init_oauth_cookie = __esm({
 var CF_APP_SLUGS, onRequestGet22;
 var init_cf_app = __esm({
   "api/install/github/cf-app.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_oauth_cookie();
     CF_APP_SLUGS = /* @__PURE__ */ new Set([
@@ -14014,7 +14015,7 @@ async function lookupRepo(token, fullName) {
 var UPSTREAM_OWNER, UPSTREAM_REPO, CF_APP_SLUG, onRequestPost53;
 var init_fork = __esm({
   "api/install/github/fork.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_oauth_cookie();
     UPSTREAM_OWNER = "Benjamin-Bloch";
@@ -14133,7 +14134,7 @@ function fail(url, flow, code, msg) {
 var VALID_FLOWS, onRequestGet23;
 var init_callback = __esm({
   "api/update/github/callback.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_oauth_cookie();
     VALID_FLOWS = /* @__PURE__ */ new Set(["install", "update"]);
     __name(readCookie3, "readCookie");
@@ -14244,7 +14245,7 @@ async function verifyFork(token, fullName) {
 var UPSTREAM_FULL_NAME, DEFAULT_REPO_NAME, SCAN_PAGES, PER_PAGE, onRequestGet24;
 var init_repos = __esm({
   "api/update/github/repos.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_oauth_cookie();
     UPSTREAM_FULL_NAME = "Benjamin-Bloch/pages-seo";
@@ -14323,7 +14324,7 @@ var init_repos = __esm({
 var VALID_FLOWS2, onRequestGet25;
 var init_start2 = __esm({
   "api/update/github/start.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     VALID_FLOWS2 = /* @__PURE__ */ new Set(["install", "update"]);
     onRequestGet25 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -14373,7 +14374,7 @@ var init_start2 = __esm({
 var onRequestGet26;
 var init_status = __esm({
   "api/update/github/status.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_oauth_cookie();
     onRequestGet26 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -14388,7 +14389,7 @@ var init_status = __esm({
 var NAME_RX, onRequestPost54;
 var init_sync2 = __esm({
   "api/update/github/sync.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_oauth_cookie();
     NAME_RX = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
@@ -14467,7 +14468,7 @@ var init_sync2 = __esm({
 var onRequestGet27, onRequestPut3, onRequestDelete4;
 var init_id = __esm({
   "api/admin/projects/[id].js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_projects();
@@ -14732,7 +14733,7 @@ function restoreBlocks(html2, blocks) {
 var BLOCK_TAGS, BOX_VARIANTS, LIST_CONTAINERS;
 var init_agent_markup = __esm({
   "_lib/agent_markup.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_markdown();
     BLOCK_TAGS = {
       "h1": { tag: "h2" },
@@ -14980,7 +14981,7 @@ function renderList(listLines) {
 var inlineRender, LIST_RE;
 var init_markdown = __esm({
   "_lib/markdown.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_agent_markup();
     __name(escape, "escape");
     __name(inlineNonCode, "inlineNonCode");
@@ -15007,7 +15008,7 @@ function imageUrlFor5(key) {
 var onRequestGet28;
 var init_slug = __esm({
   "api/public/post/[slug].js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_markdown();
     __name(imageUrlFor5, "imageUrlFor");
     onRequestGet28 = /* @__PURE__ */ __name(async ({ env, params }) => {
@@ -15526,7 +15527,7 @@ ${beaconScript}
 var HERO_W, HERO_H;
 var init_page_render = __esm({
   "_lib/page_render.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_markdown();
     init_util();
     init_project_scope();
@@ -15893,7 +15894,7 @@ function renderBlogIndexCached(ctx, opts = {}) {
 var PAGE_SIZE, onRequestGet29;
 var init_blog = __esm({
   "blog/index.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_settings();
     init_page_render();
@@ -15909,7 +15910,7 @@ var init_blog = __esm({
 var onRequestGet30;
 var init_page = __esm({
   "[project]/blog/page/[page].js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_blog();
     init_project_scope();
     onRequestGet30 = /* @__PURE__ */ __name(async (ctx) => {
@@ -15932,7 +15933,7 @@ var init_page = __esm({
 var SITE_ORIGIN, onRequestGet31;
 var init_activation = __esm({
   "api/admin/activation.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_settings();
@@ -16070,7 +16071,7 @@ async function tenantOf(env, request) {
 var NAME_RX2, onRequestGet32, onRequestPost55, onRequestPatch3, onRequestDelete5;
 var init_aliases2 = __esm({
   "api/admin/aliases/index.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_aliases();
@@ -16182,7 +16183,7 @@ var init_aliases2 = __esm({
 var onRequestGet33;
 var init_analytics = __esm({
   "api/admin/analytics.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestGet33 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -16230,7 +16231,7 @@ function item(id, severity, title, detail, action, count = null) {
 var CRON_STALE_HOURS, STUCK_JOB_HOURS, BUDGET_WARN_PCT, onRequestGet34;
 var init_attention = __esm({
   "api/admin/attention.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_settings();
@@ -16448,7 +16449,7 @@ var init_attention = __esm({
 var onRequestGet35;
 var init_audit = __esm({
   "api/admin/audit.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestGet35 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -16643,7 +16644,7 @@ function scrapeToPromptInput(scrape) {
 var MAX_HTML_BYTES, MAX_BODY_TEXT, SKIP_TAG_RE, COMMENT_RE, TAG_RE, WS_RE, ENTITY_MAP, ENTITY_RE;
 var init_scrape = __esm({
   "_lib/scrape.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     MAX_HTML_BYTES = 8e5;
     MAX_BODY_TEXT = 6e3;
     SKIP_TAG_RE = /<(script|style|template|noscript|svg|iframe|object|embed)\b[^>]*>[\s\S]*?<\/\1>/gi;
@@ -16751,7 +16752,7 @@ function sanitiseField(s, max) {
 var BRAND_DNA_KEYS, CONTENT_LANGUAGES, onRequestGet36, onRequestPost56, onRequestPut4;
 var init_brand_dna = __esm({
   "api/admin/brand-dna.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_events();
@@ -17180,7 +17181,7 @@ function looseJsonParse2(text2) {
 var DEFAULT_BATCH, MAX_BATCH, MAX_KEYWORDS, onRequestPost57;
 var init_brand_filter_queue = __esm({
   "api/admin/brand-filter-queue.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_settings();
@@ -17283,7 +17284,7 @@ async function enrichWithPosts(env, rows) {
 var VALID_STATUSES, onRequestGet37, onRequestPost58, onRequestPatch4, onRequestDelete6;
 var init_calendar = __esm({
   "api/admin/calendar/index.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     VALID_STATUSES = ["scheduled", "generating", "draft", "published", "skipped"];
@@ -17420,7 +17421,7 @@ var init_calendar = __esm({
 var onRequestGet38;
 var init_competitors = __esm({
   "api/admin/competitors/index.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestGet38 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -18297,7 +18298,7 @@ window.psBlog.state = state;
 }
 var init_widget_render = __esm({
   "_lib/widget_render.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     __name(jsString, "jsString");
     __name(imageUrlFor6, "imageUrlFor");
     __name(widgetBody, "widgetBody");
@@ -18358,7 +18359,7 @@ function embedWidgetOptions({ settings = {}, embed: embed2 = {}, origin = "" }) 
 var EMBED_THEMES, EMBED_PALETTE_KEYS;
 var init_embed_settings = __esm({
   "_lib/embed_settings.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     EMBED_THEMES = ["auto", "light", "dark"];
     EMBED_PALETTE_KEYS = ["bg", "fg", "muted", "line", "accent"];
     __name(hexOrNull, "hexOrNull");
@@ -18393,7 +18394,7 @@ function html(js) {
 var onRequestGet39;
 var init_embed_preview = __esm({
   "api/admin/embed-preview.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_auth();
     init_widget_render();
     init_embed_settings();
@@ -18483,7 +18484,7 @@ function safeSettings(settings) {
 var SETTINGS_MAX_BYTES, onRequestGet40, onRequestPost59, onRequestPut5, onRequestDelete7;
 var init_embeds = __esm({
   "api/admin/embeds.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_embed_settings();
@@ -18609,7 +18610,7 @@ var init_embeds = __esm({
 var onRequestGet41, onRequestPost60, onRequestDelete8;
 var init_google_search_console = __esm({
   "api/admin/google-search-console/index.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_secret_vault();
@@ -18694,7 +18695,7 @@ function extractLocs(xml2) {
 var onRequestPost61;
 var init_indexnow_ping = __esm({
   "api/admin/indexnow-ping.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_indexnow();
@@ -18921,7 +18922,7 @@ async function computeInsights(env, { maxProjects = 2e3 } = {}) {
 var DAY;
 var init_insights = __esm({
   "_lib/insights.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     DAY = 86400;
     __name(isoWeek, "isoWeek");
     __name(percentile, "percentile");
@@ -18934,7 +18935,7 @@ var init_insights = __esm({
 var onRequestGet42;
 var init_insights2 = __esm({
   "api/admin/insights.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_insights();
@@ -18958,7 +18959,7 @@ function clientIp(request) {
 var MAX_FAILS, LOCKOUT_SEC, onRequestPost62;
 var init_login = __esm({
   "api/admin/login.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_passwords();
     init_admin_token();
@@ -19045,7 +19046,7 @@ var init_login = __esm({
 var onRequestPost63;
 var init_logout = __esm({
   "api/admin/logout.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_passwords();
     init_admin_token();
     onRequestPost63 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -19073,7 +19074,7 @@ var init_logout = __esm({
 var SCHEMA_SQL;
 var init_schema = __esm({
   "_lib/schema.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     SCHEMA_SQL = `
 -- pages-seo: D1 schema.
 --
@@ -19843,7 +19844,7 @@ __export(migrations_bundle_exports, {
 var MIGRATIONS;
 var init_migrations_bundle = __esm({
   "_lib/migrations_bundle.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     MIGRATIONS = [
       { id: "001_social_posts", sql: "-- ============================================================================\n-- Social distribution queue\n-- ============================================================================\n-- One row per (blog post, channel) publication attempt. Publishing to an\n-- external network is not transactional with the blog write, so it gets\n-- its own durable job: the blog publish enqueues, and the cron drains.\n-- Without this, a dropped connection or a Facebook 5xx silently loses the\n-- post \u2014 the old fire-and-forget waitUntil() only wrote an audit line.\n--\n--   status: pending | publishing | published | failed | skipped\n--   next_attempt_at: unix seconds; exponential backoff between attempts\n--   needs_reconnect: 1 when the failure is a credential problem (bad or\n--     expired token, missing permission). Retrying is pointless until a\n--     human reconnects the channel, so the UI surfaces it as an action.\nCREATE TABLE IF NOT EXISTS social_posts (\n  id              TEXT PRIMARY KEY,\n  project_id      TEXT,\n  blog_post_id    TEXT NOT NULL,\n  channel         TEXT NOT NULL DEFAULT 'facebook',\n  status          TEXT NOT NULL DEFAULT 'pending',\n  attempts        INTEGER NOT NULL DEFAULT 0,\n  max_attempts    INTEGER NOT NULL DEFAULT 5,\n  next_attempt_at INTEGER NOT NULL,\n  external_id     TEXT,\n  external_url    TEXT,\n  error           TEXT,\n  needs_reconnect INTEGER NOT NULL DEFAULT 0,\n  created_at      INTEGER NOT NULL,\n  updated_at      INTEGER NOT NULL,\n  published_at    INTEGER\n);\n\n-- Idempotency: a retried blog publish must not enqueue a second time.\nCREATE UNIQUE INDEX IF NOT EXISTS idx_social_post_channel\n  ON social_posts(blog_post_id, channel);\n\n-- The drain query: due jobs, oldest first.\nCREATE INDEX IF NOT EXISTS idx_social_due\n  ON social_posts(status, next_attempt_at);\n\nCREATE INDEX IF NOT EXISTS idx_social_project\n  ON social_posts(project_id, created_at DESC);" },
       { id: "002_project_scoped_aliases", sql: "-- 002: project-scoped internal-link aliases.\n--\n-- The problem: site_aliases was global. buildAliasMap() returned EVERY row to\n-- every project, so the AI writing for project A was told it could link to\n-- project B's pages, and the sanitiser would happily expand those names into\n-- A's article. A cross-tenant content leak, not just a cosmetic one.\n--\n-- Why the table is rebuilt rather than ALTERed: the legacy table has\n-- `name TEXT PRIMARY KEY`, so only one row per name can exist in the whole\n-- database. Two projects could not each own a `login` alias. SQLite cannot\n-- change a primary key in place, so the table is recreated.\n--\n-- Nothing is dropped. The legacy table is RENAMED to site_aliases_legacy and\n-- left in place as a recovery copy; all rows are copied forward first.\n--\n-- project_id uses '' (not NULL) for \"global\". SQLite treats NULLs as distinct\n-- in a unique index, so a NULL-scoped row could be inserted twice and\n-- `ON CONFLICT(project_id, name)` would never fire for it. The empty string\n-- keeps the constraint meaningful.\n--\n-- This runs on fresh installs too \u2014 schema/init.sql still declares the legacy\n-- shape, so every database takes the same upgrade path and the migration is\n-- exercised by every install rather than only by old ones.\n\nALTER TABLE site_aliases RENAME TO site_aliases_legacy;\n\nCREATE TABLE IF NOT EXISTS site_aliases (\n  id          TEXT PRIMARY KEY,\n  project_id  TEXT NOT NULL DEFAULT '',   -- '' = shared/legacy\n  name        TEXT NOT NULL,\n  url         TEXT NOT NULL,\n  description TEXT,\n  kind        TEXT NOT NULL DEFAULT 'manual',  -- manual | sitemap\n  created_at  INTEGER NOT NULL,\n  updated_at  INTEGER NOT NULL\n);\n\n-- Scope + name is the identity. Composite so each project owns its own\n-- vocabulary; '' still allows one shared row per name.\nCREATE UNIQUE INDEX IF NOT EXISTS idx_site_aliases_scope\n  ON site_aliases(project_id, name);\n\nCREATE INDEX IF NOT EXISTS idx_site_aliases_project\n  ON site_aliases(project_id, kind);\n\n-- Copy every legacy row forward as global (''). Existing installs keep\n-- working exactly as before until an operator re-syncs per project.\nINSERT INTO site_aliases (id, project_id, name, url, description, kind, created_at, updated_at)\n  SELECT lower(hex(randomblob(16))), '', name, url, description, kind, created_at, updated_at\n    FROM site_aliases_legacy;" },
@@ -19976,7 +19977,7 @@ async function runMigrations(env, { logger = console } = {}) {
 var BENIGN;
 var init_migrations = __esm({
   "_lib/migrations.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_schema();
     init_migrations_bundle();
     BENIGN = /duplicate column name|already exists|duplicate index/i;
@@ -19992,7 +19993,7 @@ var init_migrations = __esm({
 var onRequestPost64, onRequestGet43;
 var init_migrate = __esm({
   "api/admin/migrate.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_migrations();
@@ -20034,7 +20035,7 @@ var init_migrate = __esm({
 var onRequestGet44;
 var init_notices2 = __esm({
   "api/admin/notices.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     onRequestGet44 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -20088,7 +20089,7 @@ async function stateFor(env, pid) {
 var onRequestGet45, onRequestPost65, onRequestDelete9;
 var init_onboarding = __esm({
   "api/admin/onboarding.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -20148,7 +20149,7 @@ var init_onboarding = __esm({
 var DEFAULT_TOPIC, onRequestPost66;
 var init_preview_sample = __esm({
   "api/admin/preview-sample.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -20252,7 +20253,7 @@ var init_preview_sample = __esm({
 var onRequestGet46, onRequestPost67;
 var init_pricing = __esm({
   "api/admin/pricing.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_prices();
@@ -20285,7 +20286,7 @@ var init_pricing = __esm({
 var onRequestGet47, onRequestPost68;
 var init_projects2 = __esm({
   "api/admin/projects.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_projects();
@@ -20323,7 +20324,7 @@ var init_projects2 = __esm({
 var onRequestGet48;
 var init_providers = __esm({
   "api/admin/providers.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -20339,7 +20340,7 @@ var init_providers = __esm({
 var ALLOWED, MIN_LEN, MAX_LEN, onRequestGet49, onRequestPost69, onRequestDelete10;
 var init_secrets = __esm({
   "api/admin/secrets.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_secret_vault();
@@ -20429,7 +20430,7 @@ var init_secrets = __esm({
 var onRequestGet50, onRequestPut6;
 var init_settings2 = __esm({
   "api/admin/settings.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_settings();
@@ -20474,7 +20475,7 @@ var init_settings2 = __esm({
 var onRequestGet51, onRequestPost70;
 var init_social = __esm({
   "api/admin/social.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_social_queue();
@@ -20657,7 +20658,7 @@ async function checkRepairSecrets(env) {
 var onRequestGet52;
 var init_status2 = __esm({
   "api/admin/status.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_settings();
@@ -20707,7 +20708,7 @@ var init_status2 = __esm({
 var onRequestGet53, onRequestPost71;
 var init_topics2 = __esm({
   "api/admin/topics.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_projects();
@@ -20759,7 +20760,7 @@ var init_topics2 = __esm({
 var onRequestGet54, onRequestPost72, ALLOWED_STATUS, onRequestPatch5;
 var init_trend_discover = __esm({
   "api/admin/trend-discover.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_ai();
@@ -21019,7 +21020,7 @@ async function buildUpdateReport(env) {
 var UPSTREAM_OWNER2, UPSTREAM_REPO2, BRANCH, onRequestGet55, UPSTREAM_TTL_SEC;
 var init_update = __esm({
   "api/admin/update/index.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_settings();
@@ -21074,7 +21075,7 @@ function windowStart(name) {
 var onRequestGet56;
 var init_usage2 = __esm({
   "api/admin/usage.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_settings();
@@ -21177,7 +21178,7 @@ async function projectExists(env, id) {
 var MIN_PW, MAX_PW, ROLES, onRequestGet57, onRequestPost73, onRequestPut7, onRequestDelete11;
 var init_users = __esm({
   "api/admin/users.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_email_rules();
     init_auth();
@@ -21351,7 +21352,7 @@ var init_users = __esm({
 var onRequestGet58;
 var init_whoami = __esm({
   "api/admin/whoami.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_config();
@@ -21672,7 +21673,7 @@ Start by acknowledging which CRITICAL issue we're tackling first (if any), tell 
 var PROBE_TIMEOUT_MS, onRequestGet59;
 var init_diagnose = __esm({
   "api/ai-prompt/diagnose.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     PROBE_TIMEOUT_MS = 6e3;
     __name(cleanUrl, "cleanUrl");
     __name(probe, "probe");
@@ -21733,7 +21734,7 @@ var init_diagnose = __esm({
 var onRequestPost74;
 var init_feedback = __esm({
   "api/blog/feedback.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_project_scope();
     onRequestPost74 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -21762,7 +21763,7 @@ var init_feedback = __esm({
 var onRequestPost75, onRequestGet60;
 var init_leads = __esm({
   "api/blog/leads.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_project_scope();
@@ -21804,7 +21805,7 @@ var init_leads = __esm({
 var onRequestPost76, onRequestGet61;
 var init_views = __esm({
   "api/blog/views.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     init_project_scope();
@@ -21853,7 +21854,7 @@ var init_views = __esm({
 var URL_RX, onRequestGet62;
 var init_check = __esm({
   "api/install/check.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     URL_RX = /^https:\/\/[a-z0-9-]+\.pages\.dev$/i;
     onRequestGet62 = /* @__PURE__ */ __name(async ({ request }) => {
@@ -21916,7 +21917,7 @@ function summariseFailure(deployment) {
 var CF_API5, onRequestPost77;
 var init_deploy_status = __esm({
   "api/install/deploy-status.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     CF_API5 = "https://api.cloudflare.com/client/v4";
     __name(cfFetch4, "cfFetch");
@@ -21996,7 +21997,7 @@ function firstError4(body) {
 var CF_API6, onRequestPost78;
 var init_projects3 = __esm({
   "api/install/projects.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     CF_API6 = "https://api.cloudflare.com/client/v4";
     __name(cfFetch5, "cfFetch");
@@ -22377,7 +22378,7 @@ async function fetchGithubPrimaryEmail(ghToken) {
 var CF_API7, PROD_BRANCH, DEFAULT_REPO_NAME2, SLUG_RX, onRequestPost79, onRequestGet63;
 var init_provision = __esm({
   "api/install/provision.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_oauth_cookie();
     CF_API7 = "https://api.cloudflare.com/client/v4";
@@ -22643,7 +22644,7 @@ async function triggerCfDeploy(token, accountId, project) {
 var CF_API8, UPSTREAM_BRANCH, onRequestPost80;
 var init_redeploy = __esm({
   "api/install/redeploy.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_oauth_cookie();
     CF_API8 = "https://api.cloudflare.com/client/v4";
@@ -22692,7 +22693,7 @@ var init_redeploy = __esm({
 var onRequestGet64;
 var init_latest_post = __esm({
   "api/public/latest-post.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     onRequestGet64 = /* @__PURE__ */ __name(async ({ env }) => {
       if (!env?.DB) {
@@ -22748,7 +22749,7 @@ var init_latest_post = __esm({
 var DAY_SEC, onRequestGet65;
 var init_platform_stats = __esm({
   "api/public/platform-stats.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     DAY_SEC = 86400;
     onRequestGet65 = /* @__PURE__ */ __name(async ({ env }) => {
@@ -22839,7 +22840,7 @@ var init_platform_stats = __esm({
 var MIN_PW2, MAX_PW2, onRequestPost81;
 var init_register = __esm({
   "api/public/register.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_email_rules();
     init_passwords();
@@ -23044,7 +23045,7 @@ async function mailboxTaken(env, email, canonical) {
 var OTP_RESEND_SEC, OTP_MAX_PER_IP_PER_HOUR, onRequestPost82;
 var init_send_otp = __esm({
   "api/public/send-otp.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_email_smtp();
     init_email_rules();
@@ -23223,7 +23224,7 @@ function diversify(rows, limit, maxPerShop) {
 var HOST_PATTERN, PUBLIC_PROJECT_FILTER, onRequestGet66;
 var init_showcase = __esm({
   "api/public/showcase.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     HOST_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
     PUBLIC_PROJECT_FILTER = `
@@ -23403,7 +23404,7 @@ function short2(sha) {
 var UPSTREAM_OWNER3, UPSTREAM_REPO3, BRANCH2, onRequestGet67;
 var init_diff = __esm({
   "api/update/diff.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     UPSTREAM_OWNER3 = "Benjamin-Bloch";
     UPSTREAM_REPO3 = "pages-seo";
@@ -23547,7 +23548,7 @@ function firstErrorMessage2(body) {
 var CF_API9, NAME_RX3, onRequestPost83;
 var init_rebuild = __esm({
   "api/update/rebuild.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     CF_API9 = "https://api.cloudflare.com/client/v4";
     __name(cf, "cf");
@@ -23620,7 +23621,7 @@ var init_rebuild = __esm({
 var CACHE_SEC, onRequestGet68;
 var init_id2 = __esm({
   "api/embed/[id].js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_widget_render();
     init_embed_settings();
@@ -23668,7 +23669,7 @@ var init_id2 = __esm({
 var onRequestGet69;
 var init_page2 = __esm({
   "blog/page/[page].js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_blog();
     onRequestGet69 = /* @__PURE__ */ __name((ctx) => {
       const page = parseInt(ctx.params.page, 10);
@@ -23761,7 +23762,7 @@ async function renderPost({ env, request, params }) {
 var onRequestGet70;
 var init_slug2 = __esm({
   "blog/[slug].js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_page_render();
     init_settings();
     init_project_scope();
@@ -23775,7 +23776,7 @@ var init_slug2 = __esm({
 var onRequestGet71;
 var init_slug3 = __esm({
   "[project]/blog/[slug].js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_slug2();
     init_project_scope();
     onRequestGet71 = /* @__PURE__ */ __name(async (ctx) => {
@@ -23837,7 +23838,7 @@ async function renderLanding({ env, request, params }) {
 var onRequestGet72;
 var init_slug4 = __esm({
   "p/[slug].js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_page_render();
     init_settings();
     init_project_scope();
@@ -23851,7 +23852,7 @@ var init_slug4 = __esm({
 var onRequestGet73;
 var init_slug5 = __esm({
   "[project]/p/[slug].js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_slug4();
     init_project_scope();
     onRequestGet73 = /* @__PURE__ */ __name(async (ctx) => {
@@ -24821,7 +24822,7 @@ I tell you.`;
 var TOOLS, VALID_TOOLS, VALID_MODES, onRequestGet74;
 var init_ai_prompt = __esm({
   "api/ai-prompt.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     __name(cleanUrl2, "cleanUrl");
     __name(cleanSlug, "cleanSlug");
@@ -24915,7 +24916,7 @@ function splitMessage(msg) {
 var UPSTREAM_OWNER4, UPSTREAM_REPO4, BRANCH3, EDGE_CACHE_SEC, BROWSER_CACHE_SEC, MAX_COMMITS, onRequestGet75;
 var init_changes = __esm({
   "api/changes.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     UPSTREAM_OWNER4 = "Benjamin-Bloch";
     UPSTREAM_REPO4 = "pages-seo";
@@ -25030,7 +25031,7 @@ async function fetchJson(url, headers) {
 var OWNER, REPO, EDGE_CACHE_SEC2, BROWSER_CACHE_SEC2, onRequestGet76;
 var init_github_stats = __esm({
   "api/github-stats.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     OWNER = "Benjamin-Bloch";
     REPO = "pages-seo";
@@ -25081,7 +25082,7 @@ var init_github_stats = __esm({
 var onRequestGet77;
 var init_health = __esm({
   "api/health.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     onRequestGet77 = /* @__PURE__ */ __name(async ({ env }) => {
       const now = Math.floor(Date.now() / 1e3);
@@ -25224,7 +25225,7 @@ async function triggerDeploy2(env) {
 var CF_API10, onRequestGet78, onRequestPost84;
 var init_repair_bindings = __esm({
   "api/repair-bindings.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_auth();
     CF_API10 = "https://api.cloudflare.com/client/v4";
@@ -25350,7 +25351,7 @@ async function tokensMatch2(a, b) {
 var EMAIL_RX2, MIN_PW3, MAX_PW3, onRequestGet79, onRequestPost85;
 var init_setup = __esm({
   "api/setup.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_passwords();
     init_email_rules();
@@ -25531,7 +25532,7 @@ async function fetchCommitsSinceTag(env, tag) {
 var UPSTREAM_OWNER5, UPSTREAM_REPO5, BRANCH4, EDGE_CACHE_SEC3, BROWSER_CACHE_SEC3, onRequestGet80;
 var init_version = __esm({
   "api/version.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     UPSTREAM_OWNER5 = "Benjamin-Bloch";
     UPSTREAM_REPO5 = "pages-seo";
@@ -25602,7 +25603,7 @@ function fmtDate(secs) {
 var MAX_PER_PAGE, MAX_Q_LENGTH, MAX_TAG_LENGTH, onRequestGet81;
 var init_widget = __esm({
   "api/widget.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_widget_render();
     init_project_scope();
     MAX_PER_PAGE = 50;
@@ -25882,7 +25883,7 @@ async function renderCoverSvg(rawSpec, ctx, env) {
 var SELF_HOSTED_FONTS;
 var init_cover_svg = __esm({
   "_lib/cover_svg.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_template();
     init_cover_spec();
     __name(xml, "xml");
@@ -25909,7 +25910,7 @@ var init_cover_svg = __esm({
 var onRequestGet82;
 var init_slug_svg = __esm({
   "cover/[slug].svg.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_cover_svg();
     init_cover_spec();
     init_template();
@@ -26021,7 +26022,7 @@ var init_slug_svg = __esm({
 var onRequestGet83;
 var init_slug_svg2 = __esm({
   "og/[slug].svg.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_cover_svg();
     init_template();
     init_settings();
@@ -26100,7 +26101,7 @@ var init_slug_svg2 = __esm({
 var onRequestGet84;
 var init_path = __esm({
   "image/[[path]].js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     onRequestGet84 = /* @__PURE__ */ __name(async ({ env, params }) => {
       const parts = Array.isArray(params.path) ? params.path : [params.path].filter(Boolean);
       const key = parts.join("/");
@@ -26124,7 +26125,7 @@ var init_path = __esm({
 var onRequestGet85;
 var init_blog2 = __esm({
   "[project]/blog/index.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_blog();
     init_project_scope();
     onRequestGet85 = /* @__PURE__ */ __name(async (ctx) => {
@@ -26143,7 +26144,7 @@ function rfc822(epoch) {
 var ITEMS_LIMIT, onRequestGet86;
 var init_feed_xml = __esm({
   "feed.xml.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_settings();
     init_util();
     init_project_scope();
@@ -26214,7 +26215,7 @@ ${items}
 var onRequestGet87;
 var init_feed_xml2 = __esm({
   "[project]/feed.xml.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_feed_xml();
     init_project_scope();
     onRequestGet87 = /* @__PURE__ */ __name(async (ctx) => {
@@ -26230,7 +26231,7 @@ var init_feed_xml2 = __esm({
 var onRequestGet88;
 var init_rss_xml = __esm({
   "[project]/rss.xml.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     onRequestGet88 = /* @__PURE__ */ __name(async () => new Response(null, {
       status: 301,
       headers: { location: "feed.xml", "cache-control": "public, max-age=3600" }
@@ -26357,7 +26358,7 @@ async function pagesUrlset({ env, request, projectSlug = null, basePath = "" }) 
 var SITEMAP_NS, IMAGE_NS, onRequestGet89;
 var init_sitemap_xml = __esm({
   "sitemap.xml.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     init_blog();
     init_project_scope();
@@ -26396,7 +26397,7 @@ var init_sitemap_xml = __esm({
 var onRequestGet90;
 var init_sitemap_pages_xml = __esm({
   "[project]/sitemap-pages.xml.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_sitemap_xml();
     init_project_scope();
     onRequestGet90 = /* @__PURE__ */ __name(async (ctx) => {
@@ -26412,7 +26413,7 @@ var init_sitemap_pages_xml = __esm({
 var onRequestGet91;
 var init_sitemap_xml2 = __esm({
   "[project]/sitemap.xml.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_sitemap_xml();
     init_project_scope();
     onRequestGet91 = /* @__PURE__ */ __name(async (ctx) => {
@@ -26442,7 +26443,7 @@ function renderSections() {
 var SECTIONS, onRequestGet92;
 var init_docs = __esm({
   "docs/index.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     SECTIONS = [
       { id: "quick-start", title: "Quick start", level: 1, content: `
@@ -26842,7 +26843,7 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
 var VALID_THEME, onRequestGet93;
 var init_embed = __esm({
   "embed/index.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_util();
     VALID_THEME = ["auto", "light", "dark"];
     onRequestGet93 = /* @__PURE__ */ __name(async ({ request }) => {
@@ -26891,7 +26892,7 @@ var init_embed = __esm({
 var onRequestGet94;
 var init_robots_txt = __esm({
   "robots.txt.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_project_scope();
     onRequestGet94 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const host = requestHost(request);
@@ -26938,7 +26939,7 @@ Sitemap: https://${sitemapHost}/sitemap.xml
 var onRequestGet95;
 var init_rss_xml2 = __esm({
   "rss.xml.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     onRequestGet95 = /* @__PURE__ */ __name(async () => new Response(null, {
       status: 301,
       headers: { location: "/feed.xml", "cache-control": "public, max-age=3600" }
@@ -26950,7 +26951,7 @@ var init_rss_xml2 = __esm({
 var onRequestGet96;
 var init_sitemap_pages_xml2 = __esm({
   "sitemap-pages.xml.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_sitemap_xml();
     onRequestGet96 = pagesUrlset;
   }
@@ -26960,7 +26961,7 @@ var init_sitemap_pages_xml2 = __esm({
 var onRequestGet97;
 var init_widget_js = __esm({
   "widget.js.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_widget_render();
     init_site_identity();
     onRequestGet97 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -26984,7 +26985,7 @@ var init_widget_js = __esm({
 var onRequest;
 var init_middleware = __esm({
   "admin/_middleware.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     onRequest = /* @__PURE__ */ __name(async ({ request, env, next }) => {
       const url = new URL(request.url);
       if (url.pathname === "/admin" || url.pathname === "/admin/") {
@@ -27005,7 +27006,7 @@ var init_middleware = __esm({
 var onRequestGet98;
 var init_indexnow_key_txt = __esm({
   "[indexnow_key].txt.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_indexnow_key();
     onRequestGet98 = /* @__PURE__ */ __name(async ({ params, env }) => {
       const requested = String(params.indexnow_key || "").toLowerCase();
@@ -27036,7 +27037,7 @@ async function isMaintainer(env) {
 }
 var init_maintainer = __esm({
   "_lib/maintainer.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_settings();
     __name(isMaintainer, "isMaintainer");
   }
@@ -27046,7 +27047,7 @@ var init_maintainer = __esm({
 var INSTALLER_RX, INSTALLER_API_RX, onRequest2;
 var init_middleware2 = __esm({
   "_middleware.js"() {
-    init_functionsRoutes_0_8977404204048769();
+    init_functionsRoutes_0_3898924849443146();
     init_maintainer();
     init_project_scope();
     INSTALLER_RX = /^\/(install|update)(\/.*)?$/;
@@ -27089,10 +27090,10 @@ var init_middleware2 = __esm({
   }
 });
 
-// ../.wrangler/tmp/pages-TN29Gn/functionsRoutes-0.8977404204048769.mjs
+// ../.wrangler/tmp/pages-lhQWXj/functionsRoutes-0.3898924849443146.mjs
 var routes;
-var init_functionsRoutes_0_8977404204048769 = __esm({
-  "../.wrangler/tmp/pages-TN29Gn/functionsRoutes-0.8977404204048769.mjs"() {
+var init_functionsRoutes_0_3898924849443146 = __esm({
+  "../.wrangler/tmp/pages-lhQWXj/functionsRoutes-0.3898924849443146.mjs"() {
     init_export();
     init_import();
     init_sync();
@@ -28763,10 +28764,10 @@ var init_functionsRoutes_0_8977404204048769 = __esm({
 });
 
 // ../node_modules/.pnpm/wrangler@4.136.3/node_modules/wrangler/templates/pages-template-worker.ts
-init_functionsRoutes_0_8977404204048769();
+init_functionsRoutes_0_3898924849443146();
 
 // ../node_modules/.pnpm/path-to-regexp@6.3.0/node_modules/path-to-regexp/dist.es2015/index.js
-init_functionsRoutes_0_8977404204048769();
+init_functionsRoutes_0_3898924849443146();
 function lexer(str) {
   var tokens = [];
   var i = 0;

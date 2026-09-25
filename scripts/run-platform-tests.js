@@ -63,6 +63,7 @@ import { renderCoverSvg, isRenderableSpec, fallbackCoverSpec } from '../function
 import { onRequestGet as coverSvgRoute } from '../functions/cover/[slug].svg.js';
 import { onRequestGet as ogSvgRoute } from '../functions/og/[slug].svg.js';
 import { onRequestPost as deleteVideoJob } from '../functions/api/admin/video/delete.js';
+import { onRequestPost as publishVideo } from '../functions/api/admin/video/publish.js';
 import { recipientsFor, isScheduledPost, sendPublishReport, renderReport } from '../functions/_lib/publishing/report.js';
 import { onRequestPost as sendOtp } from '../functions/api/public/send-otp.js';
 import { onRequestPost as usersCreate } from '../functions/api/admin/users.js';
@@ -2264,6 +2265,118 @@ async function testCarouselVideoJobs() {
   }
 }
 
+
+/* ── R. Threads button on video + carousel rows ──────────────────────────────
+   The Video and Carousel pages gained a "Đăng Thread" row button. Two things
+   have to hold for it to be more than a button that always fails:
+
+   1. the endpoint maps `threads` onto the plain `threads` channel (the same
+      one the article fan-out uses, so the Social tab lists it in one place);
+   2. a rendered video or a carousel has no blog post row behind its job ref,
+      so the queue must not reject it the way it rejects a text-first channel.
+
+   The real endpoint and the real queue are driven against a fake Threads API.
+   ─────────────────────────────────────────────────────────────────────────── */
+async function testThreadsPublishFromVideoAndCarousel() {
+  console.log('\nR. Threads publish from the video + carousel rows');
+  const realFetch = globalThis.fetch;
+  const calls = [];
+  const jsonRes = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
+  globalThis.fetch = async (u, init = {}) => {
+    const path = String(u);
+    calls.push({ path, params: init.body ? Object.fromEntries(new URLSearchParams(init.body)) : null });
+    if (path.includes('/threads_publish')) return jsonRes({ id: 'th_post_1' });
+    if (path.includes('/threads?')) return jsonRes({ data: { id: 'th_me_1', username: 'guseo' } });
+    if (path.endsWith('/threads')) return jsonRes({ id: 'th_container_1' });
+    return jsonRes({ id: 'unknown_1' });
+  };
+
+  try {
+    const env = await freshEnv();
+    const t = Math.floor(Date.now() / 1000);
+    const { setVaultSecret } = await import('../functions/_lib/secret_vault.js');
+    const { threadsTokenName } = await import('../functions/_lib/publishing/threads.js');
+    await setVaultSecret(env, threadsTokenName(PROJECT), 'th-token-1');
+
+    // A finished 9:16 video whose ref points at a real post.
+    await env.DB.prepare(
+      `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, video_key, created_at, updated_at)
+       VALUES ('vj_vid', ?, ?, 'vid-slug', 'post', 'done', 'video/vid-slug.mp4', ?, ?)`
+    ).bind(PROJECT, POST, t, t).run();
+
+    const res = await publishVideo({
+      env, request: jsonReq('https://x/api/admin/video/publish', { id: 'vj_vid', channel: 'threads' }),
+    });
+    const body = await res.json();
+    assert.equal(res.status, 200, `threads publish on a video must be accepted: ${JSON.stringify(body)}`);
+    assert.equal(body.ok, true);
+    assert.equal(body.channel, 'threads', 'the job lands on the plain threads channel');
+    assert.equal(body.posted, true, 'Threads is drained in-request, like Facebook');
+    const publishCall = calls.find((c) => c.path.includes('/threads_publish'));
+    assert.ok(publishCall, 'the real Threads publisher was reached');
+    ok('the Threads button posts a finished video through the real queue');
+
+    const rows = await listSocialPosts(env, { projectId: PROJECT, channel: 'threads' });
+    assert.equal(rows.length, 1, 'the row is visible on the Social tab');
+    assert.equal(rows[0].status, 'published');
+    ok('a Threads row from a video shows up on the Social tab');
+
+    // A carousel: the sentinel ref resolves to no blog post, which is exactly
+    // the case the old post_id guard rejected.
+    const prefix = carouselPrefix('alpha-post');
+    await env.DB.prepare(
+      `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, video_key, created_at, updated_at)
+       VALUES ('vj_car', ?, ?, 'car-slug', 'carousel', 'done', ?, ?, ?)`
+    ).bind(PROJECT, `carousel:${POST}`, prefix, t, t).run();
+
+    const carRes = await publishVideo({
+      env, request: jsonReq('https://x/api/admin/video/publish', { id: 'vj_car', channel: 'threads' }),
+    });
+    const carBody = await carRes.json();
+    assert.equal(carRes.status, 200, `threads publish on a carousel must be accepted: ${JSON.stringify(carBody)}`);
+    assert.equal(carBody.posted, true, 'a carousel posts to Threads as text, not as blog_post_missing');
+    ok('the Threads button posts a carousel instead of failing on the missing post');
+
+    // YouTube stays video-only: a carousel has no MP4, so the button is not
+    // offered and the endpoint refuses rather than queueing a doomed job.
+    const yt = await publishVideo({
+      env, request: jsonReq('https://x/api/admin/video/publish', { id: 'vj_car', channel: 'youtube' }),
+    });
+    const ytBody = await yt.json();
+    assert.equal(yt.status, 400);
+    assert.equal(ytBody.error, 'youtube_requires_mp4_blog_post');
+    ok('YouTube still refuses a carousel — no MP4 behind it');
+
+    // An unknown channel is still refused, so a typo cannot enqueue junk.
+    const junk = await publishVideo({
+      env, request: jsonReq('https://x/api/admin/video/publish', { id: 'vj_vid', channel: 'tiktok' }),
+    });
+    assert.equal(junk.status, 400);
+    assert.equal((await junk.json()).error, 'unknown_channel');
+    ok('an unknown channel is refused');
+
+    // A video that has not finished rendering cannot be posted anywhere.
+    // video_jobs.blog_post_id is UNIQUE, so the unfinished job needs a post of
+    // its own rather than borrowing the one behind vj_vid.
+    await env.DB.prepare(
+      `INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, project_id, created_at, published_at)
+       VALUES ('p_wip', 'wip-post', 'Chưa render', 'D', '# B', 'published', ?, ?, ?)`
+    ).bind(PROJECT, t, t).run();
+    await env.DB.prepare(
+      `INSERT INTO video_jobs (id, project_id, blog_post_id, slug, kind, status, video_key, created_at, updated_at)
+       VALUES ('vj_wip', ?, 'p_wip', 'wip-slug', 'post', 'pending', NULL, ?, ?)`
+    ).bind(PROJECT, t, t).run();
+    const wip = await publishVideo({
+      env, request: jsonReq('https://x/api/admin/video/publish', { id: 'vj_wip', channel: 'threads' }),
+    });
+    assert.equal(wip.status, 409);
+    assert.equal((await wip.json()).error, 'video_not_ready');
+    ok('an unfinished video is not postable to Threads');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 // ── Q. cover template renderability ─────────────────────────────────
 // A default cover template saved as `{}` (the React Covers "Tạo template"
 // form used to POST exactly that) rendered a 262-byte SVG: one black
@@ -2831,6 +2944,7 @@ async function main() {
   await testMailCredentials();
   await testEmailPolicy();
   await testCarouselVideoJobs();
+  await testThreadsPublishFromVideoAndCarousel();
   await testExplainerVideoJobs();
   await testVideoTemplates();
   await testProgQueueDelete();

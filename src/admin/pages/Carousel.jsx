@@ -13,7 +13,7 @@ import {
 import {
   ReloadOutlined, FileImageOutlined, FacebookOutlined, DeleteOutlined,
   PlusOutlined, ClockCircleOutlined, CheckCircleOutlined, WarningOutlined,
-  EyeOutlined,
+  EyeOutlined, ShareAltOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import VideoStatusTag from '../components/VideoStatusTag.jsx';
@@ -75,6 +75,7 @@ export default function Carousel() {
   // Row actions: the page owns the per-row spinner, the shared hook owns
   // the request and the copy.
   const publishFb = async (id) => { setBusyId(id); await publish(id); setBusyId(null); };
+  const publishThreads = async (id) => { setBusyId(id); await publish(id, 'threads'); setBusyId(null); };
   const deleteJob = async (id) => { setBusyId(id); await remove(id); setBusyId(null); };
 
   const counts = {
@@ -125,7 +126,7 @@ export default function Carousel() {
       render: (v) => <Text type="secondary">{fmtDateTime(v)}</Text>,
     },
     {
-      title: 'Hành động', key: 'actions', width: 280,
+      title: 'Hành động', key: 'actions', width: 380,
       render: (_, r) => {
         const ready = r.status === 'done' && !!r.slides?.length;
         return (
@@ -138,6 +139,14 @@ export default function Carousel() {
               onConfirm={() => publishFb(r.id)}
             >
               <Button size="small" icon={<FacebookOutlined />} disabled={!ready} loading={busyId === r.id}>Đăng FB</Button>
+            </Popconfirm>
+            <Popconfirm
+              title="Đăng carousel này lên Threads?"
+              description="Threads đăng bài chữ kèm link bài viết — 5 slide không được đính kèm."
+              disabled={!ready}
+              onConfirm={() => publishThreads(r.id)}
+            >
+              <Button size="small" icon={<ShareAltOutlined />} disabled={!ready} loading={busyId === r.id}>Đăng Thread</Button>
             </Popconfirm>
             <Popconfirm
               title="Xóa carousel này?"
@@ -241,6 +250,13 @@ export default function Carousel() {
               onConfirm={() => { publishFb(viewing.id); setViewing(null); }}
             >
               <Button type="primary" icon={<FacebookOutlined />} loading={busyId === viewing?.id}>Đăng Facebook</Button>
+            </Popconfirm>
+            <Popconfirm
+              title="Đăng carousel này lên Threads?"
+              description="Threads đăng bài chữ kèm link bài viết — 5 slide không được đính kèm."
+              onConfirm={() => { publishThreads(viewing.id); setViewing(null); }}
+            >
+              <Button icon={<ShareAltOutlined />} loading={busyId === viewing?.id}>Đăng Threads</Button>
             </Popconfirm>
           </Space>
         }

@@ -19,6 +19,7 @@ import {
   ReloadOutlined, VideoCameraOutlined,
   ClockCircleOutlined, DownloadOutlined, FacebookOutlined, YoutubeOutlined,
   DeleteOutlined, PlayCircleOutlined, PauseCircleOutlined, UploadOutlined,
+  ShareAltOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import VideoStatusTag from '../components/VideoStatusTag.jsx';
@@ -265,6 +266,7 @@ export default function Video() {
   // Row actions: the page owns the per-row spinner, the shared hook owns
   // the request and the copy.
   const publishFb = async (id) => { setBusyId(id); await publish(id); setBusyId(null); };
+  const publishThreads = async (id) => { setBusyId(id); await publish(id, 'threads'); setBusyId(null); };
   const publishYoutube = async (id) => { setBusyId(id); await publish(id, 'youtube'); setBusyId(null); };
   const deleteVideo = async (id) => { setBusyId(id); await remove(id); setBusyId(null); };
 
@@ -296,9 +298,9 @@ export default function Video() {
     },
     { title: 'Trạng thái', dataIndex: 'status', width: 170, render: (s, r) => <VideoStatusTag status={s} kind={r.kind} /> },
     {
-      // 390px, not 300px: two publish actions plus the existing controls
+      // 470px, not 390px: three publish actions plus the existing controls
       // need enough room under the fixed table layout.
-      title: 'Hành động', key: 'actions', width: 390,
+      title: 'Hành động', key: 'actions', width: 470,
       render: (url, r) => {
         return url ? (
           <Space>
@@ -312,6 +314,13 @@ export default function Video() {
               onConfirm={() => publishFb(r.id)}
             >
               <Button size="small" icon={<FacebookOutlined />} loading={busyId === r.id}>Đăng FB</Button>
+            </Popconfirm>
+            <Popconfirm
+              title="Đăng video này lên Threads?"
+              description="Threads đăng bài chữ kèm link bài viết — MP4 không được đính kèm."
+              onConfirm={() => publishThreads(r.id)}
+            >
+              <Button size="small" icon={<ShareAltOutlined />} loading={busyId === r.id}>Đăng Thread</Button>
             </Popconfirm>
             {r.blog_post_id && !String(r.blog_post_id).match(/^(project|url|carousel):/)
               && r.kind !== 'carousel' && !String(r.video_key || '').startsWith('carousel/') && (

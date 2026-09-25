@@ -1,8 +1,9 @@
-// Manual video posting — the admin "Đăng Facebook" button on the Video
-// page. Enqueues a facebook_video social job for a rendered video and
-// drains it immediately, so the operator sees the result in one click
-// instead of waiting for the next cron tick. Reuses the durable queue:
-// retry/backoff, needs_reconnect and idempotency all come for free.
+// Manual posting from the Video and Carousel pages — the "Đăng FB",
+// "Đăng Thread" and "Đăng YT" row buttons. Enqueues a social job for a
+// rendered video or carousel and drains it immediately, so the operator
+// sees the result in one click instead of waiting for the next cron
+// tick. Reuses the durable queue: retry/backoff, needs_reconnect and
+// idempotency all come for free.
 import { json, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
 import { enqueueSocialPost, drainSocialQueue } from '../../../_lib/publishing/social_queue.js';
@@ -16,12 +17,17 @@ export const onRequestPost = async ({ env, request }) => {
   const jobId = String(body?.id || body?.job_id || '');
   if (!jobId) return json(400, { error: 'missing_job_id' });
 
+  // Threads publishes a text post with the article link, so it takes the
+  // plain `threads` channel — the same one the article fan-out uses, and
+  // the same row in social_posts that the queue dedupes on.
   const requestedChannel = String(body?.channel ?? 'facebook').trim().toLowerCase();
   const channel = (requestedChannel === 'youtube' || requestedChannel === 'youtube_video')
     ? 'youtube_video'
     : (requestedChannel === 'facebook' || requestedChannel === 'facebook_video')
       ? 'facebook_video'
-      : null;
+      : (requestedChannel === 'threads' || requestedChannel === 'threads_video')
+        ? 'threads'
+        : null;
   if (!channel) {
     return json(400, { error: 'unknown_channel', channel: requestedChannel });
   }
@@ -58,7 +64,9 @@ export const onRequestPost = async ({ env, request }) => {
     return json(200, { ok: true, enqueued: true, posted: false, pending: true, channel });
   }
 
-  // Facebook is small enough to drain immediately; the cron is the backstop.
+  // Facebook and Threads are small enough to drain immediately; the cron is
+  // the backstop. Threads adds a 3s settle wait before publish, which still
+  // fits well inside a request.
   let drained;
   try {
     drained = await drainSocialQueue(env, { projectId: job.project_id, limit: 5 });
