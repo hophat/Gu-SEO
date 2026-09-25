@@ -14,7 +14,7 @@ export const onRequestGet = async ({ env, request }) => {
 
   const rows = projectId
     ? await env.DB.prepare(
-        `SELECT v.id, v.slug, v.kind, v.status, v.video_key, v.error, v.attempts, v.updated_at,
+        `SELECT v.id, v.blog_post_id, v.slug, v.kind, v.status, v.video_key, v.error, v.attempts, v.updated_at,
                 v.template,
                 p.title, p.project_id
          FROM video_jobs v LEFT JOIN blog_posts p
@@ -23,7 +23,7 @@ export const onRequestGet = async ({ env, request }) => {
          ORDER BY v.updated_at DESC LIMIT ?`
       ).bind(projectId, limit).all()
     : await env.DB.prepare(
-        `SELECT v.id, v.slug, v.kind, v.status, v.video_key, v.error, v.attempts, v.updated_at,
+        `SELECT v.id, v.blog_post_id, v.slug, v.kind, v.status, v.video_key, v.error, v.attempts, v.updated_at,
                 v.template,
                 p.title, p.project_id
          FROM video_jobs v LEFT JOIN blog_posts p

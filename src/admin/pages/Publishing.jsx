@@ -46,6 +46,7 @@ export default function Publishing() {
   const [authHeader, setAuthHeader] = useState('');
   const [asPhoto, setAsPhoto] = useState(false);
   const [messageTemplate, setMessageTemplate] = useState('');
+  const [hashtags, setHashtags] = useState('');
   const [token, setToken] = useState('');
   const [pageId, setPageId] = useState('');
 
@@ -68,6 +69,7 @@ export default function Publishing() {
       setPageId(body.config?.page_id || '');
       setAsPhoto(body.config?.as_photo === true);
       setMessageTemplate(body.config?.message_template || '');
+      setHashtags(body.config?.hashtags || '');
 
       const lr = body.last_result;
       if (lr?.status === 'connected') message.success(`Đã kết nối Facebook: ${lr.detail}`);
@@ -75,6 +77,12 @@ export default function Publishing() {
       else if (lr?.status === 'no_pages') message.warning(lr.detail || 'Không tìm thấy Page nào');
       else if (lr?.status === 'denied') message.warning('Bạn đã huỷ cấp quyền Facebook');
       else if (lr?.status === 'error') message.error(lr.detail || 'Kết nối Facebook thất bại');
+    }
+    const channelResult = ch.body?.last_result;
+    if (channelResult?.channel === 'youtube') {
+      if (channelResult.status === 'connected') message.success(`Đã kết nối YouTube: ${channelResult.detail}`);
+      else if (channelResult.status === 'denied') message.warning('Bạn đã huỷ cấp quyền YouTube');
+      else if (channelResult.status === 'error') message.error(channelResult.detail || 'Kết nối YouTube thất bại');
     }
     setLoading(false);
   }, []);
@@ -120,7 +128,7 @@ export default function Publishing() {
     publisher_type: type,
     endpoint_url: endpointUrl,
     auth_header: authHeader,
-    config: { page_id: pageId, as_photo: asPhoto, message_template: messageTemplate },
+    config: { page_id: pageId, as_photo: asPhoto, message_template: messageTemplate, hashtags },
   });
 
   const save = async () => {
@@ -301,8 +309,11 @@ export default function Publishing() {
                     </Form.Item>
                   </Col>
                 </Row>
-                <Form.Item label="Mẫu nội dung" extra="Để trống sẽ dùng mô tả SEO. Biến: {title}, {description}" style={{ marginBottom: 8 }}>
+                <Form.Item label="Mẫu nội dung" extra="Để trống để dùng post chuyên nghiệp tự động: tiêu đề, tóm tắt, 3 điểm chính, CTA và hashtag. Biến: {title}, {description}, {summary}, {cta}, {hashtags}" style={{ marginBottom: 8 }}>
                   <Input.TextArea rows={2} value={messageTemplate} onChange={(e) => setMessageTemplate(e.target.value)} placeholder="{title}" />
+                </Form.Item>
+                <Form.Item label="Hashtag thêm (tuỳ chọn)" extra="Tối đa 4 hashtag cùng các hashtag tự lấy từ từ khoá bài viết. Phân tách bằng dấu phẩy." style={{ marginBottom: 8 }}>
+                  <Input value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="hosting, website, bán hàng" />
                 </Form.Item>
                 <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={save}>Lưu cài đặt</Button>
               </Card>

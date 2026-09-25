@@ -7,8 +7,9 @@
 //
 // Creation goes through ONE wizard ("Tạo video"): pick a source (bài
 // viết / URL / doanh nghiệp), pick a template from the catalog the
-// templates endpoint serves, pick a duration. The endpoint stores
-// template + duration on the job row; the agent reads them at claim.
+// templates endpoint serves, pick a duration when overriding the template.
+// The endpoint stores template + optional duration; null lets the agent choose
+// its default.
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Card, Table, Button, Space, Typography, message, Row, Col, Tooltip, Alert, Popconfirm, Input, Modal, Select,
@@ -16,7 +17,7 @@ import {
 } from 'antd';
 import {
   ReloadOutlined, VideoCameraOutlined,
-  ClockCircleOutlined, DownloadOutlined, FacebookOutlined,
+  ClockCircleOutlined, DownloadOutlined, FacebookOutlined, YoutubeOutlined,
   DeleteOutlined, PlayCircleOutlined, PauseCircleOutlined, UploadOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
@@ -54,9 +55,9 @@ export default function Video() {
   const [createSlug, setCreateSlug] = useState(undefined);
   const [siteUrl, setSiteUrl] = useState('');
   const [tplId, setTplId] = useState('auto');
-  const [duration, setDuration] = useState(20);
+  const [duration, setDuration] = useState(null);
 
-  // Background music: 'auto' (the agent's pad) | 'none' | a catalog id.
+  // Background music: 'auto' (claim picks a matching free catalog track) | 'none' | a catalog id.
   // playingBgm is the track id currently previewing — one shared <audio>
   // element so two previews can never overlap.
   const [bgmId, setBgmId] = useState('auto');
@@ -113,7 +114,7 @@ export default function Video() {
     setSrcType('post');
     setCreateSlug(undefined);
     setTplId('auto');
-    setDuration(20);
+    setDuration(null);
     setBgmId('auto');
     setPlayingBgm(null);
     setCreateOpen(true);
@@ -138,7 +139,7 @@ export default function Video() {
 
   const pickTemplate = (t) => {
     setTplId(t.id);
-    setDuration(t.defaultDuration || 20);
+    setDuration(t.defaultDuration ?? null);
   };
 
   // Switching the source can invalidate the picked template — fall back
@@ -149,7 +150,7 @@ export default function Video() {
     const t = tplData.templates.find((x) => x.id === tplId);
     if (t && t.id !== 'auto' && !t.sources.includes(v)) {
       setTplId('auto');
-      setDuration(20);
+      setDuration(null);
     }
   };
 
@@ -166,7 +167,8 @@ export default function Video() {
     }
     setBusyId('__create__');
     const { status, body } = await apiPost('/api/admin/video/create', {
-      project_id: getActiveProject(), source, template: tplId || 'auto', duration, bgm: bgmId || 'auto',
+      project_id: getActiveProject(), source, template: tplId || 'auto', bgm: bgmId || 'auto',
+      ...(duration === null ? {} : { duration }),
     });
     setBusyId(null);
     if (status === 200 && body?.ok) {
@@ -263,6 +265,7 @@ export default function Video() {
   // Row actions: the page owns the per-row spinner, the shared hook owns
   // the request and the copy.
   const publishFb = async (id) => { setBusyId(id); await publish(id); setBusyId(null); };
+  const publishYoutube = async (id) => { setBusyId(id); await publish(id, 'youtube'); setBusyId(null); };
   const deleteVideo = async (id) => { setBusyId(id); await remove(id); setBusyId(null); };
 
   const columns = [
@@ -293,13 +296,9 @@ export default function Video() {
     },
     { title: 'Trạng thái', dataIndex: 'status', width: 170, render: (s, r) => <VideoStatusTag status={s} kind={r.kind} /> },
     {
-      // 300px, not 220: the "Bài viết" and "Lỗi render" columns carry
-      // `ellipsis`, which makes @rc-component/table force the whole table to
-      // `table-layout: fixed`. The four buttons need 232px + 32px of cell
-      // padding = 264px, so at 220px the delete button spills into the next
-      // cell — and that cell's background, painted on row hover, covers it.
-      // The button looked like it vanished on hover; it was always overflowing.
-      title: 'Hành động', key: 'actions', width: 300,
+      // 390px, not 300px: two publish actions plus the existing controls
+      // need enough room under the fixed table layout.
+      title: 'Hành động', key: 'actions', width: 390,
       render: (url, r) => {
         return url ? (
           <Space>
@@ -314,6 +313,16 @@ export default function Video() {
             >
               <Button size="small" icon={<FacebookOutlined />} loading={busyId === r.id}>Đăng FB</Button>
             </Popconfirm>
+            {r.blog_post_id && !String(r.blog_post_id).match(/^(project|url|carousel):/)
+              && r.kind !== 'carousel' && !String(r.video_key || '').startsWith('carousel/') && (
+              <Popconfirm
+                title="Đăng video này lên YouTube?"
+                description="Video được đưa vào hàng chờ upload resumable. Cron sẽ xử lý và có thể mất vài phút."
+                onConfirm={() => publishYoutube(r.id)}
+              >
+                <Button size="small" icon={<YoutubeOutlined />} loading={busyId === r.id}>Đăng YT</Button>
+              </Popconfirm>
+            )}
             <Popconfirm
               title="Xóa video này?"
               description="Xóa cả file MP4 trên R2 — không thể hoàn tác."
@@ -525,7 +534,7 @@ export default function Video() {
             <audio ref={audioRef} onEnded={() => setPlayingBgm(null)} style={{ display: 'none' }} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
               {[
-                { id: 'auto', label: 'Tự động', desc: 'Pad nhạc nền theo brand' },
+                { id: 'auto', label: 'Tự động', desc: 'Chọn nhạc free từ thư viện' },
                 { id: 'none', label: 'Không nhạc', desc: 'Chỉ giọng đọc' },
               ].map((o) => {
                 const selected = bgmId === o.id;
@@ -584,12 +593,12 @@ export default function Video() {
             </Text>
           </div>
           <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>Thời lượng: {duration}s</Text>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>Thời lượng: {duration ?? 60}s</Text>
             <Slider
               min={15}
-              max={45}
+              max={90}
               step={5}
-              value={duration}
+              value={duration ?? 60}
               onChange={setDuration}
               tooltip={{ formatter: (v) => `${v}s` }}
             />

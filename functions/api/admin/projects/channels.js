@@ -27,6 +27,9 @@ import {
 import { readPendingPages, getAppId, getAppSecret } from '../../../_lib/publishing/facebook_oauth.js';
 import { verifyThreadsToken, threadsTokenName } from '../../../_lib/publishing/threads.js';
 import { verifyXCredentials, resolveXCredentials } from '../../../_lib/publishing/x.js';
+import {
+  youtubeTokenName, readYoutubeToken, getYoutubeAccessToken, verifyYoutubeChannel, getYoutubeAppState,
+} from '../../../_lib/publishing/youtube_oauth.js';
 
 const X_SECRET_FIELDS = ['api_key', 'api_secret', 'access_token', 'access_secret'];
 const X_NAME_BY_FIELD = {
@@ -63,6 +66,15 @@ async function tokenStateFor(env, pid, channel) {
       const creds = await resolveXCredentials(env, pid);
       return { set: !!creds, source: creds ? 'project' : 'unset' };
     }
+    case 'youtube': {
+      try {
+        const token = await readYoutubeToken(env, pid);
+        return { set: !!token?.access_token, source: token?.access_token ? 'project' : 'unset' };
+      } catch (error) {
+        if (error?.message !== 'youtube_token_invalid') throw error;
+        return { set: false, source: 'invalid' };
+      }
+    }
     default:
       return null;
   }
@@ -92,6 +104,20 @@ async function testChannel(env, pid, channel, body) {
     const me = await verifyXCredentials({ creds });
     return { ok: true, profile: me };
   }
+  if (channel === 'youtube') {
+    try {
+      const token = await readYoutubeToken(env, pid);
+      if (!token?.access_token) return { ok: false, error: 'Chưa có YouTube OAuth — bấm Kết nối YouTube.' };
+      const accessToken = await getYoutubeAccessToken(env, pid);
+      const channelInfo = await verifyYoutubeChannel({ accessToken });
+      return { ok: true, profile: channelInfo };
+    } catch (error) {
+      if (error?.message === 'youtube_token_invalid') {
+        return { ok: false, error: 'Token YouTube bị lỗi — kết nối lại.' };
+      }
+      throw error;
+    }
+  }
   if (channel === 'instagram') {
     // Token + linked IG account are what publishing needs; verifying the
     // Page token and reading its instagram_business_account covers both.
@@ -120,6 +146,7 @@ export const onRequestGet = async ({ env, request }) => {
   const appId = await getAppId(env);
   const appSecret = await getAppSecret(env);
   const pending = await readPendingPages(env, pid).catch(() => null);
+  const youtubeApp = await getYoutubeAppState(env);
 
   return json(200, {
     ok: true,
@@ -127,6 +154,7 @@ export const onRequestGet = async ({ env, request }) => {
     channels,
     publisher_type: state.publisher_type,
     meta_app: { id_set: !!appId, secret_set: !!appSecret },
+    youtube_app: youtubeApp,
     pending_pages: pending ? pending.length : 0,
     last_result: await readLastResult(env, pid),
   });
@@ -152,7 +180,7 @@ export const onRequestPost = async ({ env, request }) => {
       // Enabling needs *something* to publish with — otherwise the queue
       // drains into a guaranteed credential failure every tick.
       const token = await tokenStateFor(env, pid, channel);
-      if (['facebook', 'instagram', 'threads', 'x'].includes(channel) && !token?.set) {
+      if (['facebook', 'instagram', 'threads', 'x', 'youtube'].includes(channel) && !token?.set) {
         return json(400, { error: 'not_connected', detail: 'Kết nối tài khoản trước khi bật kênh.' });
       }
       await setChannelEnabled(env, pid, channel, true);
@@ -195,6 +223,7 @@ export const onRequestPost = async ({ env, request }) => {
       if (channel === 'x') {
         for (const f of X_SECRET_FIELDS) await setVaultSecret(env, X_NAME_BY_FIELD[f](pid), '');
       }
+      if (channel === 'youtube') await setVaultSecret(env, youtubeTokenName(pid), '');
       await setChannelEnabled(env, pid, channel, false);
       audit(env, 'admin', 'channel_disconnect', pid, { channel });
       await track(env, { event: 'channel_disconnected', projectId: pid, props: { channel } });

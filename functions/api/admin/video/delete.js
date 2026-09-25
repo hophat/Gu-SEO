@@ -1,6 +1,6 @@
-// Delete a video job AND its R2 object. Also cancels any pending
-// facebook_video social job for the same post — otherwise the cron
-// would try to upload an MP4 that no longer exists and fail 5 times.
+// Delete a video job AND its R2 object. Also cancels pending Facebook/YouTube
+// social jobs for the same post — otherwise cron would try to upload an MP4
+// that no longer exists and fail 5 times.
 // Published social posts are left alone: the copy on Facebook is out
 // of our hands once shipped.
 import { json, nowSec, audit } from '../../../_lib/util.js';
@@ -44,12 +44,19 @@ export const onRequestPost = async ({ env, request }) => {
     }
   }
 
-  // Pending facebook_video jobs for this post would upload a ghost —
-  // skip them instead.
+  // Pending external uploads would try to read an R2 object that no longer
+  // exists. Clear both video-channel rows and their resumable checkpoints.
   await env.DB.prepare(
     `UPDATE social_posts SET status = 'skipped', updated_at = ?
-      WHERE blog_post_id = ? AND channel = 'facebook_video' AND status IN ('pending','failed')`
-  ).bind(nowSec(), job.blog_post_id).run().catch(() => {});
+      WHERE blog_post_id = ? AND channel IN ('facebook_video', 'youtube_video')
+        AND status IN ('pending','failed')`
+  ).bind(nowSec(), job.blog_post_id).run();
+  await env.DB.prepare(
+    `DELETE FROM youtube_uploads WHERE social_post_id IN (
+       SELECT id FROM social_posts
+        WHERE blog_post_id = ? AND channel = 'youtube_video'
+      )`
+  ).bind(job.blog_post_id).run();
 
   await env.DB.prepare('DELETE FROM video_jobs WHERE id = ?').bind(jobId).run();
   audit(env, 'admin', 'video.delete', job.blog_post_id, { slug: job.slug, video_key: job.video_key || null });

@@ -1,4 +1,5 @@
 import { publishToFacebook, publishFacebookVideo } from './facebook.js';
+import { publishYoutubeVideo } from './youtube.js';
 import { publishToInstagram } from './instagram.js';
 import { publishToThreads } from './threads.js';
 import { publishToX } from './x.js';
@@ -10,7 +11,13 @@ import { isCarouselKey } from '../video_jobs.js';
 // pre-multi-channel flow keeps its page_id/message_template in the legacy
 // config even when the channel row only holds hashtags — replacing would
 // lose the Page ID and every drain would fail with 'Thiếu Page ID'.
-async function channelConfigFor(env, project, channel) {
+export async function channelConfigFor(env, project, channel) {
+  if (channel === 'youtube') {
+    if (!env?.DB || !project?.id) return {};
+    const { getChannelConfig } = await import('../channels.js');
+    return (await getChannelConfig(env, project.id, channel)) || {};
+  }
+
   const pubCfg = project?.publishing_config || {};
   let legacyCfg = {};
   try {
@@ -26,18 +33,32 @@ async function channelConfigFor(env, project, channel) {
   return { ...legacyCfg, ...rowCfg };
 }
 
-export async function dispatchPublication({ project, article, env, channel = null }) {
+export async function dispatchPublication({ project, article, env, channel = null, socialPostId = null }) {
   const pubCfg = project?.publishing_config || {};
   const publisherType = pubCfg.publisher_type || 'internal_d1';
+
+  // YouTube is a video-only channel. The queue row is named
+  // youtube_video so a normal blog fan-out never tries to upload an
+  // article without an MP4.
+  if (channel === 'youtube_video') {
+    return publishYoutubeVideo({
+      project,
+      article,
+      configJson: await channelConfigFor(env, project, 'youtube'),
+      env,
+      socialPostId,
+    });
+  }
 
   // The facebook_video channel handles both payloads: a carousel prefix
   // uploads the slide PNGs as a multi-photo post; a video_key MP4 goes
   // through publishFacebookVideo.
   if (channel === 'facebook_video') {
+    const facebookConfig = await channelConfigFor(env, project, 'facebook');
     if (article.video_key && isCarouselKey(article.video_key)) {
-      return publishToFacebook({ project, article, configJson: pubCfg.config_json, env });
+      return publishToFacebook({ project, article, configJson: facebookConfig, env });
     }
-    return publishFacebookVideo({ project, article, configJson: pubCfg.config_json, env });
+    return publishFacebookVideo({ project, article, configJson: facebookConfig, env });
   }
 
   const ch = channel || publisherType;

@@ -19,7 +19,7 @@ import { newId, nowSec } from '../util.js';
 import { getProject } from '../projects.js';
 import { dispatchPublication } from './publisher.js';
 import { track } from '../events.js';
-import { postIdFromRefSql, videoJobRefSql } from '../video_jobs.js';
+import { postIdFromRefSql, videoJobRefSql, postIdFromRef, isCarouselRef, isCarouselKey } from '../video_jobs.js';
 
 const BASE_DELAY_SEC = 60;
 const MAX_DELAY_SEC = 3600;
@@ -39,6 +39,9 @@ export function isCredentialError(err) {
   // both pointless to retry until a human fixes the credential/grant.
   // The 429 rate limit is NOT here: retrying later is exactly right.
   if (err?.x_status === 401 || err?.x_status === 403) return true;
+  if (err?.youtube_status === 401 || (err?.youtube_status === 403 && err?.youtube_credential)) return true;
+  if (['invalid_grant', 'accessNotConfigured', 'forbidden', 'insufficientPermissions', 'youtube_token_invalid'].includes(err?.youtube_error_code)) return true;
+  if (/youtube_(?:access_token_missing|refresh_token_missing|app_not_configured|token_(?:invalid|missing))/.test(msg)) return true;
   if (/\bX API lỗi \(HTTP 40[13]\)|Token X không hợp lệ|X từ chối đăng bài/.test(msg)) return true;
   return /token|quyền|permission/i.test(msg) && /hết hạn|không hợp lệ|chưa có quyền|not set|missing/i.test(msg);
 }
@@ -67,8 +70,18 @@ export async function enqueueSocialPost(env, { projectId, blogPostId, channel = 
          updated_at = excluded.updated_at
        WHERE social_posts.status IN ('published', 'skipped', 'failed')`
     : `INSERT OR IGNORE INTO social_posts ${SOCIAL_COLUMNS} VALUES ${SOCIAL_VALUES}`;
-  const r = await env.DB.prepare(sql).bind(newId(), projectId || null, blogPostId, channel, t, t, t).run().catch(() => null);
-  return { enqueued: !!(r?.meta?.changes) };
+  const r = await env.DB.prepare(sql).bind(newId(), projectId || null, blogPostId, channel, t, t, t).run();
+  let socialPostId = null;
+  if (r?.meta?.changes && (repost || channel === 'youtube_video')) {
+    const existing = await env.DB.prepare(
+      'SELECT id FROM social_posts WHERE blog_post_id = ? AND channel = ? LIMIT 1'
+    ).bind(blogPostId, channel).first();
+    socialPostId = existing?.id || null;
+    if (repost && channel === 'youtube_video' && socialPostId) {
+      await env.DB.prepare('DELETE FROM youtube_uploads WHERE social_post_id = ?').bind(socialPostId).run();
+    }
+  }
+  return { enqueued: !!r?.meta?.changes, id: socialPostId };
 }
 
 async function claimJob(env, id) {
@@ -88,14 +101,16 @@ async function loadJobContext(env, id) {
   // policy in functions/_lib/video_jobs.js.
   const row = await env.DB.prepare(
     `SELECT s.id, s.project_id, s.channel, s.attempts, s.max_attempts,
+            s.blog_post_id,
             b.id AS post_id, b.slug, b.title, b.meta_description,
             b.body_markdown, b.hero_image_key, b.keywords, b.published_at,
-            (SELECT v.video_key FROM video_jobs v
-              WHERE v.blog_post_id = ${videoJobRefSql('s.blog_post_id', 'b.id')}
-                AND v.status = 'done'
-              ORDER BY v.updated_at DESC LIMIT 1) AS video_key
+            v.id AS video_job_id, v.slug AS video_slug, v.kind AS video_kind,
+            v.source_url, v.video_key
        FROM social_posts s
-       JOIN blog_posts b ON b.id = ${postIdFromRefSql('s.blog_post_id')}
+       LEFT JOIN blog_posts b ON b.id = ${postIdFromRefSql('s.blog_post_id')}
+       LEFT JOIN video_jobs v
+         ON v.blog_post_id = ${videoJobRefSql('s.blog_post_id', 'b.id')}
+        AND v.status = 'done'
       WHERE s.id = ? LIMIT 1`
   ).bind(id).first().catch(() => null);
   return row;
@@ -125,6 +140,24 @@ export async function runSocialJob(env, id, { dispatch = dispatchPublication } =
     return { ok: false, error: 'blog_post_missing' };
   }
 
+  if (!job.post_id && job.channel !== 'facebook_video') {
+    const error = job.channel === 'youtube_video'
+      ? 'youtube_requires_mp4_blog_post'
+      : 'blog_post_missing';
+    await finishJob(env, id, {
+      status: job.channel === 'youtube_video' ? 'skipped' : 'failed',
+      error,
+    });
+    return { ok: false, error };
+  }
+
+  if (job.channel === 'youtube_video'
+    && (!postIdFromRef(job.blog_post_id) || isCarouselRef(job.blog_post_id)
+      || isCarouselKey(job.video_key) || job.video_kind === 'carousel')) {
+    await finishJob(env, id, { status: 'skipped', error: 'youtube_requires_mp4_blog_post' });
+    return { ok: false, error: 'youtube_requires_mp4_blog_post' };
+  }
+
   const project = await getProject(env, job.project_id).catch(() => null);
   if (!project) {
     await finishJob(env, id, { status: 'failed', error: 'project_missing' });
@@ -135,18 +168,22 @@ export async function runSocialJob(env, id, { dispatch = dispatchPublication } =
     const res = await dispatch({
       project,
       article: {
-        id: job.post_id,
-        slug: job.slug,
-        title: job.title,
-        meta_description: job.meta_description,
-        body_markdown: job.body_markdown,
+        id: job.post_id || job.blog_post_id,
+        slug: job.slug || job.video_slug || '',
+        title: job.title || job.video_slug || project.site_name || 'Video',
+        meta_description: job.meta_description || job.source_url || '',
+        body_markdown: job.body_markdown || '',
         hero_image_key: job.hero_image_key,
         video_key: job.video_key,
         keywords: job.keywords,
         published_at: job.published_at,
+        source_url: job.source_url,
+        video_kind: job.video_kind,
+        video_job_id: job.video_job_id,
       },
       env,
       channel: job.channel,
+      socialPostId: id,
     });
 
     if (res?.ok === false) throw new Error(res.error || 'dispatch_failed');
@@ -181,12 +218,13 @@ export async function runSocialJob(env, id, { dispatch = dispatchPublication } =
       return { ok: false, error: err.message, exhausted: true };
     }
 
+    const retryIn = Math.max(backoffSec(attempts), Number(err?.youtube_delay_sec || 0));
     await finishJob(env, id, {
       status: 'failed',
       error: String(err.message || err).slice(0, 500),
-      next_attempt_at: nowSec() + backoffSec(attempts),
+      next_attempt_at: nowSec() + retryIn,
     });
-    return { ok: false, error: err.message, retry_in_sec: backoffSec(attempts) };
+    return { ok: false, error: err.message, retry_in_sec: retryIn };
   }
 }
 
@@ -227,9 +265,13 @@ export async function listSocialPosts(env, { projectId = null, status = null, ch
     `SELECT s.id, s.project_id, s.blog_post_id, s.channel, s.status, s.attempts, s.max_attempts,
             s.next_attempt_at, s.external_id, s.external_url, s.error,
             s.needs_reconnect, s.created_at, s.updated_at, s.published_at,
-            b.slug AS post_slug, b.title AS post_title, b.hero_image_key
+            b.slug AS post_slug, b.title AS post_title, b.hero_image_key,
+             v.slug AS video_slug, v.kind AS video_kind, v.video_key
        FROM social_posts s
        LEFT JOIN blog_posts b ON b.id = ${postIdFromRefSql('s.blog_post_id')}
+       LEFT JOIN video_jobs v
+         ON v.blog_post_id = ${videoJobRefSql('s.blog_post_id', 'b.id')}
+        AND v.status = 'done'
        ${where}
       ORDER BY s.created_at DESC LIMIT ?`
   ).bind(...binds).all().catch(() => ({ results: [] }));

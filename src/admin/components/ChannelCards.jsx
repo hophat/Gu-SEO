@@ -11,7 +11,7 @@
 // card offers "dùng Page đã kết nối" instead of a separate OAuth dance.
 import { useState } from 'react';
 import {
-  Card, Button, Space, Tag, Switch, Input, Form, Alert, Typography, Popconfirm, Collapse,
+  Card, Button, Space, Tag, Switch, Input, Form, Alert, Typography, Popconfirm, Collapse, Select,
 } from 'antd';
 import {
   CheckCircleOutlined, CloseCircleOutlined, ThunderboltOutlined, ApiOutlined,
@@ -59,12 +59,23 @@ const CHANNEL_INFO = {
       'Free tier của X rất hẹp — lỗi 429 nghĩa là cần giảm tần suất hoặc nâng gói.',
     ],
   },
+  youtube: {
+    color: '#ff0000',
+    connectHint: 'Kết nối kênh YouTube bằng Google OAuth. Video chỉ đăng từ hàng đợi video đã render xong.',
+    requirements: [
+      'Google Cloud project bật YouTube Data API v3.',
+      'OAuth redirect URI: /api/admin/projects/youtube-callback.',
+      'Scope youtube.upload là scope nhạy cảm; app public có thể cần Google OAuth verification.',
+      'Video mặc định để riêng tư. Chọn Unlisted/Public trước khi bật tự động đăng.',
+    ],
+  },
 };
 
 const CONNECT_ROUTE = {
   facebook: '/api/admin/projects/channels-connect?channel=facebook',
   threads: '/api/admin/projects/channels-connect?channel=threads',
   instagram: '/api/admin/projects/channels-connect?channel=instagram',
+  youtube: '/api/admin/projects/youtube-connect',
 };
 
 export default function ChannelCards({ data, reload }) {
@@ -100,7 +111,7 @@ export default function ChannelCards({ data, reload }) {
     setTestResult((s) => ({
       ...s,
       [channel]: ok
-        ? { ok: true, text: r.body.page?.name || r.body.profile?.username || 'Kết nối OK' }
+        ? { ok: true, text: r.body.page?.name || r.body.profile?.title || r.body.profile?.username || 'Kết nối OK' }
         : { ok: false, text: r.body?.error || 'Không kết nối được' },
     }));
   };
@@ -123,7 +134,24 @@ export default function ChannelCards({ data, reload }) {
     await act({ action: 'save', channel: 'instagram', config: { hashtags: hashtags || '' } }, 'save-instagram');
   };
 
+  const saveYoutube = async (cfg) => {
+    await act({
+      action: 'save',
+      channel: 'youtube',
+      config: {
+        ...(cfg || {}),
+        privacy_status: cfg?.privacy_status || 'private',
+        tags: cfg?.tags || '',
+        as_video: cfg?.as_video === true,
+      },
+    }, 'save-youtube');
+  };
+
   const appReady = data?.meta_app?.id_set && data?.meta_app?.secret_set;
+
+  const channelAppReady = (channel) => channel === 'youtube'
+    ? !!(data?.youtube_app?.id_set && data?.youtube_app?.secret_set)
+    : !!appReady;
 
   const renderCard = (c) => {
     const info = CHANNEL_INFO[c.channel];
@@ -153,7 +181,7 @@ export default function ChannelCards({ data, reload }) {
             <Switch
               checked={c.enabled}
               onChange={(v) => toggle(c.channel, v)}
-              disabled={!connected && ['facebook', 'instagram', 'threads', 'x'].includes(c.channel)}
+              disabled={!connected && ['facebook', 'instagram', 'threads', 'x', 'youtube'].includes(c.channel)}
             />
           </Space>
         }
@@ -175,6 +203,11 @@ export default function ChannelCards({ data, reload }) {
           )}
           {c.channel === 'threads' && connected && c.config?.username && (
             <Text>@<Text strong>{c.config.username}</Text></Text>
+          )}
+          {c.channel === 'youtube' && connected && (
+            <Text>
+              Kênh: <Text strong>{c.config?.channel_title || c.config?.channel_id || '—'}</Text>
+            </Text>
           )}
 
           {/* X credentials form — the only channel without an OAuth flow. */}
@@ -209,13 +242,17 @@ export default function ChannelCards({ data, reload }) {
             <IgConfigForm cfg={c.config} busy={busy['save-instagram']} onSave={saveIgHashtags} />
           )}
 
+          {c.channel === 'youtube' && connected && (
+            <YoutubeConfigForm cfg={c.config} busy={busy['save-youtube']} onSave={saveYoutube} />
+          )}
+
           {c.channel !== 'x' && (
             <Space wrap>
               {connected ? (
                 <>
                   <Button icon={<ThunderboltOutlined />} loading={busyKey('test')} onClick={() => test(c.channel)}>Kiểm tra</Button>
                   {CONNECT_ROUTE[c.channel] && (
-                    <Button icon={<ApiOutlined />} disabled={!appReady} onClick={() => { window.location.href = CONNECT_ROUTE[c.channel]; }}>
+                    <Button icon={<ApiOutlined />} disabled={!channelAppReady(c.channel)} onClick={() => { window.location.href = CONNECT_ROUTE[c.channel]; }}>
                       Kết nối lại
                     </Button>
                   )}
@@ -227,7 +264,7 @@ export default function ChannelCards({ data, reload }) {
                 <Button
                   type="primary"
                   icon={<LinkOutlined />}
-                  disabled={!appReady}
+                  disabled={!channelAppReady(c.channel)}
                   onClick={() => { window.location.href = CONNECT_ROUTE[c.channel]; }}
                 >
                   Kết nối {c.label}
@@ -275,6 +312,44 @@ function IgConfigForm({ cfg, busy, onSave }) {
         <Input value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="gulagi,ISR,du-lich" />
       </Form.Item>
       <Button icon={<SaveOutlined />} size="small" loading={busy} onClick={() => onSave({ hashtags })}>Lưu</Button>
+    </Form>
+  );
+}
+
+function YoutubeConfigForm({ cfg, busy, onSave }) {
+  const [privacy, setPrivacy] = useState(
+    ['private', 'unlisted', 'public'].includes(cfg?.privacy_status) ? cfg.privacy_status : 'private'
+  );
+  const [tags, setTags] = useState(cfg?.tags || '');
+  const [asVideo, setAsVideo] = useState(cfg?.as_video === true);
+  return (
+    <Form layout="vertical" style={{ maxWidth: 520 }} size="small">
+      <Form.Item label="Quyền hiển thị" style={{ marginBottom: 8 }}>
+        <Select
+          value={privacy}
+          onChange={setPrivacy}
+          options={[
+            { value: 'private', label: 'Riêng tư (mặc định)' },
+            { value: 'unlisted', label: 'Không công khai' },
+            { value: 'public', label: 'Công khai' },
+          ]}
+          style={{ width: '100%' }}
+        />
+      </Form.Item>
+      <Form.Item label="Tag (phân tách bằng dấu phẩy)" style={{ marginBottom: 8 }}>
+        <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="gulagi, SEO, marketing" />
+      </Form.Item>
+      <Form.Item label="Tự đăng video khi render xong" style={{ marginBottom: 8 }}>
+        <Switch checked={asVideo} onChange={setAsVideo} />
+      </Form.Item>
+      <Button
+        icon={<SaveOutlined />}
+        size="small"
+        loading={busy}
+        onClick={() => onSave({ ...(cfg || {}), privacy_status: privacy, tags, as_video: asVideo })}
+      >
+        Lưu
+      </Button>
     </Form>
   );
 }

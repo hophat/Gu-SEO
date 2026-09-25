@@ -26,6 +26,9 @@ import {
   getAppId, setAppId, getAppSecret, readPendingPages, clearPendingPages,
   FB_APP_SECRET_NAME, getApiVersion,
 } from '../../../_lib/publishing/facebook_oauth.js';
+import {
+  getYoutubeAppState, setYoutubeClientId, YOUTUBE_CLIENT_SECRET_NAME,
+} from '../../../_lib/publishing/youtube_oauth.js';
 
 const PUBLISHER_TYPES = ['internal_d1', 'webhook', 'custom_api', 'wordpress', 'facebook'];
 
@@ -60,6 +63,7 @@ export const onRequestGet = async ({ env, request }) => {
 
   const appId = await getAppId(env);
   const appSecret = await getAppSecret(env);
+  const youtubeApp = await getYoutubeAppState(env);
   // Pending Page list is only a count here — the tokens stay server-side
   // and are fetched through the `pages` action when the picker opens.
   const pending = await readPendingPages(env, pid).catch(() => null);
@@ -89,6 +93,7 @@ export const onRequestGet = async ({ env, request }) => {
       source: scoped ? 'project' : (global ? 'global' : 'unset'),
     },
     app: { app_id: appId, api_version: await getApiVersion(env), id_set: !!appId, secret_set: !!appSecret },
+    youtube_app: youtubeApp,
     // A tenant may connect their own Page but must not touch the shared
     // Meta app credentials.
     can_manage_app: auth?.via === 'bearer' || auth?.role === 'super_admin',
@@ -144,6 +149,22 @@ export const onRequestPost = async ({ env, request }) => {
     }
     audit(env, 'admin', 'fb_app_save', pid, { secret: secretState });
     return json(200, { ok: true, app_id: await getAppId(env), api_version: await getApiVersion(env), secret: secretState });
+  }
+
+  if (body?.action === 'save_youtube_app') {
+    const superGate = await requireSuperAdmin(env, request);
+    if (superGate.error) return superGate.error;
+    if (typeof body?.client_id === 'string') {
+      await setYoutubeClientId(env, body.client_id.trim());
+    }
+    let secretState = 'unchanged';
+    if (typeof body?.client_secret === 'string') {
+      const value = body.client_secret.trim();
+      await setVaultSecret(env, YOUTUBE_CLIENT_SECRET_NAME, value);
+      secretState = value ? 'stored' : 'cleared';
+    }
+    audit(env, 'admin', 'youtube_app_save', pid, { secret: secretState });
+    return json(200, { ok: true, youtube_app: await getYoutubeAppState(env), secret: secretState });
   }
 
   // ── pending Page picker ──────────────────────────────────────────

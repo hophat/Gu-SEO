@@ -66,10 +66,12 @@ export function useVideoJobs({ noun = 'video', poll = true } = {}) {
     return () => clearInterval(t);
   }, [poll, jobs, reload]);
 
-  const publish = useCallback(async (id) => {
-    const { status, body } = await apiPost('/api/admin/video/publish', { id });
+  const publish = useCallback(async (id, channel = 'facebook') => {
+    const target = channel === 'youtube' || channel === 'youtube_video' ? 'youtube' : 'facebook';
+    const label = target === 'youtube' ? 'YouTube' : 'Facebook';
+    const { status, body } = await apiPost('/api/admin/video/publish', { id, channel: target });
     if (status === 200 && body?.ok) {
-      message.success(body.posted ? `Đã đăng ${noun} lên Facebook` : 'Đã vào hàng chờ — cron sẽ đăng trong ít phút');
+      message.success(body.posted ? `Đã đăng ${noun} lên ${label}` : `Đã vào hàng chờ ${label} — cron sẽ xử lý`);
       await reload();
       return true;
     }

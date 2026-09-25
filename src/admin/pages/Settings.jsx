@@ -195,7 +195,12 @@ export default function Settings() {
           {
             key: 'publishing',
             label: 'Kênh xuất bản',
-            children: <FacebookAppConfig />,
+            children: (
+               <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                 <FacebookAppConfig />
+                 <YoutubeAppConfig />
+               </Space>
+             ),
           },
           {
             key: 'project',
@@ -585,6 +590,82 @@ function FacebookAppConfig() {
           },
         ]}
       />
+    </Card>
+  );
+}
+
+function YoutubeAppConfig() {
+  const [cfg, setCfg] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [clientId, setClientId] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { status, body } = await apiGet('/api/admin/projects/publishing');
+    if (status === 200 && body?.ok) {
+      setCfg(body);
+      setClientId(body.youtube_app?.client_id || '');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const save = async () => {
+    setSaving(true);
+    const body = { action: 'save_youtube_app', client_id: clientId.trim() };
+    if (clientSecret.trim()) body.client_secret = clientSecret.trim();
+    const r = await apiPost('/api/admin/projects/publishing', body);
+    setSaving(false);
+    if (r.status === 200 && r.body?.ok) {
+      message.success('Đã lưu thông tin YouTube OAuth App');
+      setClientSecret('');
+      load();
+    } else message.error(r.body?.detail || r.body?.error || 'Lưu thất bại');
+  };
+
+  const redirectUri = `${window.location.origin}/api/admin/projects/youtube-callback`;
+  const ready = cfg?.youtube_app?.id_set && cfg?.youtube_app?.secret_set;
+
+  return (
+    <Card loading={loading}>
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="Google OAuth App dùng chung cho YouTube"
+        description="Mỗi dự án kết nối kênh riêng. Refresh token được mã hoá AES-GCM trong vault, không gửi về trình duyệt."
+      />
+      <Row gutter={12}>
+        <Col xs={24} md={12}>
+          <Form.Item label="OAuth Client ID" style={{ marginBottom: 8 }}>
+            <Input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="xxxxx.apps.googleusercontent.com" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} md={12}>
+          <Form.Item label="OAuth Client Secret" style={{ marginBottom: 8 }} extra="Lưu mã hoá, không hiển thị lại">
+            <Input.Password
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+              placeholder={cfg?.youtube_app?.secret_set ? '•••••••• (để trống nếu giữ nguyên)' : 'Client secret'}
+              autoComplete="off"
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+      <Form.Item label="Authorized redirect URI" extra="Dán chính xác URI này vào Google Cloud Console.">
+        <Input readOnly value={redirectUri} style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12 }} />
+      </Form.Item>
+      <Space>
+        <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={save}>Lưu YouTube App</Button>
+        <Tag color={ready ? 'success' : 'warning'}>{ready ? 'Đã cấu hình' : 'Chưa cấu hình'}</Tag>
+      </Space>
+      <Divider />
+      <Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 0 }}>
+        Bật YouTube Data API v3 trong Google Cloud project, thêm OAuth consent screen, rồi mở tab Kênh xuất bản để kết nối từng kênh. Video mặc định để riêng tư.
+      </Paragraph>
     </Card>
   );
 }

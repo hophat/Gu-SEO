@@ -12,8 +12,12 @@
 import { json, nowSec, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
 import { getProject } from '../../../_lib/projects.js';
+import { listEnabledChannels } from '../../../_lib/channels.js';
 import { enqueueSocialPost } from '../../../_lib/publishing/social_queue.js';
 import { parseFacebookConfig } from '../../../_lib/publishing/facebook.js';
+import { channelConfigFor } from '../../../_lib/publishing/publisher.js';
+import { parseYoutubeConfig } from '../../../_lib/publishing/youtube.js';
+import { postIdFromRef, isCarouselRef, isCarouselKey } from '../../../_lib/video_jobs.js';
 import { sendVideoReadyEmail } from '../../../_lib/video_notify.js';
 
 // Social platforms cap uploads well below this; anything larger is a
@@ -84,10 +88,11 @@ export const onRequestPost = async ({ env, request, context }) => {
   // Fire-and-forget semantics are fine — enqueueSocialPost is INSERT OR
   // IGNORE and a missed enqueue is recoverable via the manual button.
   try {
-    const project = job.project_id ? await getProject(env, job.project_id).catch(() => null) : null;
-    const pubCfg = project?.publishing_config || {};
-    const fbCfg = pubCfg.publisher_type === 'facebook'
-      ? parseFacebookConfig(pubCfg.config_json)
+    const project = job.project_id ? await getProject(env, job.project_id) : null;
+    const enabled = job.project_id ? await listEnabledChannels(env, job.project_id, { includeVideoOnly: true }) : [];
+    const facebookEnabled = enabled.some((item) => item.channel === 'facebook');
+    const fbCfg = project && facebookEnabled
+      ? parseFacebookConfig(await channelConfigFor(env, project, 'facebook'))
       : {};
     if (fbCfg.asVideo && job.project_id) {
       const q = await enqueueSocialPost(env, {
@@ -95,7 +100,24 @@ export const onRequestPost = async ({ env, request, context }) => {
       });
       if (q.enqueued) audit(env, 'video-agent', 'video.social_enqueued', job.blog_post_id, { channel: 'facebook_video' });
     }
-  } catch { /* auto-post is best-effort — the manual button covers misses */ }
+
+    const youtubeEnabled = enabled.some((item) => item.channel === 'youtube');
+    const youtubeCfg = project && youtubeEnabled
+      ? parseYoutubeConfig(await channelConfigFor(env, project, 'youtube'))
+      : {};
+    if (youtubeCfg.asVideo && job.project_id
+      && postIdFromRef(job.blog_post_id) && !isCarouselRef(job.blog_post_id)
+      && !isCarouselKey(job.video_key) && job.kind !== 'carousel') {
+      const q = await enqueueSocialPost(env, {
+        projectId: job.project_id, blogPostId: job.blog_post_id, channel: 'youtube_video',
+      });
+      if (q.enqueued) audit(env, 'video-agent', 'video.social_enqueued', job.blog_post_id, { channel: 'youtube_video' });
+    }
+  } catch (error) {
+    audit(env, 'video-agent', 'video.social_enqueue_failed', job.blog_post_id, {
+      error: String(error?.message || error).slice(0, 300),
+    });
+  }
 
   // Video-ready email — same rules as the publish report: never fail the
   // delivery, recipients are the project owners, runs inside waitUntil
@@ -104,7 +126,11 @@ export const onRequestPost = async ({ env, request, context }) => {
     const origin = new URL(request.url).origin;
     const mail = sendVideoReadyEmail(env, { jobId, origin });
     if (context?.waitUntil) context.waitUntil(mail);
-  } catch { /* notification is best-effort */ }
+  } catch (error) {
+    await audit(env, 'video-agent', 'video.notify_failed', job.blog_post_id, {
+      error: String(error?.message || error).slice(0, 300),
+    });
+  }
 
   return json(200, { ok: true, status: 'done', video_key: key, bytes: bytes.length });
 };

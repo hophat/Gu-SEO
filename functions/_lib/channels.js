@@ -9,7 +9,8 @@
 //   - the canonical channel list (what the UI can offer)
 //   - listEnabledChannels(): the fan-out source for blog publish, with a
 //     transparent fallback to the legacy single publisher_type so existing
-//     installs keep publishing without any operator action
+//     installs keep publishing without any operator action; video-only
+//     channels are opt-in via `{ includeVideoOnly: true }` for video delivery
 //   - connect/enable/disable/upsert helpers used by the admin API
 //
 // Config lives in config_json (plaintext, non-secret: page ids, handles,
@@ -26,6 +27,7 @@ export const CHANNELS = [
   { id: 'instagram', label: 'Instagram',     legacy_type: null },
   { id: 'threads',   label: 'Threads',       legacy_type: null },
   { id: 'x',         label: 'X (Twitter)',   legacy_type: null },
+  { id: 'youtube',   label: 'YouTube',       legacy_type: null, video_only: true },
   { id: 'wordpress', label: 'WordPress',     legacy_type: 'wordpress' },
   { id: 'webhook',   label: 'Webhook',       legacy_type: 'webhook' },
   { id: 'custom_api', label: 'Custom API',   legacy_type: 'custom_api' },
@@ -33,6 +35,10 @@ export const CHANNELS = [
 
 export function isKnownChannel(id) {
   return CHANNELS.some((c) => c.id === id);
+}
+
+export function isVideoOnlyChannel(id) {
+  return CHANNELS.some((c) => c.id === id && c.video_only === true);
 }
 
 function parseConfig(json) {
@@ -46,19 +52,37 @@ function parseConfig(json) {
 // publisher_type still speaks for the project — otherwise flipping to the
 // multi-channel model would silently stop every existing install's
 // distribution on its next deploy.
-export async function listEnabledChannels(env, projectId) {
+export async function listEnabledChannels(env, projectId, { includeVideoOnly = false } = {}) {
   if (!env?.DB || !projectId) return [];
-  const { results } = await env.DB.prepare(
-    `SELECT channel, config_json FROM project_channels
-      WHERE project_id = ? AND enabled = 1`
-  ).bind(projectId).all().catch(() => ({ results: [] }));
+  const result = await env.DB.prepare(
+    `SELECT channel, enabled, config_json FROM project_channels
+      WHERE project_id = ?`
+  ).bind(projectId).all().catch(() => null);
+  const rows = result?.results || [];
 
-  if (results?.length) {
+  if (rows.length) {
     const known = CHANNELS.map((c) => c.id);
-    return results
+    const byId = new Map(CHANNELS.map((c) => [c.id, c]));
+    const enabled = rows
+      .filter((r) => Number(r.enabled) === 1)
       .filter((r) => known.includes(r.channel))
-      .sort((a, b) => known.indexOf(a.channel) - known.indexOf(b.channel))
+      .filter((r) => includeVideoOnly || !byId.get(r.channel)?.video_only)
       .map((r) => ({ channel: r.channel, config: parseConfig(r.config_json) }));
+
+    // A legacy project can gain its first project_channels row when an
+    // operator connects a video-only channel. Keep its old text publisher
+    // alive until that legacy channel is explicitly represented and disabled
+    // in the modern registry; otherwise connecting YouTube would silently
+    // disable Facebook/WordPress fan-out on existing installs.
+    const legacy = await env.DB.prepare(
+      'SELECT publisher_type, config_json FROM project_publishing_configs WHERE project_id = ? LIMIT 1'
+    ).bind(projectId).first();
+    const legacyChannel = CHANNELS.find((c) => c.legacy_type === legacy?.publisher_type);
+    if (legacyChannel && !isVideoOnlyChannel(legacyChannel.id)
+      && !rows.some((r) => r.channel === legacyChannel.id)) {
+      enabled.push({ channel: legacyChannel.id, config: parseConfig(legacy?.config_json) });
+    }
+    return enabled.sort((a, b) => known.indexOf(a.channel) - known.indexOf(b.channel));
   }
 
   const row = await env.DB.prepare(

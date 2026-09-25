@@ -37,6 +37,7 @@ const STATUS_META = {
 const CHANNEL_META = {
   facebook:  { color: 'blue',   text: 'Facebook' },
   facebook_video: { color: 'geekblue', text: 'Facebook Video' },
+  youtube_video: { color: 'red', text: 'YouTube Video' },
   instagram: { color: 'magenta', text: 'Instagram' },
   threads:   { color: 'purple', text: 'Threads' },
   x:         { color: 'black',  text: 'X (Twitter)' },
@@ -96,7 +97,7 @@ export default function Social() {
             ? <img src={`/image/${r.hero_image_key}`} alt="" loading="lazy" style={{ width: 48, height: 32, objectFit: 'cover', borderRadius: 4 }} />
             : <div style={{ width: 48, height: 32, borderRadius: 4, background: 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><PictureOutlined style={{ color: '#bfbfbf' }} /></div>}
           <Space direction="vertical" size={0}>
-            <Text style={{ fontSize: 13 }}>{r.post_title || '—'}</Text>
+            <Text style={{ fontSize: 13 }}>{r.post_title || r.video_slug || r.blog_post_id || '—'}</Text>
             {r.post_slug && <Text type="secondary" style={{ fontSize: 11 }}>/blog/{r.post_slug}</Text>}
           </Space>
         </Space>
@@ -152,6 +153,7 @@ export default function Social() {
             options={[
               { value: 'facebook', label: 'Facebook' },
               { value: 'facebook_video', label: 'Facebook Video' },
+              { value: 'youtube_video', label: 'YouTube Video' },
               { value: 'instagram', label: 'Instagram' },
               { value: 'threads', label: 'Threads' },
               { value: 'x', label: 'X (Twitter)' },
