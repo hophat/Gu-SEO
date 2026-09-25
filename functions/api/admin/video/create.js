@@ -6,7 +6,7 @@
 //                                slug?, url? }, template?, duration? }
 //
 // `template` is a catalog id from _lib/video_templates.js ('auto'/absent
-// stores NULL — the engine picks). `duration` clamps to 15–45s. Each
+// stores NULL — the engine picks). `duration` clamps to 15–90s. Each
 // source reuses the exact insert convention of the endpoint it replaces:
 //   post     → kind='post',     blog_post_id = the real post id
 //   url      → kind='website',  blog_post_id = 'url:<href>', source_url set
@@ -66,9 +66,9 @@ export const onRequestPost = async ({ env, request }) => {
   }
   const duration = clampVideoDuration(body?.duration);
 
-  // Background music: 'auto'/absent → NULL (the agent's pad), 'none' →
-  // muted, else a catalog id. Never a free-form URL — the catalog is the
-  // allow-list, so no user-controlled host ever reaches the renderer.
+  // Background music: 'auto'/absent → NULL (claim chọn track free theo template),
+  // 'none' → muted, else a catalog id. Never a free-form URL — the catalog is
+  // the allow-list, so no user-controlled host ever reaches the renderer.
   const music = parseBgmParam(body?.bgm);
   if (!music.ok) {
     return json(400, { error: 'unknown_bgm', hint: 'bgm phải là "auto", "none" hoặc một id trong catalog nhạc' });

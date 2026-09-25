@@ -1,6 +1,6 @@
 import { renderMarkdown } from './markdown.js';
 import { esc } from './util.js';
-import { normalizeHost, requestHost } from './project_scope.js';
+import { normalizeHost, requestHost, projectLocale } from './project_scope.js';
 
 const HERO_W = 1200, HERO_H = 630;
 
@@ -28,7 +28,7 @@ export function themeStyle(hex) {
   return `<style>:root{--brand:${hex};--brand-light:color-mix(in srgb,${hex} 12%,#fff);--brand-dark:color-mix(in srgb,${hex} 82%,#000);--link:${hex}}</style>`;
 }
 
-function jsonLD({ site, post, host, kind, settings, basePath = '' }) {
+function jsonLD({ site, post, host, kind, settings, basePath = '', language = 'vi' }) {
   const isArticle = kind === 'blog';
   const baseUrl = `https://${host}`;
   const orgId   = `${baseUrl}/#org`;
@@ -76,7 +76,7 @@ function jsonLD({ site, post, host, kind, settings, basePath = '' }) {
       author:    { '@id': orgId },
       publisher: { '@id': orgId },
       isPartOf:  { '@id': webId },
-      inLanguage: 'vi',
+      inLanguage: language,
       mainEntityOfPage: { '@type': 'WebPage', '@id': `${baseUrl}${post.urlPath}` },
     },
     {
@@ -128,6 +128,7 @@ function extractFAQ(post) {
 export function renderContentPage({ env, request, post, kind, related = [], settings = {}, basePath = '', project = null }) {
   const host = new URL(request.url).hostname;
   const site = brand(env, project);
+  const locale = projectLocale(project?.language);
   const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
   const effectiveHost = customHost || requestHost(request) || host;
   const effectiveBasePath = customHost ? '' : basePath;
@@ -139,7 +140,6 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   });
   const wordCount = (post.body_markdown || '').split(/\s+/).length;
   const readMin = Math.max(1, Math.ceil(wordCount / 200));
-  const isVi = true;
 
   const useCoverEndpoint = (settings?.hero_image_mode === 'cover') && settings?._has_default_template;
   const heroSrc = useCoverEndpoint
@@ -194,7 +194,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   const preloadHero = `<link rel="preload" as="image" href="${heroSrc}" fetchpriority="high" />`;
 
   const faqSchema = extractFAQ(post);
-  const ldGraph = jsonLD({ site, post: { ...post, urlPath: effectiveUrlPath }, host: effectiveHost, kind, settings, basePath: effectiveBasePath });
+  const ldGraph = jsonLD({ site, post: { ...post, urlPath: effectiveUrlPath }, host: effectiveHost, kind, settings, basePath: effectiveBasePath, language: locale.htmlLang });
   const ldExtra = faqSchema.length ? `,${faqSchema.map(f => JSON.stringify(f)).join(',')}` : '';
   const ldJson = ldGraph.replace('}', `${ldExtra}}`);
 
@@ -247,7 +247,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
     : (site.description || `Bài viết từ ${site.name}.`);
 
   return `<!doctype html>
-<html lang="vi">
+<html lang="${locale.htmlLang}">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -266,7 +266,7 @@ ${verifyMetas}
 <meta property="og:image:width" content="${HERO_W}" />
 <meta property="og:image:height" content="${HERO_H}" />
 <meta property="og:site_name" content="${esc(site.name)}" />
-<meta property="og:locale" content="vi_VN" />
+<meta property="og:locale" content="${locale.ogLocale}" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${esc(post.title)}" />
 <meta name="twitter:description" content="${esc(post.meta_description)}" />

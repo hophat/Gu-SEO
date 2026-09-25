@@ -40,6 +40,8 @@ import {
   onRequestGet as onboardingGet, onRequestPost as onboardingPost, onRequestDelete as onboardingDelete,
 } from '../functions/api/admin/onboarding.js';
 import { onRequestPost as register } from '../functions/api/public/register.js';
+import { onRequestGet as whoami } from '../functions/api/admin/whoami.js';
+import { onRequestPost as projectsCreate } from '../functions/api/admin/projects.js';
 import { onRequestPatch as profilePatch } from '../functions/api/admin/projects/profile.js';
 import { onRequestGet as secretsRead, onRequestPost as secretsWrite } from '../functions/api/admin/secrets.js';
 import { onRequestGet as providersList } from '../functions/api/admin/providers.js';
@@ -67,7 +69,8 @@ import { onRequestPost as usersCreate } from '../functions/api/admin/users.js';
 import { renderBlogIndex } from '../functions/blog/index.js';
 import { onRequestGet as renderFeed } from '../functions/feed.xml.js';
 import { loadSettings, setSetting } from '../functions/_lib/settings.js';
-import { resolveProjectBySlug } from '../functions/_lib/project_scope.js';
+import { resolveProjectBySlug, projectLocale } from '../functions/_lib/project_scope.js';
+import { renderContentPage } from '../functions/_lib/page_render.js';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -378,17 +381,44 @@ async function testHelpers() {
   assert.match(describeGraphError({ code: 4, message: 'limit' }), /giới hạn tần suất/);
   ok('Graph errors are translated into operator actions');
 
-  // message template
+  // Facebook copy: custom templates stay exact; defaults become a readable
+  // post with a hook, extracted highlights, CTA and relevant hashtags.
   assert.equal(buildFacebookMessage({ title: 'A', meta_description: 'D' }, { messageTemplate: '{title} — {description}' }), 'A — D');
-  assert.equal(buildFacebookMessage({ title: 'A', meta_description: 'D' }, {}), 'D');
-  assert.equal(buildFacebookMessage({ title: 'A' }, {}), 'A');
-  ok('message template substitutes {title}/{description}');
+  const viPost = buildFacebookMessage({
+    title: 'Cách chọn hosting',
+    meta_description: 'Hướng dẫn chọn hosting ổn định.',
+    body_markdown: '## Hiệu năng\nTốc độ tải trang ảnh hưởng đến chuyển đổi.\n\n## Chi phí\nGiá từ 200.000 đồng mỗi tháng.',
+    keywords: 'hosting, website',
+  }, {}, { language: 'vi', name: 'Gulagi', brand: { cta: 'Dùng thử 30 ngày.' } });
+  assert.match(viPost, /^Cách chọn hosting\n\nHướng dẫn chọn hosting ổn định\./);
+  assert.match(viPost, /Trong bài viết này:/);
+  assert.match(viPost, /• Hiệu năng — Tốc độ tải trang ảnh hưởng đến chuyển đổi\./);
+  assert.match(viPost, /Bước tiếp theo: Dùng thử 30 ngày\./);
+  assert.match(viPost, /#hosting/);
+  assert.ok(viPost.includes('\n'), 'default Facebook copy keeps line breaks');
+  const enPost = buildFacebookMessage({ title: 'A practical guide', meta_description: 'A clear guide.' }, {}, { language: 'en' });
+  assert.match(enPost, /In this guide:|Next step: Read the full guide/);
+  const frPost = buildFacebookMessage({ title: 'Guide pratique', meta_description: 'Un guide clair.' }, {}, { language: 'fr', brand: { cta: 'Découvrez la suite.' } });
+  assert.match(frPost, /Découvrez la suite\./);
+  assert.doesNotMatch(frPost, /In this guide:|Next step:|Read the full guide/);
+  const headinglessPost = buildFacebookMessage({ title: 'A title', body_markdown: 'One useful opening sentence.' }, {}, { language: 'en' });
+  assert.doesNotMatch(headinglessPost, /\n• /, 'intro text is not repeated as a highlight');
+  const customPost = buildFacebookMessage(
+    { title: 'A', meta_description: 'D', body_markdown: 'A useful detail.', keywords: 'alpha' },
+    { messageTemplate: '{title}\n{summary}\n{cta}\n{hashtags} {url}' },
+    { language: 'en', brand: { cta: 'Start here.' } },
+  );
+  assert.equal(customPost, 'A\nD\nStart here.\n#alpha');
+  const noTagPost = buildFacebookMessage({ title: 'A title', meta_description: 'A summary.' }, {}, { language: 'en' });
+  assert.doesNotMatch(noTagPost, /#/, 'no keyword sources means no noisy auto hashtags');
+  ok('Facebook message template substitutes all supported tokens');
 
   // config parsing
-  const cfg = parseFacebookConfig('{"page_id":"123","as_photo":true,"api_version":"v25.0"}');
+  const cfg = parseFacebookConfig('{"page_id":"123","as_photo":true,"api_version":"v25.0","hashtags":"#hosting, #website"}');
   assert.equal(cfg.pageId, '123');
   assert.equal(cfg.asPhoto, true);
   assert.equal(cfg.apiVersion, 'v25.0');
+  assert.equal(cfg.hashtags, '#hosting, #website');
   assert.equal(parseFacebookConfig('{"api_version":"25"}').apiVersion, '', 'invalid version falls back to deployment default');
   assert.equal(parseFacebookConfig('not json').pageId, '');
   ok('facebook config parsing validates input');
@@ -398,27 +428,6 @@ async function testHelpers() {
   assert.equal(projectPublicBase({ custom_domain: 'blog.example.com', publishing_url: 'https://seo.test/alpha' }), 'https://blog.example.com');
   assert.equal(projectPublicBase({ custom_domain: 'https://blog.example.com/' }), 'https://blog.example.com');
   ok('public base prefers the custom domain and strips trailing slashes');
-
-  // OAuth state
-  const secret = 'admin-token-value';
-  const state = await signState(secret, PROJECT);
-  const verified = await verifyState(secret, state);
-  assert.equal(verified.projectId, PROJECT);
-  assert.equal(verified.channel, 'facebook', 'state without a channel reads as the facebook channel');
-  assert.equal(await verifyState(secret, `${state}tampered`), null, 'tampered state must be rejected');
-  assert.equal(await verifyState('other-secret', state), null, 'wrong key must be rejected');
-  assert.equal(await verifyState(secret, 'a.b'), null, 'malformed state must be rejected');
-  ok('OAuth state round-trips and rejects tampering');
-
-  const authUrl = buildAuthUrl({ appId: '999', redirectUri: 'https://x/cb', state: 's', version: 'v23.0' });
-  assert.match(authUrl, /^https:\/\/www\.facebook\.com\/v23\.0\/dialog\/oauth\?/);
-  const q = new URLSearchParams(authUrl.split('?')[1]);
-  assert.equal(q.get('client_id'), '999');
-  assert.equal(q.get('redirect_uri'), 'https://x/cb');
-  assert.equal(q.get('response_type'), 'code');
-  assert.match(q.get('scope'), /pages_manage_posts/);
-  assert.match(q.get('scope'), /pages_show_list/);
-  ok('auth url carries the required scopes and params');
 
   // Threads uses a separate Authorization Window and app credentials. Never
   // mix Facebook Login permissions into this URL: Meta rejects them as
@@ -476,6 +485,27 @@ async function testHelpers() {
   assert.equal(await getThreadsAppId({ THREADS_APP_ID: 'env-id' }), 'env-id');
   ok('Threads app credentials have independent settings and environment overrides');
 
+  // OAuth state
+  const secret = 'admin-token-value';
+  const state = await signState(secret, PROJECT);
+  const verified = await verifyState(secret, state);
+  assert.equal(verified.projectId, PROJECT);
+  assert.equal(verified.channel, 'facebook', 'state without a channel reads as the facebook channel');
+  assert.equal(await verifyState(secret, `${state}tampered`), null, 'tampered state must be rejected');
+  assert.equal(await verifyState('other-secret', state), null, 'wrong key must be rejected');
+  assert.equal(await verifyState(secret, 'a.b'), null, 'malformed state must be rejected');
+  ok('OAuth state round-trips and rejects tampering');
+
+  const authUrl = buildAuthUrl({ appId: '999', redirectUri: 'https://x/cb', state: 's', version: 'v23.0' });
+  assert.match(authUrl, /^https:\/\/www\.facebook\.com\/v23\.0\/dialog\/oauth\?/);
+  const q = new URLSearchParams(authUrl.split('?')[1]);
+  assert.equal(q.get('client_id'), '999');
+  assert.equal(q.get('redirect_uri'), 'https://x/cb');
+  assert.equal(q.get('response_type'), 'code');
+  assert.match(q.get('scope'), /pages_manage_posts/);
+  assert.match(q.get('scope'), /pages_show_list/);
+  ok('auth url carries the required scopes and params');
+
   // embed settings whitelist
   const s = sanitizeEmbedSettings({
     title: 'T', accent: '#ABC', per_page: '6', theme: 'dark',
@@ -514,6 +544,24 @@ async function testHelpers() {
   assert.equal(opts.project, 'alpha');
   assert.equal(opts.titleAuto, true, 'no explicit title means the widget may use the site name');
   ok('widget options inherit project defaults');
+
+  // Public metadata follows the project language, with deterministic OG mapping.
+  assert.deepEqual(projectLocale('en-US'), { htmlLang: 'en', ogLocale: 'en_US' });
+  assert.deepEqual(projectLocale('fr-FR'), { htmlLang: 'fr', ogLocale: 'fr_FR' });
+  assert.deepEqual(projectLocale('not-a-locale'), { htmlLang: 'vi', ogLocale: 'vi_VN' });
+  const localePost = {
+    slug: 'guide', title: 'A practical guide', meta_description: 'A clear guide.',
+    body_markdown: '# Guide\\n\\nHelpful detail.', status: 'published', published_at: 1700000000,
+    urlPath: '/alpha/blog/guide',
+  };
+  const localeHtml = renderContentPage({
+    env: {}, request: new Request('https://seo.test/alpha/blog/guide'), post: localePost, kind: 'blog',
+    project: { name: 'Alpha', language: 'en', publishing_url: 'https://seo.test/alpha' },
+  });
+  assert.match(localeHtml, /<html lang="en">/);
+  assert.match(localeHtml, /<meta property="og:locale" content="en_US" \/>/);
+  assert.match(localeHtml, /"inLanguage":"en"/);
+  ok('public HTML, Open Graph, and JSON-LD use project language metadata');
 }
 
 // ── D. cron schedule routing ────────────────────────────────────────
@@ -1157,7 +1205,62 @@ async function testRegistrationAndProfile() {
   assert.equal(project.name, 'Nguyen van a', 'the provisional name is derived from the email local part');
   assert.ok(project.slug, 'a slug is generated');
   assert.equal(project.website_url, '', 'no website is required at registration');
-  ok('registration works with only email, OTP and password');
+  const registeredUser = await env.__get('SELECT role, project_id FROM users WHERE id = ?', body.id);
+  assert.equal(registeredUser.role, 'project_admin', 'self-registered users are tenant admins');
+  assert.equal(registeredUser.project_id, body.project_id, 'the user is assigned their provisioned project');
+  const assignedProjects = await env.DB.prepare(
+    'SELECT COUNT(*) AS total FROM projects WHERE id = ?'
+  ).bind(body.project_id).first();
+  assert.equal(assignedProjects.total, 1, 'each regular user starts with exactly one project/site');
+  ok('registration gives each regular user exactly one project/site');
+
+  const setCookie = res.headers.get('set-cookie') || '';
+  const sessionCookie = setCookie.match(/(?:^|;\s*)ps_session=([^;]+)/)?.[1];
+  assert.ok(sessionCookie, 'registration returns a tenant session cookie');
+  const tenantHeaders = new Map([['Cookie', `ps_session=${sessionCookie}`]]);
+  const tenantRequest = (url, requestBody) => {
+    const req = {
+      url,
+      headers: tenantHeaders,
+      clone() { return req; },
+      json: async () => requestBody || {},
+    };
+    return {
+      ...req,
+      headers: {
+        get: (name) => {
+          for (const [key, value] of tenantHeaders.entries()) {
+            if (key.toLowerCase() === name.toLowerCase()) return value;
+          }
+          return null;
+        },
+      },
+    };
+  };
+
+  const tenantWhoami = await whoami({ env, request: tenantRequest('https://x/api/admin/whoami') });
+  const tenantWhoamiBody = await tenantWhoami.json();
+  assert.equal(tenantWhoami.status, 200, 'a tenant session can identify itself');
+  assert.equal(tenantWhoamiBody.projects.length, 1, 'a tenant sees exactly one project/site');
+  assert.equal(tenantWhoamiBody.projects[0].id, body.project_id, 'the tenant project is their own project');
+  ok('tenant identity exposes exactly one project/site');
+
+  const secondProject = await projectsCreate({
+    env,
+    request: tenantRequest('https://x/api/admin/projects', { slug: 'tenant-second-site', name: 'Second site' }),
+  });
+  assert.equal(secondProject.status, 403, 'a regular user cannot create a second project/site');
+  ok('regular users cannot create a second project/site');
+
+  const superFirst = await projectsCreate({
+    env, request: jsonReq('https://x/api/admin/projects', { slug: 'operator-one', name: 'Operator One' }),
+  });
+  const superSecond = await projectsCreate({
+    env, request: jsonReq('https://x/api/admin/projects', { slug: 'operator-two', name: 'Operator Two' }),
+  });
+  assert.equal(superFirst.status, 200, 'super admin can create a project/site');
+  assert.equal(superSecond.status, 200, 'super admin is not limited to one project/site');
+  ok('super admin can create multiple projects/sites');
 
   // THE REGRESSION: no placeholder Brand DNA.
   const brand = await env.__get('SELECT business_type FROM project_brands WHERE project_id = ?', body.project_id);
@@ -1290,6 +1393,12 @@ async function testRequestCost() {
   assert.equal(slugReads, 1, `project lookup must hit D1 once per request (got ${slugReads})`);
   assert.equal(p1.id, p2.id);
   ok('resolveProjectBySlug is memoised per request');
+
+  const languageEnv = await freshEnv();
+  await languageEnv.DB.prepare("UPDATE projects SET language = 'en' WHERE id = ?").bind(PROJECT).run();
+  const languageProject = await resolveProjectBySlug(languageEnv, 'alpha');
+  assert.equal(languageProject.language, 'en', 'project resolver carries language to public renderers');
+  ok('project resolver preserves content language');
 
   // A miss is cached too — otherwise a bad slug would re-query on every call.
   const c = counting(env);
@@ -2105,8 +2214,8 @@ async function testCarouselVideoJobs() {
     // A Facebook channel that wants videos — the configuration that used to
     // swallow a slide prefix and fail on an object that is not there.
     await env.DB.prepare(
-      `INSERT INTO project_publishing_configs (project_id, publisher_type, config_json, created_at, updated_at)
-       VALUES (?, 'facebook', ?, ?, ?)`
+      `INSERT INTO project_channels (id, project_id, channel, enabled, config_json, created_at, updated_at)
+       VALUES ('pc_carousel_fb', ?, 'facebook', 1, ?, ?, ?)`
     ).bind(PROJECT, JSON.stringify({ page_id: '111222333', as_video: true }), t, t).run();
     await setVaultSecret(env, `FACEBOOK_PAGE_TOKEN__${PROJECT}`, 'page-token');
 
@@ -2255,6 +2364,13 @@ async function testMultiChannel() {
   assert.deepEqual(chans.map((c) => c.channel), ['facebook', 'x'], 'only enabled rows are returned, canonical order');
   ok('project_channels rows drive the fan-out');
 
+  await env.DB.prepare("UPDATE project_channels SET enabled = 0 WHERE project_id = ?").bind(PROJECT).run();
+  assert.deepEqual(await listEnabledChannels(env, PROJECT), [], 'a disabled modern registry does not resurrect legacy Facebook');
+  await env.DB.prepare(
+    "UPDATE project_channels SET enabled = 1 WHERE project_id = ? AND channel IN ('facebook', 'x')"
+  ).bind(PROJECT).run();
+  ok('disabled modern channels stay disabled');
+
   // 3. Fan-out: one publish → one queue row per enabled channel.
   for (const ch of chans) {
     await enqueueSocialPost(env, { projectId: PROJECT, blogPostId: 'post_mc', channel: ch.channel });
@@ -2306,7 +2422,7 @@ async function testAdapter() {
     slug: 'bai-viet-dau-tien',
     title: 'Bài viết đầu tiên về tối ưu chi phí bao bì cho doanh nghiệp vừa và nhỏ',
     meta_description: 'Hướng dẫn ngắn gọn giúp doanh nghiệp nhỏ chọn bao bì đúng chi phí, đúng chất lượng mà vẫn giữ được thương hiệu.',
-    body_markdown: '# Tiêu đề\n\nNội dung dài hơn nhiều nằm ở đây, có cả [link](https://example.com) và **đậm**.',
+    body_markdown: '# Tiêu đề\n\nNội dung dài hơn nhiều nằm ở đây, có cả [link](https://example.com) và **đậm**.\n\n## Hiệu năng\nTốc độ tải trang giúp tăng trải nghiệm.\n\n## Chi phí\nChọn gói phù hợp với quy mô doanh nghiệp.',
     hero_image_key: 'covers/abc.png',
     keywords: 'bao bi, chi phi, doanh nghiep',
   };
@@ -2349,11 +2465,13 @@ async function testAdapter() {
   assert.ok(xLong.text.endsWith('…') || xLong.text.includes('…') || xLong.text.length < 280, 'long lead is trimmed with an ellipsis or dropped');
   ok('X trim respects word boundaries on Vietnamese text');
 
-  // Facebook stays a thin link-format payload.
+  // Facebook uses the same professional copy builder as the live publisher.
   const fb = adaptArticleForChannel('facebook', project, article, {});
   assert.equal(fb.kind, 'link');
-  assert.ok(fb.text.length > 0 && fb.text.length <= 400, 'facebook message stays short');
-  ok('Facebook payload stays the short link-format message');
+  assert.ok(fb.text.includes('\n• '), 'facebook message keeps a scannable highlight bullet');
+  assert.match(fb.text, /Bước tiếp theo:/);
+  assert.ok(fb.text.length <= 1800, 'facebook message stays within the safety cap');
+  ok('Facebook payload uses professional structured copy');
 }
 
 // ── OAuth state with channel (4-part) + legacy acceptance ───────────
@@ -2486,7 +2604,7 @@ async function testVideoTemplates() {
   assert.equal(row.kind, 'post');
   assert.equal(row.blog_post_id, POST, 'a post job carries the real post id, not a sentinel');
   assert.equal(row.template, 'story');
-  assert.equal(row.duration, 45, 'duration is clamped into the 15–45s band');
+  assert.equal(row.duration, 90, 'duration is clamped into the 15–90s band');
   assert.equal((await create({ project_id: PROJECT, source: { type: 'post', slug: 'alpha-post' } })).status, 409,
     'a second post job while one is in flight is refused');
   ok('a post job stores template + clamped duration and dedupes in flight');
@@ -2511,7 +2629,7 @@ async function testVideoTemplates() {
   })).json();
   assert.ok(claimed?.job, 'the queued post job must be claimable');
   assert.equal(claimed.job.template, 'story');
-  assert.equal(claimed.job.duration, 45);
+  assert.equal(claimed.job.duration, 90);
   assert.equal(claimed.job.project.presenter_name, 'Lan');
   assert.equal(claimed.job.project.presenter_image_url, 'https://x/image/project/x/presenter/p.png',
     'presenter_image_url ships absolute for the off-platform agent');
@@ -2565,13 +2683,28 @@ async function testVideoTemplates() {
   })).json();
   assert.equal(noMusicClaim?.job?.bgm, 'none', "'none' survives the claim as a sentinel");
   assert.equal(noMusicClaim?.job?.bgm_url, null);
-  // Absent bgm stays NULL = 'auto' — the agent's pad, same as before.
+  // Absent bgm stays NULL = 'auto'; claim resolves it to a real free track
+  // from the server-owned Mixkit catalog instead of a synthesised pad.
   const autoMusic = await (await create({
     project_id: OTHER, source: { type: 'url', url: 'https://auto.example' },
   })).json();
   const autoMusicRow = await env.__get('SELECT bgm FROM video_jobs WHERE id = ?', autoMusic.job_id);
   assert.equal(autoMusicRow.bgm, null, "absent bgm stores NULL = 'auto'");
-  ok("'none' stores the mute sentinel, absent stores NULL = auto");
+  const autoMusicClaim = await (await claimVideoJob({
+    env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'website', project_id: OTHER } }),
+  })).json();
+  assert.equal(autoMusicClaim?.job?.bgm, 'serene-view', 'auto resolves to a neutral catalog track');
+  assert.equal(autoMusicClaim?.job?.bgm_url, 'https://x/image/music/serene-view.mp3',
+    'auto music uses the same free file the wizard previews');
+  const productMusic = await (await create({
+    project_id: OTHER, template: 'product', source: { type: 'url', url: 'https://product.example' },
+  })).json();
+  const productClaim = await (await claimVideoJob({
+    env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'website', project_id: OTHER } }),
+  })).json();
+  assert.equal(productClaim?.job?.id, productMusic.job_id, 'the product music row is the next claim');
+  assert.equal(productClaim?.job?.bgm, 'deep-urban', 'template auto music follows the content style');
+  ok("'none' stores mute; absent stores NULL and claims as a free catalog track");
 
   // The catalog endpoint serves all 12 ids and the presenter flag.
   const cat = await (await listVideoTemplates({

@@ -8,9 +8,10 @@
 //   Instagram     caption max ~2200 chars, links are not clickable → the
 //                 article URL goes into the profile bio, so the caption may
 //                 only point at it
-//   Facebook      message is intentionally short (the OG card carries the
-//                 title) — buildFacebookMessage already handles it
-//
+//   Facebook      message includes a hook, extracted highlights, CTA and
+//                 hashtags; the OG card still carries the article title
+
+import { buildFacebookMessage } from './facebook.js';
 // Everything here is pure: no fetch, no env, no D1. The publishers receive
 // a ready payload { kind, text, media, link, notes } and only add auth +
 // transport. Purity is what makes the trim rules testable without faking
@@ -222,11 +223,9 @@ function buildInstagram(project, article, cfg) {
 }
 
 function buildFacebook(project, article, cfg) {
-  // buildFacebookMessage already encodes Facebook's rules; keep this
-  // builder a thin wrapper so the switch below stays uniform.
+  // Keep every Facebook entry point on the same professional copy builder.
   const link = articleLink(project, article);
-  const desc = String(article?.meta_description || '').trim();
-  const text = desc ? desc.slice(0, 400) : String(article?.title || '').trim();
+  const text = buildFacebookMessage(article, cfg, project);
   return { kind: link ? 'link' : 'text', text, media: [], link, notes: [] };
 }
 

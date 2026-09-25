@@ -8,7 +8,7 @@
 //   threads → Threads Authorization Window code → short-lived token →
 //             POST graph.threads.com/oauth/access_token → long-lived token
 //             (GET graph.threads.net/v1.0/access_token) →
-//             GET me/threads_profile → store THREADS_TOKEN__<pid> +
+//             GET me → store THREADS_TOKEN__<pid> +
 //             threads_user_id in project_channels → connected.
 //
 // The signed state carries the channel (see channels-connect.js); the

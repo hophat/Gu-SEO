@@ -44,14 +44,15 @@ export function parseFacebookConfig(configJson) {
     // resolved per request so a version bump needs no redeploy.
     apiVersion: /^v\d+\.\d+$/.test(String(cfg.api_version || '')) ? String(cfg.api_version) : '',
     // Photo posts surface a large image; link posts let Facebook unfurl
-    // the page's OG tags. Link posts are the safe default because they
-    // also carry the title/description without us re-sending them.
+    // the page's OG tags while the default message adds a hook,
+    // highlights, CTA and hashtags. Link posts remain the safe default.
     asPhoto: cfg.as_photo === true,
     // When the post has a rendered 9:16 video (video_jobs done), as_video
     // uploads it to /{page-id}/videos instead of a plain link post. The
     // article URL goes into the description — video posts don't unfurl.
     asVideo: cfg.as_video === true,
     messageTemplate: String(cfg.message_template || '').trim(),
+    hashtags: String(cfg.hashtags || '').trim(),
   };
 }
 
@@ -70,19 +71,148 @@ function projectOrigin(project) {
   try { return new URL(base).origin; } catch { return ''; }
 }
 
-export function buildFacebookMessage(article, cfg) {
-  const title = String(article?.title || '').trim();
-  const desc = String(article?.meta_description || '').trim();
+const MAX_FACEBOOK_MESSAGE_CHARS = 1800;
+const MAX_FACEBOOK_HASHTAG_LENGTH = 30;
+const GENERIC_HASHTAGS = new Set([
+  'blog', 'article', 'news', 'guide', 'home', 'website', 'seo', 'marketing',
+  'tin', 'tuc', 'biviet', 'huongdan', 'kienthuc', 'noidung',
+]);
+
+function cleanFacebookText(value) {
+  return String(value || '')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[`*_~>#]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function truncateFacebookText(value, max) {
+  const text = cleanFacebookText(value);
+  if (text.length <= max) return text;
+  const head = text.slice(0, Math.max(0, max - 1)).replace(/\s+\S*$/, '');
+  return `${head || text.slice(0, max - 1)}…`;
+}
+
+function firstFacebookSentence(value, max = 150) {
+  const text = cleanFacebookText(value)
+    .replace(/^[-*•]\s+/, '')
+    .replace(/^\d+[.)]\s+/, '');
+  if (!text) return '';
+  const sentence = text.match(/^[\s\S]*?[.!?](?=\s|$)/)?.[0] || text;
+  return truncateFacebookText(sentence, max);
+}
+
+function facebookHighlights(body, limit = 3) {
+  const sections = [];
+  let heading = '';
+  let paragraphs = [];
+  const flush = () => {
+    const label = cleanFacebookText(heading);
+    if (label) sections.push({ label, detail: cleanFacebookText(paragraphs.join(' ')) });
+    heading = '';
+    paragraphs = [];
+  };
+  for (const line of String(body || '').split(/\r?\n/)) {
+    const match = line.match(/^\s{0,3}#{2,3}\s+(.+?)\s*#*\s*$/);
+    if (match) {
+      flush();
+      heading = match[1];
+    } else if (heading && line.trim() && !/^\s*```/.test(line)) {
+      paragraphs.push(line);
+    }
+  }
+  flush();
+
+  const highlights = [];
+  for (const section of sections) {
+    const detail = firstFacebookSentence(section.detail, 125);
+    const value = detail ? `${section.label} — ${detail}` : section.label;
+    const normalized = value.toLocaleLowerCase();
+    if (value && !highlights.some((item) => item.toLocaleLowerCase() === normalized)) highlights.push(truncateFacebookText(value, 190));
+    if (highlights.length >= limit) break;
+  }
+  return highlights;
+}
+
+function limitFacebookMessage(value) {
+  const text = String(value || '').trim();
+  if (text.length <= MAX_FACEBOOK_MESSAGE_CHARS) return text;
+  const head = text.slice(0, MAX_FACEBOOK_MESSAGE_CHARS - 1).replace(/\s+\S*$/, '');
+  return `${head || text.slice(0, MAX_FACEBOOK_MESSAGE_CHARS - 1)}…`;
+}
+
+function facebookHashtag(value) {
+  const ascii = String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '')
+    .slice(0, MAX_FACEBOOK_HASHTAG_LENGTH);
+  if (!ascii || /^\d+$/.test(ascii)) return '';
+  const tag = `#${ascii}`;
+  return GENERIC_HASHTAGS.has(ascii) ? '' : tag;
+}
+
+function facebookHashtags(article, cfg, project) {
+  const parts = [];
+  if (cfg.hashtags) parts.push(...String(cfg.hashtags).split(/[\s,|]+/));
+  if (article?.keywords) parts.push(...String(article.keywords).split(/[,\n|]+/).map((part) => part.trim()).filter(Boolean));
+  if (project?.name) parts.push(project.name);
+  const tags = [];
+  for (const part of parts) {
+    const tag = facebookHashtag(part);
+    if (tag && !tags.includes(tag)) tags.push(tag);
+    if (tags.length >= 4) break;
+  }
+  return tags;
+}
+
+function facebookLocale(project, article) {
+  const language = String(project?.language || article?.language || '').toLowerCase();
+  if (language) return language.startsWith('vi') ? 'vi' : language.startsWith('en') ? 'en' : '';
+  return /[ăâđêôơư]/i.test(`${article?.title || ''} ${article?.meta_description || ''}`) ? 'vi' : '';
+}
+
+function facebookLabels(locale) {
+  if (locale === 'vi') return { highlights: 'Trong bài viết này:', cta: 'Bước tiếp theo', fallback: 'Đọc bài viết đầy đủ để có thêm chi tiết và bước triển khai.' };
+  if (locale === 'en') return { highlights: 'In this guide:', cta: 'Next step', fallback: 'Read the full guide for more detail and next steps.' };
+  return { highlights: '', cta: '', fallback: '' };
+}
+
+export function buildFacebookMessage(article, cfg = {}, project = {}) {
+  const title = cleanFacebookText(article?.title);
+  const description = cleanFacebookText(article?.meta_description);
+  const locale = facebookLocale(project, article);
+  const labels = facebookLabels(locale);
+  const highlights = facebookHighlights(article?.body_markdown);
+  const cta = truncateFacebookText(project?.brand?.cta, 180) || labels.fallback;
+  const hashtags = facebookHashtags(article, cfg, project);
+
   if (cfg.messageTemplate) {
     return cfg.messageTemplate
       .replace(/\{title\}/g, title)
-      .replace(/\{description\}/g, desc)
+      .replace(/\{description\}/g, description)
+      .replace(/\{summary\}/g, description || firstFacebookSentence(article?.body_markdown))
+      .replace(/\{cta\}/g, cta)
+      .replace(/\{hashtags\}/g, hashtags.join(' '))
       .replace(/\{url\}/g, '')
       .trim();
   }
-  // Facebook shows the link's OG title/description itself, so repeating
-  // them in the message reads as spam. Keep the message short.
-  return desc ? desc.slice(0, 400) : title;
+
+  const summary = truncateFacebookText(description || firstFacebookSentence(article?.body_markdown), 280);
+  const lines = [];
+  if (title) lines.push(truncateFacebookText(title, 120));
+  if (summary && summary.toLocaleLowerCase() !== title.toLocaleLowerCase()) lines.push('', summary);
+  if (highlights.length) {
+    if (labels.highlights) lines.push('', labels.highlights);
+    for (const highlight of highlights) lines.push(`• ${highlight}`);
+  }
+  if (cta) lines.push('', labels.cta ? `${labels.cta}: ${cta}` : cta);
+  if (hashtags.length) lines.push('', hashtags.join(' '));
+  return limitFacebookMessage(lines.join('\n'));
 }
 
 // Facebook answers 200 with an {error} body for many failures, so a
@@ -175,7 +305,7 @@ export async function publishToFacebook({ project, article, configJson, env }) {
   const base = projectPublicBase(project);
   if (!base) throw new Error('Dự án chưa có URL xuất bản để tạo link bài viết.');
   const link = `${base}/blog/${article.slug}`;
-  const message = buildFacebookMessage(article, cfg);
+  const message = buildFacebookMessage(article, cfg, project);
 
   const imageUrl = article.hero_image_key ? `${projectOrigin(project)}/image/${article.hero_image_key}` : '';
   const version = cfg.apiVersion || await getApiVersion(env);
@@ -244,7 +374,7 @@ export async function publishToFacebook({ project, article, configJson, env }) {
   if (cfg.asPhoto && imageUrl) {
     const data = await post(`${version}/${cfg.pageId}/photos`, {
       url: imageUrl,
-      caption: message,
+      caption: message ? `${message}\n\n${link}` : link,
       access_token: token,
     });
     return {
@@ -289,7 +419,7 @@ export async function publishFacebookVideo({ project, article, configJson, env }
   const base = projectPublicBase(project);
   if (!base) throw new Error('Dự án chưa có URL xuất bản để tạo link bài viết.');
   const link = `${base}/blog/${article.slug}`;
-  const message = buildFacebookMessage(article, cfg);
+  const message = buildFacebookMessage(article, cfg, project);
 
   const obj = await env.IMAGES.get(article.video_key);
   if (!obj) throw new Error(`Video ${article.video_key} không còn trong R2 — render lại trước khi đăng.`);

@@ -1,5 +1,36 @@
 const CACHE_KEY = '__ps_project_scope_cache__';
 
+// Keep public metadata deterministic for the content-language allowlist used
+// by brand-dna. Unknown values fall back to Vietnamese instead of guessing an
+// invalid Open Graph locale.
+const PROJECT_LOCALES = Object.freeze({
+  vi: { htmlLang: 'vi', ogLocale: 'vi_VN' },
+  en: { htmlLang: 'en', ogLocale: 'en_US' },
+  ja: { htmlLang: 'ja', ogLocale: 'ja_JP' },
+  ko: { htmlLang: 'ko', ogLocale: 'ko_KR' },
+  zh: { htmlLang: 'zh', ogLocale: 'zh_CN' },
+  th: { htmlLang: 'th', ogLocale: 'th_TH' },
+  id: { htmlLang: 'id', ogLocale: 'id_ID' },
+  ms: { htmlLang: 'ms', ogLocale: 'ms_MY' },
+  fr: { htmlLang: 'fr', ogLocale: 'fr_FR' },
+  de: { htmlLang: 'de', ogLocale: 'de_DE' },
+  es: { htmlLang: 'es', ogLocale: 'es_ES' },
+  pt: { htmlLang: 'pt', ogLocale: 'pt_PT' },
+  it: { htmlLang: 'it', ogLocale: 'it_IT' },
+  nl: { htmlLang: 'nl', ogLocale: 'nl_NL' },
+  ru: { htmlLang: 'ru', ogLocale: 'ru_RU' },
+  ar: { htmlLang: 'ar', ogLocale: 'ar_AR' },
+  hi: { htmlLang: 'hi', ogLocale: 'hi_IN' },
+  tr: { htmlLang: 'tr', ogLocale: 'tr_TR' },
+  pl: { htmlLang: 'pl', ogLocale: 'pl_PL' },
+  sv: { htmlLang: 'sv', ogLocale: 'sv_SE' },
+});
+
+export function projectLocale(language) {
+  const code = String(language || 'vi').trim().toLowerCase().split(/[-_]/)[0];
+  return PROJECT_LOCALES[code] || PROJECT_LOCALES.vi;
+}
+
 function normalizeHost(value) {
   try {
     const raw = String(value || '').trim();
@@ -31,7 +62,7 @@ export async function resolveProjectByHost(env, host, pathname = '/') {
   if (cached && cached.host === target && cached.path === pathname) return cached.project;
 
   const rows = await env.DB.prepare(
-    `SELECT id, slug, name, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, theme_color FROM projects WHERE status = 'active'`
+    `SELECT id, slug, name, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, theme_color, language FROM projects WHERE status = 'active'`
   ).all().catch(() => ({ results: [] }));
 
   for (const project of rows?.results || []) {
@@ -87,7 +118,7 @@ export async function resolveProjectBySlug(env, slug) {
   if (cache && clean in cache) return cache[clean];
 
   const row = await env?.DB?.prepare(
-    `SELECT id, slug, name, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, theme_color FROM projects WHERE slug = ? LIMIT 1`
+    `SELECT id, slug, name, website_url, publishing_url, custom_domain, site_name, site_description, logo_url, theme_color, language FROM projects WHERE slug = ? LIMIT 1`
   ).bind(clean).first().catch(() => null);
 
   const project = row || null;

@@ -16,7 +16,7 @@
 //   5. POST /{threads-user-id}/threads_publish?creation_id=…  → { id }
 //
 // The threads_user_id comes from the channel config; when absent we read
-// GET /me/threads_profile (Threads' self endpoint for the token holder).
+// GET /me (Threads API user endpoint for the token holder).
 
 import { getVaultSecret } from '../secret_vault.js';
 import { THREADS_SCOPES } from './facebook_oauth.js';
@@ -125,7 +125,7 @@ async function threadsGet(path, params, version = 'v1.0') {
 
 // Token-level probe for the admin "Kiểm tra" button.
 export async function verifyThreadsToken({ token }) {
-  const me = await threadsGet('me/threads_profile', { access_token: token, fields: 'id,username,threads_profile_picture_url' });
+  const me = await threadsGet('me', { access_token: token, fields: 'id,username,threads_profile_picture_url' });
   return { id: me?.id, username: me?.username || '' };
 }
 
@@ -134,7 +134,7 @@ export async function verifyThreadsToken({ token }) {
 async function resolveThreadsUser({ cfg, token }) {
   const explicit = String(cfg?.threads_user_id || cfg?.user_id || '').trim();
   if (explicit) return { id: explicit, username: String(cfg?.username || '').trim() };
-  const me = await threadsGet('me/threads_profile', { access_token: token, fields: 'id,username' });
+  const me = await threadsGet('me', { access_token: token, fields: 'id,username' });
   if (!me?.id) throw new Error('Không xác định được Threads user ID từ token — Kết nối lại kênh Threads.');
   return { id: me.id, username: String(me?.username || '').trim() };
 }
