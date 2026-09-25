@@ -8,7 +8,7 @@
 // archive entrypoint and rel=prev/next gives Google the topology
 // hint to walk the sequence as a series.
 
-import { esc } from '../_lib/util.js';
+import { esc, edgeCached } from '../_lib/util.js';
 import { loadSettings } from '../_lib/settings.js';
 import { themeStyle } from '../_lib/page_render.js';
 import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost } from '../_lib/project_scope.js';
@@ -18,30 +18,49 @@ import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost } from '.
 // Sitemap.xml.js shares the constant via a re-import below.
 export const PAGE_SIZE = 10;
 
+// The live render — reached only on an edge-cache miss. Public, identical
+// for every visitor, so every entry point below is free to store the result.
 export async function renderBlogIndex({ env, request, page = 1, projectSlug = null, basePath = '' }) {
   const host = new URL(request.url).hostname;
   const baseUrl = `https://${host}`;
   page = Math.max(1, parseInt(page, 10) || 1);
 
-  let project = null;
-  if (projectSlug) {
-    project = await resolveProjectBySlug(env, projectSlug).catch(() => null);
-    if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
-  } else {
-    project = await resolveProjectForRequest(env, request).catch(() => null);
-  }
+  // Two waves instead of four serial D1 round-trips. Project resolution and
+  // the settings row are independent of each other, and the COUNT and the
+  // page rows are independent too — the range check below only decides
+  // whether to render, it never changes the SQL.
+  const [project, settings] = await Promise.all([
+    projectSlug
+      ? resolveProjectBySlug(env, projectSlug).catch(() => null)
+      : resolveProjectForRequest(env, request).catch(() => null),
+    loadSettings(env).catch(() => ({})),
+  ]);
+  if (projectSlug && !project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   const projectId = project?.id || null;
   const bp = basePath || (projectSlug ? `/${projectSlug}` : '');
 
   // Total + this-page rows in two queries. COUNT is cheap on D1
   // when filtered by an indexed column (status). Both queries share
   // the same project filter so pagination stays consistent.
+  const offset = (page - 1) * PAGE_SIZE;
   const totalSql = projectId
     ? `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published' AND project_id = ?`
     : `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published'`;
-  const totalRow = await (projectId
-    ? env.DB.prepare(totalSql).bind(projectId)
-    : env.DB.prepare(totalSql)).first().catch(() => ({ n: 0 }));
+  const pageSql = projectId
+    ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+       FROM blog_posts WHERE status='published' AND project_id = ?
+       ORDER BY published_at DESC LIMIT ? OFFSET ?`
+    : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+       FROM blog_posts WHERE status='published'
+       ORDER BY published_at DESC LIMIT ? OFFSET ?`;
+  const [totalRow, r] = await Promise.all([
+    (projectId
+      ? env.DB.prepare(totalSql).bind(projectId)
+      : env.DB.prepare(totalSql)).first().catch(() => ({ n: 0 })),
+    (projectId
+      ? env.DB.prepare(pageSql).bind(projectId, PAGE_SIZE, offset)
+      : env.DB.prepare(pageSql).bind(PAGE_SIZE, offset)).all(),
+  ]);
   const total = totalRow?.n || 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -50,21 +69,8 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
   if (page > totalPages && page !== 1) {
     return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   }
-
-  const offset = (page - 1) * PAGE_SIZE;
-  const pageSql = projectId
-    ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
-       FROM blog_posts WHERE status='published' AND project_id = ?
-       ORDER BY published_at DESC LIMIT ? OFFSET ?`
-    : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
-       FROM blog_posts WHERE status='published'
-       ORDER BY published_at DESC LIMIT ? OFFSET ?`;
-  const r = await (projectId
-    ? env.DB.prepare(pageSql).bind(projectId, PAGE_SIZE, offset)
-    : env.DB.prepare(pageSql).bind(PAGE_SIZE, offset)).all();
   const posts = r.results || [];
 
-  const settings = await loadSettings(env).catch(() => ({}));
   const isVi = true;
   const homeHost = (() => { try { return new URL(project?.website_url || '').hostname; } catch { return ''; } })();
   const isGulagi = !project || !homeHost || /(^|\.)gulagi\.com$/.test(homeHost);
@@ -411,4 +417,11 @@ ${themeStyle(project?.theme_color)}
   });
 }
 
-export const onRequestGet = (ctx) => renderBlogIndex({ env: ctx.env, request: ctx.request, page: 1 });
+// Every archive entry point goes through the edge cache: /blog, /blog/page/N
+// and the /<project>/blog variants all render the same public listing.
+export function renderBlogIndexCached(ctx, opts = {}) {
+  return edgeCached(ctx.request, ctx.waitUntil, () =>
+    renderBlogIndex({ env: ctx.env, request: ctx.request, page: opts.page ?? 1, projectSlug: opts.projectSlug ?? null, basePath: opts.basePath ?? '' }));
+}
+
+export const onRequestGet = (ctx) => renderBlogIndexCached(ctx);

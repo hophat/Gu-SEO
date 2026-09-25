@@ -1,5 +1,5 @@
 // /<project>/blog/page/<n> — paginated archive for a named project.
-import { renderBlogIndex } from '../../../blog/index.js';
+import { renderBlogIndexCached } from '../../../blog/index.js';
 import { resolveProjectBySlugPath } from '../../../_lib/project_scope.js';
 
 export const onRequestGet = async (ctx) => {
@@ -14,5 +14,5 @@ export const onRequestGet = async (ctx) => {
   if (page === 1) {
     return new Response(null, { status: 301, headers: { location: new URL(`/${slug}/blog`, ctx.request.url).toString() } });
   }
-  return renderBlogIndex({ env: ctx.env, request: ctx.request, page, projectSlug: slug, basePath: `/${slug}` });
+  return renderBlogIndexCached(ctx, { page, projectSlug: slug, basePath: `/${slug}` });
 };

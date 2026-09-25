@@ -17,32 +17,50 @@
 import { renderCoverSvg } from '../_lib/cover_svg.js';
 import { buildBrandContext } from '../_lib/template.js';
 import { loadSettings } from '../_lib/settings.js';
-import { esc } from '../_lib/util.js';
+import { esc, edgeCached } from '../_lib/util.js';
 
-export const onRequestGet = async ({ env, request, params }) => {
+// The live render — reached only on an edge-cache miss.
+async function renderOg({ env, request, params }) {
   const slug = String(params.slug || '').toLowerCase();
   if (!/^[a-z0-9-]{1,200}$/.test(slug)) {
     return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   }
 
-  // Look up the post.
-  let post = null;
+  // The blog lookup, the default template and the settings row are
+  // independent reads — fire them together. Only the prog_pages
+  // fallback waits, because it runs when the blog lookup misses.
+  const [blogPost, templateRow, settings] = await Promise.all([
+    (async () => {
+      try {
+        return await env.DB.prepare(
+          `SELECT slug, title, meta_description, body_markdown, hero_image_key,
+                  keywords, ai_provider, status, published_at
+           FROM blog_posts WHERE slug = ? AND status='published' LIMIT 1`
+        ).bind(slug).first();
+      } catch { /* DB unavailable — fall through */ return null; }
+    })(),
+    (async () => {
+      try {
+        return await env.DB.prepare(
+          `SELECT spec_json FROM cover_templates WHERE is_default = 1 LIMIT 1`
+        ).first();
+      } catch { /* */ return null; }
+    })(),
+    loadSettings(env).catch(() => ({})),
+  ]);
+
+  let post = blogPost;
   let kind = 'blog';
-  try {
-    post = await env.DB.prepare(
-      `SELECT slug, title, meta_description, body_markdown, hero_image_key,
-              keywords, ai_provider, status, published_at
-       FROM blog_posts WHERE slug = ? AND status='published' LIMIT 1`
-    ).bind(slug).first();
-    if (!post) {
+  if (!post) {
+    try {
       post = await env.DB.prepare(
         `SELECT slug, title, meta_description, body_markdown, hero_image_key,
                 keyword, ai_provider, status, published_at
          FROM prog_pages WHERE slug = ? AND status='published' LIMIT 1`
       ).bind(slug).first();
       kind = 'programmatic';
-    }
-  } catch { /* DB unavailable — fall through */ }
+    } catch { /* DB unavailable — fall through */ }
+  }
 
   // Render through the default cover template, whatever shape it is
   // in. Applying the "can this paint anything?" rule is the renderer's
@@ -51,13 +69,9 @@ export const onRequestGet = async ({ env, request, params }) => {
   // the black, textless rectangle operators reported.
   let spec = null;
   try {
-    const row = await env.DB.prepare(
-      `SELECT spec_json FROM cover_templates WHERE is_default = 1 LIMIT 1`
-    ).first();
-    if (row?.spec_json) spec = JSON.parse(row.spec_json);
+    if (templateRow?.spec_json) spec = JSON.parse(templateRow.spec_json);
   } catch { /* */ }
 
-  const settings = await loadSettings(env).catch(() => ({}));
   const fakePost = post || { slug, title: slug.replace(/-/g, ' '), body_markdown: '', published_at: 0 };
   fakePost.urlPath = kind === 'blog' ? `/blog/${slug}` : `/p/${slug}`;
   const ctx = buildBrandContext({ env, settings, post: fakePost, request, kind });
@@ -78,7 +92,9 @@ export const onRequestGet = async ({ env, request, params }) => {
       'cache-control': 'public, max-age=300, s-maxage=900',
     },
   });
-};
+}
+
+export const onRequestGet = (ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderOg(ctx));
 
 // esc is imported only to avoid breaking imports elsewhere if this
 // file is referenced as a module; we don't use it directly here

@@ -30,42 +30,59 @@ import { isRenderableSpec } from '../_lib/cover_spec.js';
 import { buildBrandContext } from '../_lib/template.js';
 import { loadSettings } from '../_lib/settings.js';
 import { recordNotice, clearNotice } from '../_lib/notices.js';
+import { edgeCached } from '../_lib/util.js';
 
-export const onRequestGet = async ({ env, request, params }) => {
+// The live render — reached only on an edge-cache miss. This is the hero
+// image on every post page, so a hit removes both the D1 chain and the R2
+// asset inlining below from the critical path.
+async function renderCover({ env, request, params }) {
   const slug = String(params.slug || '').toLowerCase();
   if (!/^[a-z0-9-]{1,200}$/.test(slug)) {
     return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   }
 
-  // Look up the post in both tables. Either is fine; the renderer
-  // doesn't care whether it's a blog or programmatic page.
-  let post = null;
+  // The post, the default template and the settings row are three
+  // independent reads — fire them together instead of stacking three
+  // round-trips. Only the prog_pages fallback has to wait, because it
+  // runs when the blog lookup misses.
+  const [blogPost, template, settings] = await Promise.all([
+    (async () => {
+      try {
+        return await env.DB.prepare(
+          `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
+                  keywords, ai_provider, status, published_at
+           FROM blog_posts WHERE slug = ? AND status='published' LIMIT 1`
+        ).bind(slug).first();
+      } catch { /* DB unavailable — fall through to a generic card */ return null; }
+    })(),
+    // Look up the default template. If none exists we can't render —
+    // return a 404 below so the caller (page_render.js) falls back to
+    // its built-in OG SVG instead.
+    (async () => {
+      try {
+        return await env.DB.prepare(
+          `SELECT spec_json FROM cover_templates WHERE is_default = 1 LIMIT 1`
+        ).first();
+      } catch { /* no template */ return null; }
+    })(),
+    loadSettings(env).catch(() => ({})),
+  ]);
+
+  // Look up the post in prog_pages too. Either table is fine; the
+  // renderer doesn't care whether it's a blog or programmatic page.
+  let post = blogPost;
   let kind = 'blog';
-  try {
-    post = await env.DB.prepare(
-      `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
-              keywords, ai_provider, status, published_at
-       FROM blog_posts WHERE slug = ? AND status='published' LIMIT 1`
-    ).bind(slug).first();
-    if (!post) {
+  if (!post) {
+    try {
       post = await env.DB.prepare(
         `SELECT slug, title, meta_description, body_markdown, hero_image_key, hero_image_alt,
                 keyword, ai_provider, status, published_at
          FROM prog_pages WHERE slug = ? AND status='published' LIMIT 1`
       ).bind(slug).first();
       kind = 'programmatic';
-    }
-  } catch { /* DB unavailable — fall through to a generic card */ }
+    } catch { /* DB unavailable — fall through to a generic card */ }
+  }
 
-  // Look up the default template. If none exists we can't render —
-  // return a 404 so the caller (page_render.js) falls back to its
-  // built-in OG SVG instead.
-  let template = null;
-  try {
-    template = await env.DB.prepare(
-      `SELECT spec_json FROM cover_templates WHERE is_default = 1 LIMIT 1`
-    ).first();
-  } catch { /* no template */ }
   if (!template?.spec_json) {
     // Surface this to the admin dashboard so the operator knows the
     // site has been falling back. Fire-and-forget; no await.
@@ -108,8 +125,6 @@ export const onRequestGet = async ({ env, request, params }) => {
     });
   }
 
-  const settings = await loadSettings(env).catch(() => ({}));
-
   // Build the context. If no post was found we still render — using
   // the slug-as-title as a graceful degrade so deep-linked OG cards
   // for hidden/draft posts still produce something readable.
@@ -136,4 +151,6 @@ export const onRequestGet = async ({ env, request, params }) => {
       'cache-control': 'public, max-age=300, s-maxage=900',
     },
   });
-};
+}
+
+export const onRequestGet = (ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderCover(ctx));

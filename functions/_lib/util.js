@@ -75,3 +75,63 @@ export async function audit(env, actor, action, targetId, details) {
     ).run();
   } catch { /* logging never blocks the main flow */ }
 }
+
+// Edge TTL for `edgeCached` below, in seconds. `s-maxage` governs the
+// shared cache; `max-age` on the response still governs the visitor's
+// browser. Deliberately short: the operator publishes a post and then opens
+// the public URL to check it, and an hour of edge TTL means reading the
+// previous revision for an hour. A minute still absorbs the repeat views and
+// crawler re-crawls that matter.
+const EDGE_SMAXAGE = 60;
+
+// Public responses (HTML, generated SVG) served from the Cloudflare edge cache.
+//
+// Pages does not put a Function response in the zone cache by itself. The
+// `Cache-Control: s-maxage` the renderers already send is ignored, the
+// handler plus its whole D1 chain runs on every single page view, and the
+// response comes back `cf-cache-status: DYNAMIC`. The Workers Cache API is
+// the supported way to opt a response in from code — `caches.default` is
+// the same per-datacentre store the zone cache uses, and a hit is served
+// without entering the Worker at all.
+//
+// Public, visitor-independent pages only. A hit replays a stored response
+// instead of running the handler, so anything the handler decides per
+// visitor (session, role, experiment) must never be stored through here.
+// The cache key is the full request URL, so host, project prefix and query
+// string all separate entries.
+//
+// `build` returns the response to serve. Only a 200 with no Set-Cookie is
+// stored: everything else (404, 410, redirects) stays live, so a slug rename
+// or a freshly published post is never shadowed by a stored miss.
+export async function edgeCached(request, waitUntil, build) {
+  // Absent in unit tests and any plain Node run — render directly.
+  const cache = globalThis.caches?.default;
+  if (!cache) return build();
+
+  const key = new Request(request.url, { method: 'GET' });
+  const hit = await cache.match(key).catch(() => null);
+  if (hit) return hit;
+
+  const res = await build();
+  if (res.status !== 200 || res.headers.has('set-cookie')) return res;
+
+  // s-maxage has to be rewritten *inside* Cache-Control — a standalone
+  // `s-maxage` header is not a directive the cache reads, and the renderers
+  // already ship a much larger one. max-age is left alone so the visitor's
+  // browser still caches for as long as the page intends.
+  const cc = res.headers.get('cache-control') || '';
+  const directives = cc.split(',').map((d) => d.trim()).filter(Boolean).filter((d) => !/^s-maxage=/i.test(d));
+  directives.push(`s-maxage=${EDGE_SMAXAGE}`);
+
+  const headers = new Headers(res.headers);
+  headers.set('cache-control', directives.join(', '));
+  const out = new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+
+  // Prefer the platform's waitUntil so the store never delays the response;
+  // the [project] wrappers rebuild the context and drop it, so await as a
+  // fallback rather than losing the write.
+  const store = () => cache.put(key, out.clone()).catch(() => {});
+  if (waitUntil) waitUntil(store());
+  else await store();
+  return out;
+}

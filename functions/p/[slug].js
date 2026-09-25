@@ -2,8 +2,11 @@
 import { renderContentPage } from '../_lib/page_render.js';
 import { loadSettings } from '../_lib/settings.js';
 import { resolveProjectForRequest, resolveProjectBySlug } from '../_lib/project_scope.js';
+import { edgeCached } from '../_lib/util.js';
 
-export const onRequestGet = async ({ env, request, params }) => {
+// The live render — reached only on an edge-cache miss. Public, identical
+// for every visitor, so the wrapper below is free to store the result.
+async function renderLanding({ env, request, params }) {
   const slug = String(params.slug || '').toLowerCase();
   if (!/^[a-z0-9-]+$/.test(slug)) {
     return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
@@ -11,13 +14,16 @@ export const onRequestGet = async ({ env, request, params }) => {
 
   const projectSlug = String(params.project || '').toLowerCase() || null;
   const basePath = projectSlug ? `/${projectSlug}` : '';
-  let project = null;
-  if (projectSlug) {
-    project = await resolveProjectBySlug(env, projectSlug).catch(() => null);
-    if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
-  } else {
-    project = await resolveProjectForRequest(env, request).catch(() => null);
-  }
+  // Project resolution and the settings row don't depend on each other, so
+  // they go out together — one D1 round-trip instead of two. The post query
+  // below needs the resolved project_id, so it is the next wave.
+  const [project, settings] = await Promise.all([
+    projectSlug
+      ? resolveProjectBySlug(env, projectSlug).catch(() => null)
+      : resolveProjectForRequest(env, request).catch(() => null),
+    loadSettings(env).catch(() => ({})),
+  ]);
+  if (projectSlug && !project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   const projectId = project?.id || null;
 
   const post = projectId
@@ -34,7 +40,6 @@ export const onRequestGet = async ({ env, request, params }) => {
   if (!post) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   if (post.status === 'hidden') return new Response('Gone', { status: 410, headers: { 'content-type': 'text/plain' } });
   post.urlPath = `${basePath}/p/` + post.slug;
-  const settings = await loadSettings(env).catch(() => ({}));
   // See blog/[slug].js for the rationale — flag whether a default
   // cover template exists so page_render.js can route the hero src
   // through /cover/<slug>.svg.
@@ -58,4 +63,6 @@ export const onRequestGet = async ({ env, request, params }) => {
       'referrer-policy': 'strict-origin-when-cross-origin',
     },
   });
-};
+}
+
+export const onRequestGet = (ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderLanding(ctx));
