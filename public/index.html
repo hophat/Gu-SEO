@@ -287,8 +287,10 @@ header.nav {
 /* ── Logo wall ─────────────────────────────────────────────────── */
 .logo-wall-section { padding: clamp(40px, 5vw, 56px) 0; background: var(--bg-alt); }
 .logo-wall-label {
-  font-size: 0.8rem; font-weight: 500; letter-spacing: 0.05em;
-  color: var(--muted); margin-bottom: 24px; text-align: center;
+  max-width: 46ch; margin: 0 auto 26px; text-align: center;
+  font-size: 0.9rem; font-weight: 500; line-height: 1.45;
+  letter-spacing: normal; text-transform: none; text-wrap: balance;
+  color: var(--muted);
 }
 .logo-grid { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 34px; }
 .logo-wall-loading { font-size: 0.86rem; color: var(--muted-2); }
@@ -647,7 +649,7 @@ header.nav {
 <!-- ── Logo Wall (Brand Trust by Association, X-style) ── -->
 <section class="logo-wall-section">
   <div class="logo-wall-inner">
-    <div class="logo-wall-label" data-i18n="wall_label">SHOPS PUBLISHING ON LIVE DOMAINS</div>
+    <div class="logo-wall-label" data-i18n="wall_label">Shops publishing on live custom domains</div>
     <div id="showcase-logo-wall" class="logo-grid" aria-live="polite">
       <span class="logo-wall-loading" data-i18n="showcase_loading">Reading live customer output from D1…</span>
     </div>
@@ -1079,7 +1081,7 @@ header.nav {
       hero_btn_explore: "Xem số liệu thật",
       hero_visual_status: "HỆ THỐNG LIVE / EDGE",
       hero_visual_caption: "Động cơ nội dung tự động<br/>đang chuyển động.",
-      wall_label: "SHOP ĐANG PUBLISH TRÊN CUSTOM DOMAIN",
+      wall_label: "Cửa hàng đang publish trên custom domain",
       big_type_title: 'Mọi bài blog. Mọi<br/>trang programmatic.<br/><span class="accent">Tự viết. Tự index. Tự phân phối.</span>',
       big_type_sub: "Không cần đội ngũ viết. Không cần thiết kế. Không cần hẹn giờ thủ công. Hạ tầng tự chạy kể cả khi bạn đang ngủ.",
       wf_eyebrow: "/ QUY TRÌNH TỰ HÀNH",
@@ -1175,7 +1177,7 @@ header.nav {
       hero_btn_explore: "See live proof",
       hero_visual_status: "LIVE SYSTEM / EDGE",
       hero_visual_caption: "Autonomous content engine<br/>in motion.",
-      wall_label: "SHOPS PUBLISHING ON LIVE DOMAINS",
+      wall_label: "Shops publishing on live custom domains",
       big_type_title: 'Every blog post. Every<br/>programmatic page.<br/><span class="accent">Written. Indexed. Distributed.</span>',
       big_type_sub: "No copywriters. No designers. No schedulers. Just infrastructure that runs while you sleep.",
       wf_eyebrow: "/ AUTONOMOUS WORKFLOW",
