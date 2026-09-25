@@ -30,12 +30,8 @@ import { isRenderableSpec } from '../_lib/cover_spec.js';
 import { buildBrandContext } from '../_lib/template.js';
 import { loadSettings } from '../_lib/settings.js';
 import { recordNotice, clearNotice } from '../_lib/notices.js';
-import { edgeCached } from '../_lib/util.js';
 
-// The live render — reached only on an edge-cache miss. This is the hero
-// image on every post page, so a hit removes both the D1 chain and the R2
-// asset inlining below from the critical path.
-async function renderCover({ env, request, params }) {
+export const onRequestGet = async ({ env, request, params }) => {
   const slug = String(params.slug || '').toLowerCase();
   if (!/^[a-z0-9-]{1,200}$/.test(slug)) {
     return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
@@ -148,9 +144,11 @@ async function renderCover({ env, request, params }) {
       // edits propagate quickly (a stale ?v= cache key catches
       // the rest), long enough to amortise the R2-inline cost
       // across a normal day's traffic.
+      // The zone already caches this route, so — like /og/<slug>.svg —
+      // it deliberately does NOT go through edgeCached(): that would
+      // add a lookup in front of a cache that already answers and
+      // would rewrite s-maxage down from 900 to 60.
       'cache-control': 'public, max-age=300, s-maxage=900',
     },
   });
-}
-
-export const onRequestGet = (ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderCover(ctx));
+};

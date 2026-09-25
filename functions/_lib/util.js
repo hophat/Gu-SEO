@@ -91,8 +91,13 @@ const EDGE_SMAXAGE = 60;
 // handler plus its whole D1 chain runs on every single page view, and the
 // response comes back `cf-cache-status: DYNAMIC`. The Workers Cache API is
 // the supported way to opt a response in from code — `caches.default` is
-// the same per-datacentre store the zone cache uses, and a hit is served
-// without entering the Worker at all.
+// the same per-datacentre store the zone cache uses.
+//
+// The Worker still runs on a hit, but it does one map lookup instead of the
+// whole D1 chain plus the markdown/cover rendering, which is where the
+// latency actually goes. Do NOT wrap a route the zone already caches (the
+// generated SVGs answer with cf-cache-status: HIT on their own): that adds
+// a lookup in front of a cache that was already answering.
 //
 // Public, visitor-independent pages only. A hit replays a stored response
 // instead of running the handler, so anything the handler decides per

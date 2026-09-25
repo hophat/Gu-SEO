@@ -17,10 +17,9 @@
 import { renderCoverSvg } from '../_lib/cover_svg.js';
 import { buildBrandContext } from '../_lib/template.js';
 import { loadSettings } from '../_lib/settings.js';
-import { esc, edgeCached } from '../_lib/util.js';
+import { esc } from '../_lib/util.js';
 
-// The live render — reached only on an edge-cache miss.
-async function renderOg({ env, request, params }) {
+export const onRequestGet = async ({ env, request, params }) => {
   const slug = String(params.slug || '').toLowerCase();
   if (!/^[a-z0-9-]{1,200}$/.test(slug)) {
     return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
@@ -89,12 +88,15 @@ async function renderOg({ env, request, params }) {
        // cache for hours-to-days regardless of our headers), so a
        // short server-side cache is fine — the practical refresh
        // rate is dominated by the scrapers' own caches.
+      // This route is already served from the zone cache (verified
+      // cf-cache-status: HIT), so it deliberately does NOT go through
+      // edgeCached(): that would add a second lookup in front of a
+      // cache that already answers, and would rewrite s-maxage down
+      // from 900 to 60 — more Worker invocations for no faster page.
       'cache-control': 'public, max-age=300, s-maxage=900',
     },
   });
-}
-
-export const onRequestGet = (ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderOg(ctx));
+};
 
 // esc is imported only to avoid breaking imports elsewhere if this
 // file is referenced as a module; we don't use it directly here
