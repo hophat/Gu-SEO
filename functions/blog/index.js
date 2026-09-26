@@ -8,7 +8,7 @@
 // archive entrypoint and rel=prev/next gives Google the topology
 // hint to walk the sequence as a series.
 
-import { esc, edgeCached } from '../_lib/util.js';
+import { esc, edgeCached, imageUrl } from '../_lib/util.js';
 import { loadSettings } from '../_lib/settings.js';
 import { themeStyle } from '../_lib/page_render.js';
 import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost } from '../_lib/project_scope.js';
@@ -98,7 +98,7 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
     // so a card with no hero falls back to the OG renderer, which always
     // paints.
     const imgSrc = p.hero_image_key
-      ? `/image/${esc(p.hero_image_key)}`
+      ? imageUrl(`/image/${esc(p.hero_image_key)}`)
       : `/og/${esc(p.slug)}.svg`;
     // First card is the LCP candidate — load it eagerly with high
     // priority; everything below the fold stays lazy.
@@ -237,9 +237,9 @@ ${verifyMetas}
 <meta property="og:description" content="${esc(siteDesc)}" />
 <meta property="og:url" content="${canonical}" />
 <meta property="og:type" content="website" />
-${posts[0] ? `<meta property="og:image" content="${baseUrl}${posts[0].hero_image_key ? `/image/${esc(posts[0].hero_image_key)}` : `/og/${esc(posts[0].slug)}.svg`}" />` : ''}
+${posts[0] ? `<meta property="og:image" content="${baseUrl}${posts[0].hero_image_key ? imageUrl(`/image/${esc(posts[0].hero_image_key)}`) : `/og/${esc(posts[0].slug)}.svg`}" />` : ''}
 <meta name="twitter:card" content="${posts[0] ? 'summary_large_image' : 'summary'}" />
-${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `/image/${esc(posts[0].hero_image_key)}` : `/og/${esc(posts[0].slug)}.svg`}" fetchpriority="high" />` : ''}
+${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? imageUrl(`/image/${esc(posts[0].hero_image_key)}`) : `/og/${esc(posts[0].slug)}.svg`}" fetchpriority="high" />` : ''}
 <link rel="preload" href="/_fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="preload" href="/_fonts/instrument-serif-400.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/style.css" />
@@ -251,7 +251,7 @@ ${themeStyle(project?.theme_color)}
   <div class="header-inner">
     <a class="header-brand" href="${esc(homeUrl)}">
       ${project?.logo_url
-        ? `<img class="header-logo-img" src="${esc(project.logo_url)}" alt="${esc(siteName)}" height="28" /><span class="header-logo">${esc(siteName)}</span>`
+        ? `<img class="header-logo-img" src="${esc(imageUrl(project.logo_url))}" alt="${esc(siteName)}" height="28" /><span class="header-logo">${esc(siteName)}</span>`
         : `<span class="header-logo">${esc(siteName)}</span>`}
     </a>
     <nav class="header-nav">

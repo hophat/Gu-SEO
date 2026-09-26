@@ -1,5 +1,5 @@
 import { renderMarkdown } from './markdown.js';
-import { esc } from './util.js';
+import { esc, imageUrl, IMAGE_VERSION } from './util.js';
 import { normalizeHost, requestHost, projectLocale } from './project_scope.js';
 
 const HERO_W = 1200, HERO_H = 630;
@@ -40,7 +40,7 @@ function jsonLD({ site, post, host, kind, settings, basePath = '', language = 'v
   const heroAbs = useCover
     ? `${baseUrl}/cover/${encodeURIComponent(post.slug || 'home')}.svg${coverV}`
     : post.hero_image_key
-      ? `${baseUrl}/image/${post.hero_image_key}`
+      ? `${baseUrl}/image/${post.hero_image_key}?v=${IMAGE_VERSION}`
       : `${baseUrl}/og/${encodeURIComponent(post.slug || 'home')}.svg`;
 
   const graph = [
@@ -150,7 +150,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   const heroSrc = useCoverEndpoint
     ? `/cover/${esc(post.slug || 'home')}.svg${settings?._default_template_v ? '?v=' + settings._default_template_v : ''}`
     : post.hero_image_key
-      ? `/image/${esc(post.hero_image_key)}`
+      ? imageUrl(`/image/${esc(post.hero_image_key)}`)
       : `/og/${esc(post.slug || 'home')}.svg`;
   const heroAlt = esc(post.hero_image_alt || post.title);
 
@@ -176,7 +176,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
     ${related.map((r) => {
       // /cover/<slug>.svg 404s unless a default cover template exists;
       // the OG card always renders, like the post hero fallback above.
-      const rSrc = r.hero_image_key ? `/image/${esc(r.hero_image_key)}` : `/og/${esc(r.slug)}.svg`;
+      const rSrc = r.hero_image_key ? imageUrl(`/image/${esc(r.hero_image_key)}`) : `/og/${esc(r.slug)}.svg`;
       return `
       <li>
         <a href="${effectiveBasePath}/blog/${esc(r.slug)}">
@@ -298,7 +298,7 @@ ${themeStyle(site.themeColor)}
   <div class="header-inner">
     <a class="header-brand" href="${esc(site.homeUrl)}">
       ${site.logoUrl
-        ? `<img class="header-logo-img" src="${esc(site.logoUrl)}" alt="${esc(site.name)}" height="28" /><span class="header-logo">${esc(site.name)}</span>`
+        ? `<img class="header-logo-img" src="${esc(imageUrl(site.logoUrl))}" alt="${esc(site.name)}" height="28" /><span class="header-logo">${esc(site.name)}</span>`
         : `<span class="header-logo">${esc(site.name)}</span>`}
     </a>
     <nav class="header-nav">
@@ -385,7 +385,7 @@ ${site.isGulagi ? `<div class="sticky-cta" id="sticky-cta">
   <div class="footer-inner">
     <div class="footer-brand">
       ${site.logoUrl
-        ? `<img src="${esc(site.logoUrl)}" alt="${esc(site.name)}" height="24" />`
+        ? `<img src="${esc(imageUrl(site.logoUrl))}" alt="${esc(site.name)}" height="24" />`
         : `<strong>${esc(site.name)}</strong>`} — ${esc(site.description)}
     </div>
     <div class="footer-links">

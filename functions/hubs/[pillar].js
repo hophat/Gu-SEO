@@ -6,7 +6,7 @@
 // crawler can reach any entry from any other in two hops regardless of
 // how many pages the archive holds.
 
-import { esc, edgeCached } from '../_lib/util.js';
+import { esc, edgeCached, imageUrl } from '../_lib/util.js';
 import { loadSettings } from '../_lib/settings.js';
 import { themeStyle } from '../_lib/page_render.js';
 import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost } from '../_lib/project_scope.js';
@@ -130,7 +130,7 @@ export async function renderPillarPage({ env, request, pillarSlug, page = 1, pro
  // No hero in R2: /cover/<slug>.svg only renders when the site has a
     // default cover template, and 404s without one. The OG card always
     // renders, which is the same fallback the post hero already uses.
-    const imgSrc = e.hero_image_key ? `/image/${esc(e.hero_image_key)}` : `/og/${esc(e.slug)}.svg`;
+    const imgSrc = e.hero_image_key ? imageUrl(`/image/${esc(e.hero_image_key)}`) : `/og/${esc(e.slug)}.svg`;
     const loadAttrs = i === 0
       ? 'fetchpriority="high" decoding="async"'
       : 'loading="lazy" decoding="async"';
@@ -196,7 +196,7 @@ ${themeStyle(project?.theme_color)}
   <div class="header-inner">
     <a class="header-brand" href="${esc(homeUrl)}">
       ${project?.logo_url
-        ? `<img class="header-logo-img" src="${esc(project.logo_url)}" alt="${esc(siteName)}" height="28" /><span class="header-logo">${esc(siteName)}</span>`
+        ? `<img class="header-logo-img" src="${esc(imageUrl(project.logo_url))}" alt="${esc(siteName)}" height="28" /><span class="header-logo">${esc(siteName)}</span>`
         : `<span class="header-logo">${esc(siteName)}</span>`}
     </a>
     <nav class="header-nav">

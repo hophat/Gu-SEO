@@ -47,6 +47,20 @@ export function esc(s) {
     .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
 
+// R2 image objects are served with `immutable, max-age=31536000`, which is
+// a promise that the bytes behind a URL will never change. Publishing a
+// correction under an unchanged key breaks that promise, and the edge keeps
+// serving the old copy for the rest of the year — a WebP conversion that
+// landed in the bucket as the wrong bytes stayed invisible for that long.
+// Tagging image URLs with this value makes the URL itself change, so a
+// fresh fetch is forced. Bump it whenever published image bytes change.
+export const IMAGE_VERSION = 2;
+
+export function imageUrl(url) {
+  if (typeof url !== 'string' || !url.startsWith('/image/')) return url;
+  return `${url}?v=${IMAGE_VERSION}`;
+}
+
 // kebab-case slugifier — keeps a-z 0-9, collapses everything else.
 export function slugify(input) {
   return String(input)
