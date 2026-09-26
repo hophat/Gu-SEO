@@ -102,9 +102,12 @@
   --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-  --shell: 1180px;
+  /* One reading column, left-aligned, on a single axis. The measure is
+     set for the body (62ch) and every section sits inside it, so the
+     eye never has to find a new starting edge. */
+  --shell: 1080px;
   --gutter: clamp(20px, 5vw, 40px);
-  --section-y: clamp(68px, 8vw, 116px);
+  --section-y: clamp(64px, 8vw, 104px);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -140,19 +143,19 @@ img, svg { display: block; max-width: 100%; }
    mechanism, mono reports what the system measured. Nothing mixes. */
 .display-1 {
   font-family: var(--font-display);
-  font-size: clamp(2.7rem, 6.4vw, 5rem);
+  font-size: clamp(3rem, 7vw, 5.75rem);
   font-weight: 400;
-  line-height: 0.99;
-  letter-spacing: -0.02em;
+  line-height: 0.98;
+  letter-spacing: -0.022em;
   color: var(--ink);
   text-wrap: balance;
 }
 .display-2 {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-size: clamp(2.1rem, 4.4vw, 3.5rem);
   font-weight: 400;
-  line-height: 1.04;
-  letter-spacing: -0.016em;
+  line-height: 1.03;
+  letter-spacing: -0.018em;
   color: var(--ink);
   text-wrap: balance;
 }
@@ -298,15 +301,17 @@ header.nav {
 .section-lede { max-width: 58ch; color: var(--muted); margin-bottom: 44px; font-size: clamp(1rem, 1.4vw, 1.12rem); }
 
 /* ── Hero ────────────────────────────────────────────────────────
-   The copy sits on the ledger's own baseline grid, the run-log
-   hangs off the right rule. Nothing is centred. */
-.hero { padding: clamp(56px, 7vw, 104px) 0 clamp(48px, 6vw, 84px); }
+   One column, left-aligned, the whole way down. The run-log and the
+   counts are not a side rail competing with the headline — they are
+   the evidence for it, so they follow it in the same axis. */
+.hero { padding: clamp(48px, 6vw, 88px) 0 clamp(40px, 5vw, 72px); }
 .hero-inner {
   max-width: var(--shell); margin: 0 auto; padding: 0 var(--gutter);
-  display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
-  gap: clamp(32px, 5vw, 72px); align-items: center;
 }
-.hero-copy { max-width: 44ch; }
+/* The headline runs wide; everything under it holds a readable
+   measure. Constraining the whole copy block would drag the sub and
+   the CTA into a narrow ribbon, so the width lives on each child. */
+.hero-copy { max-width: none; }
 .hero-status {
   display: inline-flex; align-items: center; gap: 9px;
   font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.1em;
@@ -319,21 +324,31 @@ header.nav {
   flex: none; animation: pulse 2.4s ease-in-out infinite;
 }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.28; } }
-.hero-headline { margin-bottom: 24px; }
-.hero-sub { max-width: 44ch; margin-bottom: 32px; }
+/* The headline holds a wide but bounded measure — long enough to feel
+   like a statement, short enough that the second line still lands
+   before the fold. 620px keeps three words; ch is unreliable on a
+   serif because the 'ch' unit tracks the zero glyph. */
+.hero-headline { max-width: min(11em, 620px); margin-bottom: 24px; }
+/* The sub sits at the measure the eye can actually hold, not the full
+   1080px — the headline runs wide, the explanation does not. */
+.hero-sub { max-width: 46ch; margin-bottom: 28px; }
 .hero-cta { display: flex; flex-wrap: wrap; gap: 10px; }
-/* The secondary reassurance, set as a footnote to the promise. */
 .hero-note {
-  margin-top: 28px; padding-top: 18px; border-top: var(--hairline);
-  font-size: 0.88rem; line-height: 1.55; color: var(--muted); max-width: 46ch;
+  max-width: 46ch; margin-top: 22px;
+  font-size: 0.88rem; line-height: 1.55; color: var(--muted);
 }
 
-/* The rail: the run-log and the counts that back it, stacked so the
-   first viewport carries the whole argument. */
-.hero-rail { display: grid; gap: 22px; }
+/* The run-log and the counts share one horizontal band under the
+   promise: evidence in a row, not a tower beside it. */
+.hero-rail {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 56px); align-items: start;
+  margin-top: clamp(40px, 5vw, 64px); padding-top: clamp(24px, 3vw, 36px);
+  border-top: var(--rule);
+}
 .hero-stats {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: var(--rule);
+  border-top: var(--hairline);
 }
 .hero-stat {
   padding: 14px 0 12px;
@@ -456,59 +471,52 @@ header.nav {
 .shop-logo img { position: absolute; inset: 0; object-fit: cover; }
 
 /* ── Big statement ──────────────────────────────────────────────
-   The line that has to survive being quoted on its own. Left-ruled,
-   never centred. */
+   The line that has to survive being quoted on its own. Full width
+   on the shared axis; the sub drops under it at body measure. */
 .big-type-section { padding: var(--section-y) 0; background: var(--bg); }
 .big-type-section > * {
   max-width: var(--shell); margin-left: auto; margin-right: auto;
   padding: 0 var(--gutter);
 }
 .big-type-wrap {
-  display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
-  gap: clamp(24px, 4vw, 56px); align-items: end;
   border-top: var(--rule); padding-top: clamp(28px, 4vw, 44px);
 }
 .big-type {
   font-family: var(--font-display);
-  font-size: clamp(2.2rem, 5.4vw, 4.2rem); font-weight: 400;
-  line-height: 1.03; letter-spacing: -0.02em;
+  font-size: clamp(2.3rem, 5.6vw, 4.6rem); font-weight: 400;
+  line-height: 1.02; letter-spacing: -0.02em;
+  max-width: min(10em, 560px);
 }
 .big-type .accent { color: var(--ink); }
 .big-type-sub {
   color: var(--muted); font-size: 0.98rem; line-height: 1.6;
-  padding-bottom: 6px;
+  max-width: 52ch; margin-top: 20px;
 }
 
 /* ── Workflow ────────────────────────────────────────────────────
-   Four steps read as one continuous run down a rule, not four cards
-   floating apart. The spine is the spine. */
+   Four steps read as one continuous run down a rule. The step number
+   rides the left axis and the body holds the measure; the spec line
+   drops beneath the body rather than floating in a third column —
+   three columns read as three unrelated facts. */
 .workflow-steps { display: grid; }
 .workflow-step {
   position: relative;
-  display: grid; grid-template-columns: 72px minmax(0, 1fr) minmax(0, 0.62fr);
-  gap: clamp(16px, 3vw, 40px);
+  display: grid; grid-template-columns: 64px minmax(0, 1fr);
+  gap: 0 clamp(16px, 2.5vw, 32px);
   align-items: start;
   padding: clamp(26px, 3vw, 38px) 0;
   border-top: var(--hairline);
 }
 .workflow-step:last-child { border-bottom: var(--hairline); }
-/* The run-line. Every step owns its segment; step 4 is live, so its
-   segment carries the accent the whole way down. */
-.workflow-step::before {
-  content: ""; position: absolute; left: -1px; top: 0; width: 1px; height: 100%;
-  background: var(--line); transform: scaleY(0); transform-origin: top;
-}
-.step-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.step-idx { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--muted-2); }
-.step-connector { flex: 1; height: 1px; background: var(--line-2); }
-/* The run-line. Each step's node sits on the spine, and the last
-   step — the one currently running — carries the accent. */
+/* The node sits on the spine; the last step — the one running — takes
+   the accent, so the run reads as progress rather than a list. */
 .step-node {
-  position: relative; padding-top: 2px;
+  position: relative; padding-top: 4px;
   display: flex; align-items: center; gap: 10px;
 }
+.step-idx { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--muted-2); }
 .step-node::after {
-  content: ""; position: absolute; left: 0; top: 26px; bottom: -1px;
+  content: ""; position: absolute; inset-inline-start: 4px; top: 26px; bottom: -1px;
   width: 1px; background: var(--line-2);
 }
 .workflow-step:last-child .step-node::after { display: none; }
@@ -527,21 +535,22 @@ header.nav {
 .step-icon-badge svg { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 1.6; }
 .step-title { font-size: clamp(1.15rem, 1.7vw, 1.4rem); font-weight: 600; letter-spacing: -0.014em; margin-bottom: 10px; }
 .step-desc { color: var(--muted); max-width: 62ch; }
-/* The spec line: what the system is actually running, in mono. */
+/* The spec line sits under the description on the same axis, so the
+   step reads top-to-bottom as one thought: what, why, and the spec. */
 .step-tag {
-  justify-self: end; align-self: center;
+  grid-column: 2; margin-top: 12px;
   font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em;
-  color: var(--muted-2); text-align: end; white-space: nowrap;
+  color: var(--muted-2);
 }
 .step-tag .step-tag-label { color: var(--ink); }
 .step-tag span[style] { background: var(--live-dot) !important; width: 5px !important; height: 5px !important; display: inline-block; }
 
 /* ── Feature index ──────────────────────────────────────────────
-   Six capabilities are a spec sheet, not a card deck: two ruled
-   columns of index rows, each row scanned left to right. */
+   One column of index rows down the shared axis — the way a spec
+   sheet is actually read. A two-column grid here was the same layout
+   repeated twice, which is what made the page feel endless. */
 .feature-grid {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: clamp(24px, 4vw, 64px);
+  display: grid; grid-template-columns: minmax(0, 1fr);
   border-top: var(--rule);
 }
 .feature-card {
@@ -551,6 +560,10 @@ header.nav {
   border-bottom: var(--hairline);
   transition: background 0.2s ease;
 }
+/* The description stops at the measure; the row's rule runs the full
+   column. That gap on the right is what stops the list from reading
+   as a second column. */
+.feature-desc { max-width: 62ch; }
 .feature-icon {
   width: 36px; height: 36px; border-radius: var(--radius-md);
   border: var(--hairline); color: var(--ink-2); background: var(--surface);
@@ -562,14 +575,12 @@ header.nav {
 .feature-desc { color: var(--muted); font-size: 0.93rem; }
 
 /* ── Proof ─────────────────────────────────────────────────────
-   A telemetry readout. The chart gets a real zero baseline and a
-   hairline rule, because a bar chart that starts at an arbitrary
-   bottom is the fastest way to lose a technical audience. */
+   A telemetry readout. Copy first at the reading measure, then the
+   figure full-width beneath it — the chart is evidence for the claim
+   above it, so it follows the claim instead of sharing a row with it. */
 .proof-section { padding: var(--section-y) 0; background: var(--bg-alt); border-top: var(--hairline); }
-.proof-shell {
-  display: grid; grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
-  gap: clamp(28px, 4vw, 64px); align-items: start;
-}
+.proof-shell { display: block; }
+.proof-copy { max-width: 52ch; }
 .proof-kicker { display: block; }
 .proof-window {
   font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.1em;
@@ -581,8 +592,10 @@ header.nav {
 .proof-updated { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.06em; color: var(--muted-2); margin-top: 16px; }
 
 /* The figure. Headline count, then the run, then the three supporting
-   counts as a footer row — one panel, one border, no card pile. */
+   counts as a footer row — one panel, one border, no card pile. It sits
+   full-width under the copy with a 9-unit breath above it. */
 .proof-data {
+  margin-top: clamp(32px, 4vw, 52px);
   border: var(--rule); border-radius: var(--radius-md);
   background: var(--surface); padding: clamp(18px, 2.2vw, 26px);
 }
@@ -641,7 +654,10 @@ header.nav {
    stack, not a run-on line — the old markup put the mono index and
    the title in one inline flow and they collided. */
 .showcase-section { padding: var(--section-y) 0; background: var(--bg); }
-.showcase-head { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 64px); align-items: end; margin-bottom: 40px; }
+/* The header drops its second column: lede follows the title on the
+   same axis, at measure, like every other paragraph on the page. */
+.showcase-head { display: block; margin-bottom: 40px; }
+.showcase-head > div { max-width: 52ch; }
 .showcase-kicker, .showcase-rail-label, .proof-kicker, .section-eyebrow {
   font-family: var(--font-mono); font-size: 0.68rem; font-weight: 500;
   letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-2);
@@ -716,7 +732,10 @@ header.nav {
 .article-foot { margin-top: auto; padding-top: 12px; display: flex; align-items: center; justify-content: space-between; font-family: var(--font-mono); font-size: 0.66rem; color: var(--muted-2); }
 .article-open { color: var(--blue); }
 
-.video-frame { position: relative; background: #0d0e11; aspect-ratio: 9 / 16; flex: none; }
+/* A 9:16 frame at 300px wide is 530px tall — taller than the article
+   cards beside it and it makes the rail look like a mistake. 4:5 keeps
+   the vertical read without dominating the lane. */
+.video-frame { position: relative; background: #0d0e11; aspect-ratio: 4 / 5; flex: none; }
 .video-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .video-frame .video-kind { position: absolute; left: 10px; top: 10px; z-index: 1; color: rgba(255, 255, 255, 0.72); }
 .video-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -798,7 +817,8 @@ header.nav {
   text-transform: uppercase; color: var(--muted);
 }
 .footer-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--live-dot); }
-.footer-hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 60px); padding: clamp(30px, 4vw, 48px) 0; align-items: end; }
+.footer-hero { display: block; padding: clamp(30px, 4vw, 48px) 0; }
+.footer-hero > div { max-width: 46ch; }
 .footer-wordmark {
   display: block; margin-top: 16px;
   font-family: var(--font-display); font-size: clamp(2.4rem, 6.6vw, 4.6rem);
@@ -827,22 +847,13 @@ header.nav {
 .footer-bottom-meta { display: flex; gap: 16px; }
 
 /* ── Responsive ───────────────────────────────────────────────
-   Each breakpoint collapses a composition, never amputates a
-   feature. The 1080 tier folds every two-column grid; the 860 tier
-   hands navigation to the dock; 620 is the single-column floor. */
-@media (max-width: 1080px) {
-  .hero-inner, .proof-shell { grid-template-columns: minmax(0, 1fr); }
-  .hero-inner { gap: 40px; }
-  .hero-copy { max-width: 52ch; }
-  .hero-rail { max-width: 620px; }
-  .showcase-head { grid-template-columns: minmax(0, 1fr); align-items: start; }
-  .feature-grid { grid-template-columns: minmax(0, 1fr); }
+   The page is one column by default, so the work here is only where a
+   genuine two-up still fits: the hero's evidence band, the footer
+   link grid, and the stat cells. The 860 tier hands navigation to
+   the dock; 620 is the single-column floor. */
+@media (max-width: 900px) {
+  .hero-rail { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .footer-hero { grid-template-columns: minmax(0, 1fr); }
-  .big-type-wrap { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .big-type-sub { max-width: 54ch; }
-  .workflow-step { grid-template-columns: 56px minmax(0, 1fr); }
-  .step-tag { grid-column: 2; justify-self: start; text-align: start; }
 }
 @media (max-width: 860px) {
   .nav-menu { display: none; }
