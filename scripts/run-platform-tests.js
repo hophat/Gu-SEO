@@ -1896,48 +1896,124 @@ async function testPublishReport() {
   ok('report content is HTML-escaped');
 }
 
-// ── O. mail credentials come from secrets ───────────────────────────
-// The Gmail credentials used to be hardcoded in email_smtp.js. Anyone who could
-// read the repo could send mail as that address, and the value is in the git
-// history — so this checks both that the code reads from env and that no
-// credential has crept back into the source.
-async function testMailCredentials() {
-  console.log('\nO. Mail credentials');
+// ── O. mail goes out over the Email Service REST API ─────────────────
+// Sending used to be a hand-rolled Gmail SMTP client with a hardcoded
+// mailbox and an app password. It is now one POST to the Cloudflare Email
+// Service REST API: no socket, no protocol, one token. What has to hold is
+// that the request is shaped the way the REST endpoint wants (`from.address`,
+// not the binding's `from.email`; `reply_to`, not `replyTo`), that missing
+// config fails with a named reason, that the plain-text part is always
+// present, and that neither the old transport nor a credential has crept back.
+async function testEmailSending() {
+  console.log('\nO. Email sending');
 
-  const { mailCredentials } = await import('../functions/_lib/email_smtp.js');
+  const { mailSender, htmlToText, sendEmail } =
+    await import('../functions/_lib/email_smtp.js');
 
-  const creds = mailCredentials({ GMAIL_USER: 'a@b.com', GMAIL_PASS: 'abcdefghijklmnop' });
-  assert.equal(creds.user, 'a@b.com');
-  assert.equal(creds.pass, 'abcdefghijklmnop');
-  ok('credentials are read from env');
+  const ENV = { CF_API_TOKEN: 'tok', CF_ACCOUNT_ID: 'acct123' };
 
-  // Google displays an app password as "abcd efgh ijkl mnop" but SMTP wants it
-  // without spaces. Stripping them here means a copy-paste of the displayed
-  // form works instead of failing auth with a confusing 535.
-  const spaced = mailCredentials({ GMAIL_USER: 'a@b.com', GMAIL_PASS: 'abcd efgh ijkl mnop' });
-  assert.equal(spaced.pass, 'abcdefghijklmnop', 'spaces in an app password are stripped');
-  ok('a spaced app password is normalised');
+  // ── the sender address ──
+  const dflt = mailSender({});
+  assert.equal(dflt.address, 'no-reply@gulagi.com', 'REST spells it `address`, not `email`');
+  assert.equal(dflt.name, 'GU SEO System');
+  ok('the sender defaults to the onboarded domain');
 
-  const trimmed = mailCredentials({ GMAIL_USER: '  a@b.com  ', GMAIL_PASS: ' abc ' });
-  assert.equal(trimmed.user, 'a@b.com');
-  assert.equal(trimmed.pass, 'abc');
-  ok('surrounding whitespace is trimmed');
+  assert.equal(mailSender({ MAIL_FROM: ' ops@example.com ' }).address, 'ops@example.com',
+    'MAIL_FROM is trimmed');
+  const named = mailSender({ MAIL_FROM: '"GU SEO System" <no-reply@other.example>' });
+  assert.equal(named.address, 'no-reply@other.example');
+  assert.equal(named.name, 'GU SEO System', 'the quoted display name is split out');
+  const bare = mailSender({ MAIL_FROM: 'no-reply@other.example' });
+  assert.equal(bare.name, '', 'a bare address has no display name');
+  ok('MAIL_FROM overrides the sender, in both forms');
 
-  // Missing config must fail with a named reason, not an opaque SMTP 535.
-  for (const [env, missing] of [
-    [{}, 'GMAIL_USER'],
-    [{ GMAIL_USER: 'a@b.com' }, 'GMAIL_PASS'],
-    [{ GMAIL_PASS: 'x' }, 'GMAIL_USER'],
-  ]) {
+  let badFrom = null;
+  try { mailSender({ MAIL_FROM: 'not-an-address' }); } catch (e) { badFrom = e; }
+  assert.ok(badFrom, 'a malformed MAIL_FROM must throw');
+  assert.equal(badFrom.code, 'email_not_configured');
+  ok('a malformed MAIL_FROM fails with a named reason');
+
+  // ── missing credentials must be legible, not an opaque 401 ──
+  for (const env of [{}, { CF_API_TOKEN: 'tok' }, { CF_ACCOUNT_ID: 'acct123' }]) {
     let err = null;
-    try { mailCredentials(env); } catch (e) { err = e; }
+    try { await sendEmail(env, { to: 'a@b.com', subject: 's', html: 'x' }); } catch (e) { err = e; }
     assert.ok(err, 'missing config must throw');
     assert.equal(err.code, 'email_not_configured');
-    assert.match(err.message, new RegExp(missing), `the error must name ${missing}`);
+    assert.match(err.message, /CF_API_TOKEN/, 'the error must name the missing secret');
   }
-  ok('missing credentials fail with a named reason');
+  ok('a missing token or account id fails with a named reason');
 
-  // The whole point: no credential in the source tree.
+  // ── the text/plain part is derived, not left to callers ──
+  const text = htmlToText('<p>Xác thực</p><div>Mã &amp; mã</div><br><span>beneath</span>');
+  assert.match(text, /Xác thực/);
+  assert.match(text, /Mã & mã/, 'entities are decoded, not double-escaped');
+  assert.doesNotMatch(text, /</, 'no tags survive');
+  assert.doesNotMatch(htmlToText('<style>a{color:red}</style><p>hi</p>'), /color/,
+    'style content is dropped');
+  ok('html degrades to a usable text/plain part');
+
+  // ── what actually goes on the wire ──
+  const realFetch = globalThis.fetch;
+  const calls = [];
+  const stub = (status, body) => {
+    globalThis.fetch = async (url, init) => {
+      calls.push({ url, init, body: JSON.parse(init.body) });
+      return new Response(JSON.stringify(body), {
+        status, headers: { 'Content-Type': 'application/json' },
+      });
+    };
+  };
+
+  try {
+    stub(200, { success: true, result: { messageId: 'msg_1' } });
+    const res = await sendEmail(ENV, {
+      to: 'user@example.com', subject: 'Báo cáo', html: '<p>Xin chào</p>',
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url,
+      'https://api.cloudflare.com/client/v4/accounts/acct123/email/sending/send',
+      'the send endpoint and account id must be right');
+    assert.equal(calls[0].init.method, 'POST');
+    assert.equal(calls[0].init.headers.Authorization, 'Bearer tok',
+      'the token must be sent as a bearer');
+    assert.equal(calls[0].body.to, 'user@example.com');
+    assert.equal(calls[0].body.from.address, 'no-reply@gulagi.com');
+    assert.equal(calls[0].body.from.name, 'GU SEO System');
+    assert.equal(calls[0].body.subject, 'Báo cáo');
+    assert.equal(calls[0].body.text, 'Xin chào', 'every send carries a text part');
+    assert.equal(calls[0].body.reply_to, undefined, 'reply_to stays unset when not asked for');
+    assert.equal(res.messageId, 'msg_1');
+    ok('sendEmail posts a correctly shaped message to the send endpoint');
+
+    await sendEmail(ENV, { to: 'a@b.com', subject: 's', html: '<p>x</p>', replyTo: ' ops@x.com ' });
+    assert.equal(calls[1].body.reply_to, 'ops@x.com',
+      'REST spells it reply_to, not replyTo');
+    ok('replyTo is passed through in the REST spelling');
+
+    // A CF error must surface with its own message, not a generic failure.
+    stub(400, { success: false, errors: [{ code: 1001, message: 'sender not onboarded' }] });
+    let thrown = null;
+    try { await sendEmail(ENV, { to: 'a@b.com', subject: 's', html: 'x' }); } catch (e) { thrown = e; }
+    assert.ok(thrown, 'a rejected send must throw');
+    assert.equal(thrown.code, 'email_send_failed');
+    assert.equal(thrown.status, 400);
+    assert.match(thrown.message, /sender not onboarded/,
+      'the Cloudflare error message must reach the caller');
+    ok('Cloudflare errors propagate with their message and status');
+
+    for (const to of ['', 'no-at-sign', 'a@b c.com']) {
+      let err = null;
+      try { await sendEmail(ENV, { to, subject: 's', html: 'x' }); } catch (e) { err = e; }
+      assert.ok(err, `recipient ${JSON.stringify(to)} must be rejected`);
+      assert.equal(err.message, 'invalid_recipient');
+    }
+    assert.equal(calls.length, 3, 'a bad recipient must not reach the network');
+    ok('a malformed recipient is rejected before the request is made');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+
+  // ── nothing secret left in the source tree ──
   const walk = (dir, acc = []) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
       if (e.name === 'node_modules' || e.name === 'functions_dist' || e.name.startsWith('.')) continue;
@@ -1953,22 +2029,53 @@ async function testMailCredentials() {
     join(ROOT, 'wrangler.template.toml'),
   ].filter((f) => existsSync(f));
 
-  const leaked = srcFiles.filter((f) => /zpgneewuhhldrfsu/.test(readFileSync(f, 'utf8')));
+  // Comments are stripped before the scans: a file may honestly *say* that it
+  // used to speak SMTP, or explain why a binding is absent, and that is the
+  // opposite of leaving SMTP in it or reintroducing the binding.
+  const code = (f) => readFileSync(f, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/^\s*#.*$/gm, '');
+
+  const leaked = srcFiles.filter((f) => /zpgneewuhhldrfsu/.test(code(f)));
   assert.deepEqual(leaked.map((f) => f.replace(ROOT + '/', '')), [],
     'the mailbox password must not appear in any source file');
   ok('no mailbox password anywhere in the source tree');
 
-  const hardcodedUser = srcFiles.filter((f) => /gulagi\.com@gmail\.com/.test(readFileSync(f, 'utf8')));
+  const hardcodedUser = srcFiles.filter((f) => /gulagi\.com@gmail\.com/.test(code(f)));
   assert.deepEqual(hardcodedUser.map((f) => f.replace(ROOT + '/', '')), [],
     'the mailbox address must not be hardcoded either');
   ok('no hardcoded mailbox address');
 
-  // And every sender must pass env through, or the secrets never arrive.
+  // The SMTP client is gone; nothing may reach for it again.
+  const smtpLeft = srcFiles.filter((f) => /cloudflare:sockets|smtp\.gmail\.com/.test(code(f)));
+  assert.deepEqual(smtpLeft.map((f) => f.replace(ROOT + '/', '')), [],
+    'the old SMTP transport must stay removed');
+  ok('no SMTP transport left in the source tree');
+
+  const gmailless = srcFiles.filter((f) => /GMAIL_(USER|PASS)/.test(code(f)));
+  assert.deepEqual(gmailless.map((f) => f.replace(ROOT + '/', '')), [],
+    'the retired Gmail secrets must not be read anywhere');
+  ok('no GMAIL_USER / GMAIL_PASS reference left');
+
+  // Pages Functions have no email binding, and wrangler refuses to even parse
+  // a Pages config that declares one — it would break every `wrangler pages`
+  // command, not just mail.
+  for (const rel of ['wrangler.template.toml', 'wrangler.toml']) {
+    const file = join(ROOT, rel);
+    if (!existsSync(file)) continue;
+    assert.doesNotMatch(code(file), /send_email/,
+      `${rel} must not declare send_email: Pages does not support it`);
+  }
+  ok('no send_email binding in either wrangler config');
+
+  // And every sender must pass env through, or the token never arrives.
   for (const rel of [
     'functions/api/public/send-otp.js',
     'functions/api/admin/cron/weekly-digest.js',
     'functions/api/admin/report/test.js',
     'functions/_lib/publishing/report.js',
+    'functions/_lib/video_notify.js',
   ]) {
     const src = readFileSync(join(ROOT, rel), 'utf8');
     assert.match(src, /send(Email|OtpEmail)\(env,/, `${rel} must pass env to the sender`);
@@ -2941,7 +3048,7 @@ async function main() {
   await testProviderConfigLockdown();
   await testSingleDispatch();
   await testPublishReport();
-  await testMailCredentials();
+  await testEmailSending();
   await testEmailPolicy();
   await testCarouselVideoJobs();
   await testThreadsPublishFromVideoAndCarousel();

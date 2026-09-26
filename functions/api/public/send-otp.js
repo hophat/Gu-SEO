@@ -125,8 +125,8 @@ export const onRequestPost = async ({ env, request }) => {
     });
   } catch (err) {
     return json(500, {
-      error: 'smtp_send_failed',
-      detail: 'Không thể gửi email OTP qua máy chủ Gmail: ' + (err.message || String(err))
+      error: 'email_send_failed',
+      detail: 'Không thể gửi email OTP qua Cloudflare Email Service: ' + (err.message || String(err))
     });
   }
 };

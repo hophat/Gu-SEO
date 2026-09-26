@@ -2,6 +2,11 @@ name = "pages-seo"
 compatibility_date = "2026-05-18"
 pages_build_output_dir = "./public"
 
+# Transactional mail (OTP, publish reports, video notifications) goes out over
+# the Email Service REST API, not a binding: Pages supports only a fixed
+# subset of bindings and email is not on it, so `send_email` in this file is
+# rejected by wrangler. See functions/_lib/email_smtp.js for the secrets.
+
 # Template config consumed by the Cloudflare "Create from Git" deploy
 # flow. When you deploy this repo via the dashboard, Cloudflare reads
 # wrangler.toml — but the version checked in points at the demo's

@@ -7,6 +7,53 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.24.0 — 2026-09-26
+
+Gửi email qua Cloudflare Email Service, bỏ hoàn toàn SMTP.
+
+### Changed
+- **`functions/_lib/email_smtp.js` không còn nói SMTP nữa.** Toàn bộ client
+  tự viết — mở `smtp.gmail.com:465` qua `cloudflare:sockets`, tự bắt tay
+  EHLO/AUTH/MAIL FROM/RCPT TO/DATA, 207 dòng — đã bị xoá. Thay bằng một
+  request `POST /accounts/{id}/email/sending/send`. Chữ ký `sendEmail()` và
+  `sendOtpEmail()` giữ nguyên nên **không caller nào phải sửa dòng nào**.
+- **Dùng REST API chứ không dùng `send_email` binding.** Binding là của
+  Workers. Pages Functions chỉ hỗ trợ một tập binding cố định (KV,
+  Durable Objects, R2, D1, Vectorize, Workers AI, service, queue, Hyperdrive,
+  Analytics Engine) và không có email — wrangler từ chối cả config:
+  `Configuration file for Pages projects does not support "send_email"`, làm
+  hỏng **mọi** lệnh `wrangler pages`. Cách chính thức thay thế là service
+  binding sang một Worker riêng; đó là thứ hai phải deploy, nên ở lại REST.
+  Xem <https://developers.cloudflare.com/email-service/api/send-emails/rest-api/>
+- Email nào có part `text/plain` đều được sinh tự động từ HTML. Trước đây
+  gửi HTML-only: một số client không hiện gì, và thiếu text part làm tệ spam
+  score.
+- Mỗi lần gửi giờ mang `reply_to` / `from.address` — chính tả của REST, khác
+  `replyTo` / `from.email` của binding.
+- `MAIL_FROM` (tuỳ chọn) ghi đè địa chỉ gửi, nhận cả dạng `addr@domain` lẫn
+  `"Tên" <addr@domain>`. Mặc định `no-reply@gulagi.com`.
+
+### Removed
+- **Secrets `GMAIL_USER` và `GMAIL_PASS` không còn được đọc.** Đã xoá khỏi
+  Pages project `gu-seo`. Không cần app password nữa.
+- `mailCredentials()` — helper chỉ dùng cho SMTP.
+
+### Migration
+1. Bật Email Sending cho domain gửi. **Phải làm trong Dashboard**:
+   Compute & AI > Email Service > Email Sending > Onboard Domain. Lệnh
+   `wrangler email sending enable <domain>` tương đương nhưng trả
+   `Unauthorized [code: 2036]` trên account chưa bật beta.
+2. Token `CF_API_TOKEN` phải có quyền **Email Sending: Send**. Cần thì tạo
+   token mới:
+   `wrangler pages secret put CF_API_TOKEN --project-name=<project>`.
+   `CF_ACCOUNT_ID` đã có sẵn trong cách cài hiện tại.
+3. Domain gửi không cần hộp thư. Email Service chỉ gửi, nên mọi địa chỉ
+   `@<domain>` đều dùng được kể cả chưa tồn tại — nhưng mail gửi tới đó
+   không nhận được. Muốn "Reply" tới hộp thư thật thì phải set `replyTo`.
+
+Chưa cấu hình xong thì mọi lần gửi fail với `email_not_configured`, nêu rõ
+thiếu gì.
+
 ## 1.23.0 — 2026-09-25
 
 Hub-and-spoke, công cụ SEO nhúng được, và bộ tìm outreach.

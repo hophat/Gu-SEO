@@ -1,83 +1,97 @@
-// SMTP Client over direct TLS using Cloudflare Sockets (cloudflare:sockets)
-// Connects to smtp.gmail.com:465 with SSL/TLS wrapper
+// Transactional send through the Cloudflare Email Service REST API.
 //
-// Credentials come from Pages secrets, NOT from this file. They used to be
-// hardcoded here, which meant anyone who could read the repo could send mail as
-// this address — and because the value is in the git history, rotating it is
-// part of moving it out, not optional.
+// This used to be a hand-rolled SMTP client: it opened smtp.gmail.com:465
+// over cloudflare:sockets, did EHLO/AUTH/MAIL FROM/RCPT TO/DATA by hand, and
+// needed a GMAIL_USER / GMAIL_PASS Google app password. That whole path is
+// gone, along with the credential.
 //
-//   wrangler pages secret put GMAIL_USER --project-name=<project>
-//   wrangler pages secret put GMAIL_PASS --project-name=<project>
+// Why the REST API and not the `send_email` binding: the binding is Workers
+// only. Pages Functions support a fixed subset of bindings (KV, Durable
+// Objects, R2, D1, Vectorize, Workers AI, service, queues, Hyperdrive,
+// Analytics Engine) and email is not on it — wrangler rejects `send_email` in
+// a Pages config outright ("Configuration file for Pages projects does not
+// support send_email"), which breaks every `wrangler pages` command. The
+// documented alternative is a service binding to a Worker that owns the
+// binding; that is a second deployable and a second wrangler config, and the
+// REST call is one fetch, so REST it is until Pages grows the binding.
 //
-// GMAIL_PASS must be a Google *App Password* (16 chars, no spaces), not the
-// account password — Google rejects plain-password SMTP auth.
+// Setup, once per deployment:
+//
+//   1. onboard the sending domain — Dashboard: Compute & AI > Email Service >
+//      Email Sending > Onboard Domain. (`wrangler email sending enable` is
+//      the CLI equivalent, but it 401s with code 2036 on accounts without the
+//      beta enabled, so the Dashboard is the reliable path.)
+//   2. create an API token with "Email Sending > Send" permission and set it
+//      alongside the account id this file already expects from the domains
+//      helper:
+//        wrangler pages secret put CF_API_TOKEN   --project-name=gu-seo
+//        wrangler pages secret put CF_ACCOUNT_ID  --project-name=gu-seo
+//   3. the sender address defaults to the one below; a fork overrides it:
+//        wrangler pages secret put MAIL_FROM      --project-name=gu-seo
+//
+// There is no mailbox behind the sending domain and none is needed: Email
+// Service is send-only, so any address on an onboarded domain works as `from`,
+// including one that has never existed as a user. That also means mail sent to
+// it is not deliverable — a message that needs a real inbox behind "Reply"
+// must set `replyTo`.
+
+import { cfCreds, cfFetch, cfFirstError } from './cloudflare_domains.js';
+
+const DEFAULT_FROM = { address: 'no-reply@gulagi.com', name: 'GU SEO System' };
 
 // Resolved per call rather than at module load: `env` is only available inside
-// a request, and reading it lazily also means a missing secret surfaces as a
-// clear error instead of a module-level crash.
-export function mailCredentials(env) {
-  const user = String(env?.GMAIL_USER || '').trim();
-  // Google shows app passwords with spaces ("abcd efgh ijkl mnop") but SMTP
-  // wants them without. Strip them so a copy-paste of the displayed form works.
-  const pass = String(env?.GMAIL_PASS || '').replace(/\s+/g, '');
-  if (!user || !pass) {
-    const missing = [];
-    if (!user) missing.push('GMAIL_USER');
-    if (!pass) missing.push('GMAIL_PASS');
-    const err = new Error('email_not_configured: missing ' + missing.join(', '));
+// a request, and reading it lazily also means missing config surfaces as a
+// named error instead of a module-level crash.
+function mailConfig(env) {
+  const creds = cfCreds(env);
+  if (!creds) {
+    const err = new Error(
+      'email_not_configured: missing CF_API_TOKEN / CF_ACCOUNT_ID. ' +
+      'The token needs "Email Sending: Send" and the sending domain must be ' +
+      'onboarded in the Dashboard under Compute & AI > Email Service > Email Sending.'
+    );
     err.code = 'email_not_configured';
     throw err;
   }
-  return { user, pass };
+  return creds;
 }
 
-// RFC 2047 encoded-word. Gmail rejects raw UTF-8 in a Subject header, so a
-// Vietnamese subject has to be base64'd this way.
-function encodeSubject(text) {
-  return `=?UTF-8?B?${btoa(unescape(encodeURIComponent(String(text))))}?=`;
+// `{ address, name }` — the REST shape. A bare address has no display name; a
+// `"Name" <addr>` form in MAIL_FROM is split into the two.
+export function mailSender(env) {
+  const raw = String(env?.MAIL_FROM || '').trim();
+  if (!raw) return { ...DEFAULT_FROM };
+  const named = /^\s*(?:"([^"]*)"|([^<>"]*?))\s*<\s*([^<>\s]+)\s*>\s*$/.exec(raw);
+  if (named) {
+    return { address: named[3], name: (named[1] || named[2] || '').trim() };
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw)) {
+    const err = new Error(`email_not_configured: MAIL_FROM is not an address: ${raw}`);
+    err.code = 'email_not_configured';
+    throw err;
+  }
+  return { address: raw, name: '' };
 }
 
-class SmtpReader {
-  constructor(readable) {
-    this.reader = readable.getReader();
-    this.buffer = '';
-    this.decoder = new TextDecoder();
-  }
-
-  async readLine() {
-    while (!this.buffer.includes('\r\n')) {
-      const { value, done } = await this.reader.read();
-      if (done) break;
-      this.buffer += this.decoder.decode(value, { stream: true });
-    }
-    const idx = this.buffer.indexOf('\r\n');
-    if (idx === -1) {
-      const line = this.buffer;
-      this.buffer = '';
-      return line;
-    }
-    const line = this.buffer.slice(0, idx);
-    this.buffer = this.buffer.slice(idx + 2);
-    return line;
-  }
-
-  async readResponse() {
-    let line = '';
-    let full = '';
-    while (true) {
-      line = await this.readLine();
-      if (!line) break;
-      full += line + '\n';
-      // SMTP replies: 250-something is multiline, 250 something is last line
-      if (line.length >= 4 && line[3] === ' ') {
-        break;
-      }
-    }
-    return {
-      code: parseInt(line.slice(0, 3), 10),
-      raw: full.trim()
-    };
-  }
+// Plain-text alternative to the HTML body. Some clients render only
+// text/plain, and a message with no text part scores worse in spam filters, so
+// the text part is derived rather than left to each caller.
+export function htmlToText(html) {
+  return String(html)
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|tr|h[1-6]|li)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&middot;/gi, '·')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&amp;/gi, '&')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 export async function sendOtpEmail(env, { toEmail, otpCode, brandName = 'GU SEO' }) {
@@ -116,92 +130,42 @@ export async function sendOtpEmail(env, { toEmail, otpCode, brandName = 'GU SEO'
   });
 }
 
-// Generic transactional send. The SMTP dance lives here once so callers only
-// supply content — the previous shape had sendOtpEmail doing the whole
-// handshake inline, which made a second message type mean a second copy of it.
+// Generic transactional send. One fetch, one payload — callers only supply
+// content.
 export async function sendEmail(env, { to, subject, html, replyTo = '' }) {
-  const { user: GMAIL_USER, pass: GMAIL_PASS } = mailCredentials(env);
+  const creds = mailConfig(env);
+  const from = mailSender(env);
 
   const toEmail = String(to || '').trim();
   if (!toEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(toEmail)) {
     throw new Error('invalid_recipient');
   }
 
-  const { connect } = await import('cloudflare:sockets');
+  const body = String(html || '');
+  const payload = {
+    from,
+    to: toEmail,
+    subject: String(subject || ''),
+    html: body,
+  };
+  const text = htmlToText(body);
+  if (text) payload.text = text;
+  if (replyTo) payload.reply_to = String(replyTo).trim();
 
-  const encoder = new TextEncoder();
-
-  // Cloudflare Sockets: Direct connection to port 465 with secureTransport: 'on'
-  const socket = connect('smtp.gmail.com:465', {
-    secureTransport: 'on',
-    allowHalfOpen: false
+  const res = await cfFetch(creds, `/accounts/${creds.accountId}/email/sending/send`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 
-  const reader = new SmtpReader(socket.readable);
-  const writer = socket.writable.getWriter();
-
-  async function send(cmd) {
-    await writer.write(encoder.encode(cmd + '\r\n'));
+  if (!res.ok) {
+    // Not caught-and-hidden: the reason a send failed is the only thing that
+    // makes the next one fixable. Every caller already has its own policy for
+    // what a dead mail transport means for the request it was serving.
+    const err = new Error(cfFirstError(res.body, res.status));
+    err.code = 'email_send_failed';
+    err.status = res.status;
+    throw err;
   }
 
-  try {
-    // 1. Greet
-    let res = await reader.readResponse();
-    if (res.code !== 220) throw new Error('SMTP Greeting failed: ' + res.raw);
-
-    // 2. EHLO
-    await send('EHLO gu-seo.pages.dev');
-    res = await reader.readResponse();
-    if (res.code !== 250) throw new Error('EHLO failed: ' + res.raw);
-
-    // 3. AUTH PLAIN
-    // Format: \0user\0pass base64 encoded
-    const authPayload = btoa(`\0${GMAIL_USER}\0${GMAIL_PASS}`);
-    await send(`AUTH PLAIN ${authPayload}`);
-    res = await reader.readResponse();
-    if (res.code !== 235) throw new Error('SMTP Auth failed: ' + res.raw);
-
-    // 4. MAIL FROM
-    await send(`MAIL FROM:<${GMAIL_USER}>`);
-    res = await reader.readResponse();
-    if (res.code !== 250) throw new Error('MAIL FROM failed: ' + res.raw);
-
-    // 5. RCPT TO
-    await send(`RCPT TO:<${toEmail}>`);
-    res = await reader.readResponse();
-    if (res.code !== 250) throw new Error('RCPT TO failed: ' + res.raw);
-
-    // 6. DATA
-    await send('DATA');
-    res = await reader.readResponse();
-    if (res.code !== 354) throw new Error('DATA initiation failed: ' + res.raw);
-
-    // 7. Message body
-    const headers = [
-      `From: "GU SEO System" <${GMAIL_USER}>`,
-      `To: <${toEmail}>`,
-      `Subject: ${encodeSubject(subject)}`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=UTF-8',
-    ];
-    if (replyTo) headers.push(`Reply-To: <${replyTo}>`);
-
-    const message = [
-      ...headers,
-      '',
-      html,
-      '.\r\n'
-    ].join('\r\n');
-
-    await writer.write(encoder.encode(message));
-    res = await reader.readResponse();
-    if (res.code !== 250) throw new Error('Sending mail body failed: ' + res.raw);
-
-    // 8. QUIT
-    await send('QUIT');
-    return { ok: true };
-  } finally {
-    try { writer.releaseLock(); } catch {}
-    try { await socket.close(); } catch {}
-  }
+  return { ok: true, messageId: res.body?.result?.messageId || '' };
 }
