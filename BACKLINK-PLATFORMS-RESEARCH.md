@@ -102,13 +102,18 @@ network này) nhưng chính sách tương đương.
 4. **Đo thay vì đoán**: sau khi đẩy bất kỳ nhóm link nào, kiểm tra IndexNow/Google
    Search Console coverage + `site:` trước khi scale thêm.
 
-## 6. Open items (chưa verify được từ network này)
+## 6. Open items
 
-- Rate limit publish chính xác của dev.to (không có trong Redoc công khai).
-- Hashnode Pro giá bao nhiêu (page changelog chặn JS).
-- Automattic API Terms hiện hành (URL cũ trả 404).
-- `rel` link thật trong post Medium / Pinterest pin / Tumblr (cần account hoặc bị chặn).
-- Telegra.ph có chống lạm dụng ở mức nào.
+Verify lại 2026-09-26, bằng HTTP probe trực tiếp:
+
+- **dev.to rate limit publish** — chưa có con số. `developers.forem.com/api` và `/api/v1` trả 200 nhưng phần rate limit render bằng JS nên không đọc được bằng fetch thường. Cần browser, hoặc Firecrawl có credit.
+- **Hashnode Pro giá bao nhiêu** — chưa có con số. `hashnode.com/pricing` và `/pro` trả 200 nhưng giá nằm trong RSC payload của Next.js, fetch thường chỉ nhận shell. Cần browser.
+- **Automattic API Terms** — URL cũ vẫn 404, và không có URL thay thế dưới `developer.wordpress.com` hay `public-api.wordpress.com`. Terms áp dụng được tìm thấy ở `https://automattic.com/legal/terms/` (200). Đây là Terms chung của công ty, không phải Terms riêng của API — dùng làm căn cứ thì được, viện dẫn chính xác thì không.
+- **`rel` link thật trong post Medium / Pinterest pin / Tumblr** — chưa verify. Cần tài khoản đã đăng nhập; probe ẩn danh không nói được.
+- **Telegra.ph chống lạm dụng** — `telegra.ph/help` giờ trả **404** với `robots: noindex, nofollow` ngay trong trang lỗi. Không còn trang help công khai, nên không có policy nào để dựa vào. Mức chống lạm dụng thực tế phải đo bằng cách đăng thử và quan sát, không đọc được từ tài liệu.
+
+Ba mục đầu cần JS/browser; hai mục sau cần tài khoản hoặc thử nghiệm thực địa.
+
 
 ## 7. Nguồn
 
