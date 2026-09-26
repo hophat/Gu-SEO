@@ -185,8 +185,6 @@ ${verifyMetas}
 <meta property="og:url" content="${canonical}" />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary" />
-<link rel="preload" href="/_fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
-<link rel="preload" href="/_fonts/instrument-serif-400.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/style.css" />
 ${themeStyle(project?.theme_color)}
 <script type="application/ld+json">${ldJson}</script>

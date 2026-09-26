@@ -240,8 +240,6 @@ ${verifyMetas}
 ${posts[0] ? `<meta property="og:image" content="${baseUrl}${posts[0].hero_image_key ? imageUrl(`/image/${esc(posts[0].hero_image_key)}`) : `/og/${esc(posts[0].slug)}.svg`}" />` : ''}
 <meta name="twitter:card" content="${posts[0] ? 'summary_large_image' : 'summary'}" />
 ${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? imageUrl(`/image/${esc(posts[0].hero_image_key)}`) : `/og/${esc(posts[0].slug)}.svg`}" fetchpriority="high" />` : ''}
-<link rel="preload" href="/_fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
-<link rel="preload" href="/_fonts/instrument-serif-400.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/style.css" />
 ${themeStyle(project?.theme_color)}
 <script type="application/ld+json">${ldJson}</script>
