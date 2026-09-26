@@ -161,8 +161,12 @@ console.log('--- Admin queue hook (polling · status copy) ---\n');
   c.unmount();
 }
 
-assert.equal(hook.statusMeta('carousel', 'done').text, 'Sẵn sàng đăng');
-assert.equal(hook.statusMeta('post', 'done').text, 'Đã có video');
+// statusMeta(status, table) — the refactor moved the per-table vocabulary
+// into src/admin/lib/status.js and settled the argument order as
+// (raw status, table). These two are the same fact read through two
+// tables, so they must still read differently.
+assert.equal(hook.statusMeta('done', 'carousel').text, 'Sẵn sàng đăng');
+assert.equal(hook.statusMeta('done', 'video').text, 'Đã có video');
 ok('the same status reads differently per job kind');
 
 console.log(`\nALL ADMIN HOOK TESTS PASSED (${passed} checks)`);
