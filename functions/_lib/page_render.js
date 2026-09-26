@@ -26,11 +26,58 @@ function brand(env, project = null) {
   };
 }
 
-// Per-project accent. Light and dark brand tints are derived in CSS with
-// color-mix so the admin only ever stores one hex value.
+// Per-project accent.
+//
+// The admin stores one hex, but one hex cannot serve three jobs. The
+// stylesheet's :root needs an accent that works as (a) decoration,
+// (b) a filled block that takes a label, and (c) type that clears
+// 4.5:1 on the paper. A tenant can pick any hue, so the fill and the
+// ink step are derived here by walking the hue toward black until the
+// contrast target is met — not by a fixed percentage, which leaves a
+// pale yellow accent at 3.1:1 and a dark navy one unreadable.
+//
+// The label on a fill is chosen, not assumed: white on a light accent
+// fails, so it picks whichever of white or near-black reads better.
+// Verified across the hue range in scripts/check-contrast.js.
+const BLOG_PAPER_DARKEST = '#e3ded1';
+const LABEL_DARK = '#141310';
+
+const channel = (h) => [0, 2, 4].map((i) => parseInt(h.slice(1 + i, 3 + i), 16));
+const reluminance = (h) => {
+  const [r, g, b] = channel(h).map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a, b) => {
+  const [x, y] = [reluminance(a), reluminance(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+};
+const mixDown = (h, t) =>
+  '#' + channel(h).map((v) => Math.round(v * t).toString(16).padStart(2, '0')).join('');
+
+// The lightest step of this hue that still reads `target` against
+// `ground`. 100% down to 30% in 2% increments — a step below 30% stops
+// being the tenant's colour and becomes grey.
+function stepUntil(hex, ground, target) {
+  for (let t = 1; t >= 0.3; t -= 0.02) {
+    const v = mixDown(hex, t);
+    if (contrast(v, ground) >= target) return v;
+  }
+  return mixDown(hex, 0.3);
+}
+
 export function themeStyle(hex) {
   if (!hex) return '';
-  return `<style>:root{--brand:${hex};--brand-light:color-mix(in srgb,${hex} 12%,#fff);--brand-dark:color-mix(in srgb,${hex} 82%,#000);--link:${hex}}</style>`;
+  // Both steps are read against the paper — a filled block has to be
+  // distinguishable *from the page* as well as carry a readable label,
+  // and one target covers both because the label is picked to suit the
+  // fill afterwards. --link follows the ink step: a link is type, and
+  // it is the one accent a reader is most likely to click.
+  const ink = stepUntil(hex, BLOG_PAPER_DARKEST, 4.5);
+  const onFill = contrast('#ffffff', ink) >= contrast(LABEL_DARK, ink) ? '#ffffff' : LABEL_DARK;
+  return `<style>:root{--brand:${hex};--brand-fill:${ink};--on-brand:${onFill};--brand-ink:${ink};--brand-light:color-mix(in srgb,${hex} 12%,#fff);--brand-dark:${ink};--link:${ink}}</style>`;
 }
 
 function jsonLD({ site, post, host, kind, settings, basePath = '', language = 'vi', pillar = null }) {
