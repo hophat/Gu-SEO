@@ -13,21 +13,27 @@
 # python3, sips (macOS, only for reporting dimensions). Run from the repo
 # root. Reads the bucket + database names from wrangler.toml.
 #
-# Usage: bash scripts/optimize-hero-images.sh [--dry-run] [quality]
+# Usage: bash scripts/optimize-hero-images.sh [--dry-run] [--repair] [quality]
 #   --dry-run   download + convert + report the saving, write nothing
+#   --repair    rows already point at a .webp key; re-derive each object
+#               from the sibling original still in the bucket and rewrite
+#               it. The rows are left alone. Use when a run published the
+#               wrong bytes under the .webp key.
 #   quality     WebP quality, default 82
 #
-# Measured on the live bucket at q82: ~8x smaller (2235KB -> 274KB over
-# four 1024x1024 heroes). A post page pulls three of these plus a logo,
-# so this is the bulk of the page weight.
+# Measured on the live bucket at q82: ~6.5x smaller across 255 heroes
+# (154468KB -> 23828KB). A post page pulls three of these plus a logo, so
+# this is the bulk of the page weight.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 DRY_RUN=""
+REPAIR=""
 QUALITY=82
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN="--dry-run" ;;
+    --repair) REPAIR="--repair" ;;
     *) QUALITY="$arg" ;;
   esac
 done
@@ -44,9 +50,18 @@ WRANGLER="${WRANGLER:-$(command -v wrangler || echo "npx --yes wrangler")}"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
-echo "▸ Listing hero images in $DB"
+if [[ -n "$REPAIR" ]]; then
+  HERO_WHERE="hero_image_key LIKE '%.webp'"
+  LOGO_WHERE="logo_url LIKE '%.webp'"
+  echo "▸ Repair mode: re-deriving .webp objects from their originals in $DB"
+else
+  HERO_WHERE="hero_image_key LIKE '%.jpg' OR hero_image_key LIKE '%.jpeg' OR hero_image_key LIKE '%.png'"
+  LOGO_WHERE="logo_url LIKE '/image/%' AND logo_url NOT LIKE '%.webp'"
+  echo "▸ Listing hero images in $DB"
+fi
+
 $WRANGLER d1 execute "$DB" --remote --json \
-  --command "SELECT id, hero_image_key FROM blog_posts WHERE hero_image_key LIKE '%.jpg' OR hero_image_key LIKE '%.jpeg' OR hero_image_key LIKE '%.png'" \
+  --command "SELECT id, hero_image_key FROM blog_posts WHERE $HERO_WHERE" \
   > "$WORK/rows.json"
 
 # Project logos are a separate table: projects.logo_url holds an
@@ -54,13 +69,14 @@ $WRANGLER d1 execute "$DB" --remote --json \
 # public page, so one oversized upload is charged on every page view.
 echo "▸ Listing project logos in $DB"
 $WRANGLER d1 execute "$DB" --remote --json \
-  --command "SELECT slug, logo_url FROM projects WHERE logo_url LIKE '/image/%' AND logo_url NOT LIKE '%.webp'" \
+  --command "SELECT slug, logo_url FROM projects WHERE $LOGO_WHERE" \
   > "$WORK/logos.json"
 
-python3 - "$WORK" "$BUCKET" "$DB" "$QUALITY" "$DRY_RUN" "$WRANGLER" <<'EOF'
+python3 - "$WORK" "$BUCKET" "$DB" "$QUALITY" "$DRY_RUN" "$WRANGLER" "$REPAIR" <<'EOF'
 import json, subprocess, os, sys
 work, bucket, db, q, dry = sys.argv[1:6]
 WRANGLER = sys.argv[6].split()
+repair = bool(sys.argv[7])
 rows = json.load(open(f"{work}/rows.json"))[0]["results"]
 logos = json.load(open(f"{work}/logos.json"))[0]["results"]
 if dry:
@@ -80,38 +96,43 @@ def dimensions(path):
 
 SKIP_EXT = {".webp", ".svg", ".gif", ".ico", ".avif"}
 
-def convert(key, tag):
-    """Fetch + recompress one R2 object. Returns (src, newkey, in_bytes,
-    out_bytes) or None when the object is not worth converting.
+def convert(source_key, dest_key, tag):
+    """Fetch `source_key` from R2, recompress it, and return
+    (converted_path, in_bytes, out_bytes) or None when the object is not
+    worth converting.
 
     A single unreadable object must not abort a run over hundreds of them,
     so failures are reported and skipped rather than raised. SVG is skipped
     outright: cwebp cannot rasterise it, and a vector logo is already tiny.
+
+    The first return value is the *recompressed* file. Publishing the
+    fetched original instead is the mistake that stores JPEG/PNG bytes
+    under a .webp key — the right content-type for the wrong bytes, saving
+    nothing — so the two paths are named apart on purpose.
     """
-    ext = os.path.splitext(key)[1].lower()
+    ext = os.path.splitext(source_key)[1].lower()
     if ext in SKIP_EXT:
-        print(f"  {tag} {key}: skipped ({ext} not convertible)")
+        print(f"  {tag} {source_key}: skipped ({ext} not convertible)")
         return None
-    stem = os.path.splitext(key)[0]
-    newkey = stem + ".webp"
     src = f"{work}/{tag}{ext}"
     dst = f"{work}/{tag}_out.webp"
-    got = subprocess.run(WRANGLER + ["r2", "object", "get", f"{bucket}/{key}", f"--file={src}", "--remote"],
+    got = subprocess.run(WRANGLER + ["r2", "object", "get", f"{bucket}/{source_key}", f"--file={src}", "--remote"],
                          capture_output=True, text=True)
     if got.returncode != 0 or not os.path.exists(src):
-        print(f"  {tag} {key}: SKIPPED — could not read from R2 ({got.stderr.strip().splitlines()[-1] if got.stderr.strip() else 'not found'})")
+        print(f"  {tag} {source_key}: SKIPPED — could not read from R2 ({got.stderr.strip().splitlines()[-1] if got.stderr.strip() else 'not found'})")
         return None
     made = subprocess.run(["cwebp", "-quiet", "-q", str(q), src, "-o", dst], capture_output=True, text=True)
     if made.returncode != 0 or not os.path.exists(dst):
-        print(f"  {tag} {key}: SKIPPED — cwebp could not read it ({made.stderr.strip().splitlines()[-1] if made.stderr.strip() else 'unknown'})")
+        print(f"  {tag} {source_key}: SKIPPED — cwebp could not read it ({made.stderr.strip().splitlines()[-1] if made.stderr.strip() else 'unknown'})")
         return None
-    return src, newkey, os.path.getsize(src), os.path.getsize(dst)
+    return dst, os.path.getsize(src), os.path.getsize(dst)
 
-def publish(src, r2key, table, column, match_col, match_val, value):
-    """Store the WebP under its bare R2 key, then repoint the row. The
-    stored value and the R2 key are not always the same string: projects
-    .logo_url keeps an '/image/' prefix, so they are passed separately."""
-    subprocess.run(WRANGLER + ["r2", "object", "put", f"{bucket}/{r2key}", f"--file={src}",
+def publish(converted, r2key, table, column, match_col, match_val, value):
+    """Store the recompressed WebP under its bare R2 key, then repoint the
+    row. The stored value and the R2 key are not always the same string:
+    projects.logo_url keeps an '/image/' prefix, so they are passed
+    separately."""
+    subprocess.run(WRANGLER + ["r2", "object", "put", f"{bucket}/{r2key}", f"--file={converted}",
                     "--content-type=image/webp",
                     "--cache-control=public, max-age=31536000, immutable", "--remote"],
                    check=True, capture_output=True)
@@ -122,17 +143,43 @@ def publish(src, r2key, table, column, match_col, match_val, value):
 in_total = out_total = done = 0
 for r in rows:
     key = r["hero_image_key"]
-    got = convert(key, "hero")
+    if repair:
+        # Re-derive an already-pointed-at-.webp row from the sibling
+        # original still sitting in the bucket. Used to repair objects that
+        # were published with the wrong bytes.
+        if not key.lower().endswith(".webp"):
+            continue
+        stem = os.path.splitext(key)[0]
+        source = next((stem + e for e in (".jpg", ".jpeg", ".png")
+                       if os.path.exists(f"{work}/probe{e}")), None)
+        if source is None:
+            # No local probe; fetch the first sibling that exists.
+            for e in (".jpg", ".jpeg", ".png"):
+                got = subprocess.run(WRANGLER + ["r2", "object", "get", f"{bucket}/{stem}{e}",
+                                                 f"--file={work}/probe{e}", "--remote"],
+                                     capture_output=True)
+                if got.returncode == 0 and os.path.exists(f"{work}/probe{e}"):
+                    source = stem + e
+                    break
+        if source is None:
+            print(f"  hero {key}: SKIPPED — no sibling original in the bucket to re-derive from")
+            continue
+        got = convert(source, key, "hero")
+    else:
+        got = convert(key, key, "hero")
     if not got:
         continue
-    src, newkey, a, b = got
+    converted, a, b = got
     in_total += a
     out_total += b
     done += 1
-    print(f"  {key}: {a//1024}KB -> {b//1024}KB  ({a/b:.1f}x)  {dimensions(src)}")
+    print(f"  {key}: {a//1024}KB -> {b//1024}KB  ({a/b:.1f}x)  {dimensions(converted)}")
 
     if not dry:
-        publish(src, newkey, "blog_posts", "hero_image_key", "id", r["id"], newkey)
+        # In repair mode the row already points at the .webp key, so it is
+        # only the object that needs rewriting.
+        if not repair:
+            publish(converted, key, "blog_posts", "hero_image_key", "id", r["id"], key)
 
 # Project logos. Same conversion, but the row to update is projects.logo_url
 # and the value keeps its '/image/' prefix — the public renderers and the
@@ -142,19 +189,35 @@ for r in logos:
     key = r["logo_url"].split("/image/", 1)[-1]
     if not key:
         continue
-    got = convert(key, "logo")
+    if key.lower().endswith(".webp") and not repair:
+        continue
+    stem = os.path.splitext(key)[0]
+    source = key
+    if key.lower().endswith(".webp"):
+        source = None
+        for e in (".jpg", ".jpeg", ".png"):
+            got = subprocess.run(WRANGLER + ["r2", "object", "get", f"{bucket}/{stem}{e}",
+                                             f"--file={work}/lprobe{e}", "--remote"],
+                                 capture_output=True)
+            if got.returncode == 0 and os.path.exists(f"{work}/lprobe{e}"):
+                source = stem + e
+                break
+        if source is None:
+            print(f"  logo {r['slug']}: SKIPPED — no sibling original to re-derive from")
+            continue
+    got = convert(source, stem + ".webp", "logo")
     if not got:
         continue
-    src, newkey, a, b = got
+    converted, a, b = got
     logo_in += a
     logo_out += b
     logos_done += 1
-    print(f"  logo {r['slug']}: {a//1024}KB -> {b//1024}KB  ({a/b:.1f}x)  {dimensions(src)}")
+    print(f"  logo {r['slug']}: {a//1024}KB -> {b//1024}KB  ({a/b:.1f}x)  {dimensions(converted)}")
 
     if not dry:
         # logo_url keeps its '/image/' prefix — the public renderers and the
         # cover SVG builder both resolve the stored value from there.
-        publish(src, newkey, "projects", "logo_url", "slug", r["slug"], "/image/" + newkey)
+        publish(converted, stem + ".webp", "projects", "logo_url", "slug", r["slug"], "/image/" + stem + ".webp")
 
 print()
 if done:
