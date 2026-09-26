@@ -350,6 +350,9 @@ header.nav {
   line-height: 1; letter-spacing: -0.03em; color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
+/* The stack is a fixed fact, not a measurement — set it quieter so the
+   live counts stay the loudest thing in the grid. */
+.hero-stat dd.hero-stat-static { font-size: 0.95rem; color: var(--muted); letter-spacing: -0.01em; }
 .hero-stamp {
   font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.06em;
   color: var(--muted-2);
@@ -997,8 +1000,16 @@ header.nav {
           <dd data-live-stat="published_last_30_days">—</dd>
         </div>
         <div class="hero-stat">
+          <dt data-i18n="hero_stat_rate">Published per day · 30 days</dt>
+          <dd data-live-stat="published_per_day">—</dd>
+        </div>
+        <div class="hero-stat">
           <dt data-i18n="proof_stat_latest">Latest publish</dt>
           <dd data-live-stat="latest_published_at">—</dd>
+        </div>
+        <div class="hero-stat">
+          <dt data-i18n="hero_stat_stack">Engine</dt>
+          <dd class="hero-stat-static" data-i18n="hero_stat_stack_value">D1 · R2 · Edge</dd>
         </div>
       </dl>
       <p id="hero-foot-updated" class="hero-stamp" data-i18n="proof_waiting">Reading live platform data…</p>
@@ -1435,6 +1446,9 @@ header.nav {
       hero_btn_explore: "Xem số liệu thật",
       hero_visual_status: "HỆ THỐNG LIVE / EDGE",
       hero_visual_caption: "Động cơ nội dung tự động<br/>đang chuyển động.",
+      hero_stat_rate: "URL mỗi ngày · 30 ngày",
+      hero_stat_stack: "Hạ tầng",
+      hero_stat_stack_value: "D1 · R2 · Edge",
       hero_note: "Không cần đội ngũ viết. Không cần thiết kế. Không cần hẹn giờ thủ công. Dán domain là xong, phần còn lại tự chạy.",
       contact_eyebrow: "/ LIÊN HỆ",
       wall_label: "Cửa hàng đang publish trên custom domain",
@@ -1535,6 +1549,9 @@ header.nav {
       hero_btn_explore: "See live proof",
       hero_visual_status: "LIVE SYSTEM / EDGE",
       hero_visual_caption: "Autonomous content engine<br/>in motion.",
+      hero_stat_rate: "URLs per day · 30 days",
+      hero_stat_stack: "Stack",
+      hero_stat_stack_value: "D1 · R2 · Edge",
       hero_note: "No copywriters. No designers. No manual scheduling. Paste a domain and the rest runs itself.",
       contact_eyebrow: "/ CONTACT",
       wall_label: "Shops publishing on live custom domains",
@@ -2102,6 +2119,11 @@ header.nav {
     setStat('published_total', number.format(latestStats.published_total));
     setStat('active_projects', number.format(latestStats.active_projects));
     setStat('published_last_30_days', number.format(latestStats.published_last_30_days));
+    // Total and 30-day counts are equal whenever the whole catalogue was
+    // published inside the window, so the headline number the hero shows
+    // beside them is the daily rate — it stays informative either way.
+    const last30 = Number(latestStats.published_last_30_days || 0);
+    setStat('published_per_day', last30 ? number.format(Math.round(last30 / 30)) : '0');
     setStat('latest_published_at', formatLatest(latestStats.latest_published_at));
     renderChart(latestStats.activity_7d || []);
 
