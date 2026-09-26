@@ -6,5 +6,7 @@ export const onRequestGet = async (ctx) => {
   const slug = String(ctx.params?.project || '').toLowerCase();
   const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
   if (!project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
-  return renderSitemap({ env: ctx.env, request: ctx.request, params: { project: slug } });
+  // waitUntil rides along so the wrapped edgeCached can store the
+  // response off the critical path instead of awaiting the write.
+  return renderSitemap({ env: ctx.env, request: ctx.request, waitUntil: ctx.waitUntil, params: { project: slug } });
 };
