@@ -1965,7 +1965,7 @@ async function testEmailSending() {
   };
 
   try {
-    stub(200, { success: true, result: { messageId: 'msg_1' } });
+    stub(200, { success: true, result: { message_id: 'msg_1', queued: ['user@example.com'] } });
     const res = await sendEmail(ENV, {
       to: 'user@example.com', subject: 'Báo cáo', html: '<p>Xin chào</p>',
     });
@@ -1982,7 +1982,10 @@ async function testEmailSending() {
     assert.equal(calls[0].body.subject, 'Báo cáo');
     assert.equal(calls[0].body.text, 'Xin chào', 'every send carries a text part');
     assert.equal(calls[0].body.reply_to, undefined, 'reply_to stays unset when not asked for');
-    assert.equal(res.messageId, 'msg_1');
+    // The REST envelope spells it message_id. The Workers binding spells it
+    // messageId; reading that one here returns '' and looks like a quiet
+    // success with no id, which is how this shipped wrong the first time.
+    assert.equal(res.messageId, 'msg_1', 'message_id is read, not the binding spelling');
     ok('sendEmail posts a correctly shaped message to the send endpoint');
 
     await sendEmail(ENV, { to: 'a@b.com', subject: 's', html: '<p>x</p>', replyTo: ' ops@x.com ' });
@@ -2001,13 +2004,29 @@ async function testEmailSending() {
       'the Cloudflare error message must reach the caller');
     ok('Cloudflare errors propagate with their message and status');
 
+    // A 200 is not proof of delivery: Cloudflare accepts the send and then
+    // reports per-recipient. Reporting "OTP sent" for a suppressed address
+    // would be a lie the user only finds out after the code expires.
+    for (const dead of ['permanent_bounces', 'suppressed_recipients']) {
+      stub(200, { success: true, result: { message_id: 'msg_2', [dead]: ['gone@example.com'] } });
+      let undeliverable = null;
+      try { await sendEmail(ENV, { to: 'gone@example.com', subject: 's', html: 'x' }); }
+      catch (e) { undeliverable = e; }
+      assert.ok(undeliverable, `${dead} must not count as sent`);
+      assert.equal(undeliverable.code, 'email_rejected');
+      assert.match(undeliverable.message, /gone@example\.com/);
+    }
+    ok('a hard-bounced or suppressed recipient is not reported as sent');
+
+    const beforeBadRecipients = calls.length;
     for (const to of ['', 'no-at-sign', 'a@b c.com']) {
       let err = null;
       try { await sendEmail(ENV, { to, subject: 's', html: 'x' }); } catch (e) { err = e; }
       assert.ok(err, `recipient ${JSON.stringify(to)} must be rejected`);
       assert.equal(err.message, 'invalid_recipient');
     }
-    assert.equal(calls.length, 3, 'a bad recipient must not reach the network');
+    assert.equal(calls.length, beforeBadRecipients,
+      'a bad recipient must not reach the network');
     ok('a malformed recipient is rejected before the request is made');
   } finally {
     globalThis.fetch = realFetch;

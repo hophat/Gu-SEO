@@ -167,5 +167,24 @@ export async function sendEmail(env, { to, subject, html, replyTo = '' }) {
     throw err;
   }
 
-  return { ok: true, messageId: res.body?.result?.messageId || '' };
+  // A 200 is not proof of delivery. The send is accepted, then reported per
+  // recipient, and a suppressed or hard-bounced address comes back as a
+  // successful response with the reason in one of these lists. For an OTP
+  // that would be reporting "sent" for a message that is already undeliverable.
+  const result = res.body?.result || {};
+  const dead = [
+    ...(result.permanent_bounces || []),
+    ...(result.suppressed_recipients || []),
+  ];
+  if (dead.length) {
+    const err = new Error(`recipient not deliverable: ${dead.join(', ')}`);
+    err.code = 'email_rejected';
+    err.status = res.status;
+    throw err;
+  }
+
+  // The REST envelope spells this `message_id`; the Workers binding spells it
+  // `messageId`. They are not interchangeable, and reading the wrong one yields
+  // a silently empty id rather than an error.
+  return { ok: true, messageId: result.message_id || '' };
 }
