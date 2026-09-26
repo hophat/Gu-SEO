@@ -127,7 +127,11 @@ const EDGE_SMAXAGE = 60;
 // `build` returns the response to serve. Only a 200 with no Set-Cookie is
 // stored: everything else (404, 410, redirects) stays live, so a slug rename
 // or a freshly published post is never shadowed by a stored miss.
-export async function edgeCached(request, waitUntil, build) {
+//
+// `sMaxAge` defaults to the page TTL. Pass it where a route knows its own:
+// a feed that wants to go 5 minutes without a Worker invocation should not
+// be silently cut back to the page default.
+export async function edgeCached(request, waitUntil, build, sMaxAge = EDGE_SMAXAGE) {
   // Absent in unit tests and any plain Node run — render directly.
   const cache = globalThis.caches?.default;
   if (!cache) return build();
@@ -145,7 +149,7 @@ export async function edgeCached(request, waitUntil, build) {
   // browser still caches for as long as the page intends.
   const cc = res.headers.get('cache-control') || '';
   const directives = cc.split(',').map((d) => d.trim()).filter(Boolean).filter((d) => !/^s-maxage=/i.test(d));
-  directives.push(`s-maxage=${EDGE_SMAXAGE}`);
+  directives.push(`s-maxage=${sMaxAge}`);
 
   const headers = new Headers(res.headers);
   headers.set('cache-control', directives.join(', '));

@@ -10,7 +10,7 @@
 // publish via the same IndexNow ping cycle.
 
 import { loadSettings } from './_lib/settings.js';
-import { esc } from './_lib/util.js';
+import { esc, edgeCached } from './_lib/util.js';
 import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost } from './_lib/project_scope.js';
 
 const ITEMS_LIMIT = 30;
@@ -20,7 +20,7 @@ function rfc822(epoch) {
   return new Date((epoch || 0) * 1000).toUTCString();
 }
 
-export const onRequestGet = async ({ env, request, params }) => {
+export const renderFeed = async ({ env, request, params }) => {
   const projectSlug = String(params?.project || '').toLowerCase() || null;
   const basePath = projectSlug ? `/${projectSlug}` : '';
   // Settings and the project row don't depend on each other, so they go
@@ -101,3 +101,9 @@ ${items}
     },
   });
 };
+
+// The route already declared s-maxage=300 for exactly this, but Pages does
+// not put Function responses in the zone cache, so the directive was never
+// read and every crawler poll paid the full render. edgeCached honours the
+// 300 the route asked for.
+export const onRequestGet = (ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderFeed(ctx), 300);

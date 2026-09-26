@@ -10,7 +10,7 @@
 // the hero image alongside the page. Image Search is a real source
 // of organic for blogs.
 
-import { esc, imageUrl } from './_lib/util.js';
+import { esc, imageUrl, edgeCached } from './_lib/util.js';
 import { PAGE_SIZE } from './blog/index.js';
 import { resolveProjectByHost, resolveProjectBySlug, requestHost, normalizeHost } from './_lib/project_scope.js';
 import { listPillars } from './_lib/hubs.js';
@@ -172,7 +172,7 @@ async function fetchEntries(env, host, project = null, basePath = '') {
   return entries;
 }
 
-export const onRequestGet = async ({ env, request, params }) => {
+export const renderSitemap = async ({ env, request, params }) => {
   const host = requestHost(request);
   const projectSlug = String(params?.project || '').toLowerCase() || null;
   let project = null;
@@ -240,3 +240,9 @@ export async function pagesUrlset({ env, request, projectSlug = null, basePath =
     },
   });
 }
+
+// Crawlers re-fetch the sitemap on every crawl, and a shared host re-renders
+// it per project. It is public and visitor-independent, so it goes through the
+// edge cache like the HTML routes. 300s keeps a freshly published post
+// discoverable without re-rendering on every crawler request.
+export const onRequestGet = (ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderSitemap(ctx), 300);
