@@ -7,6 +7,13 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.24.1 — 2026-09-26
+
+Sitemap không còn nuôi các trang phân trang.
+
+### Fixed
+- `/blog/page/2` … `/blog/page/N` bị liệt kê trong sitemap. Mỗi URL phân trang là ngân sách thu thập tiêu một trang danh sách thay vì bài viết — ở kho 850 URL thì 41 URL, tức gần 5%. Các trang này tự canonical và đã có chuỗi `rel=next`/`rel=prev` mà Google khuyến nghị để crawler đi tiếp, nên bỏ khỏi sitemap là mất không. `/`, `/blog`, `/hubs`, mọi bài viết và mọi trang `/p/<slug>` giữ nguyên.
+- Bỏ luôn query đếm bài trong `fetchEntries` vì chỉ dùng cho vòng lặp phân trang: sitemap mỗi lần gọi còn 3 query D1 thay vì 4.
 ## 1.24.0 — 2026-09-26
 
 Gửi email qua Cloudflare Email Service, bỏ hoàn toàn SMTP.
