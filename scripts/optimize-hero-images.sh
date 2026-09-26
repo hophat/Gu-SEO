@@ -49,12 +49,24 @@ $WRANGLER d1 execute "$DB" --remote --json \
   --command "SELECT id, hero_image_key FROM blog_posts WHERE hero_image_key LIKE '%.jpg' OR hero_image_key LIKE '%.jpeg' OR hero_image_key LIKE '%.png'" \
   > "$WORK/rows.json"
 
+# Project logos are a separate table: projects.logo_url holds an
+# '/image/<key>' path, not a bare key. The header logo renders on every
+# public page, so one oversized upload is charged on every page view.
+echo "▸ Listing project logos in $DB"
+$WRANGLER d1 execute "$DB" --remote --json \
+  --command "SELECT slug, logo_url FROM projects WHERE logo_url LIKE '/image/%' AND logo_url NOT LIKE '%.webp'" \
+  > "$WORK/logos.json"
+
 python3 - "$WORK" "$BUCKET" "$DB" "$QUALITY" "$DRY_RUN" "$WRANGLER" <<'EOF'
 import json, subprocess, os, sys
 work, bucket, db, q, dry = sys.argv[1:6]
 WRANGLER = sys.argv[6].split()
 rows = json.load(open(f"{work}/rows.json"))[0]["results"]
-print(f"{len(rows)} images to optimize{'' if dry else ''}{' (DRY RUN — nothing is written)' if dry else ''}")
+logos = json.load(open(f"{work}/logos.json"))[0]["results"]
+if dry:
+    print(f"{len(rows)} hero images + {len(logos)} project logos — DRY RUN, nothing is written")
+else:
+    print(f"{len(rows)} hero images + {len(logos)} project logos")
 
 def dimensions(path):
     try:
@@ -66,40 +78,91 @@ def dimensions(path):
     except Exception:
         return "?"
 
+SKIP_EXT = {".webp", ".svg", ".gif", ".ico", ".avif"}
+
+def convert(key, tag):
+    """Fetch + recompress one R2 object. Returns (src, newkey, in_bytes,
+    out_bytes) or None when the object is not worth converting.
+
+    A single unreadable object must not abort a run over hundreds of them,
+    so failures are reported and skipped rather than raised. SVG is skipped
+    outright: cwebp cannot rasterise it, and a vector logo is already tiny.
+    """
+    ext = os.path.splitext(key)[1].lower()
+    if ext in SKIP_EXT:
+        print(f"  {tag} {key}: skipped ({ext} not convertible)")
+        return None
+    stem = os.path.splitext(key)[0]
+    newkey = stem + ".webp"
+    src = f"{work}/{tag}{ext}"
+    dst = f"{work}/{tag}_out.webp"
+    got = subprocess.run(WRANGLER + ["r2", "object", "get", f"{bucket}/{key}", f"--file={src}", "--remote"],
+                         capture_output=True, text=True)
+    if got.returncode != 0 or not os.path.exists(src):
+        print(f"  {tag} {key}: SKIPPED — could not read from R2 ({got.stderr.strip().splitlines()[-1] if got.stderr.strip() else 'not found'})")
+        return None
+    made = subprocess.run(["cwebp", "-quiet", "-q", str(q), src, "-o", dst], capture_output=True, text=True)
+    if made.returncode != 0 or not os.path.exists(dst):
+        print(f"  {tag} {key}: SKIPPED — cwebp could not read it ({made.stderr.strip().splitlines()[-1] if made.stderr.strip() else 'unknown'})")
+        return None
+    return src, newkey, os.path.getsize(src), os.path.getsize(dst)
+
+def publish(src, r2key, table, column, match_col, match_val, value):
+    """Store the WebP under its bare R2 key, then repoint the row. The
+    stored value and the R2 key are not always the same string: projects
+    .logo_url keeps an '/image/' prefix, so they are passed separately."""
+    subprocess.run(WRANGLER + ["r2", "object", "put", f"{bucket}/{r2key}", f"--file={src}",
+                    "--content-type=image/webp",
+                    "--cache-control=public, max-age=31536000, immutable", "--remote"],
+                   check=True, capture_output=True)
+    subprocess.run(WRANGLER + ["d1", "execute", db, "--remote", "--command",
+                    f"UPDATE {table} SET {column}='{value}' WHERE {match_col}='{match_val}'"],
+                   check=True, capture_output=True)
+
 in_total = out_total = done = 0
 for r in rows:
     key = r["hero_image_key"]
-    # Idempotent: a row already pointing at WebP is left alone.
-    if key.lower().endswith(".webp"):
+    got = convert(key, "hero")
+    if not got:
         continue
-    stem, _ = os.path.splitext(key)
-    newkey = stem + ".webp"
-    src = f"{work}/in{os.path.splitext(key)[1] or '.png'}"
-    dst = f"{work}/out.webp"
-
-    subprocess.run(WRANGLER + ["r2", "object", "get", f"{bucket}/{key}", f"--file={src}", "--remote"],
-                   check=True, capture_output=True)
-    subprocess.run(["cwebp", "-quiet", "-q", str(q), src, "-o", dst], check=True)
-
-    a, b = os.path.getsize(src), os.path.getsize(dst)
+    src, newkey, a, b = got
     in_total += a
     out_total += b
     done += 1
     print(f"  {key}: {a//1024}KB -> {b//1024}KB  ({a/b:.1f}x)  {dimensions(src)}")
 
     if not dry:
-        subprocess.run(WRANGLER + ["r2", "object", "put", f"{bucket}/{newkey}", f"--file={dst}",
-                        "--content-type=image/webp",
-                        "--cache-control=public, max-age=31536000, immutable", "--remote"],
-                       check=True, capture_output=True)
-        subprocess.run(WRANGLER + ["d1", "execute", db, "--remote", "--command",
-                        f"UPDATE blog_posts SET hero_image_key='{newkey}' WHERE id='{r['id']}'"],
-                       check=True, capture_output=True)
+        publish(src, newkey, "blog_posts", "hero_image_key", "id", r["id"], newkey)
+
+# Project logos. Same conversion, but the row to update is projects.logo_url
+# and the value keeps its '/image/' prefix — the public renderers and the
+# cover SVG builder both resolve it from there.
+logo_in = logo_out = logos_done = 0
+for r in logos:
+    key = r["logo_url"].split("/image/", 1)[-1]
+    if not key:
+        continue
+    got = convert(key, "logo")
+    if not got:
+        continue
+    src, newkey, a, b = got
+    logo_in += a
+    logo_out += b
+    logos_done += 1
+    print(f"  logo {r['slug']}: {a//1024}KB -> {b//1024}KB  ({a/b:.1f}x)  {dimensions(src)}")
+
+    if not dry:
+        # logo_url keeps its '/image/' prefix — the public renderers and the
+        # cover SVG builder both resolve the stored value from there.
+        publish(src, newkey, "projects", "logo_url", "slug", r["slug"], "/image/" + newkey)
 
 print()
 if done:
-    print(f"{done} images: {in_total//1024}KB -> {out_total//1024}KB "
+    print(f"{done} heroes: {in_total//1024}KB -> {out_total//1024}KB "
           f"({in_total/max(out_total,1):.1f}x smaller, {(1-out_total/max(in_total,1))*100:.0f}% saved)")
+if logos_done:
+    print(f"{logos_done} logos: {logo_in//1024}KB -> {logo_out//1024}KB "
+          f"({logo_in/max(logo_out,1):.1f}x smaller, {(1-logo_out/max(logo_in,1))*100:.0f}% saved)")
 if dry:
     print("dry run — rerun without --dry-run to apply")
 else:
