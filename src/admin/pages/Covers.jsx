@@ -75,13 +75,15 @@ export default function Covers() {
         <Space size={6}>
           {name}
           {!r.renderable && (
-            <Tag color="red" icon={<WarningOutlined />} title="Template trống — sẽ hiển thị ảnh bìa đen nếu đặt làm mặc định">Trống</Tag>
+            <span className="ps-chip ps-chip--bad" title="Template trống — sẽ hiển thị ảnh bìa đen nếu đặt làm mặc định">
+              <WarningOutlined /> Trống
+            </span>
           )}
         </Space>
       ) },
 
     { title: 'Mặc định', dataIndex: 'is_default', key: 'default', width: 110,
-      render: (d) => d ? <Tag color="blue">Mặc định</Tag> : '-' },
+      render: (d) => d ? <span className="ps-chip ps-chip--info">Mặc định</span> : '-' },
     { title: 'Cập nhật', dataIndex: 'updated_at', key: 'updated', width: 120,
       render: (t) => t ? new Date(t * 1000).toLocaleDateString('vi-VN') : '-' },
     { title: '', key: 'actions', width: 100,

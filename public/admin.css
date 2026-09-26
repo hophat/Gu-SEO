@@ -1,9 +1,9 @@
 .tab[hidden], .tab.is-hidden { display: none !important; }
 /* pages-seo · admin dashboard.
  * Standalone styling — doesn't share the public site's CSS so it can
- * evolve independently. Grok-inspired operator UI: cold near-black
- * surfaces, white type, one restrained orange accent, monospace for
- * display and data; fixed sidebar nav on desktop, dense tables. */
+ * evolve independently. Achromatic operator UI: flat surfaces, one
+ * near-black accent, hairlines instead of shadows, dense tables.
+ * Values mirror src/admin/theme.js and src/admin/styles/tokens.css. */
 
 /* Geist + Geist Mono ship as variable fonts (wght 100–900), so one file
    per subset covers every weight. The vietnamese subset is required —
@@ -26,73 +26,73 @@
 @font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("/_fonts/inter-700.woff2") format("woff2"); }
 
 :root{
-  /* Ant Design Pro v6 Light Palette (default) */
-  --bg: #f5f5f5;
-  --bg-soft: #fafafa;
+  --bg: #ffffff;
+  --bg-soft: #f7f9f8;
   --bg-card: #ffffff;
-  --bg-card-hover: #fafafa;
-  --ink: rgba(0, 0, 0, 0.88);
-  --ink-dim: rgba(0, 0, 0, 0.65);
-  --ink-faint: rgba(0, 0, 0, 0.45);
-  --accent: #1677ff;               /* Ant Design Pro Tech Blue */
-  --accent-rgb: 22,119,255;
+  --bg-card-hover: #f7f9f8;
+  --ink: #0f1419;
+  --ink-dim: #5b6570;
+  --ink-faint: #666f76;
+  --accent: #0f1419;
+  --accent-rgb: 15, 20, 25;
   --accent-ink: #ffffff;
-  --accent-soft: #e6f4ff;
-  --accent-hover: #4096ff;
-  --line: #f0f0f0;
-  --line-2: #d9d9d9;
-  --good: #52c41a;
-  --warn: #faad14;
-  --bad: #ff4d4f;
-  --good-rgb: 82,196,26;
-  --warn-rgb: 250,173,20;
-  --bad-rgb: 255,77,79;
-  --display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --accent-soft: #eff1f1;
+  --accent-hover: #2a333b;
+  --line: #e7e9ea;
+  --line-2: #d0d5d8;
+  --good: #15803d;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --good-rgb: 21, 128, 61;
+  --warn-rgb: 180, 83, 9;
+  --bad-rgb: 185, 28, 28;
+  --display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Ant Design v5/v6 Sizing & Radius Tokens */
+  /* Radius scale: 4px is the ceiling. Only the logo, the status dot and
+     the progress bar are allowed to be fully round. */
   --radius-xs: 2px;
   --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
   --radius-full: 9999px;
-  --sidebar-w: 236px;
+  --sidebar-w: 232px;
   --header-h: 56px;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
-  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
-  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 2px 0 rgba(15, 20, 25, 0.04);
+  --shadow-card: 0 1px 2px 0 rgba(15, 20, 25, 0.04);
+  --shadow-card-hover: 0 1px 2px 0 rgba(15, 20, 25, 0.06);
 }
 
 /* Dark theme — opt-in via data-theme="dark" on <html>. Triggered
-   by the theme toggle and persisted in localStorage. Dark mode uses
-   Ant Design Pro v6 dark palette; status colours stay put so muscle
-   memory transfers between modes. */
+   by the theme toggle and persisted in localStorage. Status colours get
+   their own lighter values here; the light-mode ones fail contrast on a
+   dark surface. */
 :root[data-theme="dark"]{
-  /* Ant Design Pro v6 Dark Palette */
-  --bg: #141414;
-  --bg-soft: #1f1f1f;
-  --bg-card: #1f1f1f;
-  --bg-card-hover: #262626;
-  --ink: rgba(255, 255, 255, 0.85);
-  --ink-dim: rgba(255, 255, 255, 0.65);
-  --ink-faint: rgba(255, 255, 255, 0.45);
-  --accent: #1677ff;
-  --accent-rgb: 22,119,255;
-  --accent-ink: #ffffff;
-  --accent-soft: rgba(22, 119, 255, 0.15);
-  --accent-hover: #4096ff;
-  --line: #303030;
-  --line-2: #424242;
-  --good: #52c41a;
-  --warn: #faad14;
-  --bad: #ff4d4f;
-  --good-rgb: 82,196,26;
-  --warn-rgb: 250,173,20;
-  --bad-rgb: 255,77,79;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
-  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --bg: #0f1214;
+  --bg-soft: #16191c;
+  --bg-card: #16191c;
+  --bg-card-hover: #1e2327;
+  --ink: #e8ecee;
+  --ink-dim: #9aa4ad;
+  --ink-faint: #848e97;
+  --accent: #ffffff;
+  --accent-rgb: 255, 255, 255;
+  --accent-ink: #0f1214;
+  --accent-soft: #1e2327;
+  --accent-hover: #c9d1d6;
+  --line: #262b2f;
+  --line-2: #3a4147;
+  --good: #4ade80;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --good-rgb: 74, 222, 128;
+  --warn-rgb: 251, 191, 36;
+  --bad-rgb: 248, 113, 113;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
   --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 

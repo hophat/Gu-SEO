@@ -1,6 +1,6 @@
-// Usage page — antd Statistic, Card, Table, Progress, Tag.
+// Usage page — AI spend against the monthly cap, by provider and by day.
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Statistic, Table, Progress, Tag, Typography, Skeleton, Empty } from 'antd';
+import { Card, Row, Col, Statistic, Table, Progress, Typography, Skeleton, Empty } from 'antd';
 import { DollarOutlined, ThunderboltOutlined, BarChartOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet } from '../api.js';
@@ -30,7 +30,7 @@ export default function Usage() {
     { title: 'Calls', dataIndex: 'calls', key: 'calls', render: (v) => <Text strong>{v || 0}</Text> },
     { title: 'Tokens in', dataIndex: 'tokens_in', key: 'tokens_in', render: (v) => (v || 0).toLocaleString() },
     { title: 'Tokens out', dataIndex: 'tokens_out', key: 'tokens_out', render: (v) => (v || 0).toLocaleString() },
-    { title: 'Chi phí', dataIndex: 'cost_usd', key: 'cost', render: (v) => <Tag color={v > 0 ? 'blue' : 'default'}>${(v || 0).toFixed(4)}</Tag> },
+    { title: 'Chi phí', dataIndex: 'cost_usd', key: 'cost', render: (v) => <Text code>{`$${(v || 0).toFixed(4)}`}</Text> },
   ];
 
   return (
@@ -42,7 +42,7 @@ export default function Usage() {
       </Row>
 
       <Card title="Hạn mức chi phí" style={{ marginBottom: 24 }}>
-        <Progress percent={pct} status={pct >= 100 ? 'exception' : 'active'} strokeColor={pct >= 100 ? '#ff4d4f' : '#1677ff'} />
+        <Progress percent={pct} status={pct >= 100 ? 'exception' : 'active'} />
         <Text type="secondary">{(data.spent_usd || 0).toFixed(2)} / {(data.cap_usd || 0).toFixed(2)} USD ({pct}%)</Text>
       </Card>
 

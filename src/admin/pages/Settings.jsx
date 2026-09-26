@@ -333,11 +333,12 @@ function ProviderKeys() {
     groups[p].push(name);
   }
 
+  // Where a key lives is a fact about the deployment, not a health signal.
   const statusTag = (name) => {
     const src = vault.keys?.[name];
-    if (src === 'pages-secret') return <Tag color="blue">Pages secret</Tag>;
-    if (src === 'vault') return <Tag color="success">Đã lưu</Tag>;
-    return <Tag>Chưa có</Tag>;
+    if (src === 'pages-secret') return <span className="ps-chip ps-chip--plain">Pages secret</span>;
+    if (src === 'vault') return <span className="ps-chip ps-chip--good">Đã lưu</span>;
+    return <span className="ps-chip ps-chip--muted">Chưa có</span>;
   };
 
   return (
@@ -529,8 +530,8 @@ function FacebookAppConfig() {
 
       <Space>
         <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={save}>Lưu thông tin App</Button>
-        <Tag color={appReady ? 'success' : 'warning'}>{appReady ? 'Facebook sẵn sàng' : 'Facebook chưa cấu hình'}</Tag>
-        <Tag color={threadsAppReady ? 'success' : 'warning'}>{threadsAppReady ? 'Threads sẵn sàng' : 'Threads chưa cấu hình'}</Tag>
+        <span className={`ps-chip ps-chip--${appReady ? 'good' : 'warn'}`}>{appReady ? 'Facebook sẵn sàng' : 'Facebook chưa cấu hình'}</span>
+        <span className={`ps-chip ps-chip--${threadsAppReady ? 'good' : 'warn'}`}>{threadsAppReady ? 'Threads sẵn sàng' : 'Threads chưa cấu hình'}</span>
       </Space>
 
       <Divider />
@@ -709,7 +710,7 @@ function YoutubeAppConfig() {
       </Form.Item>
       <Space>
         <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={save}>Lưu YouTube App</Button>
-        <Tag color={ready ? 'success' : 'warning'}>{ready ? 'Đã cấu hình' : 'Chưa cấu hình'}</Tag>
+        <span className={`ps-chip ps-chip--${ready ? 'good' : 'warn'}`}>{ready ? 'Đã cấu hình' : 'Chưa cấu hình'}</span>
       </Space>
       <Divider />
       <Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 0 }}>

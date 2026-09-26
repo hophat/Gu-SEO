@@ -13,27 +13,26 @@
 // API: /api/admin/prog/queue (GET/PATCH), /api/admin/prog/upload (POST),
 //      /api/admin/prog/pull-keywords (POST), /api/admin/prog/generate-next (POST)
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Button, Tag, Space, Typography, message, Input, Modal, Form, Row, Col, Select, InputNumber, Statistic, Progress, Alert, Tooltip, Popconfirm, Image, Steps } from 'antd';
+import { Card, Table, Button, Space, Typography, message, Input, Modal, Form, Row, Col, Select, InputNumber, Statistic, Progress, Alert, Tooltip, Popconfirm, Image, Steps } from 'antd';
 import { PlusOutlined, ReloadOutlined, ThunderboltOutlined, SearchOutlined, EyeOutlined, ArrowUpOutlined, ArrowDownOutlined, CloseOutlined, RedoOutlined, LinkOutlined, FireOutlined, CheckCircleOutlined, LoadingOutlined, PlayCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
+import StatusChip from '../components/StatusChip.jsx';
+import { statusMeta, scoreTone } from '../lib/status.js';
 import { apiGet, apiPost, api, apiDel } from '../api.js';
 import { useProjectUrl } from '../lib/projectUrl.js';
 
 const { Text } = Typography;
 
-const STATUS_META = {
-  pending:    { color: 'default',    text: 'Đang chờ' },
-  processing: { color: 'processing', text: 'Đang xử lý' },
-  done:       { color: 'success',    text: 'Hoàn thành' },
-  failed:     { color: 'error',      text: 'Thất bại' },
-};
-
-const INTENT_META = {
-  transactional: { color: 'green',  text: 'giao dịch' },
-  commercial:    { color: 'gold',   text: 'thương mại' },
-  informational: { color: 'blue',   text: 'thông tin' },
-  navigational:  { color: 'default', text: 'điều hướng' },
-  junk:          { color: 'red',    text: 'rác' },
+// Queue status comes from lib/status.js (`prog` table), as does scoreTone.
+// Search intent is a classification, not a state — colouring it would imply
+// a good/bad judgement the operator has not made yet. Neutral chips; the
+// word is the information.
+const INTENT_LABEL = {
+  transactional: 'giao dịch',
+  commercial: 'thương mại',
+  informational: 'thông tin',
+  navigational: 'điều hướng',
+  junk: 'rác',
 };
 
 export default function Prog() {
@@ -162,7 +161,7 @@ export default function Prog() {
       onConfirm={() => removeKeyword(r)}
     >
       <Tooltip title="Xoá khỏi hàng đợi">
-        <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+        <Button size="small" type="text" danger icon={<DeleteOutlined />} aria-label="Xóa từ khóa" title="Xóa từ khóa" />
       </Tooltip>
     </Popconfirm>
   );
@@ -226,9 +225,9 @@ export default function Prog() {
     { title: 'Từ khóa', dataIndex: 'keyword', key: 'keyword', ellipsis: true,
       render: (k) => <Text strong>{k}</Text> },
     { title: 'Ý định', dataIndex: 'intent', key: 'intent', width: 110,
-      render: (i) => { const m = INTENT_META[i]; return m ? <Tag color={m.color}>{m.text}</Tag> : <Text type="secondary">—</Text>; } },
+      render: (i) => (INTENT_LABEL[i] ? <span className="ps-chip ps-chip--plain">{INTENT_LABEL[i]}</span> : <Text type="secondary">—</Text>) },
     { title: 'Điểm', dataIndex: 'score', key: 'score', width: 70,
-      render: (s) => s != null ? <Tag color={s >= 60 ? 'green' : s >= 40 ? 'gold' : 'default'}>{s}</Tag> : '—' },
+      render: (s) => s != null ? <span className={`ps-chip ps-chip--${scoreTone(s)}`}>{s}</span> : '—' },
     // 200px, not 150: the keyword table carries `ellipsis` columns, which
     // makes @rc-component/table force the whole table to table-layout:fixed,
     // so a cell that is too narrow spills into its neighbour — the same
@@ -265,7 +264,7 @@ export default function Prog() {
         );
       } },
     { title: 'Trạng thái', dataIndex: 'status', key: 'status', width: 120,
-      render: (s) => { const m = STATUS_META[s] || STATUS_META.pending; return <Tag color={m.color}>{m.text}</Tag>; } },
+      render: (s) => <StatusChip status={s} table="prog" /> },
     { title: 'Trang', key: 'page', width: 150, ellipsis: true,
       render: (_, r) => r.page_slug
         ? <a href={urlForProject(r.project_id, '/p/' + r.page_slug)} target="_blank" rel="noopener"><LinkOutlined /> /p/{r.page_slug}</a>
@@ -277,9 +276,9 @@ export default function Prog() {
   const previewColumns = [
     { title: 'Từ khóa', dataIndex: 'keyword', key: 'keyword', ellipsis: true },
     { title: 'Ý định', dataIndex: 'intent', key: 'intent', width: 110,
-      render: (i) => { const m = INTENT_META[i]; return m ? <Tag color={m.color}>{m.text}</Tag> : '—'; } },
+      render: (i) => (INTENT_LABEL[i] ? <span className="ps-chip ps-chip--plain">{INTENT_LABEL[i]}</span> : '—') },
     { title: 'Điểm', dataIndex: 'score', key: 'score', width: 70,
-      render: (s) => <Tag color={s >= 60 ? 'green' : s >= 40 ? 'gold' : 'default'}>{s}</Tag> },
+      render: (s) => <span className={`ps-chip ps-chip--${scoreTone(s)}`}>{s}</span> },
   ];
 
   return (
@@ -289,7 +288,7 @@ export default function Prog() {
       breadcrumb={[{ title: 'Thương hiệu' }, { title: 'Programmatic SEO' }]}
       extra={
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={refresh} loading={loading} />
+          <Button icon={<ReloadOutlined />} onClick={refresh} loading={loading} aria-label="Tải lại" title="Tải lại" />
           <Button icon={<PlusOutlined />} onClick={() => setPasteOpen(true)}>Dán danh sách</Button>
           <Button type="primary" icon={<ThunderboltOutlined />} loading={running} disabled={bulk.running} onClick={runNext}>Tạo trang tiếp</Button>
         </Space>
@@ -297,10 +296,10 @@ export default function Prog() {
     >
       {/* Stats */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={6}><Card size="small"><Statistic title="Đang chờ" value={counts.pending} prefix={<FireOutlined style={{ color: '#faad14' }} />} /></Card></Col>
+        <Col xs={12} sm={6}><Card size="small"><Statistic title="Đang chờ" value={counts.pending} prefix={<FireOutlined className="ps-stat-icon ps-stat-icon--warn" />} /></Card></Col>
         <Col xs={12} sm={6}><Card size="small"><Statistic title="Đang xử lý" value={counts.processing} /></Card></Col>
-        <Col xs={12} sm={6}><Card size="small"><Statistic title="Hoàn thành" value={counts.done} valueStyle={{ color: '#52c41a' }} /></Card></Col>
-        <Col xs={12} sm={6}><Card size="small"><Statistic title="Thất bại" value={counts.failed} valueStyle={{ color: counts.failed ? '#ff4d4f' : undefined }} /></Card></Col>
+        <Col xs={12} sm={6}><Card size="small"><Statistic title="Hoàn thành" value={counts.done} prefix={<CheckCircleOutlined className="ps-stat-icon ps-stat-icon--good" />} /></Card></Col>
+        <Col xs={12} sm={6}><Card size="small"><Statistic title="Thất bại" value={counts.failed} valueStyle={counts.failed ? { color: 'var(--bad)' } : undefined} /></Card></Col>
       </Row>
 
       {/* 1. Collect from Google Autocomplete */}
@@ -401,10 +400,10 @@ export default function Prog() {
               <Space direction="vertical" size={4} style={{ width: '100%', marginTop: 6 }}>
                 {job.completed.map((p) => (
                   <Space key={p.slug}>
-                    <CheckCircleOutlined style={{ color: p.status === 'hidden' ? '#faad14' : '#52c41a' }} />
+                    <CheckCircleOutlined className={p.status === 'hidden' ? 'ps-stat-icon ps-stat-icon--warn' : 'ps-stat-icon ps-stat-icon--good'} />
                     <a href={urlForProject(activeProject?.id, '/p/' + p.slug)} target="_blank" rel="noopener">/p/{p.slug}</a>
                     {p.keyword && <Text type="secondary" style={{ fontSize: 12 }}>{p.keyword}</Text>}
-                    {p.status === 'hidden' && <Tooltip title={p.dupReason}><Tag color="gold">ẩn · trùng</Tag></Tooltip>}
+                    {p.status === 'hidden' && <Tooltip title={p.dupReason}><span className="ps-chip ps-chip--warn">ẩn · trùng</span></Tooltip>}
                   </Space>
                 ))}
               </Space>
@@ -430,7 +429,7 @@ export default function Prog() {
                 { value: 'failed', label: `Thất bại (${counts.failed})` },
               ]}
             />
-            <Button icon={<ReloadOutlined />} onClick={refresh} loading={loading} />
+            <Button icon={<ReloadOutlined />} onClick={refresh} loading={loading} aria-label="Tải lại" title="Tải lại" />
           </Space>
         }
       >
@@ -442,7 +441,7 @@ export default function Prog() {
           loading={loading}
           pagination={{ pageSize: 15, showSizeChanger: false }}
           scroll={{ x: 900 }}
-          locale={{ emptyText: `Không có từ khóa ${STATUS_META[statusFilter]?.text?.toLowerCase() || ''}` }}
+          locale={{ emptyText: `Không có từ khóa ${statusMeta(statusFilter, 'prog').text.toLowerCase()}` }}
         />
       </Card>
 
@@ -466,13 +465,13 @@ export default function Prog() {
                     cover={
                       p.page_image_key
                         ? <img src={`/image/${p.page_image_key}`} alt={p.page_title || p.keyword} loading="lazy" style={{ height: 140, objectFit: 'cover' }} />
-                        : <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.03)' }}><LinkOutlined style={{ fontSize: 28, color: '#bfbfbf' }} /></div>
+                        : <div className="ps-media-empty" style={{ height: 140 }}><LinkOutlined style={{ fontSize: 28 }} /></div>
                     }
                   >
                     <Card.Meta
                       title={
                         <Space size={4}>
-                          {p.page_status === 'hidden' ? <Tag color="gold" style={{ margin: 0 }}>ẩn</Tag> : <Tag color="green" style={{ margin: 0 }}>đã đăng</Tag>}
+                          <StatusChip status={p.page_status === 'hidden' ? 'hidden' : 'published'} table="post" />
                           <a href={href} target="_blank" rel="noopener" style={{ fontSize: 13 }}>{(p.page_title || p.keyword || '').slice(0, 40)}</a>
                         </Space>
                       }

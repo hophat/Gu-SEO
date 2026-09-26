@@ -141,7 +141,7 @@ export default function Seo() {
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={8}><Card><Statistic title="Sitemap" value="Tự động" prefix={<GlobalOutlined />} /></Card></Col>
         <Col xs={24} sm={8}><Card><Statistic title="RSS Feed" value="Tự động" prefix={<FileTextOutlined />} /></Card></Col>
-        <Col xs={24} sm={8}><Card><Statistic title="IndexNow" value="Đã cấu hình" prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} /></Card></Col>
+        <Col xs={24} sm={8}><Card><Statistic title="IndexNow" value="Đã cấu hình" prefix={<CheckCircleOutlined className="ps-stat-icon ps-stat-icon--good" />} /></Card></Col>
       </Row>
 
       <Card
@@ -159,10 +159,10 @@ export default function Seo() {
                 <Link href={sitemap.url} target="_blank">{sitemap.url}</Link>
               </Descriptions.Item>
               <Descriptions.Item label="HTTP">
-                <Tag color={sitemap.status === 200 ? 'success' : 'error'}>{sitemap.status || 'lỗi'}</Tag>
+                <span className={`ps-chip ps-chip--${sitemap.status === 200 ? 'good' : 'bad'}`}>{sitemap.status || 'lỗi'}</span>
               </Descriptions.Item>
               <Descriptions.Item label="Số URL">
-                <Tag color={sitemap.count > 0 ? 'blue' : 'warning'}>{sitemap.count}</Tag>
+                <span className={`ps-chip ps-chip--${sitemap.count > 0 ? 'info' : 'warn'}`}>{sitemap.count}</span>
                 {sitemap.count === 0 && <Text type="secondary" style={{ marginLeft: 8 }}>— chưa có bài viết/trang nào</Text>}
               </Descriptions.Item>
             </Descriptions>
@@ -190,7 +190,7 @@ export default function Seo() {
 
       <Card title="Hướng dẫn" size="small" style={{ marginTop: 16 }}>
         <Space direction="vertical">
-          <Text>1. Nhấn <Tag color="blue">Ping IndexNow</Tag> để thông báo URL mới cho Bing/Yandex</Text>
+          <Text>1. Nhấn nút <Text code>Ping IndexNow</Text> để thông báo URL mới cho Bing/Yandex</Text>
           <Text>2. Cấu hình Google Search Console trong <Link href="#settings">Cài đặt</Link> để tự động submit sitemap</Text>
           <Text>3. Sitemap tự động cập nhật mỗi khi xuất bản bài viết mới</Text>
           <Text>4. IndexNow tự động ping mỗi khi cron xuất bản bài — nút này để ping thủ công toàn bộ sitemap</Text>

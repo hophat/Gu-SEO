@@ -1,11 +1,17 @@
-/* Design tokens shared with the legacy stylesheets.
+/* Design tokens for the admin SPA.
  *
- * The cover editor (/cover-editor.css) and a few legacy components read
- * these CSS custom properties. Ant Design drives its own tokens via
- * ConfigProvider, but the vanilla cover editor is not themed by antd —
- * it needs these variables to render correctly. Values mirror
- * public/admin.css so both shells look identical.
+ * Ant Design drives its own tokens through ConfigProvider (see theme.js),
+ * but two things sit outside antd's reach:
+ *   1. the vanilla cover editor (public/cover-editor.css), injected at
+ *      runtime, which reads these custom properties;
+ *   2. the shell chrome below — header, sidebar, page container, chips.
+ *
+ * The values mirror theme.js and public/admin.css. Change all three together.
+ *
+ * The palette is achromatic: the accent is near-black in light mode and pure
+ * white in dark. Depth comes from 1px hairlines, not shadows.
  */
+
 html,
 body,
 #root {
@@ -17,65 +23,178 @@ body {
 }
 
 :root {
-  --bg: #f5f5f5;
-  --bg-soft: #fafafa;
+  --bg: #ffffff;
+  --bg-soft: #f7f9f8;
   --bg-card: #ffffff;
-  --bg-card-hover: #fafafa;
-  --ink: rgba(0, 0, 0, 0.88);
-  --ink-dim: rgba(0, 0, 0, 0.65);
-  --ink-faint: rgba(0, 0, 0, 0.45);
-  --accent: #1677ff;
-  --accent-rgb: 22, 119, 255;
+  --bg-card-hover: #f7f9f8;
+  --ink: #0f1419;
+  --ink-dim: #5b6570;
+  --ink-faint: #666f76;
+  --accent: #0f1419;
+  --accent-rgb: 15, 20, 25;
   --accent-ink: #ffffff;
-  --accent-soft: #e6f4ff;
-  --accent-hover: #4096ff;
-  --line: #f0f0f0;
-  --line-2: #d9d9d9;
-  --good: #52c41a;
-  --warn: #faad14;
-  --bad: #ff4d4f;
-  --good-rgb: 82, 196, 26;
-  --warn-rgb: 250, 173, 20;
-  --bad-rgb: 255, 77, 79;
-  --display: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --accent-soft: #eff1f1;
+  --accent-hover: #2a333b;
+  --line: #e7e9ea;
+  --line-2: #d0d5d8;
+  --good: #15803d;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --good-rgb: 21, 128, 61;
+  --warn-rgb: 180, 83, 9;
+  --bad-rgb: 185, 28, 28;
+  --sidebar-w: 232px;
+  --header-h: 56px;
+  --display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
-  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
-  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.admin-header-context,
-.admin-header-actions,
-.admin-context-badge,
-.admin-context-badge .ant-badge-count {
+:root[data-theme='dark'] {
+  --bg: #0f1214;
+  --bg-soft: #16191c;
+  --bg-card: #16191c;
+  --bg-card-hover: #1e2327;
+  --ink: #e8ecee;
+  --ink-dim: #9aa4ad;
+  --ink-faint: #848e97;
+  --accent: #ffffff;
+  --accent-rgb: 255, 255, 255;
+  --accent-ink: #0f1214;
+  --accent-soft: #1e2327;
+  --accent-hover: #c9d1d6;
+  --line: #262b2f;
+  --line-2: #3a4147;
+  --good: #4ade80;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --good-rgb: 74, 222, 128;
+  --warn-rgb: 251, 191, 36;
+  --bad-rgb: 248, 113, 113;
+}
+
+/* --- Focus -----------------------------------------------------------
+ * One treatment everywhere: 2px dashed with a 2px offset. Dashed reads as
+ * "focused"; a solid ring reads as "selected". antd draws its own focus
+ * shadow on inputs, so this only targets what antd leaves alone.
+ */
+:where(a, button, [role='button'], [tabindex]):focus-visible {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* --- Shell chrome ---------------------------------------------------- */
+
+.admin-layout {
+  min-height: 100vh;
+}
+
+.admin-sider {
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-inline-end: 1px solid var(--line);
+}
+
+.admin-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Logo lockup — fixed height so the menu below never shifts. */
+.admin-sider-brand {
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  padding-inline: 16px;
+  gap: 10px;
+  flex: none;
+}
+
+.admin-sider-brand img {
+  height: 26px;
+  width: auto;
+  flex: none;
+}
+
+.admin-sider-brand span {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-sider .ant-menu {
+  border-inline-end: 0;
+  padding-block: 4px 16px;
+  font-size: 13.5px;
+}
+
+.admin-sider .ant-menu-submenu-arrow {
+  font-size: 10px;
+}
+
+.admin-sider .ant-menu-item-selected {
+  font-weight: 600;
+}
+
+/* The 2px accent bar on the active item. Only meaningful when the item has
+ * room for it, so it is hidden in the collapsed rail where the icon is all
+ * that shows. */
+@media (min-width: 992px) {
+  .admin-sider:not(.ant-layout-sider-collapsed) .ant-menu-item-selected::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 18px;
+    border-radius: 1px;
+    background: var(--accent);
+  }
+}
+
+.admin-main-layout {
   min-width: 0;
-  max-width: 100%;
-}
-
-.admin-header-context,
-.admin-header-actions {
-  overflow: visible;
 }
 
 .admin-header {
-  height: auto;
-  min-height: 64px;
-  line-height: normal;
-  padding: 8px clamp(12px, 2vw, 24px) !important;
-  gap: 8px 16px;
-  flex-wrap: wrap;
-  overflow: visible;
+  height: var(--header-h);
+  padding-inline: clamp(12px, 2vw, 24px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.admin-header-context,
+.admin-header-actions {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .admin-header-context {
-  flex: 1 1 340px;
+  flex: 1 1 auto;
 }
 
 .admin-header-actions {
-  flex: 0 1 auto;
-  margin-left: auto;
-  justify-content: flex-end;
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }
 
 .admin-project-select {
@@ -83,8 +202,8 @@ body {
   max-width: 100%;
 }
 
-.admin-context-badge,
-.admin-context-badge .ant-badge-count {
+.admin-context-badge {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -99,11 +218,694 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink-dim);
 }
+
+.admin-content {
+  padding: clamp(16px, 2vw, 28px);
+  max-width: 1400px;
+  margin-inline: auto;
+  width: 100%;
+}
+
+/* The avatar + email pair opens the user menu. A real <button> so it is
+   reachable by keyboard and announced with a name, rather than a Space with
+   an onClick. */
+.ps-user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  max-width: 100%;
+  min-height: 32px;
+}
+
+.ps-user-trigger:hover {
+  background: var(--bg-soft);
+  border-color: var(--line);
+}
+
+.ps-user-avatar {
+  background: var(--accent) !important;
+  color: var(--accent-ink) !important;
+  font-size: 13px !important;
+  font-weight: 600;
+  flex: none;
+}
+
+/* --- Boot + auth screens --------------------------------------------- */
+
+.ps-boot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.ps-auth {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--bg-soft);
+}
+
+.ps-auth-panel {
+  width: 420px;
+  max-width: 100%;
+}
+
+.ps-auth-panel--narrow {
+  width: 400px;
+  text-align: center;
+}
+
+.ps-auth-head {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.ps-auth-logo {
+  height: 44px;
+  width: auto;
+  margin-bottom: 12px;
+}
+
+.ps-auth-check {
+  font-size: 44px;
+  color: var(--good);
+  margin-bottom: 12px;
+}
+
+.ps-auth-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.ps-auth-sub {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+  max-width: 40ch;
+  margin-inline: auto;
+}
+
+.ps-auth-foot {
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 16px 0 0;
+}
+
+/* --- Page container -------------------------------------------------- */
+
+.ps-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ps-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ps-page-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.ps-page-crumb {
+  font-size: 12.5px;
+  margin-top: -4px;
+}
+
+.ps-page-desc {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  max-width: 68ch;
+}
+
+/* Section label — 11px uppercase, the way dense tables mark their headers. */
+.ps-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* --- Status chip -----------------------------------------------------
+ * Every chip carries a word as well as a colour, so status is never
+ * communicated by colour alone. The dot inherits currentColor, which keeps
+ * the whole chip on one token.
+ */
+.ps-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.ps-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* A chip that carries an icon already says what it means — the dot would
+   just be a second mark saying the same thing. */
+.ps-chip:has(> svg)::before {
+  display: none;
+}
+
+.ps-chip--good {
+  color: #15803d;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.ps-chip--warn {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.ps-chip--bad {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.ps-chip--info {
+  color: #0f1419;
+  background: #eff1f1;
+  border-color: #dfe3e4;
+}
+
+.ps-chip--muted {
+  color: #5b6570;
+  background: #f2f4f4;
+  border-color: #e7e9ea;
+}
+
+:root[data-theme='dark'] .ps-chip--good {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.10);
+  border-color: rgba(74, 222, 128, 0.28);
+}
+
+:root[data-theme='dark'] .ps-chip--warn {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.10);
+  border-color: rgba(251, 191, 36, 0.28);
+}
+
+:root[data-theme='dark'] .ps-chip--bad {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.10);
+  border-color: rgba(248, 113, 113, 0.30);
+}
+
+:root[data-theme='dark'] .ps-chip--info {
+  color: #e8ecee;
+  background: #1e2327;
+  border-color: #3a4147;
+}
+
+:root[data-theme='dark'] .ps-chip--muted {
+  color: #9aa4ad;
+  background: #16191c;
+  border-color: #262b2f;
+}
+
+/* Neutral chip for counts and non-status metadata (plan tier, role). */
+.ps-chip--plain {
+  color: var(--ink-dim);
+  background: transparent;
+  border-color: var(--line-2);
+}
+
+.ps-chip--plain::before {
+  display: none;
+}
+
+/* A chip small enough to sit inline inside a sentence or a table cell. */
+.ps-chip-xs {
+  font-size: 10px;
+  line-height: 16px;
+  padding: 0 5px;
+}
+
+/* The lock that marks a reserved alias — decorative, so it stays quiet. */
+.ps-lock {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* --- Selectable option ----------------------------------------------
+ * A row the operator picks between. Used for templates, BGM pickers and
+ * similar choosers. Rendered as a real <button> so it is tabbable and
+ * announced; `.ps-option[aria-pressed]` carries the selected state.
+ */
+.ps-option {
+  display: block;
+  width: 100%;
+  text-align: start;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s ease-out, background 0.15s ease-out;
+}
+
+.ps-option:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.ps-option[aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.ps-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ps-option-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ps-option-desc {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+.ps-option-meta {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* A scrollable list of tracks. Rows are flat with a hairline between them,
+   lifting to a tinted surface on hover — the same language a queue uses. */
+.ps-tracklist {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.ps-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--line);
+  transition: background 0.15s ease-out;
+}
+
+.ps-track:last-child {
+  border-bottom: 0;
+}
+
+.ps-track:hover {
+  background: var(--bg-soft);
+}
+
+/* The play button and the picker are separate targets: previewing a track
+   is not the same decision as choosing it. */
+.ps-track-pick {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.ps-track-tick {
+  color: var(--accent);
+  font-size: 12px;
+  flex: none;
+}
+
+/* --- Carousel slide preview ----------------------------------------- */
+
+.ps-slide-img {
+  height: 300px;
+  display: block;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+/* --- Media frame -----------------------------------------------------
+ * Thumbnails and preview panes. The letterbox black is intentional — it is
+ * a video frame, not a surface.
+ */
+.ps-media-frame {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+  background: #000;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+}
+
+.ps-media-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-soft);
+  border: 1px dashed var(--line-2);
+  border-radius: 4px;
+  color: var(--ink-faint);
+}
+
+/* --- Stat tile --------------------------------------------------------
+ * A metric with an icon. The number is the message; the icon tints it.
+ */
+.ps-stat-icon {
+  font-size: 16px;
+  margin-inline-end: 6px;
+}
+
+.ps-stat-icon--good { color: var(--good); }
+.ps-stat-icon--warn { color: var(--warn); }
+.ps-stat-icon--bad  { color: var(--bad); }
+.ps-stat-icon--info { color: var(--ink-dim); }
+
+/* --- Overview -------------------------------------------------------- */
+
+/* A severity mark in a list row. Sized to sit beside 13px text. */
+.ps-sev-icon {
+  font-size: 16px;
+  color: var(--ink-faint);
+}
+
+.ps-sev-icon--good { color: var(--good); }
+.ps-sev-icon--warn { color: var(--warn); }
+.ps-sev-icon--bad  { color: var(--bad); }
+.ps-sev-icon--muted { color: var(--ink-faint); }
+
+/* A small decorative icon inside a line of text. */
+.ps-inline-icon {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* A chip holding free text that may be far longer than a label. */
+.ps-chip-clip {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
+/* The quota card carries a 2px rail instead of a shadow, so the tier
+   reads at a glance without adding a second surface. */
+.ps-quota-card {
+  border-inline-start: 2px solid var(--line-2);
+}
+
+.ps-quota-card--good { border-inline-start-color: var(--good); }
+.ps-quota-card--info { border-inline-start-color: var(--accent); }
+.ps-quota-card--bad  { border-inline-start-color: var(--bad); }
+
+/* A numbered step in a how-to list. */
+.ps-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* A quick action. An <a href="#...">, so it is tabbable and openable in a
+   new tab — the previous Card+onClick was neither. */
+.ps-quick {
+  display: block;
+  padding: 16px 20px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: inherit;
+  transition: border-color 0.15s ease-out, background 0.15s ease-out;
+}
+
+.ps-quick:hover {
+  background: var(--bg-soft);
+  border-color: var(--line-2);
+}
+
+.ps-quick-icon {
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+}
+
+.ps-stat-value--good { color: var(--good); }
+.ps-stat-value--warn { color: var(--warn); }
+.ps-stat-value--bad  { color: var(--bad); }
+
+/* The embed preview iframes. They render the customer's widget, which
+   paints its own background, so the frame is a hairline recess rather than
+   a themed surface. */
+.ps-embed-frame {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* --- Meter bar -------------------------------------------------------
+ * A thin progress bar used for funnels and retention. The fill is a class
+ * rather than a hex so each theme supplies its own value.
+ */
+.ps-bar {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.ps-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--ink-faint);
+  transition: width 0.3s ease-out;
+}
+
+.ps-bar-fill--info { background: var(--accent); }
+.ps-bar-fill--good { background: var(--good); }
+.ps-bar-fill--warn { background: var(--warn); }
+.ps-bar-fill--low  { background: var(--bad); }
+.ps-bar-fill--none { background: var(--line-2); }
+
+/* The dashed rule standing in for a funnel step that has not happened yet. */
+.ps-funnel-gap {
+  border-top: 1px dashed var(--line-2);
+  margin-top: 4px;
+}
+
+/* A legend swatch — the same tones as the bar it explains. */
+.ps-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--line-2);
+}
+
+.ps-swatch--info { background: var(--accent); }
+.ps-swatch--good { background: var(--good); }
+.ps-swatch--warn { background: var(--warn); }
+.ps-swatch--low  { background: var(--bad); }
+
+/* --- A card recessed into the page — for a list item that carries its own
+   card, where a second full-strength card would nest badly. */
+.ps-inset-card {
+  background: var(--bg-soft);
+  border-color: var(--line);
+}
+
+/* A full-width picker row — a Facebook Page, a template. Wider padding
+   than a plain .ps-option because it carries an avatar and two lines. */
+.ps-page-pick {
+  padding: 10px 12px;
+  text-align: start;
+}
+
+.ps-page-pick:hover:not(:disabled) {
+  background: var(--bg-soft);
+}
+
+/* A small clickable thumbnail with a caption strip. */
+.ps-thumb {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg);
+  transition: border-color 0.15s ease-out;
+}
+
+.ps-thumb:hover {
+  border-color: var(--line-2);
+}
+
+/* A quiet line of copy inside the setup wizard. */
+.ps-wizard-note {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+/* --- Status page ----------------------------------------------------- */
+
+.ps-health-mark {
+  font-size: 44px;
+  flex: none;
+}
+
+.ps-health-mark--good { color: var(--good); }
+.ps-health-mark--bad  { color: var(--bad); }
+
+/* A health check tile. The 2px rail states the verdict at a glance; the
+   chip repeats it in words so the state is never colour-only. */
+.ps-check-card {
+  border-inline-start: 2px solid var(--line-2);
+}
+
+.ps-check-card--good { border-inline-start-color: var(--good); }
+.ps-check-card--bad  { border-inline-start-color: var(--bad); }
+
+/* --- Calendar -------------------------------------------------------- */
+
+.ps-cal-chip {
+  font-size: 10px;
+  line-height: 16px;
+  padding: 0 5px;
+  gap: 4px;
+  flex: none;
+}
+
+.ps-cal-chip::before {
+  width: 5px;
+  height: 5px;
+}
+
+.ps-cal-post {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+/* --- Cover editor mount ---------------------------------------------
+ * The cover editor sizes itself against the viewport; inside the antd
+ * Content it gets a scroll container, so cap it to the available height.
+ * `#ce-mount.ce-root` outranks the plain `.ce-root` rule in
+ * cover-editor.css (which is injected later, so equal specificity would
+ * lose to it).
+ */
+#ce-mount.ce-root {
+  height: calc(100vh - 190px);
+  min-height: 560px;
+}
+
+/* --- Touch targets ---------------------------------------------------
+ * Icon buttons are 32px tall — fine for a mouse, too small for a finger.
+ * Widen the hit area without changing the visual size.
+ */
+@media (pointer: coarse) {
+  .admin-header .ant-btn,
+  .ant-table .ant-btn-icon-only,
+  .ant-table .ant-btn-sm {
+    position: relative;
+  }
+
+  .admin-header .ant-btn::before,
+  .ant-table .ant-btn-icon-only::before,
+  .ant-table .ant-btn-sm::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* --- Responsive ------------------------------------------------------ */
 
 @media (max-width: 1199px) {
   .admin-user-email {
     display: none;
+  }
+}
+
+/* iOS Safari zooms the viewport when a field is focused below 16px, which
+ * breaks the layout. Clamp up only; never scale the page down to prevent it. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
   }
 }
 
@@ -112,25 +914,12 @@ body {
     gap: 8px;
   }
 
-  .admin-header-context,
-  .admin-header-actions {
-    flex-basis: 100%;
-    width: 100%;
-  }
-
-  .admin-header-actions {
-    margin-left: 0;
-    justify-content: flex-end;
+  .admin-header-context {
+    flex: 1 1 140px;
   }
 
   .admin-project-select {
     width: min(160px, 100%) !important;
-    max-width: 100%;
-  }
-
-  .admin-context-badge,
-  .admin-context-badge .ant-badge-count {
-    max-width: min(120px, 28vw);
   }
 
   .admin-setup-label {
@@ -138,55 +927,25 @@ body {
   }
 
   .admin-setup-button {
-    width: 36px;
-    min-width: 36px;
+    width: 32px;
+    min-width: 32px;
     padding-inline: 0;
   }
 }
 
 @media (max-width: 420px) {
-  .admin-context-badge,
-  .admin-context-badge .ant-badge-count {
-    max-width: 92px;
-  }
-
   .admin-header-actions {
     gap: 4px !important;
   }
 }
 
-:root[data-theme='dark'] {
-  --bg: #141414;
-  --bg-soft: #1f1f1f;
-  --bg-card: #1f1f1f;
-  --bg-card-hover: #262626;
-  --ink: rgba(255, 255, 255, 0.85);
-  --ink-dim: rgba(255, 255, 255, 0.65);
-  --ink-faint: rgba(255, 255, 255, 0.45);
-  --accent: #1677ff;
-  --accent-rgb: 22, 119, 255;
-  --accent-ink: #ffffff;
-  --accent-soft: rgba(22, 119, 255, 0.15);
-  --accent-hover: #4096ff;
-  --line: #303030;
-  --line-2: #424242;
-  --good: #52c41a;
-  --warn: #faad14;
-  --bad: #ff4d4f;
-  --good-rgb: 82, 196, 26;
-  --warn-rgb: 250, 173, 20;
-  --bad-rgb: 255, 77, 79;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
-  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
-  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.35);
-}
-
-/* The cover editor sizes itself against the viewport; inside the antd
-   Content it gets a scroll container, so cap it to the available
-   height. `#ce-mount.ce-root` outranks the plain `.ce-root` rule in
-   cover-editor.css (which is injected later, so equal specificity
-   would lose to it). */
-#ce-mount.ce-root {
-  height: calc(100vh - 190px);
-  min-height: 560px;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

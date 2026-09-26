@@ -92,13 +92,13 @@ export default function Carousel() {
           return (
             <Tooltip title="Bấm để xem bộ 5 slide">
               <img src={slides[0]} alt="slide 1" onClick={() => setViewing(r)}
-                style={{ width: 64, height: 80, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', display: 'block', border: '1px solid #333' }} />
+                style={{ width: 64, height: 80, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', display: 'block' }} />
             </Tooltip>
           );
         }
         return (
-          <Tooltip title={statusMeta(CAROUSEL_KIND, r.status).text}>
-            <div style={{ width: 64, height: 80, borderRadius: 6, border: '1px dashed #555', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+          <Tooltip title={statusMeta(r.status, 'carousel').text}>
+            <div className="ps-media-empty" style={{ width: 64, height: 80 }}>
               <FileImageOutlined />
             </div>
           </Tooltip>
@@ -214,10 +214,10 @@ export default function Carousel() {
           <Card size="small"><Statistic title="Đang tạo" value={counts.rendering} prefix={<ClockCircleOutlined />} /></Card>
         </Col>
         <Col xs={8}>
-          <Card size="small"><Statistic title="Sẵn sàng đăng" value={counts.done} valueStyle={{ color: '#52c41a' }} prefix={<CheckCircleOutlined />} /></Card>
+          <Card size="small"><Statistic title="Sẵn sàng đăng" value={counts.done} prefix={<CheckCircleOutlined className="ps-stat-icon ps-stat-icon--good" />} /></Card>
         </Col>
         <Col xs={8}>
-          <Card size="small"><Statistic title="Lỗi" value={counts.failed} valueStyle={{ color: '#ff4d4f' }} prefix={<WarningOutlined />} /></Card>
+          <Card size="small"><Statistic title="Lỗi" value={counts.failed} prefix={<WarningOutlined className="ps-stat-icon ps-stat-icon--bad" />} /></Card>
         </Col>
       </Row>
 
@@ -265,8 +265,7 @@ export default function Carousel() {
           <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
             {viewing.slides.map((s, n) => (
               <div key={n} style={{ textAlign: 'center', flex: '0 0 auto' }}>
-                <img src={s} alt={`Slide ${n + 1}`}
-                  style={{ height: 300, borderRadius: 8, border: '1px solid #333', display: 'block' }} />
+                <img src={s} alt={`Slide ${n + 1}`} className="ps-slide-img" />
                 <Text type="secondary" style={{ fontSize: 12 }}>{n + 1}. {slideRole(n, viewing.slides.length)}</Text>
               </div>
             ))}

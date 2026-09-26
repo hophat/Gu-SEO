@@ -10,24 +10,20 @@
 // API: /api/admin/trend-discover (GET/POST/PATCH), /api/admin/competitors (GET),
 //      /api/admin/calendar (POST), /api/admin/blog/{start,text,image,publish}
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Table, Button, Tag, Typography, Space, Empty, message, Modal, Form, Input, DatePicker, Select, Statistic, Steps, Alert, Tooltip, Progress } from 'antd';
-import { RiseOutlined, ReloadOutlined, ThunderboltOutlined, CalendarOutlined, PlusOutlined, CheckCircleOutlined, ClockCircleOutlined, FireOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Table, Button, Typography, Space, Empty, message, Modal, Form, Input, DatePicker, Select, Statistic, Steps, Alert, Tooltip, Progress } from 'antd';
+import { RiseOutlined, ReloadOutlined, ThunderboltOutlined, CalendarOutlined, PlusOutlined, CheckCircleOutlined, FireOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import PageContainer from '../components/PageContainer.jsx';
+import StatusChip from '../components/StatusChip.jsx';
+import { scoreTone } from '../lib/status.js';
 import { apiGet, apiPost, api } from '../api.js';
 import { useProjectUrl } from '../lib/projectUrl.js';
 
 const { Text } = Typography;
 
-const STATUS_META = {
-  pending:   { color: 'default',    text: 'Chưa dùng', icon: <ClockCircleOutlined /> },
-  scheduled: { color: 'processing', text: 'Đã lên lịch', icon: <CalendarOutlined /> },
-  published: { color: 'success',    text: 'Đã tạo bài', icon: <CheckCircleOutlined /> },
-  archived:  { color: 'warning',    text: 'Lưu trữ', icon: null },
-  failed:    { color: 'error',      text: 'Thất bại', icon: null },
-};
-
-const scoreColor = (s) => (s >= 80 ? 'success' : s >= 60 ? 'warning' : 'error');
+// Topic status labels come from lib/status.js (`trend` table), as does
+// scoreTone — a score is a scale, not a state, so it maps to chip tones
+// with the number always shown beside it.
 
 export default function Trends() {
   const { urlForProject } = useProjectUrl();
@@ -149,13 +145,13 @@ export default function Trends() {
         <Space direction="vertical" size={0}>
           <Text strong>{t}</Text>
           <Space size={4}>
-            <Tag color={scoreColor(r.relevance_score ?? 80)} style={{ margin: 0 }}>{r.relevance_score ?? 80}/100</Tag>
+            <span className={`ps-chip ps-chip--${scoreTone(r.relevance_score ?? 80)}`}>{r.relevance_score ?? 80}/100</span>
             <Text type="secondary" style={{ fontSize: 11 }}>{r.source || 'ai'}</Text>
           </Space>
         </Space>
       ) },
     { title: 'Trạng thái', dataIndex: 'status', key: 'status', width: 130,
-      render: (s) => { const m = STATUS_META[s] || STATUS_META.pending; return <Tag color={m.color} icon={m.icon}>{m.text}</Tag>; } },
+      render: (s) => <StatusChip status={s || 'pending'} table="trend" /> },
     { title: 'Thời gian', dataIndex: 'created_at', key: 'time', width: 110,
       render: (t) => t ? new Date(t * 1000).toLocaleDateString('vi-VN') : '-' },
     { title: 'Hành động', key: 'actions', width: 250,
@@ -188,9 +184,9 @@ export default function Trends() {
       {/* Stats */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={12} sm={6}><Card size="small"><Statistic title="Chủ đề" value={topics.length} prefix={<RiseOutlined />} /></Card></Col>
-        <Col xs={12} sm={6}><Card size="small"><Statistic title="Chưa dùng" value={topics.filter((t) => (t.status || 'pending') === 'pending').length} prefix={<FireOutlined style={{ color: '#faad14' }} />} /></Card></Col>
-        <Col xs={12} sm={6}><Card size="small"><Statistic title="Đã lên lịch" value={topics.filter((t) => t.status === 'scheduled').length} valueStyle={{ color: '#1677ff' }} /></Card></Col>
-        <Col xs={12} sm={6}><Card size="small"><Statistic title="Đã tạo bài" value={topics.filter((t) => t.status === 'published').length} valueStyle={{ color: '#52c41a' }} /></Card></Col>
+        <Col xs={12} sm={6}><Card size="small"><Statistic title="Chưa dùng" value={topics.filter((t) => (t.status || 'pending') === 'pending').length} prefix={<FireOutlined className="ps-stat-icon ps-stat-icon--warn" />} /></Card></Col>
+        <Col xs={12} sm={6}><Card size="small"><Statistic title="Đã lên lịch" value={topics.filter((t) => t.status === 'scheduled').length} prefix={<CalendarOutlined className="ps-stat-icon ps-stat-icon--info" />} /></Card></Col>
+        <Col xs={12} sm={6}><Card size="small"><Statistic title="Đã tạo bài" value={topics.filter((t) => t.status === 'published').length} prefix={<CheckCircleOutlined className="ps-stat-icon ps-stat-icon--good" />} /></Card></Col>
       </Row>
 
       {/* Job progress */}
@@ -261,7 +257,7 @@ export default function Trends() {
                 pagination={false}
                 columns={[
                   { title: 'Domain', dataIndex: 'domain', key: 'domain', render: (d) => <Text code>{d}</Text> },
-                  { title: 'Điểm', dataIndex: 'score', key: 'score', width: 80, render: (s) => <Tag color={scoreColor(s)}>{s || 0}</Tag> },
+                  { title: 'Điểm', dataIndex: 'score', key: 'score', width: 80, render: (s) => <span className={`ps-chip ps-chip--${scoreTone(s || 0)}`}>{s || 0}</span> },
                 ]}
               />
             )}

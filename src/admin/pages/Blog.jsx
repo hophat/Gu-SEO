@@ -1,22 +1,16 @@
-// Blog page — antd Table, Button, Modal, Tag, Steps, Spin, message, Empty, Card.
+// Blog page — published posts plus the running generation jobs.
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Button, Table, Tag, Steps, Spin, message, Empty, Space, Typography, Modal, Input, Tooltip, Popconfirm } from 'antd';
-import { PlusOutlined, SyncOutlined, FileTextOutlined, PictureOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Button, Table, Steps, Spin, message, Empty, Space, Typography, Modal, Input, Tooltip, Popconfirm } from 'antd';
+import { PlusOutlined, SyncOutlined, FileTextOutlined, ReloadOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
+import StatusChip from '../components/StatusChip.jsx';
 import { apiGet, apiPost } from '../api.js';
 import { useProjectUrl } from '../lib/projectUrl.js';
 
 const { Text, Paragraph } = Typography;
 
-const STATUS_TAG = {
-  published: { color: 'success', icon: <CheckCircleOutlined />, text: 'Đã xuất bản' },
-  text_done: { color: 'processing', icon: <ClockCircleOutlined />, text: 'Đã viết xong' },
-  image_done: { color: 'processing', icon: <PictureOutlined />, text: 'Đã có hình' },
-  created: { color: 'default', icon: <ClockCircleOutlined />, text: 'Đang tạo' },
-  failed: { color: 'error', icon: <ExclamationCircleOutlined />, text: 'Thất bại' },
-  review: { color: 'warning', icon: <ExclamationCircleOutlined />, text: 'Cần duyệt' },
-  hidden: { color: 'default', icon: <EyeInvisibleOutlined />, text: 'Đang ẩn' },
-};
+// Published posts read from the `post` table, running jobs from `blog` —
+// both in lib/status.js, so a word means the same thing on every page.
 
 export default function Blog() {
   const { projectUrl, urlForProject } = useProjectUrl();
@@ -121,7 +115,7 @@ export default function Blog() {
       render: (text, r) => <a href={urlForProject(r.project_id, '/blog/' + r.slug)} target="_blank" rel="noopener">{text}</a> },
     { title: 'Slug', dataIndex: 'slug', key: 'slug', ellipsis: true, render: (s) => <Text code>{s}</Text> },
     { title: 'Trạng thái', dataIndex: 'status', key: 'status', width: 120,
-      render: (s) => { const t = STATUS_TAG[s] || STATUS_TAG.created; return <Tag color={t.color} icon={t.icon}>{t.text}</Tag>; } },
+      render: (s) => <StatusChip status={s} table="post" /> },
     { title: 'Ngày', dataIndex: 'published_at', key: 'published_at', width: 120,
       render: (t) => t ? new Date(t * 1000).toLocaleDateString('vi-VN') : '-' },
     { title: 'Thao tác', key: 'action', width: 110,
@@ -135,7 +129,7 @@ export default function Blog() {
   const jobColumns = [
     { title: 'Topic', dataIndex: 'topic_key', key: 'topic_key', ellipsis: true },
     { title: 'Trạng thái', dataIndex: 'status', key: 'status', width: 120,
-      render: (s) => { const t = STATUS_TAG[s] || STATUS_TAG.created; return <Tag color={t.color} icon={t.icon}>{t.text}</Tag>; } },
+      render: (s) => <StatusChip status={s} table="blog" /> },
     { title: 'Lỗi', dataIndex: 'error', key: 'error', ellipsis: true,
       render: (e) => e ? <Text type="danger" ellipsis={{ tooltip: e }}>{e}</Text> : '-' },
     { title: 'Tạo lúc', dataIndex: 'created_at', key: 'created_at', width: 120,
@@ -187,10 +181,10 @@ export default function Blog() {
                 <Empty description="Chưa quét" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
                 refreshJobs.map((j, i) => (
-                  <Card key={i} size="small" style={{ background: 'rgba(0,0,0,0.02)' }}>
+                  <Card key={i} size="small" className="ps-inset-card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Text ellipsis style={{ flex: 1 }}>{j.title || j.slug}</Text>
-                      {j.done ? <Tag color="success">Xong</Tag> : (
+                      {j.done ? <span className="ps-chip ps-chip--good">Xong</span> : (
                         <Button size="small" onClick={() => refreshOne(j.job_id, i)}>Refresh</Button>
                       )}
                     </div>

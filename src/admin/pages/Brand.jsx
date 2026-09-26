@@ -1,6 +1,8 @@
-// Brand page — antd Form, Input, Button, Card, Alert, message.
+// Brand page — the Brand DNA form that every AI call reads from.
+// `theme_color` here is the *customer's* brand colour, not the admin UI's,
+// so the orange default below is data, not styling.
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, Form, Input, Button, Space, Typography, Alert, message, Divider, Row, Col, Tag, Select } from 'antd';
+import { Card, Form, Input, Button, Space, Typography, Alert, message, Divider, Row, Col, Select } from 'antd';
 import { SaveOutlined, ThunderboltOutlined, FilterOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, api } from '../api.js';
@@ -215,7 +217,7 @@ export default function Brand() {
                   value={brand.theme_color || ''}
                   maxLength={7}
                   placeholder="#e05a2b"
-                  style={{ width: 120, fontFamily: 'monospace' }}
+                  style={{ width: 120, fontFamily: 'var(--mono)' }}
                   onChange={(e) => set('theme_color', e.target.value.trim().toLowerCase())}
                 />
                 {brand.theme_color && (
@@ -276,7 +278,7 @@ export default function Brand() {
         <Card title="Bị loại" size="small" style={{ marginTop: 16 }}>
           {filterResult.dropped_sample.map((d) => (
             <div key={d.keyword || d.reason} style={{ marginBottom: 8 }}>
-              <Tag color="error">{d.keyword}</Tag>
+              <span className="ps-chip ps-chip--bad">{d.keyword}</span>
               <Text type="secondary">{d.reason}</Text>
             </div>
           ))}

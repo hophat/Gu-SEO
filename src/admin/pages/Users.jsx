@@ -7,9 +7,12 @@ import { apiGet, apiPost, api } from '../api.js';
 
 const { Text } = Typography;
 
-const ROLE_TAG = {
-  super_admin: { color: 'purple', text: 'Super Admin' },
-  project_admin: { color: 'blue', text: 'Project Admin' },
+// A role is a permission level, not a state. Neutral chips keep the eye on
+// the account column; `super_admin` still reads first because it is worded
+// differently, not because it is a different colour.
+const ROLE_LABEL = {
+  super_admin: 'Super Admin',
+  project_admin: 'Project Admin',
 };
 
 export default function Users() {
@@ -61,7 +64,7 @@ export default function Users() {
   const columns = [
     { title: 'Email', dataIndex: 'email', key: 'email' },
     { title: 'Role', dataIndex: 'role', key: 'role', width: 140,
-      render: (r) => { const t = ROLE_TAG[r] || { color: 'default', text: r }; return <Tag color={t.color}>{t.text}</Tag>; } },
+      render: (r) => <span className="ps-chip ps-chip--plain">{ROLE_LABEL[r] || r}</span> },
     { title: 'Project', dataIndex: 'project_name', key: 'project_name', width: 180,
       render: (_, r) => r.project_name || (r.project_id ? <Text code>{r.project_id}</Text> : '-') },
     { title: 'Tạo lúc', dataIndex: 'created_at', key: 'created_at', width: 140,

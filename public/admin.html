@@ -15,19 +15,29 @@
   (function(){try{var t=localStorage.getItem('ps_admin_theme');if(t==='dark'){document.documentElement.dataset.theme='dark';}else{document.documentElement.dataset.theme='light';}}catch(e){}})();
 </script>
 <style>
-  /* Loading skeleton before React mounts */
+  /* Loading spinner before React mounts. This runs before the bundle's
+     stylesheet applies, so the two accent values it needs are declared
+     here rather than read from tokens.css. Keep them in sync with
+     :root / :root[data-theme='dark'] in src/admin/styles/tokens.css. */
   #root:empty::after {
     content: '';
     display: block;
     width: 40px;
     height: 40px;
-    border: 3px solid #e6e6e6;
-    border-top-color: #1677ff;
+    border: 3px solid #e7e9ea;
+    border-top-color: #0f1419;
     border-radius: 50%;
     margin: 200px auto;
     animation: spin 0.8s linear infinite;
   }
+  :root[data-theme='dark'] #root:empty::after {
+    border-color: #262b2f;
+    border-top-color: #ffffff;
+  }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    #root:empty::after { animation-duration: 2.4s; }
+  }
 </style>
 <link rel="stylesheet" href="/admin-dist/assets/index.css" />
 </head>

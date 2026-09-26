@@ -1,22 +1,19 @@
 // Calendar page — antd Calendar component with date cells showing slots,
 // drawer for day detail, modal for create/edit.
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, Calendar, Badge, Tag, Button, Space, Typography, message, Modal, Form, Input, Select, Drawer, Empty, Popconfirm, Tooltip, Row, Col, Statistic, Steps } from 'antd';
+import { Card, Calendar, Button, Space, Typography, message, Modal, Form, Input, Select, Drawer, Empty, Popconfirm, Tooltip, Row, Col, Statistic, Steps } from 'antd';
 import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, CalendarOutlined, ThunderboltOutlined, ClockCircleOutlined, CheckCircleOutlined, FileTextOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
+import StatusChip from '../components/StatusChip.jsx';
+import { statusMeta } from '../lib/status.js';
 import { apiGet, apiPost, api } from '../api.js';
 import { useProjectUrl } from '../lib/projectUrl.js';
 import dayjs from 'dayjs';
 
 const { Text, Title } = Typography;
 
-const STATUS_TAG = {
-  scheduled:   { color: 'processing', text: 'Đã lên lịch',  badge: 'processing' },
-  generating:  { color: 'processing', text: 'Đang tạo',     badge: 'processing' },
-  draft:       { color: 'default',     text: 'Bản nháp',     badge: 'default' },
-  published:   { color: 'success',     text: 'Đã xuất bản',  badge: 'success' },
-  skipped:     { color: 'warning',      text: 'Bỏ qua',      badge: 'warning' },
-};
+const STATUS_OPTIONS = ['scheduled', 'generating', 'draft', 'published', 'skipped']
+  .map((k) => ({ value: k, label: statusMeta(k, 'calendar').text }));
 
 export default function CalendarPage() {
   const { urlForProject } = useProjectUrl();
@@ -168,7 +165,6 @@ export default function CalendarPage() {
     return (
       <div style={{ padding: '2px 4px' }}>
         {visible.map((s) => {
-          const tag = STATUS_TAG[s.status] || STATUS_TAG.scheduled;
           const img = s.post?.hero_image_key ? `/image/${s.post.hero_image_key}` : null;
           const isDone = s.status === 'published';
           return (
@@ -201,18 +197,19 @@ export default function CalendarPage() {
                   </div>
                 </div>
               ) : (
-                <Badge status={tag.badge} text={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                  <StatusChip status={s.status} table="calendar" className="ps-cal-chip" />
                   <Text
                     ellipsis
                     style={{
-                      fontSize: 11, maxWidth: 120,
+                      fontSize: 11, minWidth: 0,
                       textDecoration: isDone ? 'line-through' : 'none',
-                      color: isDone ? 'rgba(0,0,0,0.45)' : undefined,
+                      color: isDone ? 'var(--ink-faint)' : undefined,
                     }}
                   >
                     {s.title}
                   </Text>
-                } />
+                </div>
               )}
             </div>
           );
@@ -244,9 +241,9 @@ export default function CalendarPage() {
       {/* Stats row */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={12} sm={6}><Card><Statistic title="Tổng lịch" value={stats.total} prefix={<CalendarOutlined />} /></Card></Col>
-        <Col xs={12} sm={6}><Card><Statistic title="Hôm nay" value={stats.today} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#1677ff' }} /></Card></Col>
-        <Col xs={12} sm={6}><Card><Statistic title="Đã lên lịch" value={stats.scheduled} prefix={<ClockCircleOutlined />} valueStyle={{ color: '#faad14' }} /></Card></Col>
-        <Col xs={12} sm={6}><Card><Statistic title="Đã xuất bản" value={stats.published} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
+        <Col xs={12} sm={6}><Card><Statistic title="Hôm nay" value={stats.today} prefix={<ClockCircleOutlined className="ps-stat-icon ps-stat-icon--info" />} /></Card></Col>
+        <Col xs={12} sm={6}><Card><Statistic title="Đã lên lịch" value={stats.scheduled} prefix={<ClockCircleOutlined className="ps-stat-icon ps-stat-icon--warn" />} valueStyle={{ color: 'var(--warn)' }} /></Card></Col>
+        <Col xs={12} sm={6}><Card><Statistic title="Đã xuất bản" value={stats.published} prefix={<CheckCircleOutlined className="ps-stat-icon ps-stat-icon--good" />} valueStyle={{ color: 'var(--good)' }} /></Card></Col>
       </Row>
 
       {/* Calendar */}
@@ -286,14 +283,12 @@ export default function CalendarPage() {
         ) : (
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             {selectedSlots.map((slot) => {
-              const tag = STATUS_TAG[slot.status] || STATUS_TAG.scheduled;
               const isDone = slot.status === 'published';
               const img = slot.post?.hero_image_key ? `/image/${slot.post.hero_image_key}` : null;
               return (
                 <Card
                   key={slot.id}
                   size="small"
-                  style={{ borderLeft: `4px solid ${tag.color === 'success' ? '#52c41a' : tag.color === 'processing' ? '#1677ff' : tag.color === 'warning' ? '#faad14' : '#d9d9d9'}` }}
                   cover={img ? (
                     <img
                       src={img}
@@ -317,7 +312,6 @@ export default function CalendarPage() {
                           type="text"
                           icon={<ThunderboltOutlined />}
                           loading={gen?.slot?.id === slot.id && !gen.done && !gen.error}
-                          style={{ color: '#1677ff' }}
                         >
                           Tạo ngay
                         </Button>
@@ -336,22 +330,22 @@ export default function CalendarPage() {
                       style={{
                         display: 'block',
                         textDecoration: isDone ? 'line-through' : 'none',
-                        color: isDone ? 'rgba(0,0,0,0.45)' : undefined,
+                        color: isDone ? 'var(--ink-faint)' : undefined,
                       }}
                     >
                       {slot.title}
                     </Text>
                   </div>
                   <Space size={[4, 4]} wrap>
-                    <Tag color={tag.color} icon={isDone ? <CheckCircleOutlined /> : <ClockCircleOutlined />}>{tag.text}</Tag>
-                    {slot.primary_keyword && <Tag>{slot.primary_keyword}</Tag>}
-                    <Tag>{slot.source || 'manual'}</Tag>
+                    <StatusChip status={slot.status} table="calendar" />
+                    {slot.primary_keyword && <span className="ps-chip ps-chip--plain">{slot.primary_keyword}</span>}
+                    <span className="ps-chip ps-chip--plain">{slot.source || 'manual'}</span>
                   </Space>
                   {slot.angle && (
                     <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>{slot.angle}</Text>
                   )}
                   {slot.post && (
-                    <div style={{ marginTop: 8, padding: 8, background: 'rgba(0,0,0,0.02)', borderRadius: 6 }}>
+                    <div className="ps-cal-post">
                       <Text type="secondary" style={{ fontSize: 12 }}>Đã xuất bản: </Text>
                       <a href={urlForProject(slot.project_id, '/blog/' + slot.post.slug)} target="_blank" rel="noopener noreferrer">{slot.post.title}</a>
                     </div>
@@ -427,7 +421,7 @@ export default function CalendarPage() {
           </Form.Item>
           {editing && (
             <Form.Item name="status" label="Trạng thái">
-              <Select options={Object.entries(STATUS_TAG).map(([k, v]) => ({ value: k, label: v.text }))} />
+              <Select options={STATUS_OPTIONS} />
             </Form.Item>
           )}
         </Form>
