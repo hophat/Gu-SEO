@@ -127,18 +127,23 @@ def convert(source_key, dest_key, tag):
         return None
     return dst, os.path.getsize(src), os.path.getsize(dst)
 
-def publish(converted, r2key, table, column, match_col, match_val, value):
-    """Store the recompressed WebP under its bare R2 key, then repoint the
-    row. The stored value and the R2 key are not always the same string:
-    projects.logo_url keeps an '/image/' prefix, so they are passed
-    separately."""
+def put_object(converted, r2key):
+    """Store the recompressed WebP under its bare R2 key. The R2 key and
+    the value stored in the row are not always the same string (projects
+    .logo_url keeps an '/image/' prefix), so callers pass the key."""
     subprocess.run(WRANGLER + ["r2", "object", "put", f"{bucket}/{r2key}", f"--file={converted}",
                     "--content-type=image/webp",
                     "--cache-control=public, max-age=31536000, immutable", "--remote"],
                    check=True, capture_output=True)
+
+def update_row(table, column, match_col, match_val, value):
     subprocess.run(WRANGLER + ["d1", "execute", db, "--remote", "--command",
                     f"UPDATE {table} SET {column}='{value}' WHERE {match_col}='{match_val}'"],
                    check=True, capture_output=True)
+
+def publish(converted, r2key, table, column, match_col, match_val, value):
+    put_object(converted, r2key)
+    update_row(table, column, match_col, match_val, value)
 
 in_total = out_total = done = 0
 for r in rows:
@@ -176,9 +181,12 @@ for r in rows:
     print(f"  {key}: {a//1024}KB -> {b//1024}KB  ({a/b:.1f}x)  {dimensions(converted)}")
 
     if not dry:
-        # In repair mode the row already points at the .webp key, so it is
-        # only the object that needs rewriting.
-        if not repair:
+        # Repair mode rewrites only the object; the row already points at
+        # this .webp key. A normal run writes the object *and* repoints the
+        # row, so the object is never the optional half.
+        if repair:
+            put_object(converted, key)
+        else:
             publish(converted, key, "blog_posts", "hero_image_key", "id", r["id"], key)
 
 # Project logos. Same conversion, but the row to update is projects.logo_url
@@ -216,8 +224,13 @@ for r in logos:
 
     if not dry:
         # logo_url keeps its '/image/' prefix — the public renderers and the
-        # cover SVG builder both resolve the stored value from there.
-        publish(converted, stem + ".webp", "projects", "logo_url", "slug", r["slug"], "/image/" + stem + ".webp")
+        # cover SVG builder both resolve the stored value from there. In
+        # repair mode the row already holds it, so only the object is
+        # rewritten.
+        if repair:
+            put_object(converted, stem + ".webp")
+        else:
+            publish(converted, stem + ".webp", "projects", "logo_url", "slug", r["slug"], "/image/" + stem + ".webp")
 
 print()
 if done:
