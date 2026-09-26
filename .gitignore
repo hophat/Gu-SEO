@@ -39,3 +39,8 @@ public/admin-dist/
 
 # Agent/session scratch state.
 .omo/
+.commandcode/
+
+# Linked worktrees (git worktree add). A worktree holds a full checkout, so
+# committing one from inside another would recurse.
+.worktrees/
