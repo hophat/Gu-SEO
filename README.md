@@ -35,6 +35,8 @@ Multi-Brand AI Content Platform supporting independent project configuration, to
 - **Hero images** — Workers AI (Flux) by default; OpenAI / Gemini Imagen as fallback.
 - **Keyword puller** — free Google-Autocomplete-based seed expansion, queues straight into D1.
 - **Sitemap + IndexNow** — automatic XML sitemap, on-publish IndexNow pings, robots.txt.
+- **Topic hubs** — `/hubs` and `/hubs/<topic>` group posts by `topic_seed` into indexable pillar pages, each post links back to its hub, and every hub sits in the sitemap.
+- **Free SEO checker** — `/tools/seo-check` audits any public URL on 16 on-page checks, server-rendered, with an `?embed=1` iframe mode you can drop into other sites.
 - **Embeddable widget** — drop a `<script>` on any site to render your latest posts.
 - **Admin dashboard** — single-page SPA with email/password login, runs jobs and inspects the queue.
 - **Cover image editor** — canvas-based crop, captions, badges, gradient overlay.
@@ -230,6 +232,28 @@ npm run deploy       # delegates to deploy.sh
 ```
 
 No resource changes, no secret prompts — just `wrangler pages deploy` + `wrangler deploy` for the cron Worker.
+## 🌐 Serving the blog on your own apex domain
+
+If your apex domain also hosts a marketing site, the blog cannot be attached to it as a Pages custom domain — one hostname has exactly one owner. The usual setup is a Worker in front of the domain that forwards the blog's paths to the Pages project and serves everything else itself.
+
+That Worker owns an explicit route list. **A route only runs the Worker if the path matches it**, so any new top-level route added under `functions/` is unreachable on that domain until a route exists for it:
+
+```bash
+# 1. see what is already routed
+curl -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/zones/<zone>/workers/routes
+
+# 2. add the missing prefix
+curl -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"pattern":"example.com/hubs*","script":"<worker>"}' \
+  https://api.cloudflare.com/client/v4/zones/<zone>/workers/routes
+```
+
+Match the prefix to what you added under `functions/`: a directory `functions/hubs/` needs `example.com/hubs*`, a file route `functions/tools/seo-check.js` needs `example.com/tools/*`.
+
+Verify against the apex domain, not only `<project>.pages.dev` — the pages.dev host bypasses the Worker, so it looks fine while the real domain 404s.
+
+Keep that route list somewhere you will find it again. It is Cloudflare state, not git; nothing in this repository records it.
+
 
 ## ❓ FAQ
 

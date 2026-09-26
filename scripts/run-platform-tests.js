@@ -69,6 +69,8 @@ import { onRequestPost as sendOtp } from '../functions/api/public/send-otp.js';
 import { onRequestPost as usersCreate } from '../functions/api/admin/users.js';
 import { renderBlogIndex } from '../functions/blog/index.js';
 import { onRequestGet as renderFeed } from '../functions/feed.xml.js';
+import { onRequestGet as renderSitemapIndex } from '../functions/sitemap.xml.js';
+import { onRequestGet as renderSitemapPages } from '../functions/sitemap-pages.xml.js';
 import { loadSettings, setSetting } from '../functions/_lib/settings.js';
 import { resolveProjectBySlug, projectLocale } from '../functions/_lib/project_scope.js';
 import { renderContentPage } from '../functions/_lib/page_render.js';
@@ -3065,8 +3067,57 @@ async function testProgQueueDelete() {
   ok('deleting a keyword drops the queue row and keeps its page');
 }
 
+// The sitemap used to cap at 5.000 rows per query, so a site past that
+// size lost half its URLs from the sitemap with no error anywhere. The
+// fix chunks the urlset (?part=N) and lists every chunk in the index —
+// this seeds past the 5.000 boundary and checks nothing is lost,
+// duplicated, or silently dropped.
+async function testSitemapChunking() {
+  const env = createSqliteEnv();
+  execSchema(env);
+  const TOTAL = 5500;
+  await env.__exec(`
+    INSERT INTO blog_posts (id, slug, title, meta_description, body_markdown, status, created_at, published_at)
+    SELECT 'chunk' || value, 'chunk-post-' || value, 'Chunk post ' || value,
+           'desc ' || value, 'body', 'published', value, value
+    FROM (WITH RECURSIVE seq(value) AS (
+      SELECT 1 UNION ALL SELECT value + 1 FROM seq WHERE value < ${TOTAL}
+    ) SELECT value FROM seq);
+  `);
+
+  const index = await renderSitemapIndex({ env, request: new Request('https://seo.test/sitemap.xml'), params: {} });
+  const indexXml = await index.text();
+  const chunkUrls = [...indexXml.matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map((m) => m[1])
+    .filter((u) => u.includes('sitemap-pages'));
+
+  const expectedChunks = Math.ceil(TOTAL / 5000);
+  assert.equal(chunkUrls.length, expectedChunks,
+    `the index lists every chunk (${TOTAL} URLs -> ${expectedChunks} chunk(s))`);
+  ok('the sitemap index lists one urlset per chunk');
+
+  const seen = new Set();
+  let fetched = 0;
+  for (let i = 0; i < chunkUrls.length; i++) {
+    const res = await renderSitemapPages({ env, request: new Request(chunkUrls[i]), params: {} });
+    const xml = await res.text();
+    const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+    assert.ok(locs.length <= 5000, `chunk ${i + 1} stays under the 5.000 URL ceiling`);
+    for (const loc of locs) {
+      assert.equal(seen.has(loc), false, `no URL appears in two chunks: ${loc}`);
+      seen.add(loc);
+    }
+    fetched += locs.length;
+  }
+  // The urlset also carries /, /blog, /hubs and the paginated
+  // /blog/page/N listings, so the post count is what matters here.
+  const postUrls = [...seen].filter((u) => /\/blog\/chunk-post-\d+$/.test(u));
+  assert.equal(postUrls.length, TOTAL, 'every published post appears across the chunks');
+  ok('a 5.500-post archive is fully covered by the chunked sitemap');
+}
 async function main() {
   console.log('--- Platform tests (migrations · queue · carousel · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy · cover) ---');
+  await testSitemapChunking();
   await testMigrations();
   await testMultiChannel();
   await testAdapter();

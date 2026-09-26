@@ -210,17 +210,26 @@ function findUnlinkedMentions({ pageUrl, html, brands, domains }) {
   return hits;
 }
 
+// Path shapes that are never an outreach lead: Cloudflare's mailto
+// obfuscation endpoint 404s by design on every site that uses it, and
+// assets are not articles. Reporting those turns the list into noise.
+const ASSET_RX = /\.(css|js|mjs|json|ico|png|jpe?g|gif|svg|webp|avif|woff2?|ttf|eot|pdf|zip|gz|mp4|webm|mp3)(\?|#|$)/i;
+
 function findLinkCandidates({ pageUrl, links, domains }) {
   // Only external links are interesting: a dead internal link is the
-  // site's own problem, not an outreach lead.
+  // site's own problem, not an outreach lead — and the editor cannot
+  // act on an email we send them about their own broken nav.
+  const sourceHost = new URL(pageUrl).hostname.toLowerCase().replace(/^www\./, '');
   const out = [];
   for (const l of links) {
-    let host;
+    let u, host;
     try {
-      const u = new URL(l.url);
+      u = new URL(l.url);
       host = u.hostname.toLowerCase().replace(/^www\./, '');
     } catch { continue; }
-    if (domains.includes(host)) continue;
+    if (domains.includes(host) || host === sourceHost) continue;
+    if (u.pathname.startsWith('/cdn-cgi/')) continue;
+    if (ASSET_RX.test(u.pathname)) continue;
     out.push({ ...l, host });
   }
   return out;
@@ -237,10 +246,15 @@ async function checkDead(candidates) {
   await pool(unique, async (url) => {
     if (statusCache.has(url)) return null;
     const res = await get(url, { maxBytes: 4096 });
-    statusCache.set(url, DEAD_STATUSES.has(res.status) || res.status === 0);
+    // Only a definite "gone" counts. A timeout, a blocked bot or a DNS
+    // failure is status 0, and telling an editor their link is dead when
+    // we could not reach it is the fastest way to lose the placement.
+    statusCache.set(url, DEAD_STATUSES.has(res.status) ? res.status : 0);
     return null;
   }, concurrency);
-  return candidates.filter((c) => statusCache.get(c.url));
+  return candidates
+    .filter((c) => statusCache.get(c.url))
+    .map((c) => ({ ...c, status: statusCache.get(c.url) }));
 }
 
 // ── run ───────────────────────────────────────────────────────────────────
@@ -330,7 +344,7 @@ if (flag('json')) {
     lines.push('## Broken link', '');
     for (const r of byBroken) {
       lines.push(`- ${r.source_url}`);
-      lines.push(`  - link chết: ${r.dead_url} (anchor: "${r.anchor || '—'}")`);
+      lines.push(`  - link chết: ${r.dead_url} (${r.status}) — anchor: "${r.anchor || '—'}"`);
     }
     lines.push('');
   }
@@ -339,7 +353,16 @@ if (flag('json')) {
   if (outFile && typeof outFile === 'string') {
     await fs.mkdir(path.dirname(outFile), { recursive: true });
     await fs.writeFile(outFile, md);
-    console.log(`Đã ghi ${outFile} · ${byMention.length} mention · ${byBroken.length} broken link`);
+    // CSV next to the Markdown so the list can go straight into a
+    // spreadsheet and be worked through row by row.
+    const esc = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const csv = [
+      'kind,source_url,brand,dead_url,anchor,status,context',
+      ...rows.map((r) => [r.kind, r.source_url, r.brand ?? '', r.dead_url ?? '', r.anchor ?? '', r.status ?? '', r.context ?? ''].map(esc).join(',')),
+    ].join('\n');
+    const csvPath = outFile.replace(/\.md$/i, '') + '.csv';
+    await fs.writeFile(csvPath, csv + '\n');
+    console.log(`Đã ghi ${outFile} + ${csvPath} · ${byMention.length} mention · ${byBroken.length} broken link`);
   } else {
     console.log(md);
   }
