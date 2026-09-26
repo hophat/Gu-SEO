@@ -19,6 +19,11 @@
 #               from the sibling original still in the bucket and rewrite
 #               it. The rows are left alone. Use when a run published the
 #               wrong bytes under the .webp key.
+#   --card-size N  write a list-sized copy of every hero under a 'card/'
+#               prefix, at N px wide. The hero itself stays 1200px because
+#               it is the LCP element and has to hold up on a 2x display;
+#               list slots are ~640px, so they take the smaller copy and
+#               fall back to the full object when one has not been made.
 #   --logo-size N  resize the project logo objects to an NxN square, in
 #               place. The header renders the logo at 28px, so a 1046px
 #               source is paying for pixels nobody sees.
@@ -39,6 +44,7 @@ cd "$(dirname "$0")/.."
 DRY_RUN=""
 REPAIR=""
 CROP=""
+CARD_SIZE=""
 LOGO_SIZE=""
 QUALITY=82
 while [[ $# -gt 0 ]]; do
@@ -47,6 +53,7 @@ while [[ $# -gt 0 ]]; do
     --repair) REPAIR="--repair" ;;
     --crop) CROP="--crop" ;;
     --logo-size) LOGO_SIZE="${2:-}"; shift ;;
+    --card-size) CARD_SIZE="${2:-}"; shift ;;
     *) QUALITY="$1" ;;
   esac
   shift
@@ -64,7 +71,13 @@ WRANGLER="${WRANGLER:-$(command -v wrangler || echo "npx --yes wrangler")}"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
-if [[ -n "$LOGO_SIZE" ]]; then
+if [[ -n "$CARD_SIZE" ]]; then
+  # Card mode writes a second object per hero; the source is the full .webp
+  # and the destination is a new key, so nothing is overwritten in place.
+  HERO_WHERE="hero_image_key LIKE '%.webp'"
+  LOGO_WHERE="logo_url LIKE '%.card-mode-excluded'"
+  echo "▸ Card mode: writing ${CARD_SIZE}px list copies under card/ in $DB"
+elif [[ -n "$LOGO_SIZE" ]]; then
   # Logo mode re-encodes the .webp object in place, at a square size.
   HERO_WHERE="hero_image_key LIKE '%.logo-mode-excluded'"
   LOGO_WHERE="logo_url LIKE '%.webp'"
@@ -98,13 +111,14 @@ $WRANGLER d1 execute "$DB" --remote --json \
   --command "SELECT slug, logo_url FROM projects WHERE $LOGO_WHERE" \
   > "$WORK/logos.json"
 
-python3 - "$WORK" "$BUCKET" "$DB" "$QUALITY" "$DRY_RUN" "$WRANGLER" "$REPAIR" "$CROP" "$LOGO_SIZE" <<'EOF'
+python3 - "$WORK" "$BUCKET" "$DB" "$QUALITY" "$DRY_RUN" "$WRANGLER" "$REPAIR" "$CROP" "$LOGO_SIZE" "$CARD_SIZE" <<'EOF'
 import json, subprocess, os, sys
 work, bucket, db, q, dry = sys.argv[1:6]
 WRANGLER = sys.argv[6].split()
 repair = bool(sys.argv[7])
 crop = bool(sys.argv[8])
 logo_size = int(sys.argv[9]) if sys.argv[9] else 0
+card_size = int(sys.argv[10]) if len(sys.argv) > 10 and sys.argv[10] else 0
 rows = json.load(open(f"{work}/rows.json"))[0]["results"]
 logos = json.load(open(f"{work}/logos.json"))[0]["results"]
 if dry:
@@ -168,11 +182,11 @@ def convert(source_key, dest_key, tag):
     nothing — so the two paths are named apart on purpose.
     """
     ext = os.path.splitext(source_key)[1].lower()
-    # SKIP_EXT guards the *source* format. A .webp source is only refused
-    # when it is also the destination — that is the already-converted case.
-    # Crop mode re-encodes an object in place, so source == dest and the
-    # skip has to stand down.
-    if ext in SKIP_EXT and not ((crop or logo_size) and source_key == dest_key):
+    # SKIP_EXT guards the *source* format. The in-place modes re-encode an
+    # object that is already .webp, so they have to be let through; the
+    # plain run cannot reach here with a .webp because its query only
+    # selects jpg/jpeg/png.
+    if ext in SKIP_EXT and not (crop or logo_size or card_size):
         print(f"  {tag} {source_key}: skipped ({ext} not convertible)")
         return None
     src = f"{work}/{tag}{ext}"
@@ -188,7 +202,14 @@ def convert(source_key, dest_key, tag):
     # make a small logo larger than it started. -resize needs explicit
     # dimensions, so the aspect-preserving fit is computed here.
     geometry = []
-    if logo_size:
+    if card_size:
+        size = px(src)
+        if not size or size[0] <= card_size:
+            print(f"  {tag} {source_key}: already {size[0] if size else '?'}px wide — no card copy needed")
+            return None
+        # Only the width is bounded; the aspect rides along.
+        geometry = ["-resize", str(card_size), "0"]
+    elif logo_size:
         size = px(src)
         if not size or max(size) > logo_size:
             fit = logo_size / max(size)
@@ -264,6 +285,8 @@ for r in rows:
             print(f"  hero {key}: SKIPPED — no sibling original in the bucket to re-derive from")
             continue
         got = convert(source, key, "hero")
+    elif card_size:
+        got = convert(key, f"card/{key}", "hero")
     else:
         got = convert(key, key, "hero")
     if not got:
@@ -273,6 +296,10 @@ for r in rows:
     out_total += b
     done += 1
     print(f"  {key}: {a//1024}KB -> {b//1024}KB  ({a/b:.1f}x)  {dimensions(converted)}")
+
+    if card_size and not dry:
+        put_object(converted, f"card/{key}")
+        continue
 
     if not dry:
         # Repair mode rewrites only the object; the row already points at

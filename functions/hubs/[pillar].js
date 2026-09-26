@@ -130,7 +130,7 @@ export async function renderPillarPage({ env, request, pillarSlug, page = 1, pro
  // No hero in R2: /cover/<slug>.svg only renders when the site has a
     // default cover template, and 404s without one. The OG card always
     // renders, which is the same fallback the post hero already uses.
-    const imgSrc = e.hero_image_key ? imageUrl(`/image/${esc(e.hero_image_key)}`) : `/og/${esc(e.slug)}.svg`;
+    const imgSrc = e.hero_image_key ? imageUrl(`/image/card/${esc(e.hero_image_key)}`) : `/og/${esc(e.slug)}.svg`;
     const loadAttrs = i === 0
       ? 'fetchpriority="high" decoding="async"'
       : 'loading="lazy" decoding="async"';

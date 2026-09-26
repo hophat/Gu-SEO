@@ -7,6 +7,16 @@
 //
 // Allowed key characters: letters, digits, dot, dash, underscore, slash.
 // Anything else 404s — defends against path traversal and exotic chars.
+//   /image/<key>            — the full-size object
+//   /image/card/<key>       — the list-sized variant, falling back to the
+//                             full object when no card variant was made
+//
+// The card prefix is what lets list renderers ask for a 700px image
+// without needing a schema column to record whether one exists: an absent
+// variant is one extra R2 miss, and the full image is the correct answer
+// anyway.
+const CARD_PREFIX = 'card/';
+
 export const onRequestGet = async ({ env, params }) => {
   const parts = Array.isArray(params.path) ? params.path : [params.path].filter(Boolean);
   const key = parts.join('/');
@@ -14,7 +24,10 @@ export const onRequestGet = async ({ env, params }) => {
     return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   }
   if (!env.IMAGES) return new Response('R2 not bound', { status: 500 });
-  const obj = await env.IMAGES.get(key);
+  let obj = await env.IMAGES.get(key);
+  if (!obj && key.startsWith(CARD_PREFIX)) {
+    obj = await env.IMAGES.get(key.slice(CARD_PREFIX.length));
+  }
   if (!obj) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   const headers = new Headers();
   obj.writeHttpMetadata(headers);

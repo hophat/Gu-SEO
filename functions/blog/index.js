@@ -98,7 +98,7 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
     // so a card with no hero falls back to the OG renderer, which always
     // paints.
     const imgSrc = p.hero_image_key
-      ? imageUrl(`/image/${esc(p.hero_image_key)}`)
+      ? imageUrl(`/image/card/${esc(p.hero_image_key)}`)
       : `/og/${esc(p.slug)}.svg`;
     // First card is the LCP candidate — load it eagerly with high
     // priority; everything below the fold stays lazy.
@@ -239,7 +239,7 @@ ${verifyMetas}
 <meta property="og:type" content="website" />
 ${posts[0] ? `<meta property="og:image" content="${baseUrl}${posts[0].hero_image_key ? imageUrl(`/image/${esc(posts[0].hero_image_key)}`) : `/og/${esc(posts[0].slug)}.svg`}" />` : ''}
 <meta name="twitter:card" content="${posts[0] ? 'summary_large_image' : 'summary'}" />
-${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? imageUrl(`/image/${esc(posts[0].hero_image_key)}`) : `/og/${esc(posts[0].slug)}.svg`}" fetchpriority="high" />` : ''}
+${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? imageUrl(`/image/card/${esc(posts[0].hero_image_key)}`) : `/og/${esc(posts[0].slug)}.svg`}" fetchpriority="high" />` : ''}
 <link rel="stylesheet" href="/style.css" />
 ${themeStyle(project?.theme_color)}
 <script type="application/ld+json">${ldJson}</script>
