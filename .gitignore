@@ -44,3 +44,6 @@ public/admin-dist/
 # Linked worktrees (git worktree add). A worktree holds a full checkout, so
 # committing one from inside another would recurse.
 .worktrees/
+
+# Dev-server pid file. Written at runtime, never belongs in git.
+server.pid
