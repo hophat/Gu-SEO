@@ -17,7 +17,7 @@
 //   - Never claim more than we know. If the Facebook job is still pending, the
 //     email says so rather than implying it went out.
 
-import { sendEmail } from '../email_smtp.js';
+import { sendEmail, mailBrand, brandHeader } from '../email_smtp.js';
 import { loadSettings } from '../settings.js';
 
 const STATUS_LABEL = {
@@ -66,7 +66,7 @@ export async function isScheduledPost(env, blogPostId) {
   return !!row;
 }
 
-export function renderReport({ projectName, title, description, blogUrl, social }) {
+export function renderReport({ projectName, title, description, blogUrl, social, logoUrl = '', brandName = '' }) {
   const socialRows = social.length
     ? social.map((s) => {
         const meta = STATUS_LABEL[s.status] || { text: s.status, color: '#6b7280' };
@@ -95,10 +95,7 @@ export function renderReport({ projectName, title, description, blogUrl, social 
 <html>
 <head><meta charset="utf-8"></head>
 <body style="margin:0;padding:30px 20px;background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f8fafc;">
-  <div style="max-width:560px;margin:0 auto;background:#0f172a;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:36px 32px;">
-    <div style="font-size:18px;font-weight:800;color:#38bdf8;margin-bottom:6px;letter-spacing:-0.03em;">
-      GU SEO &middot; BÁO CÁO
-    </div>
+  <div style="max-width:560px;margin:0 auto;background:#0f172a;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:36px 32px;">${brandHeader({ logoUrl, name: brandName }, 'BÁO CÁO')}
     <div style="font-size:12px;color:#64748b;margin-bottom:24px;">${esc(projectName)}</div>
 
     <h2 style="font-size:20px;font-weight:700;color:#ffffff;margin:0 0 10px;line-height:1.35;">
@@ -176,12 +173,15 @@ export async function sendPublishReport(env, { projectId, blogPostId, baseUrl = 
       ? `[${project.site_name || project.name}] Đã đăng bài + ${publishedChannels}/${social.length} kênh`
       : `[${project.site_name || project.name}] Đã đăng bài mới`;
 
+    const brand = await mailBrand(env);
     const html = renderReport({
       projectName: project.site_name || project.name,
       title: post.title,
       description: post.meta_description,
       blogUrl,
       social,
+      logoUrl: brand.logoUrl,
+      brandName: brand.name,
     });
 
     let sent = 0;

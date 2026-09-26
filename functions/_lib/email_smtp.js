@@ -37,8 +37,59 @@
 // must set `replyTo`.
 
 import { cfFetch, cfFirstError } from './cloudflare_domains.js';
+import { loadSettings } from './settings.js';
+import { esc } from './util.js';
 
 const DEFAULT_FROM = { address: 'no-reply@gulagi.com', name: 'GU SEO System' };
+
+// Email branding. One resolver, because the OTP mail and the publish report
+// both need it and a header that looks different in each is a bug the reader
+// notices before the operator does.
+//
+// SITE_LOGO_URL wins over the setting so a Pages secret can override the
+// database without a redeploy, matching how every other brand value resolves.
+export async function mailBrand(env) {
+  const settings = await loadSettings(env).catch(() => ({}));
+  return {
+    logoUrl: String(env?.SITE_LOGO_URL || settings?.brand_logo_url || '').trim(),
+    name: String(env?.SITE_NAME || settings?.site_name || 'GU SEO').trim(),
+  };
+}
+
+// The header block every message opens with.
+//
+// The image is always paired with the name, never substituted for it. Mail
+// clients block remote images by default, and a logo that only exists in a
+// blocked image is a header that reads as nothing at all. A relative URL is
+// dropped for the same reason — there is no origin to resolve it against once
+// the message is in someone else's inbox.
+export function brandHeader({ logoUrl = '', name = 'GU SEO' } = {}, label = '') {
+  // Escaped once, here. Stripping the dangerous characters first and escaping
+  // after would be safe but lossy — it turns a brand named "AT&T" into "ATT".
+  const safeName = esc(String(name).trim() || 'GU SEO');
+  const safeLabel = esc(String(label).trim());
+  const isWebImage = /^https?:\/\/\S+$/i.test(String(logoUrl).trim());
+  const img = isWebImage
+    ? `<img src="${esc(logoUrl)}" alt="${safeName}" width="32" height="32" ` +
+      'style="display:block;width:32px;height:32px;border-radius:8px;border:0;object-fit:contain;" />'
+    : '';
+  return `
+    <div style="margin-bottom:24px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        <tr>
+          ${img ? `<td style="padding-right:12px;vertical-align:middle;">${img}</td>` : ''}
+          <td style="vertical-align:middle;">
+            <div style="font-size:18px;font-weight:800;color:#38bdf8;letter-spacing:-0.03em;line-height:1.2;">
+              ${safeName.toUpperCase()}
+            </div>
+            ${safeLabel
+              ? `<div style="font-size:11px;color:#64748b;letter-spacing:0.08em;margin-top:3px;">${safeLabel.toUpperCase()}</div>`
+              : ''}
+          </td>
+        </tr>
+      </table>
+    </div>`;
+}
 
 // Resolved per call rather than at module load: `env` is only available inside
 // a request, and reading it lazily also means missing config surfaces as a
@@ -106,6 +157,7 @@ export function htmlToText(html) {
 }
 
 export async function sendOtpEmail(env, { toEmail, otpCode, brandName = 'GU SEO' }) {
+  const header = brandHeader(await mailBrand(env), 'SYSTEM');
   return sendEmail(env, {
     to: toEmail,
     subject: `Mã xác thực OTP đăng ký GU SEO: ${otpCode}`,
@@ -113,10 +165,7 @@ export async function sendOtpEmail(env, { toEmail, otpCode, brandName = 'GU SEO'
 <html>
 <head><meta charset="utf-8"></head>
 <body style="margin:0;padding:30px 20px;background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f8fafc;">
-  <div style="max-width:520px;margin:0 auto;background:#0f172a;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:36px 32px;box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-    <div style="font-size:18px;font-weight:800;color:#38bdf8;margin-bottom:24px;letter-spacing:-0.03em;">
-      GU SEO &middot; SYSTEM
-    </div>
+  <div style="max-width:520px;margin:0 auto;background:#0f172a;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:36px 32px;box-shadow:0 10px 30px rgba(0,0,0,0.5);">${header}
     <h2 style="font-size:22px;font-weight:700;color:#ffffff;margin:0 0 12px;line-height:1.3;">
       Xác thực đăng ký tài khoản
     </h2>

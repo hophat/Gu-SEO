@@ -1909,7 +1909,7 @@ async function testPublishReport() {
 async function testEmailSending() {
   console.log('\nO. Email sending');
 
-  const { mailSender, htmlToText, sendEmail } =
+  const { mailSender, htmlToText, sendEmail, brandHeader } =
     await import('../functions/_lib/email_smtp.js');
 
   const ENV = { CF_EMAIL_TOKEN: 'tok', CF_ACCOUNT_ID: 'acct123' };
@@ -1934,6 +1934,35 @@ async function testEmailSending() {
   assert.ok(badFrom, 'a malformed MAIL_FROM must throw');
   assert.equal(badFrom.code, 'email_not_configured');
   ok('a malformed MAIL_FROM fails with a named reason');
+
+  // ── the branded header ──
+  {
+    const bare = brandHeader({ logoUrl: '', name: 'GU SEO' }, 'SYSTEM');
+    assert.match(bare, /GU SEO/, 'the name is always present');
+    assert.doesNotMatch(bare, /<img/, 'no image is emitted when none is configured');
+
+    // A relative path has no origin to resolve against once the message is in
+    // an inbox, so it must not be emitted as a broken image at all.
+    for (const bad of ['/logo.png', 'logo.png', 'javascript:alert(1)', 'data:image/png;base64,AA']) {
+      const h = brandHeader({ logoUrl: bad, name: 'GU SEO' }, 'SYSTEM');
+      assert.doesNotMatch(h, /<img/, `a non-web logo URL must be dropped: ${bad}`);
+      assert.match(h, /GU SEO/, 'the text fallback survives a dropped image');
+    }
+    ok('a logo that cannot be fetched is dropped, and the name carries the header');
+
+    const withLogo = brandHeader({ logoUrl: 'https://gulagi.com/gulagi-logo.png', name: 'GU SEO' }, 'BÁO CÁO');
+    assert.match(withLogo, /<img src="https:\/\/gulagi\.com\/gulagi-logo\.png"/);
+    assert.match(withLogo, /alt="GU SEO"/, 'the image needs alt text — images are blocked by default');
+    assert.match(withLogo, /width="32" height="32"/, 'explicit dimensions, so a blocked image cannot reflow the layout');
+    assert.match(withLogo, /GU SEO/);
+    assert.match(withLogo, /BÁO CÁO/);
+    ok('a web logo URL renders with alt text, fixed dimensions, and the name beside it');
+
+    const injected = brandHeader({ logoUrl: 'https://x.com/a.png?a=1&b=2"><script>alert(1)</script>', name: '<b>Bad</b>' }, 'L');
+    assert.doesNotMatch(injected, /<script>/, 'the name is escaped');
+    assert.match(injected, /&lt;b&gt;Bad/);
+    ok('the header escapes the brand name and label');
+  }
 
   // ── missing credentials must be legible, not an opaque 401 ──
   for (const env of [{}, { CF_API_TOKEN: 'tok' }, { CF_ACCOUNT_ID: 'acct123' }]) {
