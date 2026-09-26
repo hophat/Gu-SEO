@@ -130,20 +130,37 @@ def convert(source_key, dest_key, tag):
 def put_object(converted, r2key):
     """Store the recompressed WebP under its bare R2 key. The R2 key and
     the value stored in the row are not always the same string (projects
-    .logo_url keeps an '/image/' prefix), so callers pass the key."""
-    subprocess.run(WRANGLER + ["r2", "object", "put", f"{bucket}/{r2key}", f"--file={converted}",
+    .logo_url keeps an '/image/' prefix), so callers pass the key.
+
+    Every wrangler call here is a fresh `npx wrangler` process, and over a
+    few hundred objects that is enough to hit a transient API failure. One
+    blip must not strand the rest of the run, so a failure is reported and
+    the object is left for a re-run; returning False lets the caller say so.
+    """
+    put = subprocess.run(WRANGLER + ["r2", "object", "put", f"{bucket}/{r2key}", f"--file={converted}",
                     "--content-type=image/webp",
                     "--cache-control=public, max-age=31536000, immutable", "--remote"],
-                   check=True, capture_output=True)
+                    capture_output=True, text=True)
+    if put.returncode != 0:
+        detail = (put.stderr or put.stdout).strip().splitlines()
+        print(f"    PUT FAILED {r2key}: {detail[-1] if detail else 'unknown error'}")
+        return False
+    return True
 
 def update_row(table, column, match_col, match_val, value):
-    subprocess.run(WRANGLER + ["d1", "execute", db, "--remote", "--command",
+    run = subprocess.run(WRANGLER + ["d1", "execute", db, "--remote", "--command",
                     f"UPDATE {table} SET {column}='{value}' WHERE {match_col}='{match_val}'"],
-                   check=True, capture_output=True)
+                    capture_output=True, text=True)
+    if run.returncode != 0:
+        detail = (run.stderr or run.stdout).strip().splitlines()
+        print(f"    UPDATE FAILED {table}.{column} WHERE {match_col}={match_val}: "
+              f"{detail[-1] if detail else 'unknown error'}")
 
 def publish(converted, r2key, table, column, match_col, match_val, value):
-    put_object(converted, r2key)
-    update_row(table, column, match_col, match_val, value)
+    # Only repoint the row once the object is actually there, or a failed
+    # upload leaves the site pointing at a key that was never written.
+    if put_object(converted, r2key):
+        update_row(table, column, match_col, match_val, value)
 
 in_total = out_total = done = 0
 for r in rows:
