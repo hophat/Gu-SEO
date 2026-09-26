@@ -22,13 +22,18 @@ const PAIRS = [
   ['ink on bg',              '#0f1419', '#ffffff', 4.5],
   ['ink-dim on bg',          '#5b6570', '#ffffff', 4.5],
   ['ink-faint on bg',        '#666f76', '#ffffff', 4.5],
-  ['accent on bg',           '#0f1419', '#ffffff', 4.5],
+  ['accent text on bg',      '#c64a0c', '#ffffff', 4.5],
+  ['link on bg',             '#b8430a', '#ffffff', 4.5],
+
+  // Light mode — the primary button. White label on an orange fill.
+  ['primary button label',   '#ffffff', '#c64a0c', 4.5],
+  ['primary hover label',    '#ffffff', '#a83c08', 4.5],
 
   // Light mode — chips (12px text, so 4.5 applies)
-  ['chip good',              '#15803d', '#f0fdf4', 4.5],
-  ['chip warn',              '#b45309', '#fffbeb', 4.5],
+  ['chip good',              '#12703a', '#f0fdf4', 4.5],
+  ['chip warn',              '#a34a07', '#fffbeb', 4.5],
   ['chip bad',               '#b91c1c', '#fef2f2', 4.5],
-  ['chip info',              '#0f1419', '#eff1f1', 4.5],
+  ['chip info',              '#b8430a', '#fff4ef', 4.5],
   ['chip muted',             '#5b6570', '#f2f4f4', 4.5],
   ['chip plain border',      '#5b6570', '#ffffff', 3.0],
 
@@ -36,19 +41,22 @@ const PAIRS = [
   ['line on bg',             '#e7e9ea', '#ffffff', 1.0],
   ['line-2 on bg',           '#d0d5d8', '#ffffff', 1.0],
   ['focus ring on bg',       '#0f1419', '#ffffff', 3.0],
-  ['focus ring on accent-soft', '#0f1419', '#eff1f1', 3.0],
+  ['focus ring on accent-soft', '#0f1419', '#fff4ef', 3.0],
 
   // Dark mode — body text
   ['dark ink on bg',         '#e8ecee', '#0f1214', 4.5],
   ['dark ink-dim on bg',     '#9aa4ad', '#0f1214', 4.5],
   ['dark ink-faint on bg',   '#848e97', '#0f1214', 4.5],
-  ['dark accent on bg',      '#ffffff', '#0f1214', 4.5],
+  ['dark accent on bg',      '#ff7a33', '#0f1214', 4.5],
+
+  // Dark mode — the primary button takes near-black label text, not white
+  ['dark primary label',     '#0f1214', '#ff7a33', 4.5],
 
   // Dark mode — chips
   ['dark chip good',         '#4ade80', '#16191c', 4.5],
   ['dark chip warn',         '#fbbf24', '#16191c', 4.5],
   ['dark chip bad',          '#f87171', '#16191c', 4.5],
-  ['dark chip info',         '#e8ecee', '#1e2327', 4.5],
+  ['dark chip info',         '#ff7a33', '#1e1a18', 4.5],
   ['dark chip muted',        '#9aa4ad', '#16191c', 4.5],
 
   // Dark mode — hairlines and focus
