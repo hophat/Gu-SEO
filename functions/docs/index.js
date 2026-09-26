@@ -93,8 +93,8 @@ curl -fsSL https://seo.benjaminb.xyz/install/run.js | node</code></pre>
 <p>Symptom → cause → fix. If your symptom isn't here, check the <a href="#errors">error code reference</a> below.</p>
 
 <h3 id="ts-marketing-page">My site shows the maintainer's marketing page</h3>
-<p><strong>Cause:</strong> your fork is stale — you forked before the marketing/installer code was moved to a separate repo. Cloudflare Pages built the wrong commit.</p>
-<p><strong>Fix:</strong> open <a href="/update">/update</a>, sign in with GitHub, click <em>Sync from upstream</em>, then redeploy. Or rerun <a href="/install">/install</a> with the same slug — the auto-sync step runs.</p>
+<p><strong>Cause:</strong> your fork is stale — you forked before the marketing/installer code was moved out. Cloudflare Pages built the wrong commit.</p>
+<p><strong>Fix:</strong> open <a href="/admin#updates">/admin → Updates</a>, sign in with GitHub, click <em>Sync from upstream</em>, then redeploy. Or <code>git pull</code> in your fork and run <code>npm run deploy</code>.</p>
 
 <h3 id="ts-no-db-binding">/admin shows <code>no_db_binding</code></h3>
 <p><strong>Cause:</strong> Cloudflare Pages occasionally drops D1/R2 bindings during a project update. The site's Functions can't see <code>env.DB</code>.</p>
@@ -215,21 +215,18 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
   <dd><strong>Cause:</strong> R2 bucket was deleted or renamed in the dashboard; hero images return 404 but the site otherwise works. <strong>Fix:</strong> re-create or rename the bucket back to <code>&lt;slug&gt;-images</code>, OR update the binding: dashboard → Pages → your project → Settings → Functions → R2 bindings. The schema and posts table are unaffected — images regenerate on next cron tick.</dd>
 
   <dt id="err-cf-rate-limit"><code>Cloudflare rate-limited</code> (during install / repair)</dt>
-  <dd><strong>Cause:</strong> the CF API enforces ~1200 requests per 5-minute window per token. Re-running the installer repeatedly can hit it. <strong>Fix:</strong> wait 5 minutes. The installer is idempotent — re-run with the same slug and it resumes from where it stopped.</dd>
+  <dd><strong>Cause:</strong> the CF API enforces ~1200 requests per 5-minute window per token. Repeated setup or sync calls can hit it. <strong>Fix:</strong> wait 5 minutes. Both setup and sync are idempotent — re-run and they resume from where they stopped.</dd>
 </dl>
 ` },
 
   { id: 'update', title: 'Updating your install', level: 1, content: `
-<p>Two ways to pull the latest pages-seo into your fork + redeploy:</p>
+<p>Pull the latest pages-seo into your fork + redeploy:</p>
 
 <h3>In /admin → Updates</h3>
-<p>The Updates tab compares your installed commit SHA to upstream <code>main</code> and shows a diff summary. Click <em>Sync &amp; deploy</em> to merge upstream into your fork and trigger a Pages rebuild. Works for browser-installed sites (which have a GitHub fork to sync from). CLI installs see a message explaining how to <code>git pull</code> + <code>wrangler pages deploy</code> manually.</p>
-
-<h3>At seo.benjaminb.xyz/update</h3>
-<p>Hosted equivalent — useful if your /admin is broken. Sign in with GitHub, we look up your fork automatically, show the diff, sync, and trigger a deploy. Works on any pages-seo install on any Cloudflare account.</p>
+<p>The Updates tab compares your installed commit SHA to upstream <code>main</code> and shows a diff summary. Click <em>Sync &amp; deploy</em> to merge upstream into your fork and trigger a Pages rebuild. Works for browser-installed sites (which have a GitHub fork to sync from). CLI installs see a message explaining how to <code>git pull</code> + <code>npm run deploy</code> manually.</p>
 
 <h3>If sync fails with merge conflicts</h3>
-<p>You've edited the fork directly. Open your fork on GitHub, resolve the conflict in the PR our sync attempt created, then retry. The installer never edits files in your fork — conflicts only happen if you did.</p>
+<p>You've edited the fork directly. Open your fork on GitHub, resolve the conflict in the PR our sync attempt created, then retry. The sync never edits files in your fork — conflicts only happen if you did.</p>
 ` },
 
   { id: 'admin-tour', title: 'Admin tour', level: 1, content: `

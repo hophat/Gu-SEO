@@ -1,64 +1,43 @@
-// Top-level middleware. Two jobs on every request:
+// Top-level middleware.
 //
-//   1. Lock down installer/updater routes on user installs.
-//      /install, /install/*, /update, /update/*, and the
-//      installer-API namespace (/api/install/*, /api/update/*) only
-//      make sense on the upstream maintainer's deployment. On a
-//      user's install of the same code they're noise that exposes
-//      the maintainer-only surface area to their visitors. We 404
-//      those routes when isMaintainer(env) is false.
+// One job left on every request: decide what `/` should return.
 //
-//   2. Rewrite the root `/` on user installs to a minimal sign-in
-//      landing instead of the maintainer's marketing page. The
-//      marketing page in public/index.html only makes sense on the
-//      upstream — on a user's domain it leaks the maintainer's
-//      branding + screenshots and confuses their visitors.
+// The marketing page in public/index.html is the upstream maintainer's.
+// On a user's install the same file would leak someone else's branding
+// and installer links, so `/` is served as a minimal sign-in landing
+// instead. We serve public/sign-in.html via the ASSETS binding rather
+// than redirecting, so the URL stays clean.
 //
 // Maintainer detection is via env.IS_MAINTAINER==='1' or
 // settings.is_maintainer==='1'. See _lib/maintainer.js. Cached on
 // env after the first read.
+//
+// A project that owns this host through a custom domain gets /blog
+// instead: its visitors are looking for content, not for a demo.
 
 import { isMaintainer } from './_lib/maintainer.js';
 import { resolveProjectByHost, requestHost, normalizeHost } from './_lib/project_scope.js';
 
-const INSTALLER_RX = /^\/(install|update)(\/.*)?$/;
-const INSTALLER_API_RX = /^\/api\/(install|update)(\/.*)?$/;
-
 export const onRequest = async ({ request, env, next }) => {
   const url = new URL(request.url);
   const path = url.pathname;
-
-  const isInstallerSurface = INSTALLER_RX.test(path) || INSTALLER_API_RX.test(path);
   const isRoot = path === '/' || path === '/index.html';
 
-  if (!isInstallerSurface && !isRoot) {
+  if (!isRoot) {
     return next();
   }
 
-  if (isRoot) {
-    const host = requestHost(request);
-    const customProject = await resolveProjectByHost(env, host, path);
-    if (customProject?.custom_domain && normalizeHost(customProject.custom_domain) === normalizeHost(host)) {
-      return Response.redirect(new URL('/blog', request.url).toString(), 302);
-    }
+  const host = requestHost(request);
+  const customProject = await resolveProjectByHost(env, host, path);
+  if (customProject?.custom_domain && normalizeHost(customProject.custom_domain) === normalizeHost(host)) {
+    return Response.redirect(new URL('/blog', request.url).toString(), 302);
   }
 
-  const maintainer = await isMaintainer(env);
-  if (maintainer) {
+  if (await isMaintainer(env)) {
     return next();
   }
 
   // User install: gate.
-  if (isInstallerSurface) {
-    return new Response('Not Found', {
-      status: 404,
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
-    });
-  }
-
-  // Root → minimal sign-in landing. We serve the dedicated file
-  // public/sign-in.html via the ASSETS binding rather than
-  // redirecting, so the URL stays clean.
   if (env?.ASSETS?.fetch) {
     const signin = await env.ASSETS.fetch(new URL('/sign-in.html', url));
     if (signin.ok) {
@@ -68,5 +47,5 @@ export const onRequest = async ({ request, env, next }) => {
     }
   }
   // Fallback if the file is missing for any reason — redirect to /admin.
-  return Response.redirect(new URL('/admin', url).toString(), 302);
+  return Response.redirect(new URL('/admin', request.url).toString(), 302);
 };

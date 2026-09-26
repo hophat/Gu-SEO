@@ -27,17 +27,13 @@ const PUBLIC_DIR = join(REPO_ROOT, 'public');
 // in two places (because canonical tools look for it at the root,
 // but Pages serves it from public/), the mirror has to be kept in
 // sync by hand. This script catches drift.
+//
+// The installer prompts and the agent skill used to be listed here.
+// They shipped with the installer, and the installer is gone, so there
+// is one less pair to forget.
 const MIRRORED = [
   { src: 'AGENTS.md',
     pub: 'public/AGENTS.md' },
-  { src: '.claude/skills/pages-seo/SKILL.md',
-    pub: 'public/skills/pages-seo/SKILL.md' },
-  { src: '.github/prompts/pages-seo-install.prompt.md',
-    pub: 'public/prompts/pages-seo-install.prompt.md' },
-  { src: '.github/prompts/pages-seo-update.prompt.md',
-    pub: 'public/prompts/pages-seo-update.prompt.md' },
-  { src: '.github/prompts/pages-seo-repair.prompt.md',
-    pub: 'public/prompts/pages-seo-repair.prompt.md' },
 ];
 
 const errors = [];
