@@ -3,6 +3,11 @@ import { esc, imageUrl, IMAGE_VERSION } from './util.js';
 import { normalizeHost, requestHost, projectLocale } from './project_scope.js';
 
 const HERO_W = 1200, HERO_H = 630;
+// The hero sits in .post-shell, which is max-width 720px with 24px of
+// padding each side — so the image lays out at 672px once the viewport is
+// wide enough. Kept as named constants because `sizes` has to agree with
+// the CSS or the browser picks the wrong candidate.
+const HERO_SHELL_W = 720, HERO_CONTENT_W = HERO_SHELL_W - 48;
 
 function brand(env, project = null) {
   let homeHost = '';
@@ -154,9 +159,22 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
       : `/og/${esc(post.slug || 'home')}.svg`;
   const heroAlt = esc(post.hero_image_alt || post.title);
 
+  // The hero is the LCP element and it lives in a 720px shell, so a 1x
+  // display was downloading a 1200px image for 672px of layout. Offer both
+  // and let the browser pick against the real viewport: 700px covers 1x,
+  // 1200px covers 2x. Only R2-backed heroes have a second candidate — the
+  // /cover and /og fallbacks are rendered at their own size and get none.
+  const heroSrcset = (!useCoverEndpoint && post.hero_image_key)
+    ? `${imageUrl(`/image/card/${esc(post.hero_image_key)}`)} 700w, ${heroSrc} ${HERO_W}w`
+    : '';
+  const heroSizes = `(max-width: ${HERO_SHELL_W}px) 100vw, ${HERO_CONTENT_W}px`;
+  const heroAttrs = heroSrcset
+    ? ` srcset="${heroSrcset}" sizes="${heroSizes}"`
+    : '';
+
   const heroImg = `
 <div class="hero-wrap" style="aspect-ratio:${HERO_W}/${HERO_H}">
-  <img class="hero" src="${heroSrc}" alt="${heroAlt}" width="${HERO_W}" height="${HERO_H}" decoding="async" fetchpriority="high" onload="this.classList.add('is-loaded')" onerror="this.classList.add('is-loaded')" />
+  <img class="hero" src="${heroSrc}"${heroAttrs} alt="${heroAlt}" width="${HERO_W}" height="${HERO_H}" decoding="async" fetchpriority="high" onload="this.classList.add('is-loaded')" onerror="this.classList.add('is-loaded')" />
 </div>`;
 
   const bodyHTML = renderMarkdown(post.body_markdown)
@@ -207,7 +225,13 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
     bv ? `<meta name="msvalidate.01" content="${esc(bv)}" />` : '',
   ].filter(Boolean).join('\n');
 
-  const preloadHero = `<link rel="preload" as="image" href="${heroSrc}" fetchpriority="high" />`;
+  // The preload has to carry the same candidate set as the <img>. A bare
+  // href here would fetch the 1200px up front and then the browser would
+  // fetch whichever candidate srcset picked — paying for both. imagesrcset
+  // is the preload-side spelling of srcset.
+  const preloadHero = heroSrcset
+    ? `<link rel="preload" as="image" href="${heroSrc}" imagesrcset="${heroSrcset}" imagesizes="${heroSizes}" fetchpriority="high" />`
+    : `<link rel="preload" as="image" href="${heroSrc}" fetchpriority="high" />`;
 
   const faqSchema = extractFAQ(post);
   const ldGraph = jsonLD({ site, post: { ...post, urlPath: effectiveUrlPath }, host: effectiveHost, kind, settings, basePath: effectiveBasePath, language: locale.htmlLang, pillar });
