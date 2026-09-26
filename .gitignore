@@ -47,3 +47,6 @@ public/admin-dist/
 
 # Dev-server pid file. Written at runtime, never belongs in git.
 server.pid
+# Scratch files a preview script writes at the repo root and in public/.
+preview-blog.mjs
+public/__preview.html
