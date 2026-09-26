@@ -3150,9 +3150,35 @@ async function testSitemapChunking() {
   assert.ok(seen.has('https://seo.test/hubs'), 'the hub directory is still listed');
   ok('a 5.500-post archive is fully covered by the chunked sitemap');
 }
+// ── T. no dead image URLs when a post has no hero ──────────────────
+// /cover/<slug>.svg renders only when the site has a default cover
+// template; without one it answers 404. The post lists fell back to it
+// unconditionally, so a site with no default template shipped broken
+// <img> tags on /blog, on every hub, and in the "Đọc tiếp" rail. The OG
+// renderer always paints, which is what the post hero already falls back
+// to, so the lists use the same endpoint.
+async function testCoverFallbackWithoutTemplate() {
+  console.log('\nT. Cover fallback without a default template');
+  const env = await freshEnv();
+  // alpha-post has hero_image_key = NULL (freshEnv never sets one) and
+  // the DB has no cover_templates row at all — the exact production case.
+  // Render the root archive, which is the view gulagi.com serves: the
+  // project-scoped one filters on blog_posts.project_id, and the test
+  // fixture predates that column.
+  const blog = await renderBlogIndex({
+    env, request: new Request('https://seo.test/blog'), page: 1,
+  });
+  const html = await blog.text();
+  assert.ok(!/\/cover\//.test(html), 'the blog list links no /cover/ URL without a default template');
+  assert.ok(/\/og\//.test(html), 'cards without a hero fall back to the OG renderer');
+  assert.ok(!/rel="preload" as="image" href="[^"]*\/cover\//.test(html),
+    'the LCP preload never points at a 404');
+  ok('a site with no default cover template renders no dead image URL');
+}
 async function main() {
   console.log('--- Platform tests (migrations · queue · carousel · publishing · cron · aliases · attention · insights · onboarding · signup · cost · providers · lockdown · dispatch · report · mail · email-policy · cover) ---');
   await testSitemapChunking();
+  await testCoverFallbackWithoutTemplate();
   await testMigrations();
   await testMultiChannel();
   await testAdapter();

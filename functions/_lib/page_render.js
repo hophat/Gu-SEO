@@ -174,7 +174,9 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
   <h2 class="read-next-title">Đọc tiếp</h2>
   <ul class="read-next-list">
     ${related.map((r) => {
-      const rSrc = r.hero_image_key ? `/image/${esc(r.hero_image_key)}` : `/cover/${esc(r.slug)}.svg`;
+      // /cover/<slug>.svg 404s unless a default cover template exists;
+      // the OG card always renders, like the post hero fallback above.
+      const rSrc = r.hero_image_key ? `/image/${esc(r.hero_image_key)}` : `/og/${esc(r.slug)}.svg`;
       return `
       <li>
         <a href="${effectiveBasePath}/blog/${esc(r.slug)}">

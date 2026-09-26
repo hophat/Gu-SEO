@@ -93,11 +93,13 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
       : new Date((p.published_at || 0) * 1000).toLocaleDateString('en-GB', {
           year: 'numeric', month: 'long', day: 'numeric',
         });
-    // Prefer the stored R2 hero image; fall back to the live cover
-    // template so a card is never blank.
+    // Prefer the stored R2 hero image. /cover/<slug>.svg only renders
+    // when the site has a default cover template and 404s without one,
+    // so a card with no hero falls back to the OG renderer, which always
+    // paints.
     const imgSrc = p.hero_image_key
       ? `/image/${esc(p.hero_image_key)}`
-      : `/cover/${esc(p.slug)}.svg`;
+      : `/og/${esc(p.slug)}.svg`;
     // First card is the LCP candidate — load it eagerly with high
     // priority; everything below the fold stays lazy.
     const loadAttrs = i === 0
@@ -235,9 +237,9 @@ ${verifyMetas}
 <meta property="og:description" content="${esc(siteDesc)}" />
 <meta property="og:url" content="${canonical}" />
 <meta property="og:type" content="website" />
-${posts[0] ? `<meta property="og:image" content="${baseUrl}${posts[0].hero_image_key ? `/image/${esc(posts[0].hero_image_key)}` : `/cover/${esc(posts[0].slug)}.svg`}" />` : ''}
+${posts[0] ? `<meta property="og:image" content="${baseUrl}${posts[0].hero_image_key ? `/image/${esc(posts[0].hero_image_key)}` : `/og/${esc(posts[0].slug)}.svg`}" />` : ''}
 <meta name="twitter:card" content="${posts[0] ? 'summary_large_image' : 'summary'}" />
-${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `/image/${esc(posts[0].hero_image_key)}` : `/cover/${esc(posts[0].slug)}.svg`}" fetchpriority="high" />` : ''}
+${posts[0] ? `<link rel="preload" as="image" href="${posts[0].hero_image_key ? `/image/${esc(posts[0].hero_image_key)}` : `/og/${esc(posts[0].slug)}.svg`}" fetchpriority="high" />` : ''}
 <link rel="preload" href="/_fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="preload" href="/_fonts/instrument-serif-400.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/style.css" />
