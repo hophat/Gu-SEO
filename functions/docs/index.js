@@ -396,7 +396,7 @@ export const onRequestGet = async ({ request }) => {
   </div>
 </main>
 <footer class="foot">
-  <span>pages-seo</span> · <a href="/">Home</a> · <a href="/install">Install</a> · <a href="/docs">Docs</a>
+  <span>pages-seo</span> · <a href="/">Home</a> · <a href="/admin">Admin</a> · <a href="/docs">Docs</a>
 </footer>
 </body>
 </html>`;
