@@ -1910,7 +1910,7 @@ async function testEmailSending() {
   const { mailSender, htmlToText, sendEmail } =
     await import('../functions/_lib/email_smtp.js');
 
-  const ENV = { CF_API_TOKEN: 'tok', CF_ACCOUNT_ID: 'acct123' };
+  const ENV = { CF_EMAIL_TOKEN: 'tok', CF_ACCOUNT_ID: 'acct123' };
 
   // ── the sender address ──
   const dflt = mailSender({});
@@ -1965,6 +1965,24 @@ async function testEmailSending() {
   };
 
   try {
+  // The two tokens are separate concerns and must not be confused. A token
+  // minted for Email Sending cannot list Pages projects or read a zone; a
+  // token minted for Pages cannot send. Falling back lets a single-token
+  // install still work, but the dedicated one has to win when both are set.
+  {
+    const both = { CF_EMAIL_TOKEN: 'mail-tok', CF_API_TOKEN: 'pages-tok', CF_ACCOUNT_ID: 'acct123' };
+    stub(200, { success: true, result: { message_id: 'm' } });
+    await sendEmail(both, { to: 'a@b.com', subject: 's', html: 'x' });
+    assert.equal(calls.at(-1).init.headers.Authorization, 'Bearer mail-tok',
+      'the dedicated email token must win over the general one');
+    const legacy = { CF_API_TOKEN: 'pages-tok', CF_ACCOUNT_ID: 'acct123' };
+    await sendEmail(legacy, { to: 'a@b.com', subject: 's', html: 'x' });
+    assert.equal(calls.at(-1).init.headers.Authorization, 'Bearer pages-tok',
+      'a single-token install must still send');
+    ok('the email token is separate from the pages token, with a fallback');
+    calls.length = 0; // the blocks below index from 1
+  }
+
     stub(200, { success: true, result: { message_id: 'msg_1', queued: ['user@example.com'] } });
     const res = await sendEmail(ENV, {
       to: 'user@example.com', subject: 'Báo cáo', html: '<p>Xin chào</p>',

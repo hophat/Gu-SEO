@@ -22,10 +22,11 @@
 //      the CLI equivalent, but it 401s with code 2036 on accounts without the
 //      beta enabled, so the Dashboard is the reliable path.)
 //   2. create an API token with "Email Sending > Send" permission and set it
-//      alongside the account id this file already expects from the domains
-//      helper:
-//        wrangler pages secret put CF_API_TOKEN   --project-name=gu-seo
-//        wrangler pages secret put CF_ACCOUNT_ID  --project-name=gu-seo
+//      as its own secret — it is deliberately NOT the CF_API_TOKEN this
+//      project already carries, which is minted for Pages and domain
+//      management and cannot send mail:
+//        wrangler pages secret put CF_EMAIL_TOKEN --project-name=gu-seo
+//      CF_ACCOUNT_ID is shared with the domains helper and already exists.
 //   3. the sender address defaults to the one below; a fork overrides it:
 //        wrangler pages secret put MAIL_FROM      --project-name=gu-seo
 //
@@ -35,25 +36,35 @@
 // it is not deliverable — a message that needs a real inbox behind "Reply"
 // must set `replyTo`.
 
-import { cfCreds, cfFetch, cfFirstError } from './cloudflare_domains.js';
+import { cfFetch, cfFirstError } from './cloudflare_domains.js';
 
 const DEFAULT_FROM = { address: 'no-reply@gulagi.com', name: 'GU SEO System' };
 
 // Resolved per call rather than at module load: `env` is only available inside
 // a request, and reading it lazily also means missing config surfaces as a
 // named error instead of a module-level crash.
+//
+// CF_EMAIL_TOKEN is read first and CF_API_TOKEN second, and the two are kept
+// apart on purpose. The general token this project already carries was minted
+// for Pages/domain management; a token minted for Email Sending does not carry
+// those permissions, and vice versa. Sharing one secret means every time its
+// permission set is changed, some other feature silently stops working — so
+// mail gets its own, and falls back to the shared one only if an install has
+// just the one.
 function mailConfig(env) {
-  const creds = cfCreds(env);
-  if (!creds) {
+  const token = String(env?.CF_EMAIL_TOKEN || '').trim()
+    || String(env?.CF_API_TOKEN || env?.CLOUDFLARE_API_TOKEN || '').trim();
+  const accountId = String(env?.CF_ACCOUNT_ID || env?.CLOUDFLARE_ACCOUNT_ID || '').trim();
+  if (!token || !accountId) {
     const err = new Error(
-      'email_not_configured: missing CF_API_TOKEN / CF_ACCOUNT_ID. ' +
+      'email_not_configured: missing CF_EMAIL_TOKEN (or CF_API_TOKEN) / CF_ACCOUNT_ID. ' +
       'The token needs "Email Sending: Send" and the sending domain must be ' +
       'onboarded in the Dashboard under Compute & AI > Email Service > Email Sending.'
     );
     err.code = 'email_not_configured';
     throw err;
   }
-  return creds;
+  return { token, accountId };
 }
 
 // `{ address, name }` — the REST shape. A bare address has no display name; a
