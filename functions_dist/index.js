@@ -92,7 +92,7 @@ async function edgeCached(request, waitUntil, build, sMaxAge = EDGE_SMAXAGE) {
 var IMAGE_VERSION, EDGE_SMAXAGE, EDGE_SWR;
 var init_util = __esm({
   "_lib/util.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     __name(nowSec, "nowSec");
     __name(newId, "newId");
     __name(json, "json");
@@ -149,7 +149,7 @@ function listSettingKeys() {
 var FALLBACK, KEYS, SETTINGS_CACHE_KEY;
 var init_settings = __esm({
   "_lib/settings.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     FALLBACK = {
       site_cta: /* @__PURE__ */ __name((env) => env.SITE_CTA || "Sign up to get started.", "site_cta"),
@@ -326,7 +326,7 @@ async function getSiteIdentity(env) {
 var CACHE;
 var init_site_identity = __esm({
   "_lib/site_identity.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_settings();
     CACHE = "__ps_site_identity_cache";
     __name(getSiteIdentity, "getSiteIdentity");
@@ -362,7 +362,7 @@ async function getAdminToken(env) {
 var CACHE_KEY;
 var init_admin_token = __esm({
   "_lib/admin_token.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_settings();
     CACHE_KEY = "__ps_admin_token_cache";
     __name(getAdminToken, "getAdminToken");
@@ -388,7 +388,7 @@ function configError(missing) {
 }
 var init_config = __esm({
   "_lib/config.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_site_identity();
     init_admin_token();
     __name(missingConfig, "missingConfig");
@@ -506,7 +506,7 @@ function readCookie(req, name) {
 var PBKDF2_ITER, PASSWORD_HASH_BYTES, SALT_BYTES, SESSION_DAYS, SESSION_COOKIE;
 var init_passwords = __esm({
   "_lib/passwords.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     PBKDF2_ITER = 1e5;
     PASSWORD_HASH_BYTES = 32;
     SALT_BYTES = 16;
@@ -666,7 +666,7 @@ async function resolveTenantContext(env, request, auth) {
 var DENIED_PROJECT_SENTINEL;
 var init_auth = __esm({
   "_lib/auth.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_config();
     init_passwords();
@@ -709,7 +709,7 @@ function bytesToBase64(bytes) {
 var MAX_ASSETS, MAX_ASSET_BYTES, onRequestGet;
 var init_export = __esm({
   "api/admin/cover/templates/export.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_settings();
@@ -845,7 +845,7 @@ async function uniqueName(env, baseName) {
 var MAX_BYTES, MAX_ASSETS2, MAX_TOTAL_BYTES, ALLOWED_MIME, onRequestPost;
 var init_import = __esm({
   "api/admin/cover/templates/import.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     MAX_BYTES = 10 * 1024 * 1024;
@@ -1080,7 +1080,7 @@ async function syncSitemapAliases(env, projectId = null) {
 var RESERVED, RESERVED_NAMES;
 var init_aliases = __esm({
   "_lib/links/aliases.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     RESERVED = {
       blog: { url: "/blog", description: "The main blog index of this site." },
@@ -1100,7 +1100,7 @@ var init_aliases = __esm({
 var onRequestPost2;
 var init_sync = __esm({
   "api/admin/aliases/sync.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_aliases();
@@ -1121,7 +1121,7 @@ var init_sync = __esm({
 var onRequestPost3;
 var init_delete_job = __esm({
   "api/admin/blog/delete-job.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     onRequestPost3 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -1251,7 +1251,7 @@ ${body}`;
 var EMBED_MODEL, SIMILARITY_THRESHOLD, RECENT_POSTS_TO_CHECK, MAX_TEXT_FOR_EMBED;
 var init_dedup = __esm({
   "_lib/dedup.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     EMBED_MODEL = "@cf/baai/bge-base-en-v1.5";
     SIMILARITY_THRESHOLD = 0.8;
     RECENT_POSTS_TO_CHECK = 50;
@@ -1268,7 +1268,7 @@ var init_dedup = __esm({
 var BATCH_LIMIT, onRequestPost4;
 var init_embed_backfill = __esm({
   "api/admin/blog/embed-backfill.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_dedup();
@@ -1465,7 +1465,7 @@ function buildBrandContext({ env, settings, post, request, extras, kind } = {}) 
 var FILTERS;
 var init_template = __esm({
   "_lib/template.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     FILTERS = {
       upper: /* @__PURE__ */ __name((v) => String(v ?? "").toUpperCase(), "upper"),
       lower: /* @__PURE__ */ __name((v) => String(v ?? "").toLowerCase(), "lower"),
@@ -1652,7 +1652,7 @@ function priceFor(prices, provider, direction) {
 var BUNDLED_PRICES, MODELS_DEV_MAP, CACHE_STALENESS_SEC;
 var init_prices = __esm({
   "_lib/prices.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_settings();
     init_util();
     BUNDLED_PRICES = {
@@ -1784,7 +1784,7 @@ async function checkBudget(env, source = "admin") {
 var CHARS_PER_TOKEN;
 var init_usage = __esm({
   "_lib/usage.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_settings();
     init_prices();
@@ -1946,7 +1946,7 @@ function closeTruncated(s) {
 var DEFAULT_SYS;
 var init_raw_llm = __esm({
   "_lib/raw_llm.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_ai();
     init_settings();
     init_usage();
@@ -2072,7 +2072,7 @@ async function describeKeys(env, names) {
 var PBKDF2_SALT, PBKDF2_ITER2, IV_BYTES, cachedKey, cachedTokenHash;
 var init_secret_vault = __esm({
   "_lib/secret_vault.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_admin_token();
     PBKDF2_SALT = new TextEncoder().encode("pages-seo:vault:v1");
     PBKDF2_ITER2 = 1e5;
@@ -2914,7 +2914,7 @@ function providerEnvKey(name) {
 var BANNED_PHRASES_BLOCK, CONCRETENESS_BLOCK, AGENT_MARKUP_HINT, SYSTEM_JSON_ONLY, WORKERS_AI_TEXT_MODEL, WORKERS_AI_IMAGE_MODEL, OPENAI_RESPONSES_URL, OPENAI_IMAGES_URL, OPENAI_TEXT_MODEL, OPENAI_IMAGE_MODEL, ANTHROPIC_URL, ANTHROPIC_TEXT_MODEL, GEMINI_TEXT_MODELS, GEMINI_IMAGE_MODEL, TEXT_PROVIDERS, IMAGE_PROVIDERS, PROVIDER_SECRET_NAMES;
 var init_ai = __esm({
   "_lib/ai.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_template();
     init_raw_llm();
     init_usage();
@@ -3056,7 +3056,7 @@ function sniffImageFormat(bytes) {
 var onRequestPost5;
 var init_image = __esm({
   "api/admin/blog/image.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
@@ -3143,7 +3143,7 @@ var init_image = __esm({
 var onRequestGet2;
 var init_jobs = __esm({
   "api/admin/blog/jobs.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     onRequestGet2 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -3176,7 +3176,7 @@ var init_jobs = __esm({
 var onRequestGet3;
 var init_list = __esm({
   "api/admin/blog/list.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     onRequestGet3 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -3208,7 +3208,7 @@ var init_list = __esm({
 var onRequestPost6;
 var init_post = __esm({
   "api/admin/blog/post.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     onRequestPost6 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -3302,7 +3302,7 @@ async function markTopicUsed(env, topicKey) {
 var TOPICS;
 var init_topics = __esm({
   "_lib/topics.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     TOPICS = [
       // ── on-page (writing for readers + Google) ─────────────────────
       { key: "on-page-seo-2026", category: "on-page", angle: "On-page SEO basics in 2026 \u2014 what still matters, what doesn't, and a checklist a small site can actually use." },
@@ -3394,7 +3394,7 @@ async function getIndexNowKey(env) {
 var CACHE_KEY2;
 var init_indexnow_key = __esm({
   "_lib/indexnow_key.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_settings();
     CACHE_KEY2 = "__ps_indexnow_key_cache";
     __name(getIndexNowKey, "getIndexNowKey");
@@ -3437,7 +3437,7 @@ async function pingIndexNow(env, urls, request = null, hostOverride = null) {
 var INDEXNOW_URL;
 var init_indexnow = __esm({
   "_lib/indexnow.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_indexnow_key();
     init_site_identity();
     INDEXNOW_URL = "https://api.indexnow.org/indexnow";
@@ -3598,7 +3598,7 @@ async function describeConfig(env) {
 var SCOPE_SITEMAP, SCOPE_INDEXING, GOOGLE_TOKEN_URL, TOKEN_CACHE;
 var init_google_indexing = __esm({
   "_lib/google_indexing.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_secret_vault();
     init_settings();
     init_site_identity();
@@ -3747,7 +3747,7 @@ function statusForScore(verdict, { forcePublish = false } = {}) {
 }
 var init_quality = __esm({
   "_lib/quality.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     __name(wordCount, "wordCount");
     __name(countMatches, "countMatches");
     __name(internalLinkCount, "internalLinkCount");
@@ -3953,7 +3953,7 @@ async function upsertProject(env, projectData) {
 }
 var init_projects = __esm({
   "_lib/projects.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     __name(normalizeCustomDomain, "normalizeCustomDomain");
     __name(getProject, "getProject");
@@ -4093,7 +4093,7 @@ async function listChannelStates(env, projectId) {
 var CHANNELS;
 var init_channels = __esm({
   "_lib/channels.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     CHANNELS = [
       { id: "facebook", label: "Facebook Page", legacy_type: "facebook" },
@@ -4301,7 +4301,7 @@ async function clearPendingPages(env, projectId) {
 var GRAPH, DIALOG, DEFAULT_VERSION, FB_SCOPES, THREADS_SCOPES, INSTAGRAM_SCOPES, FB_APP_SECRET_NAME, THREADS_APP_SECRET_NAME, PENDING_TTL_SEC;
 var init_facebook_oauth = __esm({
   "_lib/publishing/facebook_oauth.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_secret_vault();
     GRAPH = "https://graph.facebook.com";
     DIALOG = "https://www.facebook.com";
@@ -4384,7 +4384,7 @@ function carouselSlideRegex(prefix) {
 var CAROUSEL_KIND, CAROUSEL_REF_PREFIX, CAROUSEL_KEY_PREFIX, CAROUSEL_SLIDE_COUNT, EXPLAINER_KIND, EXPLAINER_REF_PREFIX, POST_BACKED_PREFIXES;
 var init_video_jobs = __esm({
   "_lib/video_jobs.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     CAROUSEL_KIND = "carousel";
     CAROUSEL_REF_PREFIX = "carousel:";
     CAROUSEL_KEY_PREFIX = "carousel/";
@@ -4757,7 +4757,7 @@ async function verifyFacebookPage({ env, projectId, pageId, token }) {
 var GRAPH2, MAX_FACEBOOK_MESSAGE_CHARS, MAX_FACEBOOK_HASHTAG_LENGTH, GENERIC_HASHTAGS;
 var init_facebook = __esm({
   "_lib/publishing/facebook.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_secret_vault();
     init_facebook_oauth();
     init_video_jobs();
@@ -5001,7 +5001,7 @@ async function verifyYoutubeChannel({ accessToken }) {
 var AUTH_ENDPOINT, TOKEN_ENDPOINT, CHANNELS_ENDPOINT, YOUTUBE_CLIENT_SECRET_NAME, YOUTUBE_SCOPES;
 var init_youtube_oauth = __esm({
   "_lib/publishing/youtube_oauth.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_secret_vault();
     AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
     TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -5346,7 +5346,7 @@ async function publishYoutubeVideo({ project, article, configJson, env, socialPo
     };
   }
   if (offset >= size) {
-    const probe2 = await fetch(sessionUri, {
+    const probe = await fetch(sessionUri, {
       method: "PUT",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -5354,8 +5354,8 @@ async function publishYoutubeVideo({ project, article, configJson, env, socialPo
         "Content-Range": `bytes */${size}`
       }
     });
-    if (probe2.ok) {
-      const data = await readJsonBody2(probe2);
+    if (probe.ok) {
+      const data = await readJsonBody2(probe);
       if (data?.id) {
         await markComplete(env, state, String(data.id));
         return {
@@ -5365,8 +5365,8 @@ async function publishYoutubeVideo({ project, article, configJson, env, socialPo
           privacy_status: config.privacy
         };
       }
-    } else if (probe2.status !== 308) {
-      const error3 = await parseApiError(probe2);
+    } else if (probe.status !== 308) {
+      const error3 = await parseApiError(probe);
       if (sessionGone(error3)) {
         await env.DB.prepare("DELETE FROM youtube_uploads WHERE social_post_id = ?").bind(socialPostId).run();
       }
@@ -5384,7 +5384,7 @@ async function publishYoutubeVideo({ project, article, configJson, env, socialPo
 var UPLOAD_ENDPOINT, CHUNK_BYTES, MAX_CHUNKS_PER_RUN, MAX_VIDEO_BYTES, MAX_TITLE, MAX_DESCRIPTION, MAX_TAGS;
 var init_youtube = __esm({
   "_lib/publishing/youtube.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_youtube_oauth();
     init_secret_vault();
     init_video_jobs();
@@ -5621,7 +5621,7 @@ function adaptArticleForChannel(channel, project, article, cfg = {}) {
 var X_LIMIT, THREADS_LIMIT, IG_CAPTION_LIMIT, X_URL_ENTITY, X_URL_RE;
 var init_adapter = __esm({
   "_lib/publishing/adapter.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_facebook();
     X_LIMIT = 280;
     THREADS_LIMIT = 500;
@@ -5742,7 +5742,7 @@ function safeParse(json2) {
 var GRAPH3;
 var init_instagram = __esm({
   "_lib/publishing/instagram.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_secret_vault();
     init_facebook_oauth();
     init_facebook();
@@ -5899,7 +5899,7 @@ function safeParse2(json2) {
 var GRAPH4, AUTH_URL, TOKEN_URL;
 var init_threads = __esm({
   "_lib/publishing/threads.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_secret_vault();
     init_facebook_oauth();
     init_facebook();
@@ -6067,7 +6067,7 @@ async function publishToX({ project, article, configJson, env }) {
 var API, UPLOAD, X_TOKEN_NAMES;
 var init_x = __esm({
   "_lib/publishing/x.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_secret_vault();
     init_adapter();
     API = "https://api.twitter.com";
@@ -6236,7 +6236,7 @@ async function publishToWordPress({ endpointUrl, authHeader, article }) {
 }
 var init_publisher = __esm({
   "_lib/publishing/publisher.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_facebook();
     init_youtube();
     init_instagram();
@@ -6285,7 +6285,7 @@ async function trackOnce(env, { event, projectId, userId = null, props = null } 
 var EVENTS, KNOWN;
 var init_events = __esm({
   "_lib/events.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     EVENTS = [
       "signup",
@@ -6550,7 +6550,7 @@ async function cancelSocialPost(env, { projectId = null, id }) {
 var BASE_DELAY_SEC, MAX_DELAY_SEC, SOCIAL_COLUMNS, SOCIAL_VALUES, ASSET_CHANNELS;
 var init_social_queue = __esm({
   "_lib/publishing/social_queue.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_projects();
     init_publisher();
@@ -6740,7 +6740,7 @@ async function publicPathFor(env, projectId, request) {
 var CACHE_KEY3, PROJECT_LOCALES, SLUG_CACHE_KEY;
 var init_project_scope = __esm({
   "_lib/project_scope.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     CACHE_KEY3 = "__ps_project_scope_cache__";
     PROJECT_LOCALES = Object.freeze({
       vi: { htmlLang: "vi", ogLocale: "vi_VN" },
@@ -6873,7 +6873,7 @@ async function cfAttachStatus(env, request, hostname) {
 var CF_API, FALLBACK_PAGES_HOST;
 var init_cloudflare_domains = __esm({
   "_lib/cloudflare_domains.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     CF_API = "https://api.cloudflare.com/client/v4";
     FALLBACK_PAGES_HOST = "gu-seo.pages.dev";
     __name(cfCreds, "cfCreds");
@@ -7022,7 +7022,7 @@ async function sendEmail(env, { to, subject, html: html2, replyTo = "" }) {
 var DEFAULT_FROM;
 var init_email_smtp = __esm({
   "_lib/email_smtp.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_cloudflare_domains();
     init_settings();
     init_util();
@@ -7160,7 +7160,7 @@ async function sendPublishReport(env, { projectId, blogPostId, baseUrl = "" }) {
 var STATUS_LABEL, CHANNEL_LABEL;
 var init_report = __esm({
   "_lib/publishing/report.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_email_smtp();
     init_settings();
     STATUS_LABEL = {
@@ -7192,7 +7192,7 @@ var init_report = __esm({
 var onRequestPost7;
 var init_publish = __esm({
   "api/admin/blog/publish.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_topics();
@@ -7345,7 +7345,7 @@ async function ensureRedirectTable(env) {
 var onRequestPost8;
 var init_rename_slug = __esm({
   "api/admin/blog/rename-slug.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     __name(ensureRedirectTable, "ensureRedirectTable");
@@ -7396,7 +7396,7 @@ var init_rename_slug = __esm({
 var onRequestPost9;
 var init_retry_job = __esm({
   "api/admin/blog/retry-job.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     onRequestPost9 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -7488,7 +7488,7 @@ async function generateContent2({
 }
 var init_provider = __esm({
   "_lib/ai/provider.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_ai();
     init_util();
     __name(generateContent2, "generateContent");
@@ -7731,7 +7731,7 @@ async function scoreProjectTopics(env, project) {
 var COMMERCIAL_CUES;
 var init_project_topics = __esm({
   "_lib/project_topics.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_provider();
     __name(listProjectTopics, "listProjectTopics");
@@ -7990,7 +7990,7 @@ async function planSingleForToday(env, { preferredProvider = "", source = "cron-
 }
 var init_calendar_planner = __esm({
   "_lib/calendar_planner.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_settings();
     init_raw_llm();
@@ -8027,7 +8027,7 @@ async function nextDueSlot(env, projectId) {
 var onRequestPost10;
 var init_start = __esm({
   "api/admin/blog/start.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_topics();
@@ -8206,7 +8206,7 @@ function sanitiseMarkdownLinks(md, opts = {}) {
 var LINK_RX, BARE_URL_RX, SAFE_PROTOCOLS, DEFAULT_INTERNAL_PREFIXES;
 var init_sanitise = __esm({
   "_lib/links/sanitise.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     LINK_RX = /\[([^\]]+)\]\(([^)\s]+)\)/g;
     BARE_URL_RX = /(?<![("\w])(https?:\/\/[A-Za-z0-9._~:/?#@!$&'*+,;=%-]+)(?![\w"])/g;
     SAFE_PROTOCOLS = /^(https?:|mailto:|tel:)/i;
@@ -8326,7 +8326,7 @@ async function loadLinkTargets(env, selfSlug, { limit = TARGET_POOL_SIZE, pillar
 var MAX_LINKS_PER_POST, MAX_RELATED_LINKS, MIN_PHRASE_WORDS, MAX_PHRASE_WORDS, TARGET_POOL_SIZE;
 var init_internal_links = __esm({
   "_lib/internal_links.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     MAX_LINKS_PER_POST = 3;
     MAX_RELATED_LINKS = 3;
     MIN_PHRASE_WORDS = 3;
@@ -8346,7 +8346,7 @@ var init_internal_links = __esm({
 var onRequestPost11;
 var init_text = __esm({
   "api/admin/blog/text.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
@@ -8488,7 +8488,7 @@ var init_text = __esm({
 var onRequestPost12;
 var init_plan = __esm({
   "api/admin/calendar/plan.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_calendar_planner();
@@ -8569,7 +8569,7 @@ function measureHtml(html2) {
 var CACHE_TTL_SEC, MAX_URLS, MAX_HTML_CHARS, onRequestPost13;
 var init_scan = __esm({
   "api/admin/competitors/scan.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_projects();
@@ -8643,7 +8643,7 @@ function decodeBase64Png(b64) {
 var MAX_BYTES2, onRequestPost14;
 var init_apply = __esm({
   "api/admin/cover/apply.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     MAX_BYTES2 = 8 * 1024 * 1024;
@@ -8707,7 +8707,7 @@ var init_apply = __esm({
 var onRequestPost15;
 var init_render_server = __esm({
   "api/admin/cover/render-server.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     onRequestPost15 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -8796,7 +8796,7 @@ function fallbackCoverSpec() {
 var COVER_SPEC_SIZE;
 var init_cover_spec = __esm({
   "_lib/cover_spec.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     COVER_SPEC_SIZE = Object.freeze({ width: 1200, height: 630 });
     __name(isRenderableSpec, "isRenderableSpec");
     __name(normalizeCoverSpec, "normalizeCoverSpec");
@@ -8813,7 +8813,7 @@ function shrinkSpec(spec) {
 var MAX_SPEC_BYTES, onRequestGet4, onRequestPost16, onRequestPut, onRequestDelete;
 var init_templates = __esm({
   "api/admin/cover/templates.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_cover_spec();
@@ -8955,7 +8955,7 @@ function decodeBase642(b64) {
 var MAX_BYTES3, ALLOWED_KINDS, ALLOWED_MIME2, onRequestPost17, onRequestGet5, onRequestDelete2;
 var init_upload = __esm({
   "api/admin/cover/upload.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     MAX_BYTES3 = 10 * 1024 * 1024;
@@ -9152,7 +9152,7 @@ async function refreshStep(call, proj, limit, overBudget) {
 var CHAIN_START_BUDGET_MS, STEP_BUDGET_MS, onRequestPost18;
 var init_tick = __esm({
   "api/admin/cron/tick.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_projects();
@@ -9257,7 +9257,7 @@ var init_tick = __esm({
 var onRequestPost19;
 var init_weekly_digest = __esm({
   "api/admin/cron/weekly-digest.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_email_smtp();
@@ -9360,7 +9360,7 @@ async function clearNotice(env, kind) {
 var VALID_SEVERITIES;
 var init_notices = __esm({
   "_lib/notices.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     VALID_SEVERITIES = /* @__PURE__ */ new Set(["info", "warn", "error"]);
     __name(recordNotice, "recordNotice");
@@ -9372,7 +9372,7 @@ var init_notices = __esm({
 var onRequestGet6, onRequestPost20;
 var init_requests = __esm({
   "api/admin/domains/requests.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_projects();
@@ -9493,7 +9493,7 @@ var init_requests = __esm({
 var onRequestPost21;
 var init_test = __esm({
   "api/admin/google-search-console/test.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_google_indexing();
@@ -9517,7 +9517,7 @@ var init_test = __esm({
 var onRequestPost22;
 var init_dismiss = __esm({
   "api/admin/notices/dismiss.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     onRequestPost22 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -9552,7 +9552,7 @@ var init_dismiss = __esm({
 var onRequestPost23;
 var init_generate_next = __esm({
   "api/admin/prog/generate-next.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
@@ -9845,7 +9845,7 @@ function canonicaliseKeyword(kw) {
 var TRANSACTIONAL, COMMERCIAL, INFORMATIONAL, NAVIGATIONAL, JUNK_PATTERNS, SPECIFICITY_MODIFIERS, HIGH_CTR_MODIFIERS;
 var init_keyword_score = __esm({
   "_lib/keyword_score.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     TRANSACTIONAL = [
       "buy",
       "purchase",
@@ -10026,7 +10026,7 @@ async function pullKeywords(seed, { limit = 50, expand = true, minScore = 0 } = 
 var ENDPOINT, LETTERS, PREFIXES, SUFFIXES;
 var init_keyword_puller = __esm({
   "_lib/keyword_puller.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_keyword_score();
     ENDPOINT = "https://suggestqueries.google.com/complete/search";
     LETTERS = "abcdefghijklmnopqrstuvwxyz".split("");
@@ -10043,7 +10043,7 @@ var init_keyword_puller = __esm({
 var onRequestPost24;
 var init_pull_keywords = __esm({
   "api/admin/prog/pull-keywords.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_keyword_puller();
@@ -10112,7 +10112,7 @@ var init_pull_keywords = __esm({
 var onRequestGet7, onRequestPatch, onRequestDelete3;
 var init_queue = __esm({
   "api/admin/prog/queue.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     onRequestGet7 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -10223,7 +10223,7 @@ var init_queue = __esm({
 var onRequestPost25;
 var init_upload2 = __esm({
   "api/admin/prog/upload.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_keyword_score();
@@ -10372,7 +10372,7 @@ async function testChannel(env, pid, channel, body) {
 var X_SECRET_FIELDS, X_NAME_BY_FIELD, onRequestGet8, onRequestPost26;
 var init_channels2 = __esm({
   "api/admin/projects/channels.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_secret_vault();
@@ -10533,7 +10533,7 @@ async function recordResult(env, projectId, channel, status, detail) {
 var onRequestGet9;
 var init_channels_callback = __esm({
   "api/admin/projects/channels-callback.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_admin_token();
     init_facebook_oauth();
     init_secret_vault();
@@ -10576,13 +10576,13 @@ var init_channels_callback = __esm({
       const appSecret = await getThreadsAppSecret(env);
       if (!appId || !appSecret) return done("error", "Ch\u01B0a c\u1EA5u h\xECnh Threads App ID/Secret.");
       try {
-        const short5 = await exchangeThreadsCodeForToken({
+        const short4 = await exchangeThreadsCodeForToken({
           appId,
           appSecret,
           redirectUri: threadsRedirectUri(request),
           code
         });
-        const longToken = await exchangeThreadsLongLived({ appSecret, shortToken: short5.access_token });
+        const longToken = await exchangeThreadsLongLived({ appSecret, shortToken: short4.access_token });
         const profile = await verifyThreadsToken({ token: longToken });
         if (!profile?.id) return done("error", "Kh\xF4ng \u0111\u1ECDc \u0111\u01B0\u1EE3c Threads profile t\u1EEB token.");
         await setVaultSecret(env, `THREADS_TOKEN__${pid}`, longToken);
@@ -10602,7 +10602,7 @@ var init_channels_callback = __esm({
 var SCOPES_BY_CHANNEL, onRequestGet10;
 var init_channels_connect = __esm({
   "api/admin/projects/channels-connect.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_auth();
     init_admin_token();
     init_events();
@@ -10673,7 +10673,7 @@ var init_channels_connect = __esm({
 var onRequestGet11, onRequestPost27;
 var init_domain = __esm({
   "api/admin/projects/domain.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_projects();
@@ -10693,7 +10693,7 @@ var init_domain = __esm({
       ).bind(tenant.activeProjectId).first().catch(() => null);
       if (!project) return json(404, { error: "project_not_found" });
       const normalized = project.custom_domain ? normalizeCustomDomain(project.custom_domain) : null;
-      const cf2 = await cfAttachStatus(env, request, normalized);
+      const cf = await cfAttachStatus(env, request, normalized);
       const pending = project.pending_custom_domain ? normalizeCustomDomain(project.pending_custom_domain) : null;
       return json(200, {
         ok: true,
@@ -10704,9 +10704,9 @@ var init_domain = __esm({
         slug: project.slug,
         publishing_url: project.publishing_url,
         cname_target: pagesHost(env),
-        cf_managed: cf2.managed,
-        cf_attached: cf2.attached,
-        cf_status: cf2.status || null
+        cf_managed: cf.managed,
+        cf_attached: cf.attached,
+        cf_status: cf.status || null
       });
     }, "onRequestGet");
     onRequestPost27 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -10829,7 +10829,7 @@ async function recordResult2(env, projectId, status, detail) {
 var onRequestGet12;
 var init_fb_callback = __esm({
   "api/admin/projects/fb-callback.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_admin_token();
     init_facebook_oauth();
     init_secret_vault();
@@ -10909,7 +10909,7 @@ var init_fb_callback = __esm({
 var onRequestGet13;
 var init_fb_connect = __esm({
   "api/admin/projects/fb-connect.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_auth();
     init_admin_token();
     init_events();
@@ -10962,7 +10962,7 @@ function decodeBase643(b64) {
 var MAX_BYTES4, ALLOWED_MIME3, onRequestPost28;
 var init_logo = __esm({
   "api/admin/projects/logo.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     MAX_BYTES4 = 2 * 1024 * 1024;
@@ -11027,7 +11027,7 @@ var init_logo = __esm({
 var MAX_NAME, onRequestGet14, onRequestPatch2;
 var init_profile = __esm({
   "api/admin/projects/profile.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     MAX_NAME = 120;
@@ -11145,7 +11145,7 @@ async function loadRow(env, projectId) {
 var PUBLISHER_TYPES, onRequestGet15, onRequestPost29;
 var init_publishing = __esm({
   "api/admin/projects/publishing.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_secret_vault();
@@ -11426,7 +11426,7 @@ async function recordResult3(env, projectId, status, detail) {
 var onRequestGet16;
 var init_youtube_callback = __esm({
   "api/admin/projects/youtube-callback.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_auth();
     init_util();
     init_admin_token();
@@ -11496,7 +11496,7 @@ var init_youtube_callback = __esm({
 var onRequestGet17;
 var init_youtube_connect = __esm({
   "api/admin/projects/youtube-connect.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_auth();
     init_util();
     init_admin_token();
@@ -11534,7 +11534,7 @@ var init_youtube_connect = __esm({
 var onRequestGet18;
 var init_gurouter_models = __esm({
   "api/admin/providers/gurouter-models.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
@@ -11598,7 +11598,7 @@ var init_gurouter_models = __esm({
 var onRequestPost30;
 var init_test2 = __esm({
   "api/admin/providers/test.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
@@ -11636,7 +11636,7 @@ var init_test2 = __esm({
 var onRequestPost31;
 var init_test_image = __esm({
   "api/admin/providers/test-image.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
@@ -11702,7 +11702,7 @@ async function weeklyRefreshCount(env, projectId) {
 var WEEKLY_CAP, onRequestPost32;
 var init_run = __esm({
   "api/admin/refresh/run.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
@@ -11882,7 +11882,7 @@ ${String(post.body_markdown || "").slice(0, 6e3)}`,
 var STALE_DAYS, REFRESH_COOLDOWN_DAYS, onRequestPost33;
 var init_scan2 = __esm({
   "api/admin/refresh/scan.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     STALE_DAYS = 90;
@@ -11940,7 +11940,7 @@ var init_scan2 = __esm({
 var onRequestPost34;
 var init_test3 = __esm({
   "api/admin/report/test.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_email_smtp();
@@ -11986,7 +11986,7 @@ var init_test3 = __esm({
 var onRequestPost35;
 var init_score = __esm({
   "api/admin/topics/score.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_projects();
@@ -12027,7 +12027,7 @@ async function fetchLatestSha() {
 var CF_API2, onRequestPost36;
 var init_apply2 = __esm({
   "api/admin/update/apply.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_settings();
@@ -12129,7 +12129,7 @@ function canonicalEmail(value) {
 var EMAIL_RX, MAX_EMAIL_LENGTH, GOOGLE_DOMAINS;
 var init_email_rules = __esm({
   "_lib/email_rules.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     EMAIL_RX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
     MAX_EMAIL_LENGTH = 254;
     __name(normalizeEmail, "normalizeEmail");
@@ -12145,7 +12145,7 @@ var init_email_rules = __esm({
 var onRequestPost37;
 var init_recanonicalize = __esm({
   "api/admin/users/recanonicalize.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_email_rules();
@@ -12223,7 +12223,7 @@ async function brandSave({ env, request }) {
 var onRequestGet19, onRequestPut2, onRequestPost38;
 var init_brand = __esm({
   "api/admin/video/brand.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     onRequestGet19 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -12279,7 +12279,7 @@ function clampVideoDuration(value) {
 var VIDEO_TEMPLATES;
 var init_video_templates = __esm({
   "_lib/video_templates.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     VIDEO_TEMPLATES = [
       {
         id: "auto",
@@ -12400,7 +12400,7 @@ var init_video_templates = __esm({
 var onRequestPost39;
 var init_business = __esm({
   "api/admin/video/business.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_video_templates();
@@ -12449,7 +12449,7 @@ var init_business = __esm({
 var onRequestPost40;
 var init_carousel = __esm({
   "api/admin/video/carousel.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_video_jobs();
@@ -12498,7 +12498,7 @@ var init_carousel = __esm({
 var MAX_SLIDES, onRequestPost41;
 var init_carousel_deliver = __esm({
   "api/admin/video/carousel-deliver.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_video_jobs();
@@ -12573,7 +12573,7 @@ function parseBgmParam(raw) {
 var BGM_LICENSE, BGM_TRACKS, BGM_NONE, AUTO_BGM_BY_TEMPLATE;
 var init_bgm_catalog = __esm({
   "_lib/bgm_catalog.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     BGM_LICENSE = {
       label: "Mixkit Free License",
       url: "https://mixkit.co/license/",
@@ -12624,7 +12624,7 @@ function bgmFields(bgm, requestUrl, template = "") {
 var QUEUE_WINDOW, POST_QUEUE_KINDS, onRequestPost42;
 var init_claim = __esm({
   "api/admin/video/claim.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_video_jobs();
@@ -12904,7 +12904,7 @@ async function insertJob(env, { projectId, ref, slug, kind, sourceUrl, template,
 var IN_FLIGHT, onRequestPost43;
 var init_create = __esm({
   "api/admin/video/create.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_video_templates();
@@ -13019,7 +13019,7 @@ var init_create = __esm({
 var onRequestPost44;
 var init_delete = __esm({
   "api/admin/video/delete.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_video_jobs();
@@ -13129,7 +13129,7 @@ async function sendVideoReadyEmail(env, { jobId, origin = "" }) {
 }
 var init_video_notify = __esm({
   "_lib/video_notify.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_email_smtp();
     __name(esc3, "esc");
     __name(sendVideoReadyEmail, "sendVideoReadyEmail");
@@ -13140,7 +13140,7 @@ var init_video_notify = __esm({
 var MAX_BYTES5, onRequestPost45;
 var init_deliver = __esm({
   "api/admin/video/deliver.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_projects();
@@ -13245,7 +13245,7 @@ var init_deliver = __esm({
 var onRequestPost46;
 var init_enqueue_missing = __esm({
   "api/admin/video/enqueue-missing.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     onRequestPost46 = /* @__PURE__ */ __name(async ({ env, request }) => {
@@ -13291,7 +13291,7 @@ var init_enqueue_missing = __esm({
 var onRequestPost47;
 var init_explainer = __esm({
   "api/admin/video/explainer.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_video_jobs();
@@ -13344,7 +13344,7 @@ var init_explainer = __esm({
 var onRequestGet20;
 var init_list2 = __esm({
   "api/admin/video/list.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_video_jobs();
@@ -13407,7 +13407,7 @@ function decodeBase644(b64) {
 var MAX_BYTES6, ALLOWED_MIME4, onRequestPost48;
 var init_presenter = __esm({
   "api/admin/video/presenter.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     MAX_BYTES6 = 2 * 1024 * 1024;
@@ -13472,7 +13472,7 @@ var init_presenter = __esm({
 var onRequestPost49;
 var init_publish2 = __esm({
   "api/admin/video/publish.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_social_queue();
@@ -13542,7 +13542,7 @@ var init_publish2 = __esm({
 var onRequestGet21;
 var init_templates2 = __esm({
   "api/admin/video/templates.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_video_templates();
@@ -13574,7 +13574,7 @@ var init_templates2 = __esm({
 var onRequestPost50;
 var init_website = __esm({
   "api/admin/video/website.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_video_templates();
@@ -13627,841 +13627,17 @@ var init_website = __esm({
   }
 });
 
-// api/install/d1/delete.js
-async function cfFetch2(token, path, init) {
-  const r = await fetch(CF_API3 + path, {
-    ...init,
-    headers: {
-      Authorization: "Bearer " + token,
-      "Content-Type": "application/json",
-      ...init?.headers || {}
-    }
-  });
-  let body = null;
-  try {
-    body = await r.json();
-  } catch {
-  }
-  return { status: r.status, ok: r.ok, body };
-}
-function firstError(body) {
-  if (Array.isArray(body?.errors) && body.errors.length) {
-    return body.errors.map((e) => e.message || String(e)).join(" \xB7 ");
-  }
-  return body?.error || null;
-}
-var CF_API3, onRequestPost51;
-var init_delete2 = __esm({
-  "api/install/d1/delete.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    CF_API3 = "https://api.cloudflare.com/client/v4";
-    __name(cfFetch2, "cfFetch");
-    __name(firstError, "firstError");
-    onRequestPost51 = /* @__PURE__ */ __name(async ({ request }) => {
-      let payload;
-      try {
-        payload = await request.json();
-      } catch {
-        return json(400, { ok: false, error: "bad_json" });
-      }
-      const token = String(payload?.token || "").trim();
-      const accountId = String(payload?.account_id || "").trim().toLowerCase();
-      const uuid = String(payload?.uuid || "").trim().toLowerCase();
-      if (!token) return json(400, { ok: false, error: "missing_token" });
-      if (!/^[a-f0-9]{32}$/.test(accountId)) return json(400, { ok: false, error: "bad_account_id" });
-      if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(uuid)) {
-        return json(400, { ok: false, error: "bad_uuid" });
-      }
-      const r = await cfFetch2(token, `/accounts/${accountId}/d1/database/${uuid}`, {
-        method: "DELETE"
-      });
-      if (r.ok) return json(200, { ok: true, uuid, deleted: true });
-      if (r.status === 401) return json(401, { ok: false, error: "token_rejected", detail: firstError(r.body) });
-      if (r.status === 403) return json(403, { ok: false, error: "d1_write_denied", detail: "Your token can't delete D1 databases. Re-create it with D1:Edit checked." });
-      if (r.status === 404) return json(404, { ok: false, error: "db_not_found", detail: "Already deleted or never existed." });
-      return json(502, {
-        ok: false,
-        error: "cf_api_error",
-        detail: firstError(r.body) || "HTTP " + r.status
-      });
-    }, "onRequestPost");
-  }
-});
-
-// api/install/d1/list.js
-async function cfFetch3(token, path) {
-  const r = await fetch(CF_API4 + path, {
-    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }
-  });
-  let body = null;
-  try {
-    body = await r.json();
-  } catch {
-  }
-  return { status: r.status, ok: r.ok, body };
-}
-function firstError2(body) {
-  if (Array.isArray(body?.errors) && body.errors.length) {
-    return body.errors.map((e) => e.message || String(e)).join(" \xB7 ");
-  }
-  return body?.error || null;
-}
-async function resolveAccount(token, accountIdHint) {
-  if (accountIdHint && /^[a-f0-9]{32}$/i.test(accountIdHint)) {
-    const r = await cfFetch3(token, `/accounts/${accountIdHint}`);
-    if (r.ok && r.body?.result?.id) {
-      return { id: r.body.result.id, name: r.body.result.name };
-    }
-  }
-  const accountsR = await cfFetch3(token, "/accounts");
-  if (!accountsR.ok || !accountsR.body?.result?.length) return null;
-  const a = accountsR.body.result[0];
-  return { id: a.id, name: a.name };
-}
-var CF_API4, FREE_TIER_D1_CAP, onRequestPost52;
-var init_list3 = __esm({
-  "api/install/d1/list.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    CF_API4 = "https://api.cloudflare.com/client/v4";
-    FREE_TIER_D1_CAP = 10;
-    __name(cfFetch3, "cfFetch");
-    __name(firstError2, "firstError");
-    __name(resolveAccount, "resolveAccount");
-    onRequestPost52 = /* @__PURE__ */ __name(async ({ request }) => {
-      let payload;
-      try {
-        payload = await request.json();
-      } catch {
-        return json(400, { ok: false, error: "bad_json" });
-      }
-      const token = String(payload?.token || "").trim();
-      if (!token) return json(400, { ok: false, error: "missing_token" });
-      const account = await resolveAccount(token, payload?.account_id);
-      if (!account) {
-        return json(401, {
-          ok: false,
-          error: "token_rejected",
-          detail: "Token didn't resolve any account. Re-create it on /install."
-        });
-      }
-      const databases = [];
-      for (let page = 1; page <= 5; page++) {
-        const r = await cfFetch3(
-          token,
-          `/accounts/${account.id}/d1/database?page=${page}&per_page=50`
-        );
-        if (!r.ok) {
-          if (r.status === 403) {
-            return json(403, {
-              ok: false,
-              error: "d1_read_denied",
-              detail: "Your token can't list D1 databases. Re-create it with the D1:Edit scope included."
-            });
-          }
-          const detail = firstError2(r.body) || "HTTP " + r.status;
-          return json(502, { ok: false, error: "cf_api_error", detail });
-        }
-        const rows = r.body?.result || [];
-        for (const d of rows) {
-          databases.push({
-            uuid: d.uuid,
-            name: d.name,
-            created_at: d.created_at,
-            num_tables: d.num_tables ?? null,
-            file_size: d.file_size ?? null,
-            version: d.version ?? null
-          });
-        }
-        if (rows.length < 50) break;
-      }
-      return json(200, {
-        ok: true,
-        account,
-        limit: FREE_TIER_D1_CAP,
-        count: databases.length,
-        databases
-      }, {
-        // Result is account-private — never cache at any layer.
-        "cache-control": "no-store"
-      });
-    }, "onRequestPost");
-  }
-});
-
-// _lib/oauth_cookie.js
-function toB64Url(bytes) {
-  let s = "";
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-function fromB64Url(s) {
-  let b64 = String(s).replace(/-/g, "+").replace(/_/g, "/");
-  while (b64.length % 4) b64 += "=";
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-async function deriveKey2(secret) {
-  const base = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "PBKDF2" },
-    false,
-    ["deriveKey"]
-  );
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: SALT, iterations: PBKDF2_ITER3, hash: "SHA-256" },
-    base,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
-}
-function readCookie2(req, name) {
-  const hdr = req.headers.get("cookie") || "";
-  for (const c of hdr.split(/;\s*/)) {
-    const eq = c.indexOf("=");
-    if (eq < 0) continue;
-    if (c.slice(0, eq).trim() === name) return c.slice(eq + 1).trim();
-  }
-  return null;
-}
-async function setOAuthCookie(env, payload) {
-  if (!env?.GITHUB_OAUTH_CLIENT_SECRET) throw new Error("oauth_secret_missing");
-  const key = await deriveKey2(env.GITHUB_OAUTH_CLIENT_SECRET);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const data = new TextEncoder().encode(JSON.stringify(payload));
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data));
-  const packed = new Uint8Array(iv.length + ct.length);
-  packed.set(iv, 0);
-  packed.set(ct, iv.length);
-  return [
-    `${COOKIE_NAME}=${toB64Url(packed)}`,
-    `Max-Age=${TTL_SEC}`,
-    `Path=${COOKIE_PATH}`,
-    "HttpOnly",
-    "Secure",
-    "SameSite=Lax"
-  ].join("; ");
-}
-async function readOAuthCookie(env, request) {
-  if (!env?.GITHUB_OAUTH_CLIENT_SECRET) return null;
-  const raw = readCookie2(request, COOKIE_NAME);
-  if (!raw) return null;
-  try {
-    const key = await deriveKey2(env.GITHUB_OAUTH_CLIENT_SECRET);
-    const packed = fromB64Url(raw);
-    if (packed.length < 12 + 16) return null;
-    const iv = packed.slice(0, 12);
-    const ct = packed.slice(12);
-    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
-    return JSON.parse(new TextDecoder().decode(pt));
-  } catch {
-    return null;
-  }
-}
-var COOKIE_NAME, COOKIE_PATH, TTL_SEC, PBKDF2_ITER3, SALT;
-var init_oauth_cookie = __esm({
-  "_lib/oauth_cookie.js"() {
-    init_functionsRoutes_0_692476336876716();
-    COOKIE_NAME = "ps_gh";
-    COOKIE_PATH = "/api";
-    TTL_SEC = 60 * 60;
-    PBKDF2_ITER3 = 1e5;
-    SALT = new TextEncoder().encode("pages-seo:oauth-cookie:v1");
-    __name(toB64Url, "toB64Url");
-    __name(fromB64Url, "fromB64Url");
-    __name(deriveKey2, "deriveKey");
-    __name(readCookie2, "readCookie");
-    __name(setOAuthCookie, "setOAuthCookie");
-    __name(readOAuthCookie, "readOAuthCookie");
-  }
-});
-
-// api/install/github/cf-app.js
-var CF_APP_SLUGS, onRequestGet22;
-var init_cf_app = __esm({
-  "api/install/github/cf-app.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    init_oauth_cookie();
-    CF_APP_SLUGS = /* @__PURE__ */ new Set([
-      "cloudflare-workers-and-pages",
-      "cloudflare-pages"
-      // legacy app name, just in case
-    ]);
-    onRequestGet22 = /* @__PURE__ */ __name(async ({ env, request }) => {
-      const session = await readOAuthCookie(env, request);
-      if (!session?.token) return json(401, { ok: false, error: "gh_not_connected" });
-      const r = await fetch("https://api.github.com/user/installations?per_page=100", {
-        headers: {
-          Authorization: "token " + session.token,
-          Accept: "application/vnd.github+json",
-          "User-Agent": "pages-seo-install"
-        }
-      });
-      if (!r.ok) {
-        return json(502, { ok: false, error: "github_list_failed", detail: "HTTP " + r.status });
-      }
-      const body = await r.json().catch(() => ({}));
-      const installations = (body?.installations || []).map((i) => ({
-        app_slug: i.app_slug || "",
-        account: i.account?.login || "",
-        html_url: i.html_url || ""
-      }));
-      const installed = installations.some((i) => CF_APP_SLUGS.has(i.app_slug));
-      return json(200, { ok: true, installed, installations });
-    }, "onRequestGet");
-  }
-});
-
-// api/install/github/fork.js
-function ghHeaders(token) {
-  return {
-    Authorization: "token " + token,
-    Accept: "application/vnd.github+json",
-    "User-Agent": "pages-seo-install"
-  };
-}
-async function findCfInstallation(token) {
-  const r = await fetch("https://api.github.com/user/installations?per_page=100", {
-    headers: ghHeaders(token)
-  });
-  if (!r.ok) return null;
-  const d = await r.json().catch(() => ({}));
-  const list = Array.isArray(d?.installations) ? d.installations : [];
-  const hit = list.find((i) => i?.app_slug === CF_APP_SLUG);
-  if (!hit) return null;
-  return {
-    id: hit.id,
-    repository_selection: hit.repository_selection,
-    // 'all' | 'selected'
-    target_login: hit.account?.login || null
-  };
-}
-async function addRepoToInstallation(token, installation, repoId) {
-  if (installation.repository_selection === "all") {
-    return { ok: true, action: "all_mode" };
-  }
-  const r = await fetch(
-    `https://api.github.com/user/installations/${installation.id}/repositories/${repoId}`,
-    { method: "PUT", headers: ghHeaders(token) }
-  );
-  if (r.status === 204) return { ok: true, action: "added" };
-  if (r.status === 304) return { ok: true, action: "already" };
-  let detail = "HTTP " + r.status;
-  try {
-    const d = await r.json();
-    detail = d?.message || detail;
-  } catch {
-  }
-  return { ok: false, action: "failed", detail };
-}
-async function ensureCfAppAccess(token, repoId, repoFullName) {
-  if (!repoId) return { ok: false, reason: "no_repo_id" };
-  try {
-    const installation = await findCfInstallation(token);
-    if (!installation) {
-      return {
-        ok: false,
-        reason: "not_installed",
-        install_url: `https://github.com/apps/${CF_APP_SLUG}/installations/new`
-      };
-    }
-    const result = await addRepoToInstallation(token, installation, repoId);
-    return {
-      ok: result.ok,
-      reason: result.action,
-      installation_id: installation.id,
-      target: installation.target_login,
-      detail: result.detail || null
-    };
-  } catch (e) {
-    return { ok: false, reason: "exception", detail: String(e?.message || e) };
-  }
-}
-async function lookupRepo(token, fullName) {
-  const r = await fetch(`https://api.github.com/repos/${fullName}`, { headers: ghHeaders(token) });
-  if (r.status === 404) return { exists: false };
-  if (!r.ok) return { exists: null, error: "HTTP " + r.status };
-  const d = await r.json();
-  return {
-    exists: true,
-    id: d?.id || null,
-    is_fork: !!d?.fork,
-    parent_full_name: d?.parent?.full_name || null,
-    default_branch: d?.default_branch || "main",
-    owner: d?.owner?.login,
-    name: d?.name,
-    html_url: d?.html_url
-  };
-}
-var UPSTREAM_OWNER, UPSTREAM_REPO, CF_APP_SLUG, onRequestPost53;
-var init_fork = __esm({
-  "api/install/github/fork.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    init_oauth_cookie();
-    UPSTREAM_OWNER = "Benjamin-Bloch";
-    UPSTREAM_REPO = "pages-seo";
-    CF_APP_SLUG = "cloudflare-workers-and-pages";
-    __name(ghHeaders, "ghHeaders");
-    __name(findCfInstallation, "findCfInstallation");
-    __name(addRepoToInstallation, "addRepoToInstallation");
-    __name(ensureCfAppAccess, "ensureCfAppAccess");
-    __name(lookupRepo, "lookupRepo");
-    onRequestPost53 = /* @__PURE__ */ __name(async ({ env, request }) => {
-      const session = await readOAuthCookie(env, request);
-      if (!session?.token) return json(401, { ok: false, error: "gh_not_connected" });
-      if (!session?.login) return json(401, { ok: false, error: "no_gh_login" });
-      const token = session.token;
-      const login = session.login;
-      const fullName = `${login}/${UPSTREAM_REPO}`;
-      const existing = await lookupRepo(token, fullName);
-      if (existing.exists && existing.is_fork) {
-        const parentOk = existing.parent_full_name && existing.parent_full_name.toLowerCase() === `${UPSTREAM_OWNER}/${UPSTREAM_REPO}`.toLowerCase();
-        if (parentOk) {
-          const sync = await fetch(
-            `https://api.github.com/repos/${fullName}/merge-upstream`,
-            {
-              method: "POST",
-              headers: { ...ghHeaders(token), "Content-Type": "application/json" },
-              body: JSON.stringify({ branch: existing.default_branch || "main" })
-            }
-          );
-          let syncResult = null;
-          try {
-            syncResult = await sync.json();
-          } catch {
-          }
-          const cfAccess2 = await ensureCfAppAccess(token, existing.id, `${existing.owner}/${existing.name}`);
-          return json(200, {
-            ok: true,
-            action: sync.ok && syncResult?.merge_type !== "none" ? "reused_synced" : "reused",
-            owner: existing.owner,
-            repo: existing.name,
-            full_name: `${existing.owner}/${existing.name}`,
-            default_branch: existing.default_branch,
-            html_url: existing.html_url,
-            sync_result: sync.ok ? { merge_type: syncResult?.merge_type || "unknown" } : { error: syncResult?.message || "HTTP " + sync.status },
-            cf_app_access: cfAccess2
-          });
-        }
-        return json(409, {
-          ok: false,
-          error: "wrong_parent",
-          detail: `${fullName} is a fork of ${existing.parent_full_name}, not the upstream pages-seo. Rename it on GitHub or use a different account.`
-        });
-      }
-      if (existing.exists && !existing.is_fork) {
-        return json(409, {
-          ok: false,
-          error: "name_taken",
-          detail: `You already have a repository named "${UPSTREAM_REPO}" on GitHub that isn't a fork. Rename it on GitHub (or delete it) so we can create the fork.`,
-          html_url: existing.html_url
-        });
-      }
-      const r = await fetch(
-        `https://api.github.com/repos/${UPSTREAM_OWNER}/${UPSTREAM_REPO}/forks`,
-        {
-          method: "POST",
-          headers: { ...ghHeaders(token), "Content-Type": "application/json" },
-          // Empty body — GitHub uses the authenticated user as the
-          // fork owner by default. We could pass { name: 'something' }
-          // to rename but want to keep the canonical name.
-          body: "{}"
-        }
-      );
-      if (!r.ok) {
-        let detail = "HTTP " + r.status;
-        try {
-          const d = await r.json();
-          detail = d?.message || detail;
-        } catch {
-        }
-        return json(502, { ok: false, error: "fork_failed", detail });
-      }
-      const created = await r.json().catch(() => ({}));
-      const cfAccess = await ensureCfAppAccess(token, created.id, created.full_name || fullName);
-      return json(200, {
-        ok: true,
-        action: "created",
-        owner: created.owner?.login || login,
-        repo: created.name || UPSTREAM_REPO,
-        full_name: created.full_name || fullName,
-        default_branch: created.default_branch || "main",
-        html_url: created.html_url || `https://github.com/${fullName}`,
-        cf_app_access: cfAccess
-      });
-    }, "onRequestPost");
-  }
-});
-
-// api/update/github/callback.js
-function readCookie3(req, name) {
-  const hdr = req.headers.get("cookie") || "";
-  for (const c of hdr.split(/;\s*/)) {
-    const eq = c.indexOf("=");
-    if (eq < 0) continue;
-    if (c.slice(0, eq).trim() === name) return c.slice(eq + 1).trim();
-  }
-  return null;
-}
-function fail(url, flow, code, msg) {
-  const dest = "/" + (VALID_FLOWS.has(flow) ? flow : "update");
-  const u = new URL(dest, url);
-  u.searchParams.set("gh", "error");
-  u.searchParams.set("error", code);
-  if (msg) u.searchParams.set("detail", msg.slice(0, 200));
-  return Response.redirect(u.toString(), 302);
-}
-var VALID_FLOWS, onRequestGet23;
-var init_callback = __esm({
-  "api/update/github/callback.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_oauth_cookie();
-    VALID_FLOWS = /* @__PURE__ */ new Set(["install", "update"]);
-    __name(readCookie3, "readCookie");
-    __name(fail, "fail");
-    onRequestGet23 = /* @__PURE__ */ __name(async ({ env, request }) => {
-      const url = new URL(request.url);
-      if (!env?.GITHUB_OAUTH_CLIENT_ID || !env?.GITHUB_OAUTH_CLIENT_SECRET) {
-        return fail(url, "update", "oauth_not_configured");
-      }
-      const code = String(url.searchParams.get("code") || "");
-      const rawState = String(url.searchParams.get("state") || "");
-      if (!code) return fail(url, "update", "missing_code");
-      if (!rawState) return fail(url, "update", "missing_state");
-      const parts = rawState.split(":");
-      let nonce, flow, userState;
-      if (parts.length >= 3 && VALID_FLOWS.has(parts[1])) {
-        nonce = parts[0];
-        flow = parts[1];
-        userState = parts.slice(2).join(":");
-      } else {
-        nonce = parts[0];
-        flow = "update";
-        userState = parts.slice(1).join(":");
-      }
-      if (!/^[0-9a-f]{32}$/.test(nonce)) return fail(url, flow, "bad_nonce");
-      const expected = readCookie3(request, "ps_gh_nonce");
-      if (!expected || expected !== nonce) {
-        return fail(url, flow, "nonce_mismatch", "Cookie nonce missing or did not match. Try Connect GitHub again.");
-      }
-      let token = "";
-      try {
-        const r = await fetch("https://github.com/login/oauth/access_token", {
-          method: "POST",
-          headers: { Accept: "application/json", "Content-Type": "application/json" },
-          body: JSON.stringify({
-            client_id: env.GITHUB_OAUTH_CLIENT_ID,
-            client_secret: env.GITHUB_OAUTH_CLIENT_SECRET,
-            code,
-            redirect_uri: `${url.origin}/api/update/github/callback`
-          })
-        });
-        const d = await r.json();
-        if (d?.error) return fail(url, flow, d.error, d.error_description);
-        token = String(d?.access_token || "");
-        if (!token) return fail(url, flow, "no_token");
-      } catch (e) {
-        return fail(url, flow, "exchange_failed", String(e?.message || e));
-      }
-      let login = "";
-      try {
-        const r = await fetch("https://api.github.com/user", {
-          headers: { Authorization: "token " + token, Accept: "application/vnd.github+json", "User-Agent": "pages-seo-update" }
-        });
-        if (r.ok) {
-          const d = await r.json();
-          login = String(d?.login || "");
-        }
-      } catch {
-      }
-      const cookie = await setOAuthCookie(env, { token, login, ts: Math.floor(Date.now() / 1e3) });
-      const dest = new URL("/" + flow, url);
-      dest.searchParams.set("gh", "connected");
-      if (userState) dest.searchParams.set("state", userState);
-      return new Response(null, {
-        status: 302,
-        headers: new Headers([
-          ["Location", dest.toString()],
-          // Clear the nonce cookie and set the token cookie. The nonce
-          // cookie was set at Path=/api/update; clear it with the same
-          // path so the browser actually expires it.
-          ["Set-Cookie", "ps_gh_nonce=; Max-Age=0; Path=/api/update; HttpOnly; Secure; SameSite=Lax"],
-          ["Set-Cookie", cookie]
-        ])
-      });
-    }, "onRequestGet");
-  }
-});
-
-// api/update/github/repos.js
-function ghHeaders2(token) {
-  return {
-    Authorization: "token " + token,
-    Accept: "application/vnd.github+json",
-    "User-Agent": "pages-seo-update"
-  };
-}
-function isPagesSeoFork(repo) {
-  if (!repo?.fork) return false;
-  if ((repo.name || "").toLowerCase() === DEFAULT_REPO_NAME) return true;
-  return false;
-}
-async function verifyFork(token, fullName) {
-  const r = await fetch(`https://api.github.com/repos/${fullName}`, { headers: ghHeaders2(token) });
-  if (!r.ok) return null;
-  const d = await r.json();
-  if (!d?.fork) return null;
-  const parent = d?.parent?.full_name;
-  if (!parent || parent.toLowerCase() !== UPSTREAM_FULL_NAME.toLowerCase()) return null;
-  return {
-    owner: d.owner?.login,
-    name: d.name,
-    full_name: d.full_name,
-    default_branch: d.default_branch || "main",
-    html_url: d.html_url,
-    updated_at: d.updated_at || null
-  };
-}
-var UPSTREAM_FULL_NAME, DEFAULT_REPO_NAME, SCAN_PAGES, PER_PAGE, onRequestGet24;
-var init_repos = __esm({
-  "api/update/github/repos.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    init_oauth_cookie();
-    UPSTREAM_FULL_NAME = "Benjamin-Bloch/pages-seo";
-    DEFAULT_REPO_NAME = "pages-seo";
-    SCAN_PAGES = 4;
-    PER_PAGE = 30;
-    __name(ghHeaders2, "ghHeaders");
-    __name(isPagesSeoFork, "isPagesSeoFork");
-    __name(verifyFork, "verifyFork");
-    onRequestGet24 = /* @__PURE__ */ __name(async ({ env, request }) => {
-      const session = await readOAuthCookie(env, request);
-      if (!session?.token) return json(401, { ok: false, error: "gh_not_connected" });
-      const token = session.token;
-      const login = session.login || "";
-      if (login) {
-        const guess = `${login}/${DEFAULT_REPO_NAME}`;
-        const verified = await verifyFork(token, guess);
-        if (verified) {
-          return json(200, {
-            ok: true,
-            login,
-            auto: verified,
-            candidates: [verified],
-            searched_count: 1,
-            more_pages: false
-          });
-        }
-      }
-      const candidates = [];
-      let searched = 0;
-      let morePages = false;
-      for (let page = 1; page <= SCAN_PAGES; page++) {
-        const r = await fetch(
-          `https://api.github.com/user/repos?per_page=${PER_PAGE}&page=${page}&type=owner&sort=updated`,
-          { headers: ghHeaders2(token) }
-        );
-        if (!r.ok) break;
-        const rows = await r.json().catch(() => []);
-        if (!Array.isArray(rows) || !rows.length) break;
-        searched += rows.length;
-        for (const repo of rows) {
-          if (isPagesSeoFork(repo)) {
-            const v = await verifyFork(token, repo.full_name);
-            if (v) candidates.push(v);
-          }
-        }
-        if (rows.length < PER_PAGE) {
-          morePages = false;
-          break;
-        }
-        if (page === SCAN_PAGES) {
-          morePages = true;
-          break;
-        }
-      }
-      const seen = /* @__PURE__ */ new Set();
-      const unique = candidates.filter((c) => {
-        const k = c.full_name.toLowerCase();
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
-      return json(200, {
-        ok: true,
-        login,
-        auto: unique.length === 1 ? unique[0] : null,
-        candidates: unique,
-        searched_count: searched,
-        more_pages: morePages
-      });
-    }, "onRequestGet");
-  }
-});
-
-// api/update/github/start.js
-var VALID_FLOWS2, onRequestGet25;
-var init_start2 = __esm({
-  "api/update/github/start.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    VALID_FLOWS2 = /* @__PURE__ */ new Set(["install", "update"]);
-    onRequestGet25 = /* @__PURE__ */ __name(async ({ env, request }) => {
-      if (!env?.GITHUB_OAUTH_CLIENT_ID) {
-        return json(503, {
-          error: "oauth_not_configured",
-          detail: "GITHUB_OAUTH_CLIENT_ID is not set on this Pages project."
-        });
-      }
-      const url = new URL(request.url);
-      const state = String(url.searchParams.get("state") || "").slice(0, 4096);
-      const flowRaw = String(url.searchParams.get("flow") || "update");
-      const flow = VALID_FLOWS2.has(flowRaw) ? flowRaw : "update";
-      const nonceBytes = crypto.getRandomValues(new Uint8Array(16));
-      const nonce = Array.from(nonceBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-      const stateOut = `${nonce}:${flow}:${state}`;
-      const params = new URLSearchParams({
-        client_id: env.GITHUB_OAUTH_CLIENT_ID,
-        redirect_uri: `${url.origin}/api/update/github/callback`,
-        // public_repo  — create the fork, read repo metadata
-        // read:user    — list the user's GitHub App installations so we can
-        //                add the new fork to the Cloudflare app's repo list
-        //                without sending them through the manual UI flow
-        // user:email   — fetch the user's primary verified email so the
-        //                site's first-run setup form can prefill it (saves
-        //                them typing it on the magic-link screen)
-        scope: "public_repo read:user user:email",
-        state: stateOut,
-        allow_signup: "false"
-      });
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: `https://github.com/login/oauth/authorize?${params}`,
-          // Cookie path stays at /api/update so the callback can read it.
-          // /install needs the OAuth state too, but it talks to the
-          // callback-issued ps_gh cookie (set at / path) which any
-          // route under the site can read.
-          "Set-Cookie": `ps_gh_nonce=${nonce}; Max-Age=600; Path=/api/update; HttpOnly; Secure; SameSite=Lax`
-        }
-      });
-    }, "onRequestGet");
-  }
-});
-
-// api/update/github/status.js
-var onRequestGet26;
-var init_status = __esm({
-  "api/update/github/status.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    init_oauth_cookie();
-    onRequestGet26 = /* @__PURE__ */ __name(async ({ env, request }) => {
-      const c = await readOAuthCookie(env, request);
-      if (c?.token) return json(200, { connected: true, login: c.login || null });
-      return json(200, { connected: false });
-    }, "onRequestGet");
-  }
-});
-
-// api/update/github/sync.js
-var NAME_RX, onRequestPost54;
-var init_sync2 = __esm({
-  "api/update/github/sync.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    init_oauth_cookie();
-    NAME_RX = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
-    onRequestPost54 = /* @__PURE__ */ __name(async ({ env, request }) => {
-      const session = await readOAuthCookie(env, request);
-      if (!session?.token) return json(401, { ok: false, error: "gh_not_connected" });
-      let body;
-      try {
-        body = await request.json();
-      } catch {
-        return json(400, { ok: false, error: "bad_json" });
-      }
-      const owner = String(body?.owner || "").trim();
-      const repo = String(body?.repo || "").trim() || "pages-seo";
-      if (!NAME_RX.test(owner)) return json(400, { ok: false, error: "bad_owner" });
-      if (!NAME_RX.test(repo)) return json(400, { ok: false, error: "bad_repo" });
-      if (session.login && session.login.toLowerCase() !== owner.toLowerCase()) {
-        return json(403, {
-          ok: false,
-          error: "owner_mismatch",
-          detail: `You connected as @${session.login} but are trying to sync ${owner}/${repo}. Re-connect with the right GitHub account.`
-        });
-      }
-      const r = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/merge-upstream`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: "token " + session.token,
-            Accept: "application/vnd.github+json",
-            "Content-Type": "application/json",
-            "User-Agent": "pages-seo-update",
-            // Avoid stale 304s; the merge endpoint is happy with a fresh
-            // payload every time.
-            "If-None-Match": ""
-          },
-          body: JSON.stringify({ branch: "main" })
-        }
-      );
-      let respBody = null;
-      try {
-        respBody = await r.json();
-      } catch {
-      }
-      if (!r.ok) {
-        return json(r.status === 401 ? 401 : 502, {
-          ok: false,
-          error: "github_merge_failed",
-          detail: respBody?.message || `HTTP ${r.status}`
-        });
-      }
-      let newSha = "";
-      try {
-        const headR = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/commits/main`,
-          { headers: { Accept: "application/vnd.github+json", "User-Agent": "pages-seo-update" } }
-        );
-        if (headR.ok) {
-          const d = await headR.json();
-          newSha = String(d?.sha || "");
-        }
-      } catch {
-      }
-      return json(200, {
-        ok: true,
-        merge_type: respBody?.merge_type || "unknown",
-        // 'fast-forward' | 'none' | 'merge'
-        base_branch: respBody?.base_branch || "unknown",
-        new_sha: newSha
-      });
-    }, "onRequestPost");
-  }
-});
-
 // api/admin/projects/[id].js
-var onRequestGet27, onRequestPut3, onRequestDelete4;
+var onRequestGet22, onRequestPut3, onRequestDelete4;
 var init_id = __esm({
   "api/admin/projects/[id].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_projects();
     init_notices();
     init_cloudflare_domains();
-    onRequestGet27 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
+    onRequestGet22 = /* @__PURE__ */ __name(async ({ request, env, params }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const idOrSlug = params.id;
@@ -14720,7 +13896,7 @@ function restoreBlocks(html2, blocks) {
 var BLOCK_TAGS, BOX_VARIANTS, LIST_CONTAINERS;
 var init_agent_markup = __esm({
   "_lib/agent_markup.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_markdown();
     BLOCK_TAGS = {
       "h1": { tag: "h2" },
@@ -14968,7 +14144,7 @@ function renderList(listLines) {
 var inlineRender, LIST_RE;
 var init_markdown = __esm({
   "_lib/markdown.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_agent_markup();
     __name(escape, "escape");
     __name(inlineNonCode, "inlineNonCode");
@@ -14992,13 +14168,13 @@ function imageUrlFor5(key) {
   if (!key) return null;
   return "/image/" + key.split("/").map(encodeURIComponent).join("/");
 }
-var onRequestGet28;
+var onRequestGet23;
 var init_slug = __esm({
   "api/public/post/[slug].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_markdown();
     __name(imageUrlFor5, "imageUrlFor");
-    onRequestGet28 = /* @__PURE__ */ __name(async ({ env, params }) => {
+    onRequestGet23 = /* @__PURE__ */ __name(async ({ env, params }) => {
       if (!env?.DB) {
         return new Response(JSON.stringify({ error: "no_db" }), {
           status: 500,
@@ -15528,7 +14704,7 @@ ${beaconScript}
 var HERO_W, HERO_H, HERO_SHELL_W, HERO_CONTENT_W;
 var init_page_render = __esm({
   "_lib/page_render.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_markdown();
     init_util();
     init_project_scope();
@@ -15589,7 +14765,7 @@ async function loadHubEntries(env, pillar, { limit = 50, offset = 0, projectId =
 var PILLAR_SQL;
 var init_hubs = __esm({
   "_lib/hubs.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     __name(pillarSlug, "pillarSlug");
     __name(pillarLabel, "pillarLabel");
     PILLAR_SQL = `SELECT topic_seed AS seed, COUNT(*) AS n FROM blog_posts
@@ -15614,9 +14790,11 @@ async function renderBlogIndex({ env, request, page = 1, projectSlug = null, bas
   const bp = basePath || (projectSlug ? `/${projectSlug}` : "");
   const offset = (page - 1) * PAGE_SIZE;
   const totalSql = projectId ? `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published' AND project_id = ?` : `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published'`;
-  const pageSql = projectId ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+  const pageSql = projectId ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at,
+              topic_seed, LENGTH(body_markdown) AS body_len
        FROM blog_posts WHERE status='published' AND project_id = ?
-       ORDER BY published_at DESC LIMIT ? OFFSET ?` : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+       ORDER BY published_at DESC LIMIT ? OFFSET ?` : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at,
+              topic_seed, LENGTH(body_markdown) AS body_len
        FROM blog_posts WHERE status='published'
        ORDER BY published_at DESC LIMIT ? OFFSET ?`;
   const [totalRow, r, pillars] = await Promise.all([
@@ -15631,6 +14809,7 @@ async function renderBlogIndex({ env, request, page = 1, projectSlug = null, bas
   }
   const posts = r.results || [];
   const isVi = true;
+  const locale = projectLocale(project?.language);
   const homeHost = (() => {
     try {
       return new URL(project?.website_url || "").hostname;
@@ -15642,37 +14821,79 @@ async function renderBlogIndex({ env, request, page = 1, projectSlug = null, bas
   const homeUrl = project?.website_url || "https://gulagi.com";
   const siteName = project?.site_name || env.SITE_NAME || settings.site_name || "Gulagi";
   const siteDesc = project?.site_description || env.SITE_DESCRIPTION || settings.site_description || (isVi ? `B\xE0i vi\u1EBFt v\xE0 gi\u1EA3i ph\xE1p ph\xE1t tri\u1EC3n kinh doanh t\u1EEB ${siteName}.` : `Articles from ${siteName}.`);
-  const items = posts.map((p, i) => {
-    const date = isVi ? new Date((p.published_at || 0) * 1e3).toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric"
-    }) : new Date((p.published_at || 0) * 1e3).toLocaleDateString("en-GB", {
-      year: "numeric",
-      month: "long",
-      day: "numeric"
-    });
-    const imgSrc = p.hero_image_key ? imageUrl(`/image/card/${esc(p.hero_image_key)}`) : `/og/${esc(p.slug)}.svg`;
-    const loadAttrs = i === 0 ? 'fetchpriority="high" decoding="async"' : 'loading="lazy" decoding="async"';
-    const img = `<img src="${imgSrc}" alt="${esc(p.hero_image_alt || p.title)}" width="640" height="336" ${loadAttrs} />`;
-    return `
-      <li>
-        ${img}
-        <div class="blog-meta">
-          <div class="blog-date">${esc(date)}</div>
-          <h2><a href="${bp}/blog/${esc(p.slug)}">${esc(p.title)}</a></h2>
-          <p>${esc((p.meta_description || "").slice(0, 200))}</p>
+  const pillarBySeed = new Map((pillars || []).map((pl) => [pl.seed, pl]));
+  const topicFor = /* @__PURE__ */ __name((p) => {
+    if (!p.topic_seed) return null;
+    const pl = pillarBySeed.get(p.topic_seed);
+    return pl ? { label: pl.label, slug: pl.slug } : { label: pillarLabel(p.topic_seed), slug: null };
+  }, "topicFor");
+  const fmtDate2 = /* @__PURE__ */ __name((ts) => new Date((ts || 0) * 1e3).toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }), "fmtDate");
+  const readMin = /* @__PURE__ */ __name((len) => Math.max(1, Math.round((Number(len) || 0) / 1e3)), "readMin");
+  const imgFor = /* @__PURE__ */ __name((p, eager) => {
+    const src = p.hero_image_key ? imageUrl(`/image/card/${esc(p.hero_image_key)}`) : `/og/${esc(p.slug)}.svg`;
+    const load = eager ? 'fetchpriority="high" decoding="async"' : 'loading="lazy" decoding="async"';
+    return `<img src="${src}" alt="${esc(p.hero_image_alt || p.title)}" width="1200" height="630" ${load} />`;
+  }, "imgFor");
+  const topicHTML = /* @__PURE__ */ __name((p) => {
+    const t = topicFor(p);
+    if (!t) return "";
+    return t.slug ? `<a class="entry-topic" href="${bp}/hubs/${esc(t.slug)}">${esc(t.label)}</a>` : `<span class="entry-topic">${esc(t.label)}</span>`;
+  }, "topicHTML");
+  const [lead, ...rest] = posts;
+  const leadHTML = lead ? `
+<article class="lead-story">
+  <div class="lead-body">
+    <div class="lead-kicker">${isVi ? "M\u1EDBi nh\u1EA5t" : "Latest"}</div>
+    <h2><a href="${bp}/blog/${esc(lead.slug)}">${esc(lead.title)}</a></h2>
+    <p>${esc((lead.meta_description || "").slice(0, 220))}</p>
+    <div class="entry-facts">
+      <span>${esc(fmtDate2(lead.published_at))}</span>
+      <span class="fact-sep">\xB7</span>
+      <span>${readMin(lead.body_len)} ${isVi ? "ph\xFAt \u0111\u1ECDc" : "min read"}</span>
+      ${topicHTML(lead)}
+    </div>
+  </div>
+  <a class="lead-figure" href="${bp}/blog/${esc(lead.slug)}" tabindex="-1" aria-hidden="true">
+    ${imgFor(lead, true)}
+  </a>
+</article>` : "";
+  const entryHTML = rest.map((p, i) => `
+      <li class="entry">
+        <div class="entry-num">${String(offset + i + 2).padStart(2, "0")}</div>
+        <figure class="entry-figure">
+          <a href="${bp}/blog/${esc(p.slug)}" tabindex="-1" aria-hidden="true">${imgFor(p, false)}</a>
+        </figure>
+        <div class="entry-body">
+          <h3 class="entry-title"><a class="entry-link" href="${bp}/blog/${esc(p.slug)}">${esc(p.title)}</a></h3>
+          <p class="entry-excerpt">${esc((p.meta_description || "").slice(0, 180))}</p>
         </div>
-      </li>`;
-  }).join("");
+        <div class="entry-facts">
+          <span>${esc(fmtDate2(p.published_at))}</span>
+          <span class="fact-sep">\xB7</span>
+          <span>${readMin(p.body_len)} ${isVi ? "ph" : "min"}</span>
+        </div>
+      </li>`).join("");
   const railPillars = (pillars || []).slice(0, 8);
+  const maxCount = railPillars.reduce((m, pl) => Math.max(m, pl.count), 1);
   const railHTML = railPillars.length ? `
-<nav class="hub-rail" aria-label="Ch\u1EE7 \u0111\u1EC1 n\u1ED5i b\u1EADt">
-  <a class="hub-rail-all" href="${bp}/hubs">T\u1EA5t c\u1EA3 ch\u1EE7 \u0111\u1EC1</a>
-  <ul>
-    ${railPillars.map((pl) => `<li><a href="${bp}/hubs/${esc(pl.slug)}">${esc(pl.label)}</a> <span class="hub-count">${pl.count}</span></li>`).join("\n    ")}
+<section class="topic-index" aria-labelledby="topic-index-title">
+  <h2 id="topic-index-title">${isVi ? "Ch\u1EE7 \u0111\u1EC1" : "Topics"}</h2>
+  <ul class="topic-list">
+    ${railPillars.map((pl) => {
+    const pct2 = Math.max(6, Math.round(pl.count / maxCount * 100));
+    return `<li><a href="${bp}/hubs/${esc(pl.slug)}">
+      <span class="topic-label">${esc(pl.label)}</span>
+      <span class="topic-bar" aria-hidden="true"><span style="width:${pct2}%"></span></span>
+      <span class="topic-count">${pl.count}</span>
+    </a></li>`;
+  }).join("\n    ")}
   </ul>
-</nav>` : "";
+  <a class="topic-more" href="${bp}/hubs">${isVi ? "To\xE0n b\u1ED9 ch\u1EE7 \u0111\u1EC1" : "All topics"} \u2192</a>
+</section>` : "";
   const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
   const effectiveBaseUrl = customHost ? `https://${customHost}` : baseUrl;
   const effectiveBp = customHost ? "" : bp;
@@ -15745,7 +14966,7 @@ async function renderBlogIndex({ env, request, page = 1, projectSlug = null, bas
     bv ? `<meta name="msvalidate.01" content="${esc(bv)}" />` : ""
   ].filter(Boolean).join("\n");
   const body = `<!doctype html>
-<html lang="en">
+<html lang="${esc(locale.htmlLang)}">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -15782,30 +15003,59 @@ ${themeStyle(project?.theme_color)}
   </div>
 </header>
 <main class="blog-index">
-  <header class="blog-index-head">
-    <div>
-      <h1>Blog${page > 1 ? ` <span class="page-suffix">\u2014 page ${page}</span>` : ""}</h1>
-      <p class="lede">${esc(siteDesc)}</p>
+
+<header class="masthead">
+  <div class="masthead-top">
+    <div class="masthead-issue">
+      <span>${esc(siteName)}</span>
+      ${total > 0 ? `<span>${isVi ? `${total} b\xE0i vi\u1EBFt` : `${total} post${total === 1 ? "" : "s"}`}</span>` : ""}
     </div>
+    <div class="masthead-issue">
+      ${totalPages > 1 ? `<span>${isVi ? `Trang ${page} / ${totalPages}` : `Page ${page} / ${totalPages}`}</span>` : ""}
+      <span>${(/* @__PURE__ */ new Date()).getFullYear()}</span>
+    </div>
+  </div>
+  <h1>${isVi ? "B\xE0i vi\u1EBFt" : "The Dispatch"}</h1>
+  <p class="masthead-lede">${esc(siteDesc)}</p>
+  <div class="masthead-tools">
     <!-- Search box. Filters the visible list via /api/widget?q=\u2026
          (same endpoint the embed widget uses), so result ordering
          is consistent across surfaces. Falls back to the canonical
          /blog?q= URL if JavaScript is disabled \u2014 Google's
          SearchAction JSON-LD targets that URL too. -->
     <form id="blog-search-form" role="search" action="${bp}/blog" method="GET" class="blog-search">
+      <label class="blog-search-label" for="blog-search-input">${isVi ? "T\xECm" : "Find"}</label>
       <input id="blog-search-input"
              type="search" name="q"
-             placeholder="${isVi ? "T\xECm ki\u1EBFm b\xE0i vi\u1EBFt\u2026" : "Search posts\u2026"}"
+             placeholder="${isVi ? "T\xECm trong c\xE1c b\xE0i \u0111\xE3 \u0111\u0103ng\u2026" : "Search published writing\u2026"}"
              autocomplete="off" spellcheck="false"
              aria-label="${isVi ? "T\xECm ki\u1EBFm b\xE0i vi\u1EBFt" : "Search posts"}"
              value="" />
-      <button type="submit" class="blog-search-go" aria-label="Search">\u2192</button>
+      <button type="submit" class="blog-search-go" aria-label="${isVi ? "T\xECm ki\u1EBFm" : "Search"}">\u2192</button>
     </form>
-  </header>
-  ${railHTML}
-  ${posts.length ? `<ul id="blog-list">${items}</ul>` : `<ul id="blog-list" hidden></ul><p id="blog-noposts" class="lede">${isVi ? "C\xE1c b\xE0i vi\u1EBFt s\u1EBD s\u1EDBm xu\u1EA5t hi\u1EC7n." : "First post lands soon."}</p>`}
-  <div id="blog-empty" class="blog-empty" hidden></div>
-  ${pagerHTML}
+    <a class="masthead-rss" href="${effectiveBaseUrl}${effectiveBp}/feed.xml">RSS \u2197</a>
+  </div>
+</header>
+
+${leadHTML}
+
+${rest.length ? `
+<div class="index-head">
+  <h2>${isVi ? "T\u1EA5t c\u1EA3 b\xE0i vi\u1EBFt" : "All entries"}</h2>
+  <h2>${isVi ? `C\u1EADp nh\u1EADt l\u1EA7n cu\u1ED1i \xB7 ${esc(fmtDate2(posts[0].published_at))}` : `Last updated \xB7 ${esc(fmtDate2(posts[0].published_at))}`}</h2>
+</div>
+<ul class="blog-list" id="blog-list">${entryHTML}</ul>` : `<ul class="blog-list" id="blog-list" hidden></ul>`}
+
+${!posts.length ? `
+<div class="blog-noposts">
+  <strong>${isVi ? "Ch\u01B0a c\xF3 b\xE0i vi\u1EBFt n\xE0o" : "Nothing published yet"}</strong>
+  <span>${isVi ? `Khi ${esc(siteName)} b\u1EAFt \u0111\u1EA7u \u0111\u0103ng, c\xE1c b\xE0i m\u1EDBi s\u1EBD xu\u1EA5t hi\u1EC7n ngay t\u1EA1i \u0111\xE2y.` : `When ${esc(siteName)} starts publishing, new writing lands here.`}</span>
+</div>` : ""}
+
+<div id="blog-empty" class="blog-empty" hidden></div>
+
+${railHTML}
+${pagerHTML}
 </main>
 
 <!-- Inline client-side search. Reads ?q= from the URL on load to
@@ -15826,7 +15076,9 @@ ${themeStyle(project?.theme_color)}
   var list  = document.getElementById('blog-list');
   var empty = document.getElementById('blog-empty');
   var pager = document.querySelector('main.blog-index .pager');
-  var noposts = document.getElementById('blog-noposts');
+  var lead  = document.querySelector('main.blog-index .lead-story');
+  var indexHead = document.querySelector('main.blog-index .index-head');
+  var noposts = document.querySelector('main.blog-index .blog-noposts');
   if (!form || !input || !list) return;
 
   // Restore q from URL on first paint.
@@ -15847,43 +15099,80 @@ ${themeStyle(project?.theme_color)}
     t = setTimeout(function () { doSearch(input.value.trim(), false); }, 200);
   });
 
-  function setEmpty(msg) {
-    if (msg) { empty.hidden = false; empty.textContent = msg; }
-    else { empty.hidden = true; empty.textContent = ''; }
+  // The empty state is a block of children, not a text node, so it can
+  // say what belongs here and point at the way back. textContent alone
+  // can only ever say one flat sentence.
+  function setEmpty(title, body) {
+    if (!title) { empty.hidden = true; empty.textContent = ''; return; }
+    empty.textContent = '';
+    var h = document.createElement('strong');
+    h.textContent = title;
+    var s = document.createElement('span');
+    s.textContent = body;
+    empty.appendChild(h);
+    empty.appendChild(s);
+    empty.hidden = false;
   }
 
   function clearList() {
     while (list.firstChild) list.removeChild(list.firstChild);
   }
 
-  function buildItem(p) {
+  // Results render as the same ruled entry rows the server emits, so a
+  // search never looks like a different page. No lead story: the first
+  // match is a result, not a headline, and promoting it would imply a
+  // ranking the backend never computed.
+  function buildItem(p, i) {
     var li = document.createElement('li');
+    li.className = 'entry';
+
+    var num = document.createElement('div');
+    num.className = 'entry-num';
+    num.textContent = String(i + 1).padStart(2, '0');
+    li.appendChild(num);
+
     if (p.image) {
+      var fig = document.createElement('figure');
+      fig.className = 'entry-figure';
+      var fa = document.createElement('a');
+      fa.href = (PS_BP || '') + '/blog/' + encodeURIComponent(p.slug);
+      fa.tabIndex = -1;
+      fa.setAttribute('aria-hidden', 'true');
       var img = document.createElement('img');
       img.src = p.image;
       img.alt = p.title || '';
-      img.setAttribute('width',  '640');
-      img.setAttribute('height', '336');
+      img.setAttribute('width',  '1200');
+      img.setAttribute('height', '630');
       img.loading  = 'lazy';
       img.decoding = 'async';
-      li.appendChild(img);
+      fa.appendChild(img);
+      fig.appendChild(fa);
+      li.appendChild(fig);
     }
-    var meta = document.createElement('div');
-    meta.className = 'blog-meta';
-    var date = document.createElement('div');
-    date.className = 'blog-date';
-    date.textContent = p.date || '';
-    meta.appendChild(date);
-    var h2 = document.createElement('h2');
-    var a  = document.createElement('a');
+
+    var body = document.createElement('div');
+    body.className = 'entry-body';
+    var h3 = document.createElement('h3');
+    h3.className = 'entry-title';
+    var a = document.createElement('a');
+    a.className = 'entry-link';
     a.href = (PS_BP || '') + '/blog/' + encodeURIComponent(p.slug);
     a.textContent = p.title || '';
-    h2.appendChild(a);
-    meta.appendChild(h2);
-    var pgr = document.createElement('p');
-    pgr.textContent = (p.excerpt || '').slice(0, 200);
-    meta.appendChild(pgr);
-    li.appendChild(meta);
+    h3.appendChild(a);
+    body.appendChild(h3);
+    var ex = document.createElement('p');
+    ex.className = 'entry-excerpt';
+    ex.textContent = (p.excerpt || '').slice(0, 180);
+    body.appendChild(ex);
+    li.appendChild(body);
+
+    var facts = document.createElement('div');
+    facts.className = 'entry-facts';
+    var d = document.createElement('span');
+    d.textContent = p.date || '';
+    facts.appendChild(d);
+    li.appendChild(facts);
+
     return li;
   }
 
@@ -15905,6 +15194,19 @@ ${themeStyle(project?.theme_color)}
     fetchPage(q, 1);
   }
 
+  // A search replaces the whole reading surface, so the editorial
+  // furniture that describes the archive \u2014 the lead story, the index
+  // heading, the topic index, the "nothing published" note \u2014 steps
+  // aside for the duration rather than sitting above a list of hits
+  // it does not describe.
+  function setReadingMode(on) {
+    if (lead) lead.hidden = on;
+    if (indexHead) indexHead.hidden = on;
+    if (noposts) noposts.hidden = on;
+    var topics = document.querySelector('main.blog-index .topic-index');
+    if (topics) topics.hidden = on;
+  }
+
   function fetchPage(q, page) {
     var url = '/api/widget?per_page=10&page=' + page + (q ? '&q=' + encodeURIComponent(q) : '');
     if (PS_PROJECT) url += '&project=' + encodeURIComponent(PS_PROJECT);
@@ -15913,21 +15215,28 @@ ${themeStyle(project?.theme_color)}
       .then(function (d) {
         clearList();
         list.hidden = false;
-        if (noposts) noposts.hidden = true;
         if (!d.posts || !d.posts.length) {
-          setEmpty(q ? 'No posts match "' + q + '".' : 'First post lands soon.');
+          setReadingMode(true);
+          if (q) {
+            setEmpty('Kh\xF4ng c\xF3 b\xE0i n\xE0o kh\u1EDBp', 'T\u1EEB kh\xF3a "' + q + '" kh\xF4ng tr\u1EA3 v\u1EC1 k\u1EBFt qu\u1EA3 n\xE0o. Th\u1EED m\u1ED9t t\u1EEB ng\u1EAFn h\u01A1n, ho\u1EB7c xem to\xE0n b\u1ED9 ch\u1EE7 \u0111\u1EC1.');
+          } else {
+            setReadingMode(false);
+            setEmpty('');
+            if (noposts) noposts.hidden = false;
+          }
           if (pager) pager.style.display = 'none';
           return;
         }
         setEmpty('');
+        setReadingMode(Boolean(q));
         for (var i = 0; i < d.posts.length; i++) {
-          list.appendChild(buildItem(d.posts[i]));
+          list.appendChild(buildItem(d.posts[i], i));
         }
         // Hide server-rendered pager while in search mode.
         if (pager) pager.style.display = q ? 'none' : '';
       })
       .catch(function () {
-        setEmpty('Search failed. Try again, or browse the full list.');
+        setEmpty('T\xECm ki\u1EBFm kh\xF4ng ho\u1EA1t \u0111\u1ED9ng', 'K\u1EBFt n\u1ED1i c\xF3 v\u1EBB \u0111\xE3 gi\xE1n \u0111o\u1EA1n. Th\u1EED l\u1EA1i, ho\u1EB7c duy\u1EC7t to\xE0n b\u1ED9 danh s\xE1ch b\xE0i vi\u1EBFt.');
       });
   }
 })();
@@ -15961,10 +15270,10 @@ ${themeStyle(project?.theme_color)}
 function renderBlogIndexCached(ctx, opts = {}) {
   return edgeCached(ctx.request, ctx.waitUntil, () => renderBlogIndex({ env: ctx.env, request: ctx.request, page: opts.page ?? 1, projectSlug: opts.projectSlug ?? null, basePath: opts.basePath ?? "" }));
 }
-var PAGE_SIZE, onRequestGet29;
+var PAGE_SIZE, onRequestGet24;
 var init_blog = __esm({
   "blog/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_settings();
     init_page_render();
@@ -15973,18 +15282,18 @@ var init_blog = __esm({
     PAGE_SIZE = 10;
     __name(renderBlogIndex, "renderBlogIndex");
     __name(renderBlogIndexCached, "renderBlogIndexCached");
-    onRequestGet29 = /* @__PURE__ */ __name((ctx) => renderBlogIndexCached(ctx), "onRequestGet");
+    onRequestGet24 = /* @__PURE__ */ __name((ctx) => renderBlogIndexCached(ctx), "onRequestGet");
   }
 });
 
 // [project]/blog/page/[page].js
-var onRequestGet30;
+var onRequestGet25;
 var init_page = __esm({
   "[project]/blog/page/[page].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_blog();
     init_project_scope();
-    onRequestGet30 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet25 = /* @__PURE__ */ __name(async (ctx) => {
       const slug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -16001,16 +15310,16 @@ var init_page = __esm({
 });
 
 // api/admin/activation.js
-var SITE_ORIGIN, onRequestGet31;
+var SITE_ORIGIN, onRequestGet26;
 var init_activation = __esm({
   "api/admin/activation.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_settings();
     init_ai();
     SITE_ORIGIN = "https://seo.gulagi.com";
-    onRequestGet31 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet26 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -16139,17 +15448,17 @@ async function tenantOf(env, request) {
   const tenant = await resolveTenantContext(env, request, auth);
   return tenant?.activeProjectId || null;
 }
-var NAME_RX2, onRequestGet32, onRequestPost55, onRequestPatch3, onRequestDelete5;
+var NAME_RX, onRequestGet27, onRequestPost51, onRequestPatch3, onRequestDelete5;
 var init_aliases2 = __esm({
   "api/admin/aliases/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_aliases();
-    NAME_RX2 = /^[a-z0-9][a-z0-9_-]{0,40}$/;
+    NAME_RX = /^[a-z0-9][a-z0-9_-]{0,40}$/;
     __name(validUrl, "validUrl");
     __name(tenantOf, "tenantOf");
-    onRequestGet32 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet27 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const pid = await tenantOf(env, request);
@@ -16170,7 +15479,7 @@ var init_aliases2 = __esm({
       }
       return json(200, { ok: true, project_id: pid, aliases: items, reserved: RESERVED_NAMES, counts: { owned, shared } });
     }, "onRequestGet");
-    onRequestPost55 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost51 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const pid = await tenantOf(env, request);
@@ -16183,7 +15492,7 @@ var init_aliases2 = __esm({
       const name = String(body?.name || "").trim().toLowerCase();
       const u = String(body?.url || "").trim();
       const desc = String(body?.description || "").trim().slice(0, 300);
-      if (!NAME_RX2.test(name)) return json(400, { error: "bad_name", detail: "lowercase letters, digits, _ or -; up to 40 chars." });
+      if (!NAME_RX.test(name)) return json(400, { error: "bad_name", detail: "lowercase letters, digits, _ or -; up to 40 chars." });
       if (RESERVED_NAMES.includes(name)) return json(409, { error: "reserved_name", detail: "Built-in alias; pick a different name." });
       if (!validUrl(u)) return json(400, { error: "bad_url", detail: "Must be root-relative (/path) or absolute https://\u2026" });
       const now = nowSec();
@@ -16251,13 +15560,13 @@ var init_aliases2 = __esm({
 });
 
 // api/admin/analytics.js
-var onRequestGet33;
+var onRequestGet28;
 var init_analytics = __esm({
   "api/admin/analytics.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
-    onRequestGet33 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet28 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -16299,10 +15608,10 @@ var init_analytics = __esm({
 function item(id, severity, title, detail, action, count = null) {
   return { id, severity, title, detail, count, action };
 }
-var CRON_STALE_HOURS, STUCK_JOB_HOURS, BUDGET_WARN_PCT, onRequestGet34;
+var CRON_STALE_HOURS, STUCK_JOB_HOURS, BUDGET_WARN_PCT, onRequestGet29;
 var init_attention = __esm({
   "api/admin/attention.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_settings();
@@ -16312,7 +15621,7 @@ var init_attention = __esm({
     STUCK_JOB_HOURS = 1;
     BUDGET_WARN_PCT = 80;
     __name(item, "item");
-    onRequestGet34 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet29 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -16517,13 +15826,13 @@ var init_attention = __esm({
 });
 
 // api/admin/audit.js
-var onRequestGet35;
+var onRequestGet30;
 var init_audit = __esm({
   "api/admin/audit.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
-    onRequestGet35 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet30 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       if (!env.DB) return json(503, { error: "no_db_binding" });
@@ -16715,7 +16024,7 @@ function scrapeToPromptInput(scrape) {
 var MAX_HTML_BYTES, MAX_BODY_TEXT, SKIP_TAG_RE, COMMENT_RE, TAG_RE, WS_RE, ENTITY_MAP, ENTITY_RE;
 var init_scrape = __esm({
   "_lib/scrape.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     MAX_HTML_BYTES = 8e5;
     MAX_BODY_TEXT = 6e3;
     SKIP_TAG_RE = /<(script|style|template|noscript|svg|iframe|object|embed)\b[^>]*>[\s\S]*?<\/\1>/gi;
@@ -16820,10 +16129,10 @@ async function callForBrandDNA(env, prompt, preferredProvider) {
 function sanitiseField(s, max) {
   return String(s || "").trim().slice(0, max);
 }
-var BRAND_DNA_KEYS, CONTENT_LANGUAGES, onRequestGet36, onRequestPost56, onRequestPut4;
+var BRAND_DNA_KEYS, CONTENT_LANGUAGES, onRequestGet31, onRequestPost52, onRequestPut4;
 var init_brand_dna = __esm({
   "api/admin/brand-dna.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_events();
@@ -16864,7 +16173,7 @@ var init_brand_dna = __esm({
     __name(buildBrandPrompt, "buildBrandPrompt");
     __name(callForBrandDNA, "callForBrandDNA");
     __name(sanitiseField, "sanitiseField");
-    onRequestGet36 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet31 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -16922,7 +16231,7 @@ var init_brand_dna = __esm({
         project_slug: tenant.activeProjectSlug
       });
     }, "onRequestGet");
-    onRequestPost56 = /* @__PURE__ */ __name(async ({ env, request, waitUntil }) => {
+    onRequestPost52 = /* @__PURE__ */ __name(async ({ env, request, waitUntil }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -17249,10 +16558,10 @@ function looseJsonParse2(text3) {
   }
   return JSON.parse(out);
 }
-var DEFAULT_BATCH, MAX_BATCH, MAX_KEYWORDS, onRequestPost57;
+var DEFAULT_BATCH, MAX_BATCH, MAX_KEYWORDS, onRequestPost53;
 var init_brand_filter_queue = __esm({
   "api/admin/brand-filter-queue.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_settings();
@@ -17264,7 +16573,7 @@ var init_brand_filter_queue = __esm({
     __name(buildBatchPrompt, "buildBatchPrompt");
     __name(evaluateBatch, "evaluateBatch");
     __name(looseJsonParse2, "looseJsonParse");
-    onRequestPost57 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost53 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       let body;
@@ -17352,17 +16661,17 @@ async function enrichWithPosts(env, rows) {
     post: row.post_id ? byId[row.post_id] || null : null
   }));
 }
-var VALID_STATUSES, onRequestGet37, onRequestPost58, onRequestPatch4, onRequestDelete6;
+var VALID_STATUSES, onRequestGet32, onRequestPost54, onRequestPatch4, onRequestDelete6;
 var init_calendar = __esm({
   "api/admin/calendar/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     VALID_STATUSES = ["scheduled", "generating", "draft", "published", "skipped"];
     __name(todayUtc2, "todayUtc");
     __name(isValidDate, "isValidDate");
     __name(enrichWithPosts, "enrichWithPosts");
-    onRequestGet37 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet32 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -17389,7 +16698,7 @@ var init_calendar = __esm({
         project_slug: tenant?.activeProjectSlug || null
       });
     }, "onRequestGet");
-    onRequestPost58 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost54 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -17489,13 +16798,13 @@ var init_calendar = __esm({
 });
 
 // api/admin/competitors/index.js
-var onRequestGet38;
+var onRequestGet33;
 var init_competitors = __esm({
   "api/admin/competitors/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
-    onRequestGet38 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet33 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -18369,7 +17678,7 @@ window.psBlog.state = state;
 }
 var init_widget_render = __esm({
   "_lib/widget_render.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     __name(jsString, "jsString");
     __name(imageUrlFor6, "imageUrlFor");
     __name(widgetBody, "widgetBody");
@@ -18430,7 +17739,7 @@ function embedWidgetOptions({ settings = {}, embed: embed2 = {}, origin = "" }) 
 var EMBED_THEMES, EMBED_PALETTE_KEYS;
 var init_embed_settings = __esm({
   "_lib/embed_settings.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     EMBED_THEMES = ["auto", "light", "dark"];
     EMBED_PALETTE_KEYS = ["bg", "fg", "muted", "line", "accent"];
     __name(hexOrNull, "hexOrNull");
@@ -18462,15 +17771,15 @@ function html(js) {
 </body>
 </html>`;
 }
-var onRequestGet39;
+var onRequestGet34;
 var init_embed_preview = __esm({
   "api/admin/embed-preview.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_auth();
     init_widget_render();
     init_embed_settings();
     __name(html, "html");
-    onRequestGet39 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet34 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       if (!env?.DB) return new Response("no_db", { status: 500 });
@@ -18552,17 +17861,17 @@ function safeSettings(settings) {
   if (j.length > SETTINGS_MAX_BYTES) throw new Error("settings_too_large");
   return j;
 }
-var SETTINGS_MAX_BYTES, onRequestGet40, onRequestPost59, onRequestPut5, onRequestDelete7;
+var SETTINGS_MAX_BYTES, onRequestGet35, onRequestPost55, onRequestPut5, onRequestDelete7;
 var init_embeds = __esm({
   "api/admin/embeds.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_embed_settings();
     SETTINGS_MAX_BYTES = 8 * 1024;
     __name(newEmbedId, "newEmbedId");
     __name(safeSettings, "safeSettings");
-    onRequestGet40 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet35 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -18591,7 +17900,7 @@ var init_embeds = __esm({
       });
       return json(200, { ok: true, embeds });
     }, "onRequestGet");
-    onRequestPost59 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost55 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       const tenant = await resolveTenantContext(env, request, auth);
@@ -18678,16 +17987,16 @@ var init_embeds = __esm({
 });
 
 // api/admin/google-search-console/index.js
-var onRequestGet41, onRequestPost60, onRequestDelete8;
+var onRequestGet36, onRequestPost56, onRequestDelete8;
 var init_google_search_console = __esm({
   "api/admin/google-search-console/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_secret_vault();
     init_settings();
     init_google_indexing();
-    onRequestGet41 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet36 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const s = await loadSettings(env);
@@ -18698,7 +18007,7 @@ var init_google_search_console = __esm({
         use_indexing_api: String(s.google_use_indexing_api || "") === "1"
       });
     }, "onRequestGet");
-    onRequestPost60 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost56 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       let body;
@@ -18763,16 +18072,16 @@ function extractLocs(xml2) {
   }
   return out;
 }
-var onRequestPost61;
+var onRequestPost57;
 var init_indexnow_ping = __esm({
   "api/admin/indexnow-ping.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_indexnow();
     init_project_scope();
     __name(extractLocs, "extractLocs");
-    onRequestPost61 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost57 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -18993,7 +18302,7 @@ async function computeInsights(env, { maxProjects = 2e3 } = {}) {
 var DAY;
 var init_insights = __esm({
   "_lib/insights.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     DAY = 86400;
     __name(isoWeek, "isoWeek");
     __name(percentile, "percentile");
@@ -19003,14 +18312,14 @@ var init_insights = __esm({
 });
 
 // api/admin/insights.js
-var onRequestGet42;
+var onRequestGet37;
 var init_insights2 = __esm({
   "api/admin/insights.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_insights();
-    onRequestGet42 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet37 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -19027,17 +18336,17 @@ var init_insights2 = __esm({
 function clientIp(request) {
   return request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }
-var MAX_FAILS, LOCKOUT_SEC, onRequestPost62;
+var MAX_FAILS, LOCKOUT_SEC, onRequestPost58;
 var init_login = __esm({
   "api/admin/login.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_passwords();
     init_admin_token();
     MAX_FAILS = 5;
     LOCKOUT_SEC = 60 * 60;
     __name(clientIp, "clientIp");
-    onRequestPost62 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost58 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       const adminToken = await getAdminToken(env);
       if (!adminToken) {
@@ -19114,13 +18423,13 @@ var init_login = __esm({
 });
 
 // api/admin/logout.js
-var onRequestPost63;
+var onRequestPost59;
 var init_logout = __esm({
   "api/admin/logout.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_passwords();
     init_admin_token();
-    onRequestPost63 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost59 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const raw = readCookie(request, SESSION_COOKIE);
       const token = env?.DB ? await getAdminToken(env) : "";
       if (raw && token) {
@@ -19145,7 +18454,7 @@ var init_logout = __esm({
 var SCHEMA_SQL;
 var init_schema = __esm({
   "_lib/schema.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     SCHEMA_SQL = `
 -- pages-seo: D1 schema.
 --
@@ -19920,7 +19229,7 @@ __export(migrations_bundle_exports, {
 var MIGRATIONS;
 var init_migrations_bundle = __esm({
   "_lib/migrations_bundle.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     MIGRATIONS = [
       { id: "001_social_posts", sql: "-- ============================================================================\n-- Social distribution queue\n-- ============================================================================\n-- One row per (blog post, channel) publication attempt. Publishing to an\n-- external network is not transactional with the blog write, so it gets\n-- its own durable job: the blog publish enqueues, and the cron drains.\n-- Without this, a dropped connection or a Facebook 5xx silently loses the\n-- post \u2014 the old fire-and-forget waitUntil() only wrote an audit line.\n--\n--   status: pending | publishing | published | failed | skipped\n--   next_attempt_at: unix seconds; exponential backoff between attempts\n--   needs_reconnect: 1 when the failure is a credential problem (bad or\n--     expired token, missing permission). Retrying is pointless until a\n--     human reconnects the channel, so the UI surfaces it as an action.\nCREATE TABLE IF NOT EXISTS social_posts (\n  id              TEXT PRIMARY KEY,\n  project_id      TEXT,\n  blog_post_id    TEXT NOT NULL,\n  channel         TEXT NOT NULL DEFAULT 'facebook',\n  status          TEXT NOT NULL DEFAULT 'pending',\n  attempts        INTEGER NOT NULL DEFAULT 0,\n  max_attempts    INTEGER NOT NULL DEFAULT 5,\n  next_attempt_at INTEGER NOT NULL,\n  external_id     TEXT,\n  external_url    TEXT,\n  error           TEXT,\n  needs_reconnect INTEGER NOT NULL DEFAULT 0,\n  created_at      INTEGER NOT NULL,\n  updated_at      INTEGER NOT NULL,\n  published_at    INTEGER\n);\n\n-- Idempotency: a retried blog publish must not enqueue a second time.\nCREATE UNIQUE INDEX IF NOT EXISTS idx_social_post_channel\n  ON social_posts(blog_post_id, channel);\n\n-- The drain query: due jobs, oldest first.\nCREATE INDEX IF NOT EXISTS idx_social_due\n  ON social_posts(status, next_attempt_at);\n\nCREATE INDEX IF NOT EXISTS idx_social_project\n  ON social_posts(project_id, created_at DESC);" },
       { id: "002_project_scoped_aliases", sql: "-- 002: project-scoped internal-link aliases.\n--\n-- The problem: site_aliases was global. buildAliasMap() returned EVERY row to\n-- every project, so the AI writing for project A was told it could link to\n-- project B's pages, and the sanitiser would happily expand those names into\n-- A's article. A cross-tenant content leak, not just a cosmetic one.\n--\n-- Why the table is rebuilt rather than ALTERed: the legacy table has\n-- `name TEXT PRIMARY KEY`, so only one row per name can exist in the whole\n-- database. Two projects could not each own a `login` alias. SQLite cannot\n-- change a primary key in place, so the table is recreated.\n--\n-- Nothing is dropped. The legacy table is RENAMED to site_aliases_legacy and\n-- left in place as a recovery copy; all rows are copied forward first.\n--\n-- project_id uses '' (not NULL) for \"global\". SQLite treats NULLs as distinct\n-- in a unique index, so a NULL-scoped row could be inserted twice and\n-- `ON CONFLICT(project_id, name)` would never fire for it. The empty string\n-- keeps the constraint meaningful.\n--\n-- This runs on fresh installs too \u2014 schema/init.sql still declares the legacy\n-- shape, so every database takes the same upgrade path and the migration is\n-- exercised by every install rather than only by old ones.\n\nALTER TABLE site_aliases RENAME TO site_aliases_legacy;\n\nCREATE TABLE IF NOT EXISTS site_aliases (\n  id          TEXT PRIMARY KEY,\n  project_id  TEXT NOT NULL DEFAULT '',   -- '' = shared/legacy\n  name        TEXT NOT NULL,\n  url         TEXT NOT NULL,\n  description TEXT,\n  kind        TEXT NOT NULL DEFAULT 'manual',  -- manual | sitemap\n  created_at  INTEGER NOT NULL,\n  updated_at  INTEGER NOT NULL\n);\n\n-- Scope + name is the identity. Composite so each project owns its own\n-- vocabulary; '' still allows one shared row per name.\nCREATE UNIQUE INDEX IF NOT EXISTS idx_site_aliases_scope\n  ON site_aliases(project_id, name);\n\nCREATE INDEX IF NOT EXISTS idx_site_aliases_project\n  ON site_aliases(project_id, kind);\n\n-- Copy every legacy row forward as global (''). Existing installs keep\n-- working exactly as before until an operator re-syncs per project.\nINSERT INTO site_aliases (id, project_id, name, url, description, kind, created_at, updated_at)\n  SELECT lower(hex(randomblob(16))), '', name, url, description, kind, created_at, updated_at\n    FROM site_aliases_legacy;" },
@@ -20053,7 +19362,7 @@ async function runMigrations(env, { logger = console } = {}) {
 var BENIGN;
 var init_migrations = __esm({
   "_lib/migrations.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_schema();
     init_migrations_bundle();
     BENIGN = /duplicate column name|already exists|duplicate index/i;
@@ -20066,14 +19375,14 @@ var init_migrations = __esm({
 });
 
 // api/admin/migrate.js
-var onRequestPost64, onRequestGet43;
+var onRequestPost60, onRequestGet38;
 var init_migrate = __esm({
   "api/admin/migrate.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_migrations();
-    onRequestPost64 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost60 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -20092,7 +19401,7 @@ var init_migrate = __esm({
         migrations_after: after.size
       });
     }, "onRequestPost");
-    onRequestGet43 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet38 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const { MIGRATIONS: MIGRATIONS2 } = await Promise.resolve().then(() => (init_migrations_bundle(), migrations_bundle_exports));
@@ -20108,13 +19417,13 @@ var init_migrate = __esm({
 });
 
 // api/admin/notices.js
-var onRequestGet44;
+var onRequestGet39;
 var init_notices2 = __esm({
   "api/admin/notices.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
-    onRequestGet44 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet39 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       if (!env?.DB) return json(503, { ok: false, error: "no_db_binding" });
@@ -20162,16 +19471,16 @@ async function stateFor(env, pid) {
     providers_configured: providers.text || []
   };
 }
-var onRequestGet45, onRequestPost65, onRequestDelete9;
+var onRequestGet40, onRequestPost61, onRequestDelete9;
 var init_onboarding = __esm({
   "api/admin/onboarding.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
     init_events();
     __name(stateFor, "stateFor");
-    onRequestGet45 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet40 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -20189,7 +19498,7 @@ var init_onboarding = __esm({
       const complete = required.every((x) => x.done);
       return json(200, { ok: true, ...s, steps, complete });
     }, "onRequestGet");
-    onRequestPost65 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost61 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -20222,10 +19531,10 @@ var init_onboarding = __esm({
 });
 
 // api/admin/preview-sample.js
-var DEFAULT_TOPIC, onRequestPost66;
+var DEFAULT_TOPIC, onRequestPost62;
 var init_preview_sample = __esm({
   "api/admin/preview-sample.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
@@ -20235,7 +19544,7 @@ var init_preview_sample = __esm({
     init_page_render();
     init_settings();
     DEFAULT_TOPIC = "Practical tips for someone starting out";
-    onRequestPost66 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost62 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -20326,14 +19635,14 @@ var init_preview_sample = __esm({
 });
 
 // api/admin/pricing.js
-var onRequestGet46, onRequestPost67;
+var onRequestGet41, onRequestPost63;
 var init_pricing = __esm({
   "api/admin/pricing.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_prices();
-    onRequestGet46 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet41 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const { prices, source, fetched_at, stale } = await loadPrices(env);
@@ -20345,7 +19654,7 @@ var init_pricing = __esm({
         stale
       });
     }, "onRequestGet");
-    onRequestPost67 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost63 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       try {
@@ -20359,14 +19668,14 @@ var init_pricing = __esm({
 });
 
 // api/admin/projects.js
-var onRequestGet47, onRequestPost68;
+var onRequestGet42, onRequestPost64;
 var init_projects2 = __esm({
   "api/admin/projects.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_projects();
-    onRequestGet47 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet42 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const url = new URL(request.url);
@@ -20374,7 +19683,7 @@ var init_projects2 = __esm({
       const projects = await listProjects(env, { status });
       return json(200, { ok: true, projects });
     }, "onRequestGet");
-    onRequestPost68 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost64 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       let body;
@@ -20397,14 +19706,14 @@ var init_projects2 = __esm({
 });
 
 // api/admin/providers.js
-var onRequestGet48;
+var onRequestGet43;
 var init_providers = __esm({
   "api/admin/providers.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
-    onRequestGet48 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet43 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       return json(200, await listProviders(env));
@@ -20413,10 +19722,10 @@ var init_providers = __esm({
 });
 
 // api/admin/secrets.js
-var ALLOWED, MIN_LEN, MAX_LEN, onRequestGet49, onRequestPost69, onRequestDelete10;
+var ALLOWED, MIN_LEN, MAX_LEN, onRequestGet44, onRequestPost65, onRequestDelete10;
 var init_secrets = __esm({
   "api/admin/secrets.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_secret_vault();
@@ -20445,7 +19754,7 @@ var init_secrets = __esm({
     ];
     MIN_LEN = 2;
     MAX_LEN = 512;
-    onRequestGet49 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet44 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const status = await describeKeys(env, ALLOWED);
@@ -20458,7 +19767,7 @@ var init_secrets = __esm({
       }
       return json(200, { ok: true, keys: status, values, allowed: ALLOWED });
     }, "onRequestGet");
-    onRequestPost69 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost65 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       let body;
@@ -20503,14 +19812,14 @@ var init_secrets = __esm({
 });
 
 // api/admin/settings.js
-var onRequestGet50, onRequestPut6;
+var onRequestGet45, onRequestPut6;
 var init_settings2 = __esm({
   "api/admin/settings.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_settings();
-    onRequestGet50 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet45 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const settings = await loadSettings(env);
@@ -20548,14 +19857,14 @@ var init_settings2 = __esm({
 });
 
 // api/admin/social.js
-var onRequestGet51, onRequestPost70;
+var onRequestGet46, onRequestPost66;
 var init_social = __esm({
   "api/admin/social.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_social_queue();
-    onRequestGet51 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet46 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -20571,7 +19880,7 @@ var init_social = __esm({
       for (const j of all) if (counts[j.status] != null) counts[j.status]++;
       return json(200, { ok: true, project_id: pid, jobs, counts });
     }, "onRequestGet");
-    onRequestPost70 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost66 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const auth = await requireAdminAsync(env, request);
@@ -20731,10 +20040,10 @@ async function checkRepairSecrets(env) {
     detail: missing.length ? `${missing.length} secret(s) missing \u2014 site can't self-repair bindings` : "all CF_* secrets present"
   };
 }
-var onRequestGet52;
-var init_status2 = __esm({
+var onRequestGet47;
+var init_status = __esm({
   "api/admin/status.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_settings();
@@ -20746,7 +20055,7 @@ var init_status2 = __esm({
     __name(checkBudget2, "checkBudget");
     __name(checkProviders, "checkProviders");
     __name(checkRepairSecrets, "checkRepairSecrets");
-    onRequestGet52 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet47 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const [db, r2, ai, content, failures, budget, providers, repair] = await Promise.all([
@@ -20781,15 +20090,15 @@ var init_status2 = __esm({
 });
 
 // api/admin/topics.js
-var onRequestGet53, onRequestPost71;
+var onRequestGet48, onRequestPost67;
 var init_topics2 = __esm({
   "api/admin/topics.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_projects();
     init_project_topics();
-    onRequestGet53 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet48 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const url = new URL(request.url);
@@ -20799,7 +20108,7 @@ var init_topics2 = __esm({
       const topics = await listProjectTopics(env, projectId, { status });
       return json(200, { ok: true, topics });
     }, "onRequestGet");
-    onRequestPost71 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost67 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       let body;
@@ -20833,15 +20142,15 @@ var init_topics2 = __esm({
 });
 
 // api/admin/trend-discover.js
-var onRequestGet54, onRequestPost72, ALLOWED_STATUS, onRequestPatch5;
+var onRequestGet49, onRequestPost68, ALLOWED_STATUS, onRequestPatch5;
 var init_trend_discover = __esm({
   "api/admin/trend-discover.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_ai();
     init_projects();
-    onRequestGet54 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet49 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -20852,7 +20161,7 @@ var init_trend_discover = __esm({
       const { results } = await stmt.all().catch(() => ({ results: [] }));
       return json(200, { ok: true, project_id: pid, topics: results || [] });
     }, "onRequestGet");
-    onRequestPost72 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost68 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -20932,7 +20241,7 @@ Write ALL topic titles in the project's content language (${project?.language ||
 });
 
 // api/admin/update/index.js
-function ghHeaders3(env) {
+function ghHeaders(env) {
   const h = {
     "User-Agent": "pages-seo-update",
     Accept: "application/vnd.github+json"
@@ -20944,16 +20253,16 @@ function ghHeaders3(env) {
 }
 async function fetchLatest(env) {
   const r = await fetch(
-    `https://api.github.com/repos/${UPSTREAM_OWNER2}/${UPSTREAM_REPO2}/commits/${BRANCH}`,
-    { headers: ghHeaders3(env), signal: AbortSignal.timeout(8e3) }
+    `https://api.github.com/repos/${UPSTREAM_OWNER}/${UPSTREAM_REPO}/commits/${BRANCH}`,
+    { headers: ghHeaders(env), signal: AbortSignal.timeout(8e3) }
   );
   if (!r.ok) throw new Error("github_latest_" + r.status);
   return r.json();
 }
 async function fetchCompare(base, head, env) {
   const r = await fetch(
-    `https://api.github.com/repos/${UPSTREAM_OWNER2}/${UPSTREAM_REPO2}/compare/${base}...${head}`,
-    { headers: ghHeaders3(env), signal: AbortSignal.timeout(8e3) }
+    `https://api.github.com/repos/${UPSTREAM_OWNER}/${UPSTREAM_REPO}/compare/${base}...${head}`,
+    { headers: ghHeaders(env), signal: AbortSignal.timeout(8e3) }
   );
   if (!r.ok) throw new Error("github_compare_" + r.status);
   return r.json();
@@ -21006,7 +20315,7 @@ async function buildUpdateReport(env) {
       up_to_date: false,
       can_apply: false,
       can_apply_reason: "check_failed",
-      repo: { owner: UPSTREAM_OWNER2, name: UPSTREAM_REPO2 },
+      repo: { owner: UPSTREAM_OWNER, name: UPSTREAM_REPO },
       commits: [],
       files_changed: 0,
       additions: 0,
@@ -21093,21 +20402,21 @@ async function buildUpdateReport(env) {
     deletions: (cmp.files || []).reduce((n, f) => n + (f.deletions || 0), 0)
   });
 }
-var UPSTREAM_OWNER2, UPSTREAM_REPO2, BRANCH, onRequestGet55, UPSTREAM_TTL_SEC;
+var UPSTREAM_OWNER, UPSTREAM_REPO, BRANCH, onRequestGet50, UPSTREAM_TTL_SEC;
 var init_update = __esm({
   "api/admin/update/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_settings();
-    UPSTREAM_OWNER2 = "hophat";
-    UPSTREAM_REPO2 = "Gu-SEO";
+    UPSTREAM_OWNER = "hophat";
+    UPSTREAM_REPO = "Gu-SEO";
     BRANCH = "main";
-    __name(ghHeaders3, "ghHeaders");
+    __name(ghHeaders, "ghHeaders");
     __name(fetchLatest, "fetchLatest");
     __name(fetchCompare, "fetchCompare");
     __name(short, "short");
-    onRequestGet55 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet50 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       try {
@@ -21124,7 +20433,7 @@ var init_update = __esm({
           up_to_date: false,
           can_apply: false,
           can_apply_reason: "check_failed",
-          repo: { owner: UPSTREAM_OWNER2, name: UPSTREAM_REPO2 },
+          repo: { owner: UPSTREAM_OWNER, name: UPSTREAM_REPO },
           commits: [],
           files_changed: 0,
           additions: 0,
@@ -21148,16 +20457,16 @@ function windowStart(name) {
   const m = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
   return Math.floor(m.getTime() / 1e3);
 }
-var onRequestGet56;
+var onRequestGet51;
 var init_usage2 = __esm({
   "api/admin/usage.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_settings();
     init_usage();
     __name(windowStart, "windowStart");
-    onRequestGet56 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet51 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await adminGate(env, request);
       if (gate) return gate;
       const url = new URL(request.url);
@@ -21251,10 +20560,10 @@ async function projectExists(env, id) {
   ).bind(id).first().catch(() => null);
   return !!r;
 }
-var MIN_PW, MAX_PW, ROLES, onRequestGet57, onRequestPost73, onRequestPut7, onRequestDelete11;
+var MIN_PW, MAX_PW, ROLES, onRequestGet52, onRequestPost69, onRequestPut7, onRequestDelete11;
 var init_users = __esm({
   "api/admin/users.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_email_rules();
     init_auth();
@@ -21264,7 +20573,7 @@ var init_users = __esm({
     ROLES = ["super_admin", "project_admin"];
     __name(hasKey, "hasKey");
     __name(projectExists, "projectExists");
-    onRequestGet57 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet52 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       const r = await env.DB.prepare(
@@ -21275,7 +20584,7 @@ var init_users = __esm({
       ).all();
       return json(200, { ok: true, users: r?.results || [] });
     }, "onRequestGet");
-    onRequestPost73 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost69 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const gate = await requireSuperAdmin(env, request);
       if (gate.error) return gate.error;
       let body;
@@ -21425,15 +20734,15 @@ var init_users = __esm({
 });
 
 // api/admin/whoami.js
-var onRequestGet58;
+var onRequestGet53;
 var init_whoami = __esm({
   "api/admin/whoami.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_config();
     init_site_identity();
-    onRequestGet58 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet53 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const missing = await missingConfig(env);
       if (missing.length) {
         let usersCount = 0;
@@ -21508,312 +20817,14 @@ var init_whoami = __esm({
   }
 });
 
-// api/ai-prompt/diagnose.js
-function cleanUrl(input) {
-  if (!input) return null;
-  let s = String(input).trim();
-  if (!s) return null;
-  if (!/^https?:\/\//i.test(s)) s = "https://" + s;
-  try {
-    const u = new URL(s);
-    return u.origin;
-  } catch {
-    return null;
-  }
-}
-async function probe(url, opts = {}) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
-  try {
-    const r = await fetch(url, {
-      method: opts.method || "GET",
-      signal: ctrl.signal,
-      headers: { "user-agent": "pages-seo-diagnose/1" },
-      redirect: "follow"
-    });
-    const ct = r.headers.get("content-type") || "";
-    let body = "";
-    try {
-      const buf = await r.arrayBuffer();
-      body = new TextDecoder("utf-8", { fatal: false }).decode(buf.slice(0, 64 * 1024));
-    } catch {
-    }
-    return { ok: r.ok, status: r.status, body, contentType: ct };
-  } catch (e) {
-    return { ok: false, status: 0, body: "", contentType: "", error: String(e?.name || e?.message || "fetch_failed") };
-  } finally {
-    clearTimeout(t);
-  }
-}
-function tryJson(text3) {
-  try {
-    return JSON.parse(text3);
-  } catch {
-    return null;
-  }
-}
-async function runDiagnostics(site) {
-  const u = /* @__PURE__ */ __name((path) => site + path, "u");
-  const [home, admin, health, setup, sitemap, robots, cover, blog] = await Promise.all([
-    probe(u("/")),
-    probe(u("/admin")),
-    probe(u("/api/health")),
-    probe(u("/api/setup")),
-    probe(u("/sitemap.xml")),
-    probe(u("/robots.txt")),
-    probe(u("/cover/_does-not-exist.svg")),
-    probe(u("/blog"))
-  ]);
-  const findings = [];
-  const add = /* @__PURE__ */ __name((severity, id, title, detail, extra = {}) => findings.push({ severity, id, title, detail, ...extra }), "add");
-  if (home.status === 0) {
-    add(
-      "critical",
-      "site_unreachable",
-      "Site is unreachable",
-      `Couldn't reach ${site}. Network error: ${home.error || "timeout"}. Domain may be wrong or the deployment is down.`,
-      { url: site }
-    );
-    return { findings, reachable: false };
-  }
-  if (home.status >= 500) {
-    add(
-      "critical",
-      "site_5xx",
-      `Homepage returns ${home.status}`,
-      "Server-side error on the homepage. The Pages Function is probably crashing \u2014 usually a missing binding or env var.",
-      { url: site }
-    );
-  } else if (home.status >= 400) {
-    add(
-      "warning",
-      "site_4xx",
-      `Homepage returns ${home.status}`,
-      "Homepage is rejecting requests. Likely a routing or auth issue.",
-      { url: site }
-    );
-  } else {
-    add("ok", "site_reachable", "Site reachable", `Homepage returns ${home.status}.`);
-  }
-  const setupJson = tryJson(setup.body);
-  if (setup.status === 503 && setupJson?.error === "no_db_binding") {
-    add(
-      "critical",
-      "no_db_binding",
-      "D1 database not bound",
-      'The Pages project is missing the D1 binding called "DB". /repair \u2192 Fix D1 binding resolves this.',
-      { url: "https://seo.benjaminb.xyz/repair" }
-    );
-  } else if (setup.status === 200 && setupJson?.needs_setup === true) {
-    add(
-      "warning",
-      "needs_setup",
-      "First-run setup not completed",
-      "The site is deployed but the admin account hasn't been created. Open /admin to finish setup.",
-      { url: u("/admin") }
-    );
-  } else if (setup.status === 200 && setupJson?.ok === true) {
-    add("ok", "setup_ok", "Setup status nominal", "No setup gates blocking; admin should load.");
-  } else if (setup.status === 0) {
-    add(
-      "warning",
-      "setup_unreachable",
-      "/api/setup unreachable",
-      "Couldn't reach the setup endpoint. The deployment may not have Functions bound."
-    );
-  }
-  const adminBody = admin.body || "";
-  const whoami = await probe(u("/api/admin/whoami"));
-  const whoamiJson = tryJson(whoami.body);
-  if (whoami.status === 503 && whoamiJson?.error === "config_incomplete") {
-    const missing = whoamiJson.missing || [];
-    add(
-      "critical",
-      "config_incomplete",
-      `Missing config: ${missing.join(", ") || "unknown"}`,
-      `The admin endpoints require ${missing.join(", ")} \u2014 either as Pages secrets or in the D1 settings table. Restore them via \`wrangler pages secret put\` or by re-running /repair \u2192 "Add self-repair secrets".`,
-      { missing }
-    );
-  } else if (whoami.status === 401 || whoami.status === 200) {
-    add("ok", "admin_healthy", "Admin endpoints healthy", `/api/admin/whoami returns ${whoami.status} (expected; means env+DB are wired).`);
-  } else if (whoami.status >= 500) {
-    add(
-      "critical",
-      "admin_5xx",
-      `/api/admin/whoami returns ${whoami.status}`,
-      "The admin API is crashing. Check Cloudflare \u2192 Pages \u2192 pages-seo \u2192 Logs for the stack trace."
-    );
-  }
-  if (sitemap.status === 200 && /<urlset|<sitemapindex/.test(sitemap.body)) {
-    add("ok", "sitemap_ok", "Sitemap valid", "/sitemap.xml returns a proper XML sitemap.");
-  } else if (sitemap.status === 200) {
-    add(
-      "warning",
-      "sitemap_bad",
-      "Sitemap response not XML",
-      "/sitemap.xml returns 200 but the body doesn't look like a sitemap. Likely the SPA fallback handler is intercepting."
-    );
-  } else if (sitemap.status === 0 || sitemap.status >= 500) {
-    add(
-      "warning",
-      "sitemap_down",
-      `Sitemap returns ${sitemap.status || "timeout"}`,
-      "Sitemap endpoint is failing \u2014 search engines can't crawl your posts. Usually means /sitemap.xml.js function crashed (missing DB binding)."
-    );
-  }
-  if (robots.status === 200 && /sitemap:/i.test(robots.body)) {
-    add("ok", "robots_ok", "robots.txt present", "robots.txt references the sitemap correctly.");
-  } else if (robots.status !== 200) {
-    add(
-      "info",
-      "robots_missing",
-      `/robots.txt returns ${robots.status || "timeout"}`,
-      "Optional but recommended. Not blocking anything."
-    );
-  }
-  if (cover.status >= 500) {
-    add(
-      "warning",
-      "cover_renderer_crash",
-      `/cover/<slug>.svg returns ${cover.status}`,
-      "The live cover SVG renderer is crashing. Daily blog hero images won't generate. Check the cover template config in /admin \u2192 Covers."
-    );
-  } else if (cover.status === 404 || cover.status === 200 && cover.contentType.includes("svg")) {
-    add("ok", "cover_ok", "Cover renderer responding", `${cover.status} from /cover/.svg endpoint.`);
-  }
-  if (blog.status >= 500) {
-    add(
-      "warning",
-      "blog_5xx",
-      `/blog returns ${blog.status}`,
-      "The public blog index is crashing. Probably a DB query failure."
-    );
-  } else if (blog.status === 200 && /No posts yet|Waiting for the cron/.test(blog.body)) {
-    add(
-      "info",
-      "no_posts",
-      "No blog posts published yet",
-      "Either the daily cron hasn't run, or it's running but failing. Check /admin \u2192 System \u2192 Audit log for cron errors."
-    );
-  } else if (blog.status === 200) {
-    add("ok", "blog_ok", "Public blog listing healthy", "/blog returns 200 with post content.");
-  }
-  return { findings, reachable: true };
-}
-function buildTargetedPrompt(site, findings, ctx) {
-  const critical = findings.filter((f) => f.severity === "critical");
-  const warnings = findings.filter((f) => f.severity === "warning");
-  const ok = findings.filter((f) => f.severity === "ok");
-  const summary = critical.length ? `${critical.length} CRITICAL issue${critical.length === 1 ? "" : "s"} found.` : warnings.length ? `${warnings.length} warning${warnings.length === 1 ? "" : "s"} found; site is mostly healthy.` : "No critical issues. The site appears healthy.";
-  const fmtFinding = /* @__PURE__ */ __name((f) => {
-    const lines = [`- [${f.severity.toUpperCase()}] ${f.title}`, `    ${f.detail}`];
-    if (f.url) lines.push(`    Action URL: ${f.url}`);
-    return lines.join("\n");
-  }, "fmtFinding");
-  const detected = [
-    ...critical.map(fmtFinding),
-    ...warnings.map(fmtFinding)
-  ].join("\n");
-  const okList = ok.length ? `
-ALSO PASSED (don't waste time on these):
-${ok.map((f) => `- ${f.title}`).join("\n")}` : "";
-  const personal = [];
-  if (ctx.slug) personal.push(`- Project slug: ${ctx.slug}`);
-  if (site) personal.push(`- Live site:    ${site}`);
-  if (ctx.admin) personal.push(`- Admin panel:  ${ctx.admin}`);
-  if (ctx.gh) personal.push(`- GitHub fork:  ${ctx.gh}`);
-  if (ctx.version) personal.push(`- Version:      ${ctx.version}`);
-  return `You are helping me fix a broken pages-seo install. pages-seo is an open-source programmatic SEO toolkit that runs on Cloudflare Pages (Workers AI default, 8 cloud LLM providers as fallback). Source: github.com/Benjamin-Bloch/pages-seo. Docs + error reference: https://seo.benjaminb.xyz/docs and https://seo.benjaminb.xyz/docs#errors.
-
-I have very little technical experience. Walk me through each fix ONE AT A TIME. After each step, wait for me to confirm I've done it. If a step errors, diagnose the error message before moving on.
-
-MY INSTALL:
-${personal.join("\n")}
-
-DIAGNOSTIC SCAN RESULTS (${(/* @__PURE__ */ new Date()).toISOString()}):
-${summary}
-
-WHAT'S BROKEN \u2014 fix these in order:
-${detected || "(no specific failures detected by the black-box scan; ask me what symptom I'm actually seeing)"}
-${okList}
-
-Standard pages-seo failure modes you may encounter:
-- "no_db_binding" \u2192 /repair \u2192 "Fix D1 binding" PATCHes the Pages project to re-attach the DB binding.
-- "config_incomplete" + missing SITE_NAME/SITE_URL/ADMIN_TOKEN \u2192 either set them as Pages secrets (\`wrangler pages secret put SITE_NAME\`) or write fallback rows to D1 (\`site_name_db\`, \`site_url_db\`, \`admin_token\` in the settings table).
-- Self-repair secrets missing (CF_API_TOKEN/CF_ACCOUNT_ID/CF_PROJECT/CF_D1_ID/CF_R2_NAME) \u2192 /repair \u2192 "Add self-repair secrets" populates them.
-- Cover SVG not rendering \u2192 check /admin \u2192 Covers, ensure a default template is installed.
-- Daily cron not producing posts \u2192 /admin \u2192 System \u2192 Audit log will show the last failure; provider key may be unset.
-
-Start by acknowledging which CRITICAL issue we're tackling first (if any), tell me concretely what to click or run, then wait for me to confirm before moving on.`;
-}
-var PROBE_TIMEOUT_MS, onRequestGet59;
-var init_diagnose = __esm({
-  "api/ai-prompt/diagnose.js"() {
-    init_functionsRoutes_0_692476336876716();
-    PROBE_TIMEOUT_MS = 6e3;
-    __name(cleanUrl, "cleanUrl");
-    __name(probe, "probe");
-    __name(tryJson, "tryJson");
-    __name(runDiagnostics, "runDiagnostics");
-    __name(buildTargetedPrompt, "buildTargetedPrompt");
-    onRequestGet59 = /* @__PURE__ */ __name(async ({ request }) => {
-      const url = new URL(request.url);
-      const site = cleanUrl(url.searchParams.get("site"));
-      const format = String(url.searchParams.get("format") || "text").toLowerCase();
-      if (!site) {
-        return new Response(JSON.stringify({ error: "missing_site", detail: "Pass ?site=https://my-site.pages.dev" }), {
-          status: 400,
-          headers: { "content-type": "application/json" }
-        });
-      }
-      const ctx = {
-        slug: (url.searchParams.get("slug") || "").slice(0, 64) || null,
-        admin: cleanUrl(url.searchParams.get("admin")) || site + "/admin",
-        gh: (url.searchParams.get("gh") || "").slice(0, 120) || null,
-        version: (url.searchParams.get("version") || "").slice(0, 40) || null
-      };
-      const { findings } = await runDiagnostics(site);
-      const prompt = buildTargetedPrompt(site, findings, ctx);
-      if (format === "json") {
-        return new Response(JSON.stringify({
-          ok: true,
-          site,
-          ran_at: Math.floor(Date.now() / 1e3),
-          summary: {
-            critical: findings.filter((f) => f.severity === "critical").length,
-            warning: findings.filter((f) => f.severity === "warning").length,
-            info: findings.filter((f) => f.severity === "info").length,
-            ok: findings.filter((f) => f.severity === "ok").length
-          },
-          findings,
-          prompt
-        }), {
-          headers: {
-            "content-type": "application/json; charset=utf-8",
-            "cache-control": "no-store",
-            "access-control-allow-origin": "*"
-          }
-        });
-      }
-      return new Response(prompt, {
-        headers: {
-          "content-type": "text/plain; charset=utf-8",
-          "cache-control": "no-store",
-          "access-control-allow-origin": "*"
-        }
-      });
-    }, "onRequestGet");
-  }
-});
-
 // api/blog/feedback.js
-var onRequestPost74;
+var onRequestPost70;
 var init_feedback = __esm({
   "api/blog/feedback.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_project_scope();
-    onRequestPost74 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost70 = /* @__PURE__ */ __name(async ({ request, env }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       let body;
       try {
@@ -21836,14 +20847,14 @@ var init_feedback = __esm({
 });
 
 // api/blog/leads.js
-var onRequestPost75, onRequestGet60;
+var onRequestPost71, onRequestGet54;
 var init_leads = __esm({
   "api/blog/leads.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_project_scope();
-    onRequestPost75 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost71 = /* @__PURE__ */ __name(async ({ request, env }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       let body;
       try {
@@ -21863,7 +20874,7 @@ var init_leads = __esm({
       ).bind(newId(), project?.id || null, name, email, phone, source, blogSlug || null, nowSec()).run();
       return json(200, { ok: true });
     }, "onRequestPost");
-    onRequestGet60 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet54 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -21878,14 +20889,14 @@ var init_leads = __esm({
 });
 
 // api/blog/views.js
-var onRequestPost76, onRequestGet61;
+var onRequestPost72, onRequestGet55;
 var init_views = __esm({
   "api/blog/views.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
     init_project_scope();
-    onRequestPost76 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestPost72 = /* @__PURE__ */ __name(async ({ request, env }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       let body;
       try {
@@ -21912,7 +20923,7 @@ var init_views = __esm({
       }
       return json(200, { ok: true });
     }, "onRequestPost");
-    onRequestGet61 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet55 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const auth = await requireAdminAsync(env, request);
       if (!auth) return json(401, { error: "unauthorized" });
       if (!env?.DB) return json(500, { error: "no_db" });
@@ -21926,852 +20937,13 @@ var init_views = __esm({
   }
 });
 
-// api/install/check.js
-var URL_RX, onRequestGet62;
-var init_check = __esm({
-  "api/install/check.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    URL_RX = /^https:\/\/[a-z0-9-]+\.pages\.dev$/i;
-    onRequestGet62 = /* @__PURE__ */ __name(async ({ request }) => {
-      const u = new URL(request.url).searchParams.get("url") || "";
-      if (!URL_RX.test(u)) return json(400, { ok: false, error: "bad_url" });
-      const ctrl = new AbortController();
-      const timeout = setTimeout(() => ctrl.abort(), 8e3);
-      try {
-        const r = await fetch(u + "/api/setup", { signal: ctrl.signal, redirect: "manual" });
-        clearTimeout(timeout);
-        if (r.status !== 200) {
-          return json(200, { ok: true, live: false, status: r.status });
-        }
-        const body = await r.json().catch(() => null);
-        return json(200, { ok: true, live: !!(body && body.ok), needs_setup: !!body?.needs_setup });
-      } catch (e) {
-        clearTimeout(timeout);
-        return json(200, { ok: true, live: false, error: String(e?.message || e).slice(0, 120) });
-      }
-    }, "onRequestGet");
-  }
-});
-
-// api/install/deploy-status.js
-async function cfFetch4(token, path) {
-  const r = await fetch(CF_API5 + path, {
-    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }
-  });
-  let body = null;
-  try {
-    body = await r.json();
-  } catch {
-  }
-  return { status: r.status, ok: r.ok, body };
-}
-function firstError3(body) {
-  if (Array.isArray(body?.errors) && body.errors.length) {
-    return body.errors.map((e) => e.message || String(e)).join(" \xB7 ");
-  }
-  return body?.error || null;
-}
-function bucket(stageStatus) {
-  if (!stageStatus) return "unknown";
-  const s = String(stageStatus).toLowerCase();
-  if (s === "success") return "success";
-  if (s === "failure" || s === "failed" || s === "canceled" || s === "cancelled") return "failure";
-  if (s === "active" || s === "queued" || s === "idle") return "building";
-  return "unknown";
-}
-function summariseFailure(deployment) {
-  const stages = Array.isArray(deployment?.stages) ? deployment.stages : [];
-  const failed = stages.find((s) => bucket(s?.status) === "failure");
-  if (failed?.name) return `Failed during '${failed.name}' stage.`;
-  const latest = deployment?.latest_stage;
-  if (latest?.name && bucket(latest?.status) === "failure") {
-    return `Failed during '${latest.name}' stage.`;
-  }
-  return "Build failed \u2014 open the build log for details.";
-}
-var CF_API5, onRequestPost77;
-var init_deploy_status = __esm({
-  "api/install/deploy-status.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    CF_API5 = "https://api.cloudflare.com/client/v4";
-    __name(cfFetch4, "cfFetch");
-    __name(firstError3, "firstError");
-    __name(bucket, "bucket");
-    __name(summariseFailure, "summariseFailure");
-    onRequestPost77 = /* @__PURE__ */ __name(async ({ request }) => {
-      let payload;
-      try {
-        payload = await request.json();
-      } catch {
-        return json(400, { ok: false, error: "bad_json" });
-      }
-      const token = String(payload?.token || "").trim();
-      const accountId = String(payload?.account_id || "").trim().toLowerCase();
-      const project = String(payload?.project || "").trim().toLowerCase();
-      if (!token) return json(400, { ok: false, error: "missing_token" });
-      if (!/^[a-f0-9]{32}$/.test(accountId)) return json(400, { ok: false, error: "bad_account_id" });
-      if (!/^[a-z][a-z0-9-]{1,32}$/.test(project)) return json(400, { ok: false, error: "bad_project" });
-      const r = await cfFetch4(
-        token,
-        `/accounts/${accountId}/pages/projects/${project}/deployments?per_page=5&env=production`
-      );
-      if (r.status === 401 || r.status === 403) {
-        return json(401, { ok: false, error: "token_rejected", detail: firstError3(r.body) });
-      }
-      if (r.status === 404) {
-        return json(404, { ok: false, error: "project_not_found" });
-      }
-      if (!r.ok) {
-        return json(502, { ok: false, error: "cf_api_error", detail: firstError3(r.body) || "HTTP " + r.status });
-      }
-      const deployments = r.body?.result || [];
-      if (!deployments.length) {
-        return json(200, { ok: true, deployment_id: null, status: "unknown", stage: null });
-      }
-      const latest = deployments[0];
-      const status = bucket(latest?.latest_stage?.status);
-      const stage = latest?.latest_stage?.name || null;
-      const out = {
-        ok: true,
-        deployment_id: latest?.id || null,
-        short_id: (latest?.id || "").slice(0, 8),
-        status,
-        stage,
-        created_on: latest?.created_on || null,
-        deployment_url: latest?.url || null,
-        build_log_url: latest?.id ? `https://dash.cloudflare.com/${accountId}/pages/view/${project}/${latest.id}` : null,
-        error_summary: status === "failure" ? summariseFailure(latest) : null
-      };
-      return json(200, out, { "cache-control": "no-store" });
-    }, "onRequestPost");
-  }
-});
-
-// api/install/projects.js
-async function cfFetch5(token, path) {
-  const r = await fetch(CF_API6 + path, {
-    headers: {
-      Authorization: "Bearer " + token,
-      "Content-Type": "application/json"
-    }
-  });
-  let body = null;
-  try {
-    body = await r.json();
-  } catch {
-  }
-  return { status: r.status, ok: r.ok, body };
-}
-function firstError4(body) {
-  if (Array.isArray(body?.errors) && body.errors.length) {
-    return body.errors.map((e) => e.message || String(e)).join(" \xB7 ");
-  }
-  return body?.error || null;
-}
-var CF_API6, onRequestPost78;
-var init_projects3 = __esm({
-  "api/install/projects.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    CF_API6 = "https://api.cloudflare.com/client/v4";
-    __name(cfFetch5, "cfFetch");
-    __name(firstError4, "firstError");
-    onRequestPost78 = /* @__PURE__ */ __name(async ({ request }) => {
-      let payload;
-      try {
-        payload = await request.json();
-      } catch {
-        return json(400, { ok: false, error: "bad_json" });
-      }
-      const token = String(payload?.token || "").trim();
-      if (!token) return json(400, { ok: false, error: "missing_token" });
-      const accountsR = await cfFetch5(token, "/accounts");
-      if (!accountsR.ok || !accountsR.body?.result?.length) {
-        const detail = firstError4(accountsR.body) || "HTTP " + accountsR.status;
-        return json(accountsR.status === 401 || accountsR.status === 403 ? 401 : 502, {
-          ok: false,
-          error: "token_rejected",
-          detail,
-          hint: "The token didn't list any accounts. Re-create it via the link on /repair \u2014 make sure Account Settings: Read is checked."
-        });
-      }
-      const account = accountsR.body.result[0];
-      const accountId = account.id;
-      const projects = [];
-      for (let page = 1; page <= 8; page++) {
-        const r = await cfFetch5(
-          token,
-          `/accounts/${accountId}/pages/projects?page=${page}&per_page=25`
-        );
-        if (!r.ok) {
-          return json(502, {
-            ok: false,
-            error: "pages_list_failed",
-            detail: firstError4(r.body) || "HTTP " + r.status
-          });
-        }
-        const rows = r.body?.result || [];
-        for (const p of rows) projects.push(p);
-        if (rows.length < 25) break;
-      }
-      const slugs = projects.map((p) => p.name);
-      const d1Hits = /* @__PURE__ */ new Set();
-      const r2Hits = /* @__PURE__ */ new Set();
-      try {
-        const d1R = await cfFetch5(token, `/accounts/${accountId}/d1/database?per_page=50`);
-        if (d1R.ok) {
-          for (const d of d1R.body?.result || []) {
-            if (slugs.includes(d.name)) d1Hits.add(d.name);
-          }
-        }
-      } catch {
-      }
-      try {
-        const r2R = await cfFetch5(token, `/accounts/${accountId}/r2/buckets?per_page=50`);
-        if (r2R.ok) {
-          const buckets = r2R.body?.result?.buckets || r2R.body?.result || [];
-          for (const b of buckets) {
-            const expected = b.name.replace(/-images$/, "");
-            if (slugs.includes(expected)) r2Hits.add(expected);
-          }
-        }
-      } catch {
-      }
-      const out = projects.map((p) => ({
-        name: p.name,
-        subdomain: p.subdomain || `${p.name}.pages.dev`,
-        created_on: p.created_on || null,
-        domains: p.domains || [],
-        has_pages_seo_d1: d1Hits.has(p.name),
-        has_pages_seo_r2: r2Hits.has(p.name),
-        looks_like_pages_seo: d1Hits.has(p.name) && r2Hits.has(p.name)
-      }));
-      out.sort((a, b) => {
-        if (a.looks_like_pages_seo !== b.looks_like_pages_seo) {
-          return a.looks_like_pages_seo ? -1 : 1;
-        }
-        return a.name.localeCompare(b.name);
-      });
-      return json(200, {
-        ok: true,
-        account: { id: accountId, name: account.name || "" },
-        projects: out
-      });
-    }, "onRequestPost");
-  }
-});
-
-// api/install/provision.js
-function fail2(at, status, detail, extras = {}) {
-  return json(status, { ok: false, failed_at: at, error: "install_failed", detail, ...extras });
-}
-function isGithubInstallError(msg) {
-  if (!msg) return false;
-  return /Git installation|git integration|github app|connect.*git|reinstalling your installation/i.test(msg);
-}
-async function tokenFingerprint(token) {
-  const bytes = new TextEncoder().encode(token);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest)).slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-function randomHex32() {
-  const a = new Uint8Array(16);
-  crypto.getRandomValues(a);
-  return Array.from(a).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-async function cfFetch6(token, path, init = {}) {
-  const res = await fetch(CF_API7 + path, {
-    ...init,
-    headers: {
-      Authorization: "Bearer " + token,
-      "Content-Type": "application/json",
-      ...init.headers || {}
-    }
-  });
-  let body = null;
-  try {
-    body = await res.json();
-  } catch {
-  }
-  return { res, body };
-}
-function firstErrorMessage(body) {
-  if (!body) return null;
-  if (Array.isArray(body.errors) && body.errors.length) {
-    return body.errors.map((e) => e.message || String(e)).join(" \xB7 ");
-  }
-  return body.error || body.detail || null;
-}
-async function loadState(env, project, fp) {
-  if (!env?.DB) return null;
-  return env.DB.prepare(
-    `SELECT * FROM install_state WHERE project = ? AND token_fp = ? LIMIT 1`
-  ).bind(project, fp).first().catch(() => null);
-}
-async function saveStep(env, project, fp, patch) {
-  if (!env?.DB) return;
-  const now = nowSec();
-  const existing = await loadState(env, project, fp);
-  if (existing) {
-    const sets = [];
-    const args = [];
-    for (const [k, v] of Object.entries(patch)) {
-      sets.push(`${k} = ?`);
-      args.push(v);
-    }
-    sets.push("updated_at = ?");
-    args.push(now);
-    args.push(project, fp);
-    await env.DB.prepare(
-      `UPDATE install_state SET ${sets.join(", ")} WHERE project = ? AND token_fp = ?`
-    ).bind(...args).run().catch(() => {
-    });
-  } else {
-    const cols = ["project", "token_fp", "created_at", "updated_at", ...Object.keys(patch)];
-    const vals = [project, fp, now, now, ...Object.values(patch)];
-    const placeholders = cols.map(() => "?").join(", ");
-    await env.DB.prepare(
-      `INSERT INTO install_state (${cols.join(", ")}) VALUES (${placeholders})`
-    ).bind(...vals).run().catch(() => {
-    });
-  }
-}
-async function ensureAccount(token) {
-  const r = await cfFetch6(token, "/accounts");
-  if (!r.res.ok || !r.body?.result?.length) {
-    throw new Error(firstErrorMessage(r.body) || "Token rejected by Cloudflare (check scopes).");
-  }
-  return { id: r.body.result[0].id, name: r.body.result[0].name };
-}
-async function findD1(token, accountId, name) {
-  const direct = await cfFetch6(token, `/accounts/${accountId}/d1/database?name=${encodeURIComponent(name)}&per_page=10`);
-  if (direct.res.ok) {
-    const hit = (direct.body?.result || []).find((r) => r.name === name);
-    if (hit) return hit.uuid;
-    if (Array.isArray(direct.body?.result)) return null;
-  }
-  for (let page = 1; page <= 5; page++) {
-    const listR = await cfFetch6(token, `/accounts/${accountId}/d1/database?page=${page}&per_page=50`);
-    if (!listR.res.ok) break;
-    const rows = listR.body?.result || [];
-    const hit = rows.find((r) => r.name === name);
-    if (hit) return hit.uuid;
-    if (rows.length < 50) break;
-  }
-  return null;
-}
-async function ensureD1(token, accountId, name) {
-  const existing = await findD1(token, accountId, name);
-  if (existing) return { id: existing, name, reused: true };
-  const createR = await cfFetch6(token, `/accounts/${accountId}/d1/database`, {
-    method: "POST",
-    body: JSON.stringify({ name })
-  });
-  if (createR.res.ok && createR.body?.result?.uuid) {
-    return { id: createR.body.result.uuid, name, reused: false };
-  }
-  const msg = firstErrorMessage(createR.body) || "";
-  if (/already exists/i.test(msg)) {
-    const after = await findD1(token, accountId, name);
-    if (after) return { id: after, name, reused: true };
-  }
-  throw new Error(msg || "Failed to create D1 database.");
-}
-async function findR2(token, accountId, name) {
-  let cursor = "";
-  for (let i = 0; i < 5; i++) {
-    const url = `/accounts/${accountId}/r2/buckets?per_page=100${cursor ? "&cursor=" + cursor : ""}`;
-    const r = await cfFetch6(token, url);
-    if (!r.res.ok) return null;
-    const buckets = r.body?.result?.buckets || r.body?.result || [];
-    const hit = buckets.find((b) => b.name === name);
-    if (hit) return name;
-    cursor = r.body?.result_info?.cursor || "";
-    if (!cursor) break;
-  }
-  return null;
-}
-async function ensureR2(token, accountId, name) {
-  const existing = await findR2(token, accountId, name);
-  if (existing) return { name, reused: true };
-  const r = await cfFetch6(token, `/accounts/${accountId}/r2/buckets`, {
-    method: "POST",
-    body: JSON.stringify({ name })
-  });
-  if (r.res.ok) return { name, reused: false };
-  if (r.res.status === 409) return { name, reused: true };
-  const msg = firstErrorMessage(r.body) || `R2 create failed (HTTP ${r.res.status})`;
-  if (/already exists/i.test(msg)) return { name, reused: true };
-  throw new Error(msg);
-}
-async function findPagesProject(token, accountId, project) {
-  const r = await cfFetch6(token, `/accounts/${accountId}/pages/projects/${project}`);
-  if (r.res.ok && r.body?.result?.subdomain) {
-    return { subdomain: r.body.result.subdomain };
-  }
-  return null;
-}
-async function ensurePagesProject(token, accountId, project, siteName, d1Id, r2Name, owner, repoName, setupToken) {
-  const existing = await findPagesProject(token, accountId, project);
-  if (existing) return { subdomain: existing.subdomain, reused: true };
-  const stripBindingsCmd = `printf '%s\\n' 'name = "` + project + `"' 'compatibility_date = "2026-05-18"' 'pages_build_output_dir = "./public"' > wrangler.toml`;
-  const payload = {
-    name: project,
-    production_branch: PROD_BRANCH,
-    source: {
-      type: "github",
-      config: {
-        owner,
-        repo_name: repoName,
-        production_branch: PROD_BRANCH,
-        production_deployments_enabled: true,
-        deployments_enabled: true
-      }
-    },
-    build_config: {
-      build_command: stripBindingsCmd,
-      destination_dir: "public",
-      root_dir: ""
-    },
-    deployment_configs: {
-      production: {
-        d1_databases: { DB: { id: d1Id } },
-        r2_buckets: { IMAGES: { name: r2Name } },
-        ai_bindings: { AI: {} },
-        env_vars: {
-          SITE_NAME: { type: "plain_text", value: siteName },
-          SITE_URL: { type: "plain_text", value: "" },
-          SETUP_TOKEN: { type: "secret_text", value: setupToken },
-          CF_API_TOKEN: { type: "secret_text", value: token },
-          CF_ACCOUNT_ID: { type: "secret_text", value: accountId },
-          CF_PROJECT: { type: "plain_text", value: project },
-          CF_D1_ID: { type: "secret_text", value: d1Id },
-          CF_R2_NAME: { type: "plain_text", value: r2Name }
-        }
-      },
-      preview: {
-        d1_databases: { DB: { id: d1Id } },
-        r2_buckets: { IMAGES: { name: r2Name } },
-        ai_bindings: { AI: {} },
-        env_vars: {
-          SITE_NAME: { type: "plain_text", value: siteName },
-          SITE_URL: { type: "plain_text", value: "" },
-          SETUP_TOKEN: { type: "secret_text", value: setupToken },
-          CF_API_TOKEN: { type: "secret_text", value: token },
-          CF_ACCOUNT_ID: { type: "secret_text", value: accountId },
-          CF_PROJECT: { type: "plain_text", value: project },
-          CF_D1_ID: { type: "secret_text", value: d1Id },
-          CF_R2_NAME: { type: "plain_text", value: r2Name }
-        }
-      }
-    }
-  };
-  const r = await cfFetch6(token, `/accounts/${accountId}/pages/projects`, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-  if (r.res.ok && r.body?.result?.subdomain) {
-    return { subdomain: r.body.result.subdomain, reused: false };
-  }
-  const msg = firstErrorMessage(r.body) || "";
-  if (/already exists|name is unavailable/i.test(msg)) {
-    const after = await findPagesProject(token, accountId, project);
-    if (after) return { subdomain: after.subdomain, reused: true };
-  }
-  throw new Error(msg || `Pages create failed (HTTP ${r.res.status})`);
-}
-async function patchProjectConfig(token, accountId, project, opts) {
-  const { pagesUrl, siteName, d1Id, r2Name, setupToken } = opts;
-  const env_vars = {
-    SITE_NAME: { type: "plain_text", value: siteName },
-    SITE_URL: { type: "plain_text", value: pagesUrl },
-    SETUP_TOKEN: { type: "secret_text", value: setupToken },
-    CF_API_TOKEN: { type: "secret_text", value: token },
-    CF_ACCOUNT_ID: { type: "secret_text", value: accountId },
-    CF_PROJECT: { type: "plain_text", value: project },
-    CF_D1_ID: { type: "secret_text", value: d1Id },
-    CF_R2_NAME: { type: "plain_text", value: r2Name }
-  };
-  const bindings = {
-    d1_databases: { DB: { id: d1Id } },
-    r2_buckets: { IMAGES: { name: r2Name } },
-    ai_bindings: { AI: {} }
-  };
-  const body = JSON.stringify({
-    deployment_configs: {
-      production: { ...bindings, env_vars },
-      preview: { ...bindings, env_vars }
-    }
-  });
-  const r = await cfFetch6(token, `/accounts/${accountId}/pages/projects/${project}`, {
-    method: "PATCH",
-    body
-  });
-  return { ok: r.res.ok, body: r.body };
-}
-async function verifyBindings(token, accountId, project, expected) {
-  const r = await cfFetch6(token, `/accounts/${accountId}/pages/projects/${project}`);
-  if (!r.res.ok) return { ok: false, reason: "fetch_failed" };
-  const prod = r.body?.result?.deployment_configs?.production || {};
-  const dbOk = prod?.d1_databases?.DB?.id === expected.d1Id;
-  const r2Ok = prod?.r2_buckets?.IMAGES?.name === expected.r2Name;
-  const aiOk = !!prod?.ai_bindings?.AI;
-  const missing = [];
-  if (!dbOk) missing.push("DB");
-  if (!r2Ok) missing.push("IMAGES");
-  if (!aiOk) missing.push("AI");
-  return { ok: missing.length === 0, missing };
-}
-async function triggerDeploy(token, accountId, project) {
-  await cfFetch6(token, `/accounts/${accountId}/pages/projects/${project}/deployments`, {
-    method: "POST"
-  }).catch(() => {
-  });
-}
-async function fetchGithubPrimaryEmail(ghToken) {
-  if (!ghToken) return "";
-  try {
-    const r = await fetch("https://api.github.com/user/emails", {
-      headers: {
-        Authorization: "token " + ghToken,
-        Accept: "application/vnd.github+json",
-        "User-Agent": "pages-seo-install"
-      }
-    });
-    if (!r.ok) return "";
-    const list = await r.json();
-    if (!Array.isArray(list)) return "";
-    const primary = list.find((e) => e?.primary && e?.verified);
-    if (primary?.email) return String(primary.email);
-    const anyVerified = list.find((e) => e?.verified);
-    return anyVerified?.email ? String(anyVerified.email) : "";
-  } catch {
-    return "";
-  }
-}
-var CF_API7, PROD_BRANCH, DEFAULT_REPO_NAME2, SLUG_RX, onRequestPost79, onRequestGet63;
-var init_provision = __esm({
-  "api/install/provision.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    init_oauth_cookie();
-    CF_API7 = "https://api.cloudflare.com/client/v4";
-    PROD_BRANCH = "main";
-    DEFAULT_REPO_NAME2 = "pages-seo";
-    SLUG_RX = /^[a-z][a-z0-9-]{1,32}$/;
-    __name(fail2, "fail");
-    __name(isGithubInstallError, "isGithubInstallError");
-    __name(tokenFingerprint, "tokenFingerprint");
-    __name(randomHex32, "randomHex32");
-    __name(cfFetch6, "cfFetch");
-    __name(firstErrorMessage, "firstErrorMessage");
-    __name(loadState, "loadState");
-    __name(saveStep, "saveStep");
-    __name(ensureAccount, "ensureAccount");
-    __name(findD1, "findD1");
-    __name(ensureD1, "ensureD1");
-    __name(findR2, "findR2");
-    __name(ensureR2, "ensureR2");
-    __name(findPagesProject, "findPagesProject");
-    __name(ensurePagesProject, "ensurePagesProject");
-    __name(patchProjectConfig, "patchProjectConfig");
-    __name(verifyBindings, "verifyBindings");
-    __name(triggerDeploy, "triggerDeploy");
-    __name(fetchGithubPrimaryEmail, "fetchGithubPrimaryEmail");
-    onRequestPost79 = /* @__PURE__ */ __name(async ({ env, request }) => {
-      let body;
-      try {
-        body = await request.json();
-      } catch {
-        return json(400, { error: "bad_json" });
-      }
-      const token = String(body?.token || "").trim();
-      const owner = String(body?.owner || "").trim();
-      const repoName = String(body?.repo || "").trim() || DEFAULT_REPO_NAME2;
-      const project = String(body?.project || "").trim().toLowerCase();
-      const siteName = String(body?.site_name || "").trim();
-      if (!token) return fail2("validate", 400, "API token required");
-      if (!owner) return fail2("validate", 400, "GitHub owner required \u2014 fork the repo to your account first");
-      if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(owner)) return fail2("validate", 400, "GitHub owner: letters, digits, dashes only.");
-      if (!/^[A-Za-z0-9._-]{1,100}$/.test(repoName)) return fail2("validate", 400, "Repo name: letters, digits, dot, dash, underscore.");
-      if (!SLUG_RX.test(project)) return fail2("validate", 400, "Project slug: lowercase letters/digits/dashes, 2\u201333 chars, must start with a letter");
-      if (!siteName) return fail2("validate", 400, "Site name required");
-      const fp = await tokenFingerprint(token);
-      let state = await loadState(env, project, fp) || {};
-      const setupToken = state.setup_token || randomHex32();
-      if (!state.setup_token) {
-        await saveStep(env, project, fp, { setup_token: setupToken });
-      }
-      let account;
-      if (state.account_id) {
-        account = { id: state.account_id };
-      } else {
-        try {
-          account = await ensureAccount(token);
-        } catch (e) {
-          await saveStep(env, project, fp, { last_step: "account", last_error: String(e.message || e) });
-          return fail2("account", 401, String(e.message || e));
-        }
-        await saveStep(env, project, fp, { account_id: account.id, last_step: "account", last_error: null });
-      }
-      let d1Id = state.d1_id;
-      if (!d1Id) {
-        try {
-          const d1 = await ensureD1(token, account.id, project);
-          d1Id = d1.id;
-          await saveStep(env, project, fp, { d1_id: d1Id, last_step: "d1", last_error: null });
-        } catch (e) {
-          const msg = String(e.message || e);
-          await saveStep(env, project, fp, { last_step: "d1", last_error: msg });
-          const extras = /databases per account|d1.*limit|d1.*quota/i.test(msg) ? { hint: "d1_quota_exceeded", account_id: account.id } : {};
-          return fail2("d1", 500, msg, extras);
-        }
-      }
-      let r2Name = state.r2_name;
-      if (!r2Name) {
-        const desiredName = project + "-images";
-        try {
-          const r2 = await ensureR2(token, account.id, desiredName);
-          r2Name = r2.name;
-          await saveStep(env, project, fp, { r2_name: r2Name, last_step: "r2", last_error: null });
-        } catch (e) {
-          await saveStep(env, project, fp, { last_step: "r2", last_error: String(e.message || e) });
-          return fail2("r2", 500, String(e.message || e));
-        }
-      }
-      let pagesUrl = state.pages_url;
-      if (!state.pages_created) {
-        try {
-          const p = await ensurePagesProject(token, account.id, project, siteName, d1Id, r2Name, owner, repoName, setupToken);
-          pagesUrl = `https://${p.subdomain}`;
-          await saveStep(env, project, fp, {
-            pages_created: 1,
-            pages_url: pagesUrl,
-            last_step: "pages",
-            last_error: null
-          });
-        } catch (e) {
-          const msg = String(e.message || e);
-          await saveStep(env, project, fp, { last_step: "pages", last_error: msg });
-          const extras = isGithubInstallError(msg) ? {
-            hint: "github_app_required",
-            owner,
-            repo: repoName,
-            fork_url: `https://github.com/Benjamin-Bloch/pages-seo/fork`,
-            repo_url: `https://github.com/${owner}/${repoName}`,
-            github_app_install_url: `https://github.com/apps/cloudflare-workers-and-pages/installations/new/permissions?suggested_target_id=&repository_ids[]=`
-          } : {};
-          return fail2("pages", 500, msg, extras);
-        }
-      }
-      await patchProjectConfig(token, account.id, project, {
-        pagesUrl,
-        siteName,
-        d1Id,
-        r2Name,
-        setupToken
-      });
-      let verify = await verifyBindings(token, account.id, project, { d1Id, r2Name });
-      let bindingsRetried = false;
-      if (!verify.ok) {
-        bindingsRetried = true;
-        await patchProjectConfig(token, account.id, project, {
-          pagesUrl,
-          siteName,
-          d1Id,
-          r2Name,
-          setupToken
-        });
-        verify = await verifyBindings(token, account.id, project, { d1Id, r2Name });
-      }
-      await saveStep(env, project, fp, {
-        last_step: "bindings",
-        last_error: verify.ok ? null : "bindings_missing_after_retry: " + (verify.missing || []).join(",")
-      });
-      if (!state.deploy_started) {
-        await triggerDeploy(token, account.id, project);
-        await saveStep(env, project, fp, { deploy_started: 1, last_step: "deploy", last_error: null });
-      }
-      let installedSha = "";
-      try {
-        const ghr = await fetch("https://api.github.com/repos/Benjamin-Bloch/pages-seo/commits/main", {
-          headers: { "User-Agent": "pages-seo-installer", Accept: "application/vnd.github+json" }
-        });
-        if (ghr.ok) {
-          const d = await ghr.json();
-          if (d?.sha) installedSha = String(d.sha);
-        }
-      } catch {
-      }
-      let ghEmail = "";
-      try {
-        const session = await readOAuthCookie(env, request);
-        ghEmail = await fetchGithubPrimaryEmail(session?.token);
-      } catch {
-      }
-      const setupParams = new URLSearchParams({ setup: setupToken });
-      if (ghEmail) setupParams.set("email", ghEmail);
-      return json(200, {
-        ok: true,
-        pages_url: pagesUrl,
-        account: { id: account.id },
-        project,
-        d1: { id: d1Id, name: project },
-        r2: { name: r2Name },
-        installed_sha: installedSha,
-        resumed: !!state.account_id,
-        // true if any state existed before this call
-        // The new admin's first-visit URL. The token is one-time: once
-        // /api/setup on the new site has accepted it (and created the
-        // first user), it stops working.
-        admin_setup_url: `${pagesUrl}/admin?${setupParams}`,
-        setup_token: setupToken,
-        site_name: siteName,
-        gh_email: ghEmail || null
-      });
-    }, "onRequestPost");
-    onRequestGet63 = /* @__PURE__ */ __name(async ({ env, request }) => {
-      const u = new URL(request.url);
-      const project = (u.searchParams.get("project") || "").toLowerCase();
-      const fp = u.searchParams.get("token_fp") || "";
-      if (!project || !fp) return json(400, { error: "missing_params" });
-      const state = await loadState(env, project, fp);
-      if (!state) return json(404, { ok: false, found: false });
-      return json(200, { ok: true, found: true, state });
-    }, "onRequestGet");
-  }
-});
-
-// api/install/redeploy.js
-async function cfFetch7(token, path, init) {
-  const r = await fetch(CF_API8 + path, {
-    ...init,
-    headers: {
-      Authorization: "Bearer " + token,
-      "Content-Type": "application/json",
-      ...init?.headers || {}
-    }
-  });
-  let body = null;
-  try {
-    body = await r.json();
-  } catch {
-  }
-  return { status: r.status, ok: r.ok, body };
-}
-function firstError5(body) {
-  if (Array.isArray(body?.errors) && body.errors.length) {
-    return body.errors.map((e) => e.message || String(e)).join(" \xB7 ");
-  }
-  return body?.error || null;
-}
-async function syncFork(ghToken, owner, repo) {
-  try {
-    const r = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/merge-upstream`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: "token " + ghToken,
-          Accept: "application/vnd.github+json",
-          "Content-Type": "application/json",
-          "User-Agent": "pages-seo-install"
-        },
-        body: JSON.stringify({ branch: UPSTREAM_BRANCH })
-      }
-    );
-    let body = null;
-    try {
-      body = await r.json();
-    } catch {
-    }
-    if (!r.ok) {
-      return { error: body?.message || "HTTP " + r.status, status: r.status };
-    }
-    return {
-      merge_type: body?.merge_type || "unknown",
-      base_branch: body?.base_branch || UPSTREAM_BRANCH,
-      message: body?.message || ""
-    };
-  } catch (e) {
-    return { error: String(e?.message || e).slice(0, 200) };
-  }
-}
-async function triggerCfDeploy(token, accountId, project) {
-  const r = await cfFetch7(
-    token,
-    `/accounts/${accountId}/pages/projects/${project}/deployments`,
-    { method: "POST" }
-  );
-  if (r.status === 401 || r.status === 403) {
-    return { error: "token_rejected", detail: firstError5(r.body) };
-  }
-  if (!r.ok) {
-    return { error: "cf_api_error", detail: firstError5(r.body) || "HTTP " + r.status };
-  }
-  const result = r.body?.result || {};
-  return {
-    id: result.id || null,
-    url: result.url || null
-  };
-}
-var CF_API8, UPSTREAM_BRANCH, onRequestPost80;
-var init_redeploy = __esm({
-  "api/install/redeploy.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    init_oauth_cookie();
-    CF_API8 = "https://api.cloudflare.com/client/v4";
-    UPSTREAM_BRANCH = "main";
-    __name(cfFetch7, "cfFetch");
-    __name(firstError5, "firstError");
-    __name(syncFork, "syncFork");
-    __name(triggerCfDeploy, "triggerCfDeploy");
-    onRequestPost80 = /* @__PURE__ */ __name(async ({ env, request }) => {
-      let payload;
-      try {
-        payload = await request.json();
-      } catch {
-        return json(400, { ok: false, error: "bad_json" });
-      }
-      const token = String(payload?.token || "").trim();
-      const accountId = String(payload?.account_id || "").trim().toLowerCase();
-      const project = String(payload?.project || "").trim().toLowerCase();
-      const owner = String(payload?.owner || "").trim();
-      const repo = String(payload?.repo || "").trim();
-      if (!token) return json(400, { ok: false, error: "missing_token" });
-      if (!/^[a-f0-9]{32}$/.test(accountId)) return json(400, { ok: false, error: "bad_account_id" });
-      if (!/^[a-z][a-z0-9-]{1,32}$/.test(project)) return json(400, { ok: false, error: "bad_project" });
-      if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(owner)) return json(400, { ok: false, error: "bad_owner" });
-      if (!/^[A-Za-z0-9._-]{1,100}$/.test(repo)) return json(400, { ok: false, error: "bad_repo" });
-      let ghToken = "";
-      try {
-        const session = await readOAuthCookie(env, request);
-        ghToken = session?.token || "";
-      } catch {
-      }
-      const sync = ghToken ? await syncFork(ghToken, owner, repo) : { error: "no_github_session", detail: "Sign in with GitHub again to sync your fork. Triggering Cloudflare redeploy with current fork state." };
-      const deploy = await triggerCfDeploy(token, accountId, project);
-      if (deploy.error === "token_rejected") {
-        return json(401, { ok: false, error: "token_rejected", detail: deploy.detail, sync });
-      }
-      if (deploy.error) {
-        return json(502, { ok: false, error: deploy.error, detail: deploy.detail, sync });
-      }
-      return json(200, { ok: true, sync, deploy });
-    }, "onRequestPost");
-  }
-});
-
 // api/public/latest-post.js
-var onRequestGet64;
+var onRequestGet56;
 var init_latest_post = __esm({
   "api/public/latest-post.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
-    onRequestGet64 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet56 = /* @__PURE__ */ __name(async ({ env }) => {
       if (!env?.DB) {
         return json(200, { ok: true, post: null, note: "no_db" });
       }
@@ -22822,13 +20994,13 @@ var init_latest_post = __esm({
 });
 
 // api/public/platform-stats.js
-var DAY_SEC, onRequestGet65;
+var DAY_SEC, onRequestGet57;
 var init_platform_stats = __esm({
   "api/public/platform-stats.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     DAY_SEC = 86400;
-    onRequestGet65 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet57 = /* @__PURE__ */ __name(async ({ env }) => {
       if (!env?.DB) {
         return json(200, { ok: true, available: false, stats: null }, {
           "cache-control": "public, max-age=60",
@@ -22913,10 +21085,10 @@ var init_platform_stats = __esm({
 });
 
 // api/public/register.js
-var MIN_PW2, MAX_PW2, onRequestPost81;
+var MIN_PW2, MAX_PW2, onRequestPost73;
 var init_register = __esm({
   "api/public/register.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_email_rules();
     init_passwords();
@@ -22924,7 +21096,7 @@ var init_register = __esm({
     init_events();
     MIN_PW2 = 8;
     MAX_PW2 = 256;
-    onRequestPost81 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost73 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       let body;
       try {
@@ -23118,10 +21290,10 @@ async function mailboxTaken(env, email, canonical) {
   }
   return false;
 }
-var OTP_RESEND_SEC, OTP_MAX_PER_IP_PER_HOUR, onRequestPost82;
+var OTP_RESEND_SEC, OTP_MAX_PER_IP_PER_HOUR, onRequestPost74;
 var init_send_otp = __esm({
   "api/public/send-otp.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_email_smtp();
     init_email_rules();
@@ -23129,7 +21301,7 @@ var init_send_otp = __esm({
     OTP_MAX_PER_IP_PER_HOUR = 10;
     __name(clientIp2, "clientIp");
     __name(mailboxTaken, "mailboxTaken");
-    onRequestPost82 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost74 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       let body;
       try {
@@ -23273,9 +21445,9 @@ function diversify(rows, limit, maxPerShop) {
   let added = true;
   while (selected.length < limit && added) {
     added = false;
-    for (const bucket2 of groups.values()) {
+    for (const bucket of groups.values()) {
       if (selected.length >= limit) break;
-      const row = bucket2.shift();
+      const row = bucket.shift();
       if (!row) continue;
       const key = row?.shop?.domain || row?.custom_domain;
       const used = usedByShop.get(key) || 0;
@@ -23297,10 +21469,10 @@ function diversify(rows, limit, maxPerShop) {
   }
   return selected;
 }
-var HOST_PATTERN, PUBLIC_PROJECT_FILTER, onRequestGet66;
+var HOST_PATTERN, PUBLIC_PROJECT_FILTER, onRequestGet58;
 var init_showcase = __esm({
   "api/public/showcase.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     HOST_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
     PUBLIC_PROJECT_FILTER = `
@@ -23315,7 +21487,7 @@ var init_showcase = __esm({
     __name(text, "text");
     __name(shopFromRow, "shopFromRow");
     __name(diversify, "diversify");
-    onRequestGet66 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet58 = /* @__PURE__ */ __name(async ({ env }) => {
       if (!env?.DB) {
         return json(200, {
           ok: true,
@@ -23467,242 +21639,16 @@ var init_showcase = __esm({
   }
 });
 
-// api/update/diff.js
-function ghHeaders4() {
-  return {
-    "User-Agent": "pages-seo-update",
-    Accept: "application/vnd.github+json"
-  };
-}
-function short2(sha) {
-  return String(sha || "").slice(0, 7);
-}
-var UPSTREAM_OWNER3, UPSTREAM_REPO3, BRANCH2, onRequestGet67;
-var init_diff = __esm({
-  "api/update/diff.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    UPSTREAM_OWNER3 = "Benjamin-Bloch";
-    UPSTREAM_REPO3 = "pages-seo";
-    BRANCH2 = "main";
-    __name(ghHeaders4, "ghHeaders");
-    __name(short2, "short");
-    onRequestGet67 = /* @__PURE__ */ __name(async ({ request }) => {
-      const url = new URL(request.url);
-      const base = String(url.searchParams.get("base") || "").trim();
-      if (base && !/^[0-9a-f]{7,40}$/.test(base)) {
-        return json(400, { ok: false, error: "bad_sha" });
-      }
-      let latest;
-      try {
-        const r = await fetch(
-          `https://api.github.com/repos/${UPSTREAM_OWNER3}/${UPSTREAM_REPO3}/commits/${BRANCH2}`,
-          { headers: ghHeaders4() }
-        );
-        if (!r.ok) {
-          return json(502, { ok: false, error: "github_latest_failed", detail: "HTTP " + r.status });
-        }
-        latest = await r.json();
-      } catch (e) {
-        return json(502, { ok: false, error: "github_unreachable", detail: String(e?.message || e) });
-      }
-      const latestSha = latest.sha;
-      const latestOut = {
-        sha: latestSha,
-        short: short2(latestSha),
-        date: latest.commit?.author?.date || null,
-        message: (latest.commit?.message || "").split("\n")[0]
-      };
-      if (!base) {
-        let recent = [];
-        try {
-          const r = await fetch(
-            `https://api.github.com/repos/${UPSTREAM_OWNER3}/${UPSTREAM_REPO3}/commits?per_page=30`,
-            { headers: ghHeaders4() }
-          );
-          if (r.ok) {
-            const arr = await r.json();
-            if (Array.isArray(arr)) {
-              recent = arr.map((c) => ({
-                sha: c.sha,
-                short: short2(c.sha),
-                message: (c.commit?.message || "").split("\n")[0].slice(0, 200),
-                date: c.commit?.author?.date || null,
-                url: c.html_url,
-                author: c.author?.login || c.commit?.author?.name || "unknown"
-              }));
-            }
-          }
-        } catch {
-        }
-        return json(200, {
-          ok: true,
-          latest: latestOut,
-          current: null,
-          ahead: null,
-          up_to_date: false,
-          commits: [],
-          recent,
-          files_changed: 0,
-          additions: 0,
-          deletions: 0
-        });
-      }
-      if (base === latestSha || latestSha.startsWith(base) || base.startsWith(latestSha.slice(0, base.length))) {
-        return json(200, {
-          ok: true,
-          latest: latestOut,
-          current: { sha: base, short: short2(base) },
-          ahead: 0,
-          up_to_date: true,
-          commits: [],
-          files_changed: 0,
-          additions: 0,
-          deletions: 0
-        });
-      }
-      let cmp;
-      try {
-        const r = await fetch(
-          `https://api.github.com/repos/${UPSTREAM_OWNER3}/${UPSTREAM_REPO3}/compare/${base}...${latestSha}`,
-          { headers: ghHeaders4() }
-        );
-        if (!r.ok) {
-          return json(502, { ok: false, error: "github_compare_failed", detail: "HTTP " + r.status });
-        }
-        cmp = await r.json();
-      } catch (e) {
-        return json(502, { ok: false, error: "github_unreachable", detail: String(e?.message || e) });
-      }
-      const commits = (cmp.commits || []).map((c) => ({
-        sha: c.sha,
-        short: short2(c.sha),
-        message: (c.commit?.message || "").split("\n")[0].slice(0, 200),
-        date: c.commit?.author?.date || null,
-        url: c.html_url,
-        author: c.author?.login || c.commit?.author?.name || "unknown"
-      }));
-      return json(200, {
-        ok: true,
-        latest: latestOut,
-        current: { sha: base, short: short2(base) },
-        ahead: commits.length,
-        up_to_date: commits.length === 0,
-        commits,
-        files_changed: cmp.files?.length || 0,
-        additions: (cmp.files || []).reduce((n, f) => n + (f.additions || 0), 0),
-        deletions: (cmp.files || []).reduce((n, f) => n + (f.deletions || 0), 0)
-      });
-    }, "onRequestGet");
-  }
-});
-
-// api/update/rebuild.js
-async function cf(token, path, init = {}) {
-  const r = await fetch(CF_API9 + path, {
-    ...init,
-    headers: {
-      Authorization: "Bearer " + token,
-      "Content-Type": "application/json",
-      ...init.headers || {}
-    }
-  });
-  let body = null;
-  try {
-    body = await r.json();
-  } catch {
-  }
-  return { res: r, body };
-}
-function firstErrorMessage2(body) {
-  if (!body) return null;
-  if (Array.isArray(body.errors) && body.errors.length) {
-    return body.errors.map((e) => e.message || String(e)).join(" \xB7 ");
-  }
-  return body.error || body.detail || null;
-}
-var CF_API9, NAME_RX3, onRequestPost83;
-var init_rebuild = __esm({
-  "api/update/rebuild.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    CF_API9 = "https://api.cloudflare.com/client/v4";
-    __name(cf, "cf");
-    __name(firstErrorMessage2, "firstErrorMessage");
-    NAME_RX3 = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
-    onRequestPost83 = /* @__PURE__ */ __name(async ({ request }) => {
-      let body;
-      try {
-        body = await request.json();
-      } catch {
-        return json(400, { ok: false, error: "bad_json" });
-      }
-      const token = String(body?.token || "").trim();
-      const owner = String(body?.owner || "").trim();
-      const repo = String(body?.repo || "").trim() || "pages-seo";
-      if (!token) return json(400, { ok: false, error: "token_required" });
-      if (!NAME_RX3.test(owner)) return json(400, { ok: false, error: "bad_owner" });
-      if (!NAME_RX3.test(repo)) return json(400, { ok: false, error: "bad_repo" });
-      const accR = await cf(token, "/accounts");
-      if (!accR.res.ok || !accR.body?.result?.length) {
-        return json(401, { ok: false, error: "token_rejected", detail: firstErrorMessage2(accR.body) || "check scopes" });
-      }
-      const accountId = accR.body.result[0].id;
-      let page = 1, perPage = 25, found = null;
-      while (page <= 8) {
-        const listR = await cf(token, `/accounts/${accountId}/pages/projects?page=${page}&per_page=${perPage}`);
-        if (!listR.res.ok) {
-          return json(502, { ok: false, error: "list_projects_failed", detail: firstErrorMessage2(listR.body) || "HTTP " + listR.res.status });
-        }
-        const rows = listR.body?.result || [];
-        for (const p of rows) {
-          const src = p?.source?.config || {};
-          if (src.owner && src.repo_name && src.owner.toLowerCase() === owner.toLowerCase() && src.repo_name.toLowerCase() === repo.toLowerCase()) {
-            found = p;
-            break;
-          }
-        }
-        if (found) break;
-        if (rows.length < perPage) break;
-        page++;
-      }
-      if (!found) {
-        return json(404, {
-          ok: false,
-          error: "project_not_found",
-          detail: `No Pages project on this Cloudflare account is linked to ${owner}/${repo}. Did you select the wrong account, or use the CLI install path?`
-        });
-      }
-      const projectName = found.name;
-      const subdomain = found.subdomain || `${projectName}.pages.dev`;
-      const depR = await cf(token, `/accounts/${accountId}/pages/projects/${projectName}/deployments`, { method: "POST" });
-      if (!depR.res.ok) {
-        return json(depR.res.status || 502, {
-          ok: false,
-          error: "deploy_failed",
-          detail: firstErrorMessage2(depR.body) || "HTTP " + depR.res.status
-        });
-      }
-      return json(200, {
-        ok: true,
-        project: projectName,
-        pages_url: `https://${subdomain}`,
-        deployment_id: depR.body?.result?.id || null
-      });
-    }, "onRequestPost");
-  }
-});
-
 // api/embed/[id].js
-var CACHE_SEC, onRequestGet68;
+var CACHE_SEC, onRequestGet59;
 var init_id2 = __esm({
   "api/embed/[id].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_widget_render();
     init_embed_settings();
     CACHE_SEC = 300;
-    onRequestGet68 = /* @__PURE__ */ __name(async ({ env, params, request }) => {
+    onRequestGet59 = /* @__PURE__ */ __name(async ({ env, params, request }) => {
       if (!env?.DB) return json(500, { error: "no_db" });
       const id = String(params.id || "").trim();
       if (!id || !/^[a-zA-Z0-9_-]{6,64}$/.test(id)) {
@@ -23742,12 +21688,12 @@ var init_id2 = __esm({
 });
 
 // blog/page/[page].js
-var onRequestGet69;
+var onRequestGet60;
 var init_page2 = __esm({
   "blog/page/[page].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_blog();
-    onRequestGet69 = /* @__PURE__ */ __name((ctx) => {
+    onRequestGet60 = /* @__PURE__ */ __name((ctx) => {
       const page = parseInt(ctx.params.page, 10);
       if (!Number.isFinite(page) || page < 1) {
         return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -23836,32 +21782,32 @@ async function renderPost({ env, request, params }) {
     }
   });
 }
-var onRequestGet70;
+var onRequestGet61;
 var init_slug2 = __esm({
   "blog/[slug].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_page_render();
     init_settings();
     init_project_scope();
     init_util();
     init_hubs();
     __name(renderPost, "renderPost");
-    onRequestGet70 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderPost(ctx)), "onRequestGet");
+    onRequestGet61 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderPost(ctx)), "onRequestGet");
   }
 });
 
 // [project]/blog/[slug].js
-var onRequestGet71;
+var onRequestGet62;
 var init_slug3 = __esm({
   "[project]/blog/[slug].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_slug2();
     init_project_scope();
-    onRequestGet71 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet62 = /* @__PURE__ */ __name(async (ctx) => {
       const projectSlug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, projectSlug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
-      return onRequestGet70({ env: ctx.env, request: ctx.request, params: { project: projectSlug, slug: ctx.params?.slug } });
+      return onRequestGet61({ env: ctx.env, request: ctx.request, params: { project: projectSlug, slug: ctx.params?.slug } });
     }, "onRequestGet");
   }
 });
@@ -24082,10 +22028,10 @@ function renderPillarCached(ctx, pillarSlug2) {
     basePath: String(ctx.params?.project || "") ? `/${String(ctx.params.project).toLowerCase()}` : ""
   }));
 }
-var onRequestGet72;
+var onRequestGet63;
 var init_pillar = __esm({
   "hubs/[pillar].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_settings();
     init_page_render();
@@ -24095,22 +22041,22 @@ var init_pillar = __esm({
     __name(viDate, "viDate");
     __name(renderPillarPage, "renderPillarPage");
     __name(renderPillarCached, "renderPillarCached");
-    onRequestGet72 = /* @__PURE__ */ __name((ctx) => renderPillarCached(ctx, ctx.params?.pillar), "onRequestGet");
+    onRequestGet63 = /* @__PURE__ */ __name((ctx) => renderPillarCached(ctx, ctx.params?.pillar), "onRequestGet");
   }
 });
 
 // [project]/hubs/[pillar].js
-var onRequestGet73;
+var onRequestGet64;
 var init_pillar2 = __esm({
   "[project]/hubs/[pillar].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_pillar();
     init_project_scope();
-    onRequestGet73 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet64 = /* @__PURE__ */ __name(async (ctx) => {
       const projectSlug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, projectSlug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
-      return onRequestGet72({ env: ctx.env, request: ctx.request, params: { project: projectSlug, pillar: ctx.params?.pillar } });
+      return onRequestGet63({ env: ctx.env, request: ctx.request, params: { project: projectSlug, pillar: ctx.params?.pillar } });
     }, "onRequestGet");
   }
 });
@@ -24162,1063 +22108,37 @@ async function renderLanding({ env, request, params }) {
     }
   });
 }
-var onRequestGet74;
+var onRequestGet65;
 var init_slug4 = __esm({
   "p/[slug].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_page_render();
     init_settings();
     init_project_scope();
     init_util();
     __name(renderLanding, "renderLanding");
-    onRequestGet74 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderLanding(ctx)), "onRequestGet");
+    onRequestGet65 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderLanding(ctx)), "onRequestGet");
   }
 });
 
 // [project]/p/[slug].js
-var onRequestGet75;
+var onRequestGet66;
 var init_slug5 = __esm({
   "[project]/p/[slug].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_slug4();
     init_project_scope();
-    onRequestGet75 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet66 = /* @__PURE__ */ __name(async (ctx) => {
       const projectSlug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, projectSlug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
-      return onRequestGet74({ env: ctx.env, request: ctx.request, params: { project: projectSlug, slug: ctx.params?.slug } });
-    }, "onRequestGet");
-  }
-});
-
-// api/ai-prompt.js
-function cleanUrl2(input, fallback) {
-  if (!input) return fallback;
-  let s = String(input).trim();
-  if (!s) return fallback;
-  if (!/^https?:\/\//i.test(s)) s = "https://" + s;
-  try {
-    const u = new URL(s);
-    return u.origin + u.pathname.replace(/\/$/, "");
-  } catch {
-    return fallback;
-  }
-}
-function cleanSlug(input) {
-  if (!input) return null;
-  const s = String(input).toLowerCase().trim().replace(/[^a-z0-9-]/g, "").slice(0, 64);
-  return s || null;
-}
-function cleanGhUrl(input) {
-  if (!input) return null;
-  const s = String(input).trim();
-  if (!/^https?:\/\/github\.com\/[^/]+\/[^/]+/i.test(s)) return null;
-  try {
-    const u = new URL(s);
-    const parts = u.pathname.split("/").filter(Boolean);
-    if (parts.length < 2) return null;
-    return "https://github.com/" + parts[0] + "/" + parts[1];
-  } catch {
-    return null;
-  }
-}
-function ctxLines(ctx) {
-  const out = [];
-  if (ctx.slug) out.push(`- Project slug: ${ctx.slug}`);
-  if (ctx.site) out.push(`- Live site: ${ctx.site}`);
-  if (ctx.admin) out.push(`- Admin: ${ctx.admin}`);
-  if (ctx.gh) out.push(`- GitHub fork: ${ctx.gh}`);
-  if (ctx.acct) out.push(`- CF account: ${ctx.acct}`);
-  if (ctx.version) out.push(`- Version: ${ctx.version}`);
-  return out;
-}
-function hasCtx(ctx) {
-  return Object.values(ctx).some(Boolean);
-}
-function ccInstall(ctx) {
-  const ctxBlock = hasCtx(ctx) ? `
-## My environment
-
-${ctxLines(ctx).join("\n")}
-` : "";
-  return `# Task: install pages-seo on my Cloudflare account
-
-You are Claude Code running on my local machine. Install pages-seo
-(open-source self-hosted programmatic-SEO + daily-AI-blog toolkit
-for Cloudflare Pages) into my Cloudflare account, end to end. Do
-not ask me to do anything you can do yourself.
-${ctxBlock}
-## Constraints (read before acting)
-
-- The canonical installer is at https://seo.benjaminb.xyz/install/run.sh.
-  Read it with WebFetch first. It is idempotent and uses \`wrangler\`
-  exclusively \u2014 no GitHub App, no OAuth, no API tokens to paste.
-- I have \`wrangler\` installed and logged in to my Cloudflare account.
-  If \`wrangler whoami\` fails, stop and tell me to run \`wrangler login\`.
-- Never \`rm -rf\` outside a tempdir you created yourself. The installer
-  works from a fresh tempdir; respect that.
-- Do not commit, push, or create GitHub PRs. The installer uses Direct
-  Upload \u2014 no GitHub link is created.
-- If a step needs a value I haven't given you (project slug, admin
-  email, admin password), ask me ONCE in a single message that lists
-  every value you need. Then proceed without further prompts.
-
-## Step plan
-
-1. \`wrangler whoami\` \u2014 confirm I'm authenticated. Halt if not.
-2. Pull the installer: \`curl -fsSL https://seo.benjaminb.xyz/install/run.sh -o /tmp/pages-seo-install.sh\`
-3. Read \`/tmp/pages-seo-install.sh\` so you understand what it will do.
-4. Ask me for: project slug, site name, admin email, admin password.
-   (Validate slug matches \`^[a-z][a-z0-9-]{1,32}$\` before continuing.)
-5. Run the installer: \`bash /tmp/pages-seo-install.sh\`. Pipe answers via
-   stdin in the order it asks. Stream stdout so I can see progress.
-6. Verify install: GET \`https://<slug>.pages.dev/api/health\`. Expect
-   HTTP 200, JSON with \`db: "ok"\`. If not, diagnose before reporting done.
-7. Verify admin: GET \`https://<slug>.pages.dev/admin\`. Expect HTTP 200.
-8. Tell me the magic-link URL the installer wrote to its tmpfile \u2014 do
-   NOT print it to your final summary text (it contains my password).
-   Print only the file path, like: "first-run link is at /tmp/.../admin-link.txt".
-
-## Done criteria
-
-\`/api/health\` returns 200 with \`db: ok\` AND \`/admin\` returns 200 AND
-you have told me where the first-run link file is. Anything less is
-not done \u2014 keep diagnosing.
-
-## Start now
-
-Run \`wrangler whoami\` and report what you find.`;
-}
-function ccUpdate(ctx) {
-  const ctxBlock = hasCtx(ctx) ? `
-## My install
-
-${ctxLines(ctx).join("\n")}
-` : `
-## My install
-
-Ask me for my project slug and live site URL before doing anything else. Validate slug matches \`^[a-z][a-z0-9-]{1,32}$\`.
-`;
-  const slugRef = ctx.slug ? `"${ctx.slug}"` : "the slug I give you";
-  const siteRef = ctx.site || `https://<slug>.pages.dev`;
-  return `# Task: update my pages-seo install to the latest release
-
-You are Claude Code on my machine. Bring my existing pages-seo deploy
-up to the latest tagged release without losing data.
-${ctxBlock}
-## Constraints
-
-- Upstream is \`Benjamin-Bloch/pages-seo\` on GitHub. The latest stable
-  is whatever \`/api/version\` on my site reports as \`tag\`.
-- \`wrangler\` is logged in to the same Cloudflare account that owns
-  the existing project. If not, halt and tell me to fix that.
-- DO NOT drop or recreate the D1 database. DO NOT delete the R2 bucket.
-  D1 schema migrations are applied additively by the install script;
-  it is safe to re-run.
-- Preserve existing Pages env vars and secrets. The installer only
-  sets values it owns (\`SITE_NAME\`, \`SITE_URL\`) and skips anything
-  already present.
-
-## Step plan
-
-1. Get current version: \`curl -s ${siteRef}/api/version\`. Note the
-   \`tag\` and \`sha\` fields. If \`up_to_date\` is true, stop here and
-   tell me there's nothing to do.
-2. Get latest upstream: \`curl -s https://api.github.com/repos/Benjamin-Bloch/pages-seo/releases/latest\`.
-   Compare to step 1. Tell me what's new (release name + 1-line summary
-   from the body).
-3. Re-run the installer with the same slug: \`curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash\`,
-   answering with slug ${slugRef} when asked. It detects the existing
-   D1/R2/Pages project and only re-uploads code.
-4. Wait for the Pages deploy to go live. Poll
-   \`${siteRef}/api/version\` every 10 seconds (max 5 minutes) until
-   \`sha\` matches the new release.
-5. Verify health: GET \`${siteRef}/api/health\`. Expect \`db: ok\`,
-   \`posts.cron_likely_alive: true\`, \`jobs.in_flight_stuck: 0\`.
-6. Update the in-admin install marker so the dashboard stops showing
-   "N commits behind": call \`POST ${siteRef}/api/admin/update/dismiss\`
-   with my admin token if I have one set, OR tell me to click "Mark
-   as up to date" in /admin \u2192 Updates.
-
-## Done criteria
-
-\`/api/version\` reports the new tag AND \`/api/health\` is healthy.
-Otherwise keep working.
-
-## Start now
-
-Fetch \`${siteRef}/api/version\` and report the current vs latest.`;
-}
-function ccRepair(ctx) {
-  const ctxBlock = hasCtx(ctx) ? `
-## My install
-
-${ctxLines(ctx).join("\n")}
-` : `
-## My install
-
-Ask me for my site URL before doing anything else.
-`;
-  const siteRef = ctx.site || `https://<my-slug>.pages.dev`;
-  return `# Task: diagnose and fix my broken pages-seo install
-
-You are Claude Code on my machine. My pages-seo deploy is misbehaving.
-Find the root cause and fix it \u2014 do not just describe what might be wrong.
-${ctxBlock}
-## Diagnostic ladder (run in order, stop at the first failure)
-
-1. **DNS + TLS.** \`curl -sI ${siteRef}\` \u2014 expect HTTP 200 or 30x.
-   - Connection refused / TLS error \u2192 custom domain or Pages project
-     is gone. Run \`wrangler pages project list\` and look for the
-     project.
-2. **Site responds.** \`curl -s ${siteRef}/api/health | jq .\` \u2014
-   expect \`{ok: true, db: "ok"}\`.
-   - \`db: "unbound"\` \u2192 D1 binding lost. Re-bind:
-     \`wrangler pages project edit --d1 DB=<d1-id>\`. The D1 id is in
-     \`wrangler d1 list\` (look for the one whose name matches my slug).
-   - \`db: "error"\` \u2192 schema drift. Re-apply via
-     \`wrangler d1 execute <db-name> --remote --file=schema/init.sql\`
-     from a fresh clone of the repo.
-3. **Cron alive.** Check \`posts.cron_likely_alive\` in the health
-   response. \`false\` means no post in the last 36 hours.
-   - The cron is a separate Worker named \`pages-seo-cron\` (or
-     similar). \`wrangler tail pages-seo-cron\` and trigger a manual
-     run: \`curl -X POST ${siteRef}/api/admin/blog/cron-tick\` with my
-     ADMIN_TOKEN bearer. If 401, the cron's \`ADMIN_TOKEN\` is out of
-     sync \u2014 rotate both with \`wrangler pages secret put ADMIN_TOKEN\`
-     and \`wrangler secret put ADMIN_TOKEN --name pages-seo-cron\`.
-4. **Stuck jobs.** \`jobs.in_flight_stuck > 0\` means a generation
-   step died silently. Query D1 to see which job:
-   \`wrangler d1 execute <db-name> --remote --command="SELECT id, status, updated_at FROM blog_jobs WHERE status NOT IN ('published','failed') ORDER BY updated_at DESC LIMIT 5"\`.
-5. **Admin won't load.** \`curl -sI ${siteRef}/admin\` returns non-200.
-   Check \`wrangler pages deployment list\` for the project \u2014 the
-   latest deploy may have failed. If so, redeploy the latest commit.
-6. **AI provider failing.** If posts show but content is blank,
-   GET \`${siteRef}/api/admin/system/status\` (needs admin token) and
-   look for provider error messages. Typical cause: missing
-   \`OPENAI_API_KEY\` / billing exhausted on Workers AI free tier.
-
-## Reporting
-
-For each step you run, tell me the exact command, the result, and
-your interpretation in one sentence. Do not move to the next step
-until the current one is green.
-
-## Constraints
-
-- Never delete a D1 database without my explicit "yes, delete it"
-  confirmation. D1 holds every post I've ever generated.
-- Never \`wrangler pages project delete\`. Ever.
-- If you suggest a fix that requires a secret rotation, generate the
-  new value yourself with \`openssl rand -hex 32\` and rotate it in
-  both the Pages project AND the cron Worker in the same step.
-
-## Start now
-
-What's the symptom? Give me your first \`curl\` command, then run it.`;
-}
-function cxInstall(ctx) {
-  return `# Task: prepare a pages-seo install branch I can deploy locally
-
-You are running in a sandboxed environment with the upstream
-\`Benjamin-Bloch/pages-seo\` repo (or my fork of it) cloned. You
-do NOT have Cloudflare credentials, so you cannot deploy yourself \u2014
-your job is to produce a branch I can deploy with one \`bash\` command
-on my own machine.
-
-## What pages-seo is
-
-Self-hosted programmatic-SEO + daily-AI-blog toolkit for Cloudflare
-Pages. Workers AI by default, 8 cloud providers as fallback. D1 for
-storage, R2 for images. The repo is structured as Cloudflare Pages
-Functions (\`functions/api/**.js\`), static assets in \`public/\`, and
-a cron Worker in \`cron-worker/\`.
-
-## Read first (do this before touching anything)
-
-1. \`cat README.md\` \u2014 overview, install paths, current version.
-2. \`cat schema/init.sql\` \u2014 DB schema. You will not modify this.
-3. \`ls public/install/\` \u2014 the installer scripts (run.sh, run.py, run.js).
-4. \`cat wrangler.template.toml\` \u2014 the deploy config the installer
-   uses. Real deploys substitute D1 / R2 ids into a working
-   \`wrangler.toml\`.
-
-## Your output
-
-A single shell command for me to run on my local machine that:
-1. Has \`wrangler\` and a Cloudflare account ready.
-2. Provisions D1 + R2 + Pages project named after the slug.
-3. Uploads the code.
-4. Sets the first-run secrets.
-
-The canonical one-liner is already maintained upstream:
-
-\`\`\`
-curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash
-\`\`\`
-
-Verify by reading \`public/install/run.sh\` that it still:
-- Takes 4 prompts (slug, site name, admin email, admin password)
-- Calls \`wrangler d1 create\`, \`wrangler r2 bucket create\`,
-  \`wrangler pages deploy\`, \`wrangler pages secret put\`.
-- Writes a 0600 tmpfile with the first-run admin link.
-
-If any of those are missing or broken in the current repo, FIX them
-and open a PR titled \`fix(install): <what>\`. Do not invent new
-install paths or alternative scripts.
-
-## What you must NOT do
-
-- Do not embed Cloudflare API tokens in the repo.
-- Do not edit \`schema/init.sql\` to add my data \u2014 schema changes are
-  separate PRs.
-- Do not modify \`functions/_lib/auth.js\` to weaken admin auth.
-- Do not commit \`wrangler.toml\` (it has my real ids); the repo only
-  ships \`wrangler.template.toml\`.
-
-## When you're done
-
-Reply with exactly this block, filling in the values:
-
-\`\`\`
-INSTALL COMMAND
----------------
-$ curl -fsSL <url> | bash
-
-YOU WILL BE ASKED FOR
----------------------
-- Project slug (lowercase, dashes, e.g. my-blog)
-- Site name
-- Admin email
-- Admin password (8+ chars)
-
-EXPECTED RUNTIME
-----------------
-2\u20134 minutes; final magic link saved to a tmpfile, not stdout.
-
-VERIFY
-------
-$ curl -sI https://<slug>.pages.dev/api/health    # expect HTTP 200
-$ curl -s  https://<slug>.pages.dev/api/health    # expect db: "ok"
-\`\`\`
-
-## Start now
-
-\`cat README.md | head -50\` and tell me which install path the
-current repo recommends.`;
-}
-function cxUpdate(ctx) {
-  const slugRef = ctx.slug ? `"${ctx.slug}"` : "<my-slug>";
-  const siteRef = ctx.site || `https://<my-slug>.pages.dev`;
-  return `# Task: bring my pages-seo fork up to date with upstream
-
-You are in a sandboxed environment with my fork of
-\`Benjamin-Bloch/pages-seo\` cloned. You can edit files, resolve
-conflicts, and open PRs. You cannot deploy \u2014 that's my job.
-
-## My install context
-
-- Slug: ${slugRef}
-- Live site: ${siteRef}
-- Current version: ${ctx.version || "check /api/version"}
-
-## Step plan
-
-1. \`git remote -v\` \u2014 confirm upstream is set to
-   \`https://github.com/Benjamin-Bloch/pages-seo.git\`. If not, add it:
-   \`git remote add upstream https://github.com/Benjamin-Bloch/pages-seo.git\`.
-2. \`git fetch upstream --tags\` \u2014 pull in new commits and tags.
-3. \`git log HEAD..upstream/main --oneline\` \u2014 show me the list of
-   commits I'm behind.
-4. \`git tag --sort=-creatordate | head -5\` \u2014 show me the latest tags.
-5. Read upstream's \`CHANGELOG.md\` for the latest version's entry.
-   Summarise:
-   - What's added (1 bullet each)
-   - What's fixed
-   - Any breaking changes (schema, env vars, removed endpoints)
-6. \`git merge upstream/main\` on a new branch
-   \`update/<new-tag>\`. If there are conflicts:
-   - **Generated files** (\`functions/_lib/schema.js\`,
-     \`public/install/index.html\` cache-buster strings): always
-     accept upstream.
-   - **Code I've forked** (anything outside \`functions/\`,
-     \`public/\`, \`schema/\`, \`cron-worker/\` that I clearly own):
-     keep mine.
-   - **Anything ambiguous**: stop, list the conflict files, and ask
-     me before resolving.
-7. If schema changed in upstream's \`schema/init.sql\`, do NOT delete
-   any existing tables. \`init.sql\` is idempotent (uses
-   \`CREATE TABLE IF NOT EXISTS\` and \`ALTER TABLE \u2026 ADD COLUMN\`).
-8. Re-bundle the schema: \`node scripts/bundle-schema.js\`. Commit
-   the regenerated \`functions/_lib/schema.js\`.
-9. Push the branch and open a PR titled
-   \`chore: update to <new-tag>\` with the changelog summary in the
-   body.
-
-## What I do next (after you finish)
-
-\`\`\`
-gh pr checkout <PR#>     # locally
-bash deploy.sh           # rebuilds + wrangler pages deploy
-\`\`\`
-
-## Constraints
-
-- Never \`git push --force\`. Use \`git push -u origin update/<tag>\`.
-- Never resolve a conflict in \`auth.js\`, \`settings.js\`, or anywhere
-  inside \`functions/api/admin/\` without telling me first. Those are
-  security-sensitive.
-- If upstream removed an endpoint I'm using, flag it in the PR body
-  \u2014 don't silently delete my caller code.
-
-## Start now
-
-Run \`git remote -v\` then \`git fetch upstream --tags\`. Report what
-you find.`;
-}
-function cxRepair(ctx) {
-  const siteRef = ctx.site || `https://<my-slug>.pages.dev`;
-  return `# Task: produce a code fix for my broken pages-seo install
-
-You are in a sandboxed environment with my fork of
-\`Benjamin-Bloch/pages-seo\` cloned. You cannot reach my live
-infrastructure. I will paste diagnostic output below; your job is
-to identify the bug in code and produce a PR.
-
-## What I'll paste
-
-The output of one or more of:
-- \`curl -s ${siteRef}/api/health\`
-- \`curl -s ${siteRef}/api/version\`
-- The contents of \`/admin \u2192 System \u2192 Status\` (a list of red checks)
-- A Cloudflare deployment log
-- An error message from the admin UI
-- A pasted screenshot description
-
-## How to work
-
-1. **Read what I paste before assuming anything.** Match it against
-   the error catalogue in \`functions/_lib/errors.js\` (if present)
-   and the docs at the upstream's \`/docs#errors\` anchor.
-2. **Find the call site.** \`grep -rn '<error_code>' functions/\` to
-   locate where the error originates.
-3. **Trace forward and backward.** Where is the failing input set?
-   Where is the failure consumed? Show me both ends.
-4. **Propose a fix as a diff.** Use the \`Edit\` tool. Keep the change
-   minimal \u2014 don't refactor surrounding code.
-5. **Open a PR.** Title: \`fix(<scope>): <one-line>\`. Body MUST include:
-   - The error or symptom I reported (quoted exactly).
-   - The root cause (one paragraph).
-   - Why this is the minimal fix (one sentence).
-   - A test plan I can run locally to verify.
-
-## Common failure modes (don't waste my time re-deriving these)
-
-| Symptom | Root cause | Fix scope |
-|---|---|---|
-| \`/api/health\` returns \`db: "unbound"\` | Pages project lost D1 binding | Config fix, not a code change. Tell me to re-bind. |
-| \`/api/health\` returns \`db: "error"\` | Schema drift or D1 outage | Re-apply \`schema/init.sql\` |
-| \`cron_likely_alive: false\` | Cron \`ADMIN_TOKEN\` mismatch | Rotation, not code |
-| \`jobs.in_flight_stuck > 0\` | A generation step crashed silently | Check \`functions/_lib/providers/*\` for swallowed errors |
-| Posts publish empty | AI provider hit budget cap | Check \`/api/admin/system/status\` for provider error |
-| \`/admin\` shows old version after deploy | \`installed_sha\` stale in D1 | Code fix in \`/api/admin/update/apply.js\` or a one-shot DB update |
-| New install errors with \`no_db_binding\` immediately | \`wrangler.toml\` substitution failed | Fix in \`public/install/run.sh\` |
-
-## Constraints
-
-- Do NOT modify \`schema/init.sql\` unless the bug IS the schema.
-- Do NOT widen \`adminGate\` or relax auth.
-- Do NOT add a try/catch that swallows the error. Either fix the
-  upstream cause or rethrow with more context.
-- Do NOT commit secrets. If the bug requires a new env var, document
-  it in the PR body for me to add via \`wrangler pages secret put\`.
-
-## Start now
-
-Reply with: "Paste the diagnostic output and I'll trace it." Then
-wait for me. Do not start grepping random files yet.`;
-}
-function cpInstall(ctx) {
-  return `# Task: walk me through installing pages-seo from this IDE
-
-You are GitHub Copilot Chat in my IDE. Help me install pages-seo
-(self-hosted SEO + daily-AI-blog toolkit for Cloudflare Pages). I am
-sitting at the editor and will run every terminal command myself
-after you propose it \u2014 you do NOT run anything unsupervised.
-
-## Working agreement
-
-1. Give me ONE command at a time in a fenced bash block. Wait for me
-   to run it and paste the result before giving the next.
-2. When I paste a result, parse it and react to what's actually there
-   \u2014 don't move to the next step if the previous one errored.
-3. If I report I haven't installed a prerequisite (Node, wrangler),
-   pause and walk me through that prerequisite. Don't push forward.
-4. Never tell me to paste an API token into a chat \u2014 the installer
-   uses \`wrangler\` which has my Cloudflare session.
-
-## The install path
-
-There's an upstream one-command installer at
-\`https://seo.benjaminb.xyz/install/run.sh\`. It uses \`wrangler\`
-(no GitHub App, no API tokens to paste), provisions D1 + R2 + Pages,
-and hands me a one-time admin link.
-
-## Step 1 \u2014 Prereq check
-
-Ask me to run these and paste output:
-
-\`\`\`bash
-node --version
-wrangler --version
-wrangler whoami
-\`\`\`
-
-If \`node\` is missing \u2192 I need Node 20+. Point me at
-https://nodejs.org/.
-If \`wrangler\` is missing \u2192 \`npm install -g wrangler\`.
-If \`wrangler whoami\` fails \u2192 \`wrangler login\` opens a browser.
-
-## Step 2 \u2014 Collect inputs
-
-Ask me for these in ONE message:
-- Project slug (lowercase, dashes, 2\u201333 chars, starts with a letter)
-- Site name (display name, anything)
-- Admin email
-- Admin password (8+ chars, don't echo back to me when I send it)
-
-## Step 3 \u2014 Run the installer
-
-\`\`\`bash
-curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash
-\`\`\`
-
-The script will prompt for the four values from step 2. Tell me to
-type them as prompted (don't pre-fill via env vars \u2014 the script
-masks the password).
-
-## Step 4 \u2014 Verify
-
-\`\`\`bash
-curl -sI https://<my-slug>.pages.dev/api/health
-curl -s  https://<my-slug>.pages.dev/api/health | jq
-\`\`\`
-
-Expect 200 + \`db: "ok"\`. If not, switch to the repair mode of this
-prompt (I'll tell you).
-
-## Step 5 \u2014 First login
-
-The installer writes the magic-link URL to a tmpfile path and prints
-the path. It also tries to copy the URL to my clipboard. Tell me to
-either paste from clipboard or \`cat\` that tmpfile path into my
-browser. The link works once.
-
-## What you should NOT do
-
-- Do not propose installing arbitrary npm packages.
-- Do not propose editing files in the upstream repo's working copy \u2014
-  the installer works in a tempdir, not in my project.
-- Do not log my admin password into the chat history.
-
-## Start now
-
-Ask me the prereq-check question (step 1). Wait for my output.`;
-}
-function cpUpdate(ctx) {
-  const slugRef = ctx.slug ? `"${ctx.slug}"` : "my slug";
-  const siteRef = ctx.site || `https://<my-slug>.pages.dev`;
-  return `# Task: update my pages-seo install to the latest release
-
-You are GitHub Copilot Chat in my IDE. Walk me through updating my
-existing pages-seo deploy. One command at a time, wait for my output,
-react to what I actually paste.
-
-## My install
-
-- Slug: ${slugRef}
-- Live site: ${siteRef}
-- Current version: ${ctx.version || "we will check"}
-
-## Step 1 \u2014 See where I am
-
-Ask me to run:
-
-\`\`\`bash
-curl -s ${siteRef}/api/version | jq '{tag, sha: .short, up_to_date, ahead}'
-\`\`\`
-
-If \`up_to_date\` is \`true\` \u2192 stop, there's nothing to do.
-If \`up_to_date\` is \`false\` \u2192 note the \`ahead\` count and the
-current \`tag\`.
-
-## Step 2 \u2014 See what's new
-
-\`\`\`bash
-curl -s https://api.github.com/repos/Benjamin-Bloch/pages-seo/releases/latest | jq '{tag_name, name, published_at, body}' | head -40
-\`\`\`
-
-Summarise the new release in 3 bullets max. Flag any breaking changes
-(schema, env vars, removed endpoints) explicitly \u2014 I need to know
-before I deploy.
-
-## Step 3 \u2014 Re-run the installer with the same slug
-
-The installer is idempotent. It detects the existing D1, R2, and
-Pages project by name and only re-uploads code. Existing data is
-preserved.
-
-\`\`\`bash
-curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash
-\`\`\`
-
-Tell me to use slug ${slugRef} when prompted. Tell me to use the same
-admin email; for password, I can re-enter the current one (it gets
-hashed fresh but my existing admin user is preserved).
-
-## Step 4 \u2014 Verify
-
-\`\`\`bash
-curl -s ${siteRef}/api/version | jq '{tag, sha: .short, up_to_date}'
-curl -s ${siteRef}/api/health  | jq
-\`\`\`
-
-Expect \`up_to_date: true\` and \`db: "ok"\` and
-\`posts.cron_likely_alive: true\`. If any are off, switch to repair.
-
-## Step 5 \u2014 Clear the "N commits behind" banner
-
-If the admin UI still shows "X commits behind" after a successful
-deploy, that's a known UX quirk: the \`installed_sha\` setting in D1
-isn't auto-updated by direct-upload deploys. Tell me to either:
-- Click "Mark as up to date" in /admin \u2192 System \u2192 Updates, or
-- Hit \`POST ${siteRef}/api/admin/update/dismiss\` with my admin
-  bearer token.
-
-## Constraints
-
-- Do NOT propose \`wrangler d1 execute \u2026 --command="DROP TABLE\`
-  anything. The installer's schema is additive.
-- Do NOT propose deleting and recreating the Pages project.
-
-## Start now
-
-Give me step 1's command and wait for my paste.`;
-}
-function cpRepair(ctx) {
-  const siteRef = ctx.site || `https://<my-slug>.pages.dev`;
-  return `# Task: help me fix my broken pages-seo install
-
-You are GitHub Copilot Chat in my IDE. Something on my pages-seo
-deploy is broken. Diagnose by sequence, not by guessing. One
-command at a time. React to my actual output.
-
-## My install
-
-- Live site: ${siteRef}
-
-## How to triage
-
-Always start at the cheapest check and only escalate if it fails.
-The ladder is: DNS/TLS \u2192 health endpoint \u2192 schema \u2192 cron \u2192
-provider \u2192 admin route. Do not skip rungs.
-
-## Step 1 \u2014 Is the site reachable?
-
-\`\`\`bash
-curl -sI ${siteRef}
-\`\`\`
-
-- HTTP 200/30x \u2192 site is up; go to step 2.
-- Connection refused / TLS error \u2192 Pages project or custom domain
-  is gone. Have me run \`wrangler pages project list\` and look
-  for the project.
-- HTTP 522 / 530 \u2192 Cloudflare edge can't reach origin (very rare for
-  Pages; usually a region outage). Wait 5 min and retry.
-
-## Step 2 \u2014 Is the backend alive?
-
-\`\`\`bash
-curl -s ${siteRef}/api/health | jq
-\`\`\`
-
-Interpret the response field by field:
-- \`db: "unbound"\` \u2192 D1 binding lost. Fix:
-  \`wrangler pages project edit\` and re-attach the D1 by id from
-  \`wrangler d1 list\`.
-- \`db: "error"\` \u2192 schema drift. Have me re-apply
-  \`schema/init.sql\` via \`wrangler d1 execute\` with \`--remote\`.
-- \`db: "ok"\` and \`posts.cron_likely_alive: false\` \u2192 cron stopped.
-  Go to step 3.
-- \`db: "ok"\` and \`jobs.in_flight_stuck > 0\` \u2192 a generation step
-  died. Go to step 4.
-
-## Step 3 \u2014 Cron is stale
-
-The cron is a separate Worker (\`pages-seo-cron\` or similar). The
-most common cause is \`ADMIN_TOKEN\` drift between the cron Worker
-and the Pages project \u2014 the cron POSTs to the Pages API with its
-token, gets a 401, and silently does nothing.
-
-Have me run:
-
-\`\`\`bash
-wrangler tail pages-seo-cron --format=pretty
-\`\`\`
-
-Then trigger a manual run:
-
-\`\`\`bash
-curl -X POST ${siteRef}/api/admin/blog/cron-tick \\
-  -H "authorization: Bearer $ADMIN_TOKEN"
-\`\`\`
-
-If the tail shows a 401, rotate the token on both sides:
-
-\`\`\`bash
-NEW_TOKEN=$(openssl rand -hex 32)
-echo "$NEW_TOKEN" | wrangler pages secret put ADMIN_TOKEN --project-name <my-slug>
-echo "$NEW_TOKEN" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron
-\`\`\`
-
-## Step 4 \u2014 Stuck job
-
-\`\`\`bash
-wrangler d1 execute <db-name> --remote \\
-  --command="SELECT id, status, error, updated_at FROM blog_jobs WHERE status NOT IN ('published','failed') ORDER BY updated_at DESC LIMIT 5"
-\`\`\`
-
-Read \`error\` for each row. Typical patterns:
-- \`provider_budget_exceeded\` \u2192 AI free tier exhausted; add a
-  fallback provider key in /admin.
-- \`provider_timeout\` \u2192 flaky upstream; mark the job failed and
-  rerun.
-
-## Step 5 \u2014 Admin route is dead
-
-If \`/admin\` 404s but \`/api/health\` is fine, the static build was
-truncated. Re-run the installer (idempotent, no data loss):
-
-\`\`\`bash
-curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash
-\`\`\`
-
-## Constraints
-
-- Never propose \`wrangler d1 delete\` or
-  \`wrangler r2 bucket delete\`. D1 is the source of truth for every
-  post I've written.
-- If I mention I've already tried something, don't retry it.
-- If diagnostics return something not in this prompt, say so and ask
-  me before guessing.
-
-## Start now
-
-Ask me one question: "What's the symptom \u2014 what URL, what do you see,
-what do you expect?" Then wait for my answer before running step 1.`;
-}
-function chInstall(ctx) {
-  const ctxBlock = hasCtx(ctx) ? `
-My install details (use these in your answers, not placeholders):
-${ctxLines(ctx).join("\n")}
-` : "";
-  return `You are walking me through installing pages-seo, an open-source
-self-hosted programmatic-SEO + daily-AI-blog toolkit for Cloudflare
-Pages. I am not technical. You will be my pair-programmer over chat.
-
-The upstream is at https://github.com/Benjamin-Bloch/pages-seo. The
-maintainer's live demo is at https://seo.benjaminb.xyz.
-${ctxBlock}
-RULES FOR THIS CONVERSATION:
-
-1. ONE STEP AT A TIME. After every step you give me, end with:
-   "Reply 'done' when you've finished, or paste any error you see."
-   Then stop. Do not give the next step until I reply.
-2. If I paste an error, diagnose THAT error before doing anything
-   else. Don't dump the next step on top of an unresolved problem.
-3. Commands go in fenced code blocks. URLs go as clickable links.
-4. If you genuinely don't know the answer, say "I don't know \u2014 let's
-   check https://seo.benjaminb.xyz/docs". Don't guess.
-
-WHAT WE'RE GOING TO DO:
-
-We'll use the terminal installer (one curl command). It uses
-\`wrangler\` (the Cloudflare CLI) \u2014 no GitHub App, no API tokens to
-paste, just my Cloudflare login. It takes 2\u20134 minutes.
-
-What I'll need:
-- A Cloudflare account (free tier is enough). Sign up:
-  https://dash.cloudflare.com/sign-up
-- Node 20 or newer on my machine.
-- About 5 minutes.
-
-THE SEQUENCE (give me these one at a time, waiting between):
-
-Step A \u2014 Check I have Node 20+:
-   \`node --version\`
-   If missing or older than 20: send me to https://nodejs.org/ to
-   install it.
-
-Step B \u2014 Install wrangler:
-   \`npm install -g wrangler\`
-
-Step C \u2014 Log in to Cloudflare:
-   \`wrangler login\`
-   This pops a browser. I click Allow.
-
-Step D \u2014 Pick names:
-   Ask me ONE question that lists all of:
-   - Project slug (lowercase, dashes only, e.g. \`my-blog\`)
-   - Site name (display name, anything)
-   - Admin email
-   - Admin password (8+ chars)
-
-Step E \u2014 Run the installer:
-   \`curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash\`
-   It prompts for the four values from step D. Tell me to type them
-   when asked.
-
-Step F \u2014 Wait, then verify:
-   \`curl -s https://<my-slug>.pages.dev/api/health\`
-   Expect a JSON response with \`"db":"ok"\`.
-
-Step G \u2014 Open admin:
-   The installer either copied a "first-run" link to my clipboard or
-   wrote it to a tmpfile path. Tell me how to use it. The link works
-   once.
-
-COMMON FAILURE MODES (you know these, so don't make me Google them):
-
-- "wrangler: command not found" after npm install \u2192 my npm global
-  bin isn't on PATH. Run \`npm config get prefix\`, add \`<that>/bin\`
-  to PATH.
-- "Authentication error" during install \u2192 \`wrangler login\` didn't
-  complete. Re-run it.
-- Installer says "D1 quota exceeded" \u2192 free tier limit is 10 D1
-  databases. Delete old test ones in the Cloudflare dashboard or
-  upgrade.
-- \`/api/health\` returns \`"db":"unbound"\` after a clean install \u2192
-  binding race; wait 60 seconds and retry once.
-
-START NOW:
-
-Greet me in one sentence, then ask step A. Wait for my reply.`;
-}
-function chUpdate(ctx) {
-  const slugRef = ctx.slug || "<my-slug>";
-  const siteRef = ctx.site || `https://<my-slug>.pages.dev`;
-  const ctxBlock = hasCtx(ctx) ? `
-My install:
-${ctxLines(ctx).join("\n")}
-` : "";
-  return `You are helping me update an existing pages-seo install
-(self-hosted SEO + daily-AI-blog toolkit for Cloudflare Pages) to the
-latest version. I am not technical. Pair-program with me over chat.
-${ctxBlock}
-RULES:
-
-1. ONE STEP AT A TIME. After each step, end with: "Reply 'done' when
-   finished, or paste any error." Then stop.
-2. If I paste an error, fix it before moving on.
-3. Don't suggest editing my codebase by hand \u2014 the supported update
-   path is to re-run the installer.
-
-WHAT WE'RE DOING:
-
-Re-running the installer with the same project slug. It detects my
-existing D1, R2, and Pages project by name and only updates the
-code. My data is preserved. Takes 2 minutes.
-
-THE SEQUENCE:
-
-Step A \u2014 Confirm current version:
-   \`curl -s ${siteRef}/api/version\`
-   Tell me what tag I'm on and what's the latest. If I'm up to date,
-   stop \u2014 there's nothing to do.
-
-Step B \u2014 Show me what's new:
-   \`curl -s https://api.github.com/repos/Benjamin-Bloch/pages-seo/releases/latest\`
-   Read the release body. Summarise in 3 bullets max. Flag any
-   breaking changes (schema, env vars).
-
-Step C \u2014 Re-run installer:
-   \`curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash\`
-   Tell me to enter slug \`${slugRef}\` when prompted. Same admin
-   email. I can re-enter the same password.
-
-Step D \u2014 Verify:
-   \`curl -s ${siteRef}/api/version\` \u2192 should show the new tag.
-   \`curl -s ${siteRef}/api/health\` \u2192 should show \`db: ok\` and
-   \`cron_likely_alive: true\`.
-
-Step E \u2014 If admin still shows "N commits behind":
-   That's a known UX quirk; tell me to click "Mark as up to date" in
-   /admin \u2192 System \u2192 Updates.
-
-COMMON FAILURES:
-
-- Installer hangs after "Provisioning resources" \u2192 \`wrangler\` lost
-  its session. Run \`wrangler login\` and re-run.
-- New deploy is live (\`/api/version\` shows new tag) but \`/admin\`
-  shows old version \u2192 hard refresh (Cmd-Shift-R / Ctrl-Shift-R).
-
-START NOW:
-
-Greet me, then ask step A. Wait.`;
-}
-function chRepair(ctx) {
-  const slugRef = ctx.slug || "<my-slug>";
-  const siteRef = ctx.site || `https://<my-slug>.pages.dev`;
-  const ctxBlock = hasCtx(ctx) ? `
-My install:
-${ctxLines(ctx).join("\n")}
-` : "";
-  return `You are helping me fix a broken pages-seo install
-(self-hosted SEO + daily-AI-blog toolkit for Cloudflare Pages). I am
-not technical. Pair-program with me over chat \u2014 one step at a time,
-wait for my output, then react.
-${ctxBlock}
-RULES:
-
-1. Start by asking me what the symptom is. Don't guess.
-2. ONE diagnostic at a time. End with: "Paste what you see."
-3. Don't tell me to "check the logs" without telling me which log
-   and how. Always give me the exact command.
-4. If diagnostics return something unexpected, say so and ask before
-   guessing what it means.
-
-THE LADDER (use in order; only escalate if the previous rung passes):
-
-Rung 1 \u2014 Is the site reachable?
-   \`curl -sI ${siteRef}\`
-   200 or 30x \u2192 up. Connection refused \u2192 Pages project gone.
-
-Rung 2 \u2014 Is the backend alive?
-   \`curl -s ${siteRef}/api/health\`
-   Look for:
-   - \`db: "ok"\` \u2192 good
-   - \`db: "unbound"\` \u2192 D1 binding lost. Open Cloudflare dashboard
-     \u2192 Pages \u2192 my project \u2192 Settings \u2192 Functions \u2192 D1 database
-     bindings. Re-attach the D1 with binding name \`DB\`.
-   - \`db: "error"\` \u2192 schema drift; tell me to visit
-     /admin \u2192 System \u2192 Status and click "Repair schema".
-   - \`posts.cron_likely_alive: false\` \u2192 no post in 36+ hours; go to
-     rung 3.
-   - \`jobs.in_flight_stuck > 0\` \u2192 a generation died; go to rung 4.
-
-Rung 3 \u2014 Cron stopped:
-   Visit \`${siteRef}/admin\` \u2192 System \u2192 Status. The "Cron last
-   ping" card tells me when the daily cron last contacted the site.
-   If it's been > 36 hours, the most common cause is an
-   \`ADMIN_TOKEN\` mismatch between the cron Worker and the Pages
-   project. The fix is in \`/admin \u2192 System \u2192 Repair \u2192 Rotate
-   admin token\` \u2014 it updates both sides.
-
-Rung 4 \u2014 Stuck job:
-   /admin \u2192 Posts. Look for any post with status "review" or
-   "pending" older than an hour. Click "Retry" on that job, or
-   "Mark failed" to skip it.
-
-Rung 5 \u2014 Admin won't load at all:
-   Browser dev tools \u2192 Network tab \u2192 reload. Tell me the HTTP status
-   of the /admin request and the first JS file it loads.
-
-COMMON SYMPTOMS:
-
-| What I see | What it means | First thing to try |
-|---|---|---|
-| Site shows the maintainer's marketing page, not my content | Fork sync issue (Direct Upload install) \u2014 usually means a re-deploy failed midway | Re-run installer |
-| Posts appear but content is blank | AI provider hit budget cap | /admin \u2192 System \u2192 Status \u2014 check provider status |
-| OG / cover images are missing | R2 binding lost or bucket renamed | Re-bind R2 in Pages settings |
-| /admin says "N commits behind" forever | UX quirk, install marker stale | Click "Mark as up to date" |
-| Cron used to work, now silent | Most likely \`ADMIN_TOKEN\` drift | Repair \u2192 Rotate admin token |
-
-DON'T:
-
-- Don't tell me to delete and reinstall. D1 holds every post I've
-  ever generated.
-- Don't suggest editing code. The supported repair path is the
-  in-admin Repair UI or re-running the installer.
-
-START NOW:
-
-Ask me: "What URL are you on, and what do you see vs what you
-expect?" Wait for my answer. Then pick the right rung based on what
-I tell you.`;
-}
-var TOOLS, VALID_TOOLS, VALID_MODES, onRequestGet76;
-var init_ai_prompt = __esm({
-  "api/ai-prompt.js"() {
-    init_functionsRoutes_0_692476336876716();
-    init_util();
-    __name(cleanUrl2, "cleanUrl");
-    __name(cleanSlug, "cleanSlug");
-    __name(cleanGhUrl, "cleanGhUrl");
-    __name(ctxLines, "ctxLines");
-    __name(hasCtx, "hasCtx");
-    __name(ccInstall, "ccInstall");
-    __name(ccUpdate, "ccUpdate");
-    __name(ccRepair, "ccRepair");
-    __name(cxInstall, "cxInstall");
-    __name(cxUpdate, "cxUpdate");
-    __name(cxRepair, "cxRepair");
-    __name(cpInstall, "cpInstall");
-    __name(cpUpdate, "cpUpdate");
-    __name(cpRepair, "cpRepair");
-    __name(chInstall, "chInstall");
-    __name(chUpdate, "chUpdate");
-    __name(chRepair, "chRepair");
-    TOOLS = {
-      "claude-code": { install: ccInstall, update: ccUpdate, repair: ccRepair },
-      "codex": { install: cxInstall, update: cxUpdate, repair: cxRepair },
-      "copilot": { install: cpInstall, update: cpUpdate, repair: cpRepair },
-      "chat": { install: chInstall, update: chUpdate, repair: chRepair }
-    };
-    VALID_TOOLS = Object.keys(TOOLS);
-    VALID_MODES = ["install", "update", "repair"];
-    onRequestGet76 = /* @__PURE__ */ __name(async ({ request }) => {
-      const url = new URL(request.url);
-      const toolRaw = String(url.searchParams.get("tool") || "chat").toLowerCase();
-      const tool = VALID_TOOLS.includes(toolRaw) ? toolRaw : "chat";
-      const modeRaw = String(url.searchParams.get("mode") || "install").toLowerCase();
-      const mode = VALID_MODES.includes(modeRaw) ? modeRaw : "install";
-      const format = String(url.searchParams.get("format") || "text").toLowerCase();
-      const ctx = {
-        slug: cleanSlug(url.searchParams.get("slug")),
-        site: cleanUrl2(url.searchParams.get("site"), null),
-        admin: cleanUrl2(url.searchParams.get("admin"), null),
-        gh: cleanGhUrl(url.searchParams.get("gh")),
-        acct: (url.searchParams.get("acct") || "").slice(0, 64) || null,
-        version: (url.searchParams.get("version") || "").slice(0, 40) || null
-      };
-      const isPersonal = Object.values(ctx).some(Boolean);
-      const prompt = TOOLS[tool][mode](ctx);
-      if (format === "json") {
-        return json(200, {
-          ok: true,
-          tool,
-          mode,
-          prompt,
-          personalized: isPersonal,
-          context: ctx,
-          tools_available: VALID_TOOLS,
-          modes_available: VALID_MODES,
-          length: prompt.length
-        });
-      }
-      return new Response(prompt, {
-        headers: {
-          "content-type": "text/plain; charset=utf-8",
-          "cache-control": isPersonal ? "no-store" : "public, max-age=300",
-          "access-control-allow-origin": "*"
-        }
-      });
+      return onRequestGet65({ env: ctx.env, request: ctx.request, params: { project: projectSlug, slug: ctx.params?.slug } });
     }, "onRequestGet");
   }
 });
 
 // api/changes.js
-function ghHeaders5(env) {
+function ghHeaders2(env) {
   const h = {
     "User-Agent": "pages-seo-changes",
     Accept: "application/vnd.github+json"
@@ -25228,7 +22148,7 @@ function ghHeaders5(env) {
   }
   return h;
 }
-function short3(sha) {
+function short2(sha) {
   return String(sha || "").slice(0, 7);
 }
 function splitMessage(msg) {
@@ -25240,21 +22160,21 @@ function splitMessage(msg) {
     body: s.slice(nl + 1).trim().slice(0, 1200)
   };
 }
-var UPSTREAM_OWNER4, UPSTREAM_REPO4, BRANCH3, EDGE_CACHE_SEC, BROWSER_CACHE_SEC, MAX_COMMITS, onRequestGet77;
+var UPSTREAM_OWNER2, UPSTREAM_REPO2, BRANCH2, EDGE_CACHE_SEC, BROWSER_CACHE_SEC, MAX_COMMITS, onRequestGet67;
 var init_changes = __esm({
   "api/changes.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
-    UPSTREAM_OWNER4 = "Benjamin-Bloch";
-    UPSTREAM_REPO4 = "pages-seo";
-    BRANCH3 = "main";
+    UPSTREAM_OWNER2 = "Benjamin-Bloch";
+    UPSTREAM_REPO2 = "pages-seo";
+    BRANCH2 = "main";
     EDGE_CACHE_SEC = 300;
     BROWSER_CACHE_SEC = 60;
     MAX_COMMITS = 100;
-    __name(ghHeaders5, "ghHeaders");
-    __name(short3, "short");
+    __name(ghHeaders2, "ghHeaders");
+    __name(short2, "short");
     __name(splitMessage, "splitMessage");
-    onRequestGet77 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet67 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const url = new URL(request.url);
       const since = String(url.searchParams.get("since") || "").trim().toLowerCase();
       const limit = Math.min(MAX_COMMITS, Math.max(1, parseInt(url.searchParams.get("limit"), 10) || 50));
@@ -25265,8 +22185,8 @@ var init_changes = __esm({
       let latest;
       try {
         const r = await fetch(
-          `https://api.github.com/repos/${UPSTREAM_OWNER4}/${UPSTREAM_REPO4}/commits/${BRANCH3}`,
-          { headers: ghHeaders5(env) }
+          `https://api.github.com/repos/${UPSTREAM_OWNER2}/${UPSTREAM_REPO2}/commits/${BRANCH2}`,
+          { headers: ghHeaders2(env) }
         );
         if (!r.ok) {
           return json(502, { ok: false, error: "github_latest_failed", detail: "HTTP " + r.status });
@@ -25277,7 +22197,7 @@ var init_changes = __esm({
       }
       const latestOut = {
         sha: latest.sha,
-        short: short3(latest.sha),
+        short: short2(latest.sha),
         message: (latest.commit?.message || "").split("\n")[0].slice(0, 200),
         date: latest.commit?.author?.date || null,
         html_url: latest.html_url
@@ -25301,8 +22221,8 @@ var init_changes = __esm({
       let cmp;
       try {
         const r = await fetch(
-          `https://api.github.com/repos/${UPSTREAM_OWNER4}/${UPSTREAM_REPO4}/compare/${since}...${latestOut.sha}`,
-          { headers: ghHeaders5(env) }
+          `https://api.github.com/repos/${UPSTREAM_OWNER2}/${UPSTREAM_REPO2}/compare/${since}...${latestOut.sha}`,
+          { headers: ghHeaders2(env) }
         );
         if (!r.ok) {
           if (r.status === 404) {
@@ -25323,7 +22243,7 @@ var init_changes = __esm({
         const { subject, body } = splitMessage(c.commit?.message);
         return {
           sha: c.sha,
-          short: short3(c.sha),
+          short: short2(c.sha),
           subject,
           body,
           date: c.commit?.author?.date || null,
@@ -25355,17 +22275,17 @@ async function fetchJson(url, headers) {
   if (!r.ok) throw new Error(`${url} \u2192 HTTP ${r.status}`);
   return r.json();
 }
-var OWNER, REPO, EDGE_CACHE_SEC2, BROWSER_CACHE_SEC2, onRequestGet78;
+var OWNER, REPO, EDGE_CACHE_SEC2, BROWSER_CACHE_SEC2, onRequestGet68;
 var init_github_stats = __esm({
   "api/github-stats.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     OWNER = "Benjamin-Bloch";
     REPO = "pages-seo";
     EDGE_CACHE_SEC2 = 600;
     BROWSER_CACHE_SEC2 = 120;
     __name(fetchJson, "fetchJson");
-    onRequestGet78 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet68 = /* @__PURE__ */ __name(async ({ env }) => {
       const headers = {
         "User-Agent": "pages-seo-github-stats",
         "Accept": "application/vnd.github+json"
@@ -25406,12 +22326,12 @@ var init_github_stats = __esm({
 });
 
 // api/health.js
-var onRequestGet79;
+var onRequestGet69;
 var init_health = __esm({
   "api/health.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
-    onRequestGet79 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet69 = /* @__PURE__ */ __name(async ({ env }) => {
       const now = Math.floor(Date.now() / 1e3);
       let db = "unbound";
       const posts = { count: null, last_published: null };
@@ -25486,8 +22406,8 @@ function missingEnvVars(env) {
   const need = ["CF_API_TOKEN", "CF_ACCOUNT_ID", "CF_PROJECT", "CF_D1_ID", "CF_R2_NAME"];
   return need.filter((k) => !env?.[k] || !String(env[k]).trim());
 }
-async function cfFetch8(token, path, init = {}) {
-  const res = await fetch(CF_API10 + path, {
+async function cfFetch2(token, path, init = {}) {
+  const res = await fetch(CF_API3 + path, {
     ...init,
     headers: {
       Authorization: "Bearer " + token,
@@ -25503,7 +22423,7 @@ async function cfFetch8(token, path, init = {}) {
   return { res, body };
 }
 async function getProject2(token, accountId, project) {
-  const r = await cfFetch8(token, `/accounts/${accountId}/pages/projects/${project}`);
+  const r = await cfFetch2(token, `/accounts/${accountId}/pages/projects/${project}`);
   if (!r.res.ok) return null;
   return r.body?.result || null;
 }
@@ -25534,37 +22454,37 @@ async function patchBindings(env, proj) {
       preview: { ...bindings, env_vars: existingPrevEnv }
     }
   });
-  const r = await cfFetch8(token, `/accounts/${accountId}/pages/projects/${project}`, {
+  const r = await cfFetch2(token, `/accounts/${accountId}/pages/projects/${project}`, {
     method: "PATCH",
     body
   });
   return { ok: r.res.ok, body: r.body };
 }
-async function triggerDeploy2(env) {
+async function triggerDeploy(env) {
   const token = String(env.CF_API_TOKEN).trim();
   const accountId = String(env.CF_ACCOUNT_ID).trim();
   const project = String(env.CF_PROJECT).trim();
-  const r = await cfFetch8(token, `/accounts/${accountId}/pages/projects/${project}/deployments`, {
+  const r = await cfFetch2(token, `/accounts/${accountId}/pages/projects/${project}/deployments`, {
     method: "POST"
   });
   return { ok: r.res.ok };
 }
-var CF_API10, onRequestGet80, onRequestPost84;
+var CF_API3, onRequestGet70, onRequestPost75;
 var init_repair_bindings = __esm({
   "api/repair-bindings.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_auth();
-    CF_API10 = "https://api.cloudflare.com/client/v4";
+    CF_API3 = "https://api.cloudflare.com/client/v4";
     __name(tokensMatch, "tokensMatch");
     __name(authorise, "authorise");
     __name(missingEnvVars, "missingEnvVars");
-    __name(cfFetch8, "cfFetch");
+    __name(cfFetch2, "cfFetch");
     __name(getProject2, "getProject");
     __name(checkBindings, "checkBindings");
     __name(patchBindings, "patchBindings");
-    __name(triggerDeploy2, "triggerDeploy");
-    onRequestGet80 = /* @__PURE__ */ __name(async ({ env }) => {
+    __name(triggerDeploy, "triggerDeploy");
+    onRequestGet70 = /* @__PURE__ */ __name(async ({ env }) => {
       const missing = missingEnvVars(env);
       if (missing.length) {
         return json(503, {
@@ -25587,7 +22507,7 @@ var init_repair_bindings = __esm({
       const healthy = status.DB && status.IMAGES && status.AI;
       return json(200, { ok: true, healthy, bindings: status, project });
     }, "onRequestGet");
-    onRequestPost84 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost75 = /* @__PURE__ */ __name(async ({ env, request }) => {
       let body = {};
       try {
         body = await request.json();
@@ -25621,7 +22541,7 @@ var init_repair_bindings = __esm({
         await patchBindings(env, proj);
         after = await getProject2(token, accountId, project).then((p) => checkBindings(p, { d1Id, r2Name }));
       }
-      const deploy = await triggerDeploy2(env);
+      const deploy = await triggerDeploy(env);
       const healthy = after.DB && after.IMAGES && after.AI;
       return json(healthy ? 200 : 500, {
         ok: healthy,
@@ -25675,10 +22595,10 @@ async function tokensMatch2(a, b) {
   for (let i = 0; i < xa.length; i++) acc |= xa[i] ^ xb[i];
   return acc === 0;
 }
-var EMAIL_RX2, MIN_PW3, MAX_PW3, onRequestGet81, onRequestPost85;
+var EMAIL_RX2, MIN_PW3, MAX_PW3, onRequestGet71, onRequestPost76;
 var init_setup = __esm({
   "api/setup.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_passwords();
     init_email_rules();
@@ -25691,7 +22611,7 @@ var init_setup = __esm({
     __name(userCount, "userCount");
     __name(expectedSetupToken, "expectedSetupToken");
     __name(tokensMatch2, "tokensMatch");
-    onRequestGet81 = /* @__PURE__ */ __name(async ({ env }) => {
+    onRequestGet71 = /* @__PURE__ */ __name(async ({ env }) => {
       if (!env?.DB) return json(503, { error: "no_db_binding" });
       const n = await userCount(env);
       const expected = await expectedSetupToken(env);
@@ -25701,7 +22621,7 @@ var init_setup = __esm({
         requires_token: !!expected
       });
     }, "onRequestGet");
-    onRequestPost85 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestPost76 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.DB) return json(503, { error: "no_db_binding" });
       if (await userCount(env) > 0) {
         return json(409, { error: "setup_already_done", detail: "An admin user already exists." });
@@ -25770,7 +22690,7 @@ var init_setup = __esm({
 });
 
 // api/version.js
-function ghHeaders6(env) {
+function ghHeaders3(env) {
   const h = {
     "User-Agent": "pages-seo-version",
     Accept: "application/vnd.github+json"
@@ -25780,19 +22700,19 @@ function ghHeaders6(env) {
   }
   return h;
 }
-function short4(sha) {
+function short3(sha) {
   return String(sha || "").slice(0, 7);
 }
 async function fetchLatestCommit(env) {
   const r = await fetch(
-    `https://api.github.com/repos/${UPSTREAM_OWNER5}/${UPSTREAM_REPO5}/commits/${BRANCH4}`,
-    { headers: ghHeaders6(env) }
+    `https://api.github.com/repos/${UPSTREAM_OWNER3}/${UPSTREAM_REPO3}/commits/${BRANCH3}`,
+    { headers: ghHeaders3(env) }
   );
   if (!r.ok) return { error: "github_latest_failed", detail: "HTTP " + r.status };
   const c = await r.json();
   return {
     sha: c.sha,
-    short: short4(c.sha),
+    short: short3(c.sha),
     message: (c.commit?.message || "").split("\n")[0].slice(0, 200),
     date: c.commit?.author?.date || null,
     html_url: c.html_url,
@@ -25802,8 +22722,8 @@ async function fetchLatestCommit(env) {
 async function fetchLatestTag(env) {
   try {
     const r = await fetch(
-      `https://api.github.com/repos/${UPSTREAM_OWNER5}/${UPSTREAM_REPO5}/releases/latest`,
-      { headers: ghHeaders6(env) }
+      `https://api.github.com/repos/${UPSTREAM_OWNER3}/${UPSTREAM_REPO3}/releases/latest`,
+      { headers: ghHeaders3(env) }
     );
     if (r.status === 404 || !r.ok) {
       return { tag: null, tag_html_url: null, tag_name: null, tag_published_at: null, release_notes: null };
@@ -25824,15 +22744,15 @@ async function fetchLatestTag(env) {
 async function fetchRecentCommits(env, { perPage = 20 } = {}) {
   try {
     const r = await fetch(
-      `https://api.github.com/repos/${UPSTREAM_OWNER5}/${UPSTREAM_REPO5}/commits?sha=${BRANCH4}&per_page=${perPage}`,
-      { headers: ghHeaders6(env) }
+      `https://api.github.com/repos/${UPSTREAM_OWNER3}/${UPSTREAM_REPO3}/commits?sha=${BRANCH3}&per_page=${perPage}`,
+      { headers: ghHeaders3(env) }
     );
     if (!r.ok) return [];
     const arr = await r.json();
     if (!Array.isArray(arr)) return [];
     return arr.map((c) => ({
       sha: c.sha,
-      short: short4(c.sha),
+      short: short3(c.sha),
       message: (c.commit?.message || "").split("\n")[0].slice(0, 200),
       date: c.commit?.author?.date || null,
       url: c.html_url,
@@ -25846,8 +22766,8 @@ async function fetchCommitsSinceTag(env, tag) {
   if (!tag) return null;
   try {
     const r = await fetch(
-      `https://api.github.com/repos/${UPSTREAM_OWNER5}/${UPSTREAM_REPO5}/compare/${encodeURIComponent(tag)}...${BRANCH4}`,
-      { headers: ghHeaders6(env) }
+      `https://api.github.com/repos/${UPSTREAM_OWNER3}/${UPSTREAM_REPO3}/compare/${encodeURIComponent(tag)}...${BRANCH3}`,
+      { headers: ghHeaders3(env) }
     );
     if (!r.ok) return null;
     const d = await r.json();
@@ -25856,23 +22776,23 @@ async function fetchCommitsSinceTag(env, tag) {
     return null;
   }
 }
-var UPSTREAM_OWNER5, UPSTREAM_REPO5, BRANCH4, EDGE_CACHE_SEC3, BROWSER_CACHE_SEC3, onRequestGet82;
+var UPSTREAM_OWNER3, UPSTREAM_REPO3, BRANCH3, EDGE_CACHE_SEC3, BROWSER_CACHE_SEC3, onRequestGet72;
 var init_version = __esm({
   "api/version.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
-    UPSTREAM_OWNER5 = "Benjamin-Bloch";
-    UPSTREAM_REPO5 = "pages-seo";
-    BRANCH4 = "main";
+    UPSTREAM_OWNER3 = "Benjamin-Bloch";
+    UPSTREAM_REPO3 = "pages-seo";
+    BRANCH3 = "main";
     EDGE_CACHE_SEC3 = 300;
     BROWSER_CACHE_SEC3 = 60;
-    __name(ghHeaders6, "ghHeaders");
-    __name(short4, "short");
+    __name(ghHeaders3, "ghHeaders");
+    __name(short3, "short");
     __name(fetchLatestCommit, "fetchLatestCommit");
     __name(fetchLatestTag, "fetchLatestTag");
     __name(fetchRecentCommits, "fetchRecentCommits");
     __name(fetchCommitsSinceTag, "fetchCommitsSinceTag");
-    onRequestGet82 = /* @__PURE__ */ __name(async ({ request, env }) => {
+    onRequestGet72 = /* @__PURE__ */ __name(async ({ request, env }) => {
       const [commit, tag, recent_commits] = await Promise.all([
         fetchLatestCommit(env),
         fetchLatestTag(env),
@@ -25927,17 +22847,17 @@ function fmtDate(secs) {
     iso: d.toISOString()
   };
 }
-var MAX_PER_PAGE, MAX_Q_LENGTH, MAX_TAG_LENGTH, onRequestGet83;
+var MAX_PER_PAGE, MAX_Q_LENGTH, MAX_TAG_LENGTH, onRequestGet73;
 var init_widget = __esm({
   "api/widget.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_widget_render();
     init_project_scope();
     MAX_PER_PAGE = 50;
     MAX_Q_LENGTH = 100;
     MAX_TAG_LENGTH = 200;
     __name(fmtDate, "fmtDate");
-    onRequestGet83 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet73 = /* @__PURE__ */ __name(async ({ env, request }) => {
       if (!env?.DB) {
         return new Response(JSON.stringify({ error: "no_db_binding", posts: [], total: 0 }), {
           status: 503,
@@ -26147,7 +23067,7 @@ async function safeFetch(rawUrl, { timeoutMs = 1e4, maxBytes = MAX_BYTES7, userA
 var ALLOWED_PORTS, MAX_BYTES7, MAX_REDIRECTS;
 var init_safe_fetch = __esm({
   "_lib/safe_fetch.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     ALLOWED_PORTS = /* @__PURE__ */ new Set(["", "80", "443"]);
     MAX_BYTES7 = 8e5;
     MAX_REDIRECTS = 3;
@@ -26250,7 +23170,7 @@ function extractHref(tag) {
 var WS, STRIP_TAGS, OK, WARN, FAIL;
 var init_seo_audit = __esm({
   "_lib/seo_audit.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_scrape();
     WS = /\s+/g;
     STRIP_TAGS = /<[^>]+>/g;
@@ -26470,10 +23390,10 @@ ${themeStyle(project?.theme_color)}
     }
   });
 }
-var TOOL_NAME, ERRORS, STATUS_LABEL2, onRequestGet84;
+var TOOL_NAME, ERRORS, STATUS_LABEL2, onRequestGet74;
 var init_seo_check = __esm({
   "tools/seo-check.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_settings();
     init_page_render();
@@ -26497,7 +23417,7 @@ var init_seo_check = __esm({
     __name(scoreBlock, "scoreBlock");
     __name(runAudit, "runAudit");
     __name(renderSeoCheck, "renderSeoCheck");
-    onRequestGet84 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderSeoCheck({ env: ctx.env, request: ctx.request })), "onRequestGet");
+    onRequestGet74 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderSeoCheck({ env: ctx.env, request: ctx.request })), "onRequestGet");
   }
 });
 
@@ -26675,7 +23595,7 @@ async function renderCoverSvg(rawSpec, ctx, env) {
 var SELF_HOSTED_FONTS;
 var init_cover_svg = __esm({
   "_lib/cover_svg.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_template();
     init_cover_spec();
     __name(xml, "xml");
@@ -26699,16 +23619,16 @@ var init_cover_svg = __esm({
 });
 
 // cover/[slug].svg.js
-var onRequestGet85;
+var onRequestGet75;
 var init_slug_svg = __esm({
   "cover/[slug].svg.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_cover_svg();
     init_cover_spec();
     init_template();
     init_settings();
     init_notices();
-    onRequestGet85 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
+    onRequestGet75 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
       const slug = String(params.slug || "").toLowerCase();
       if (!/^[a-z0-9-]{1,200}$/.test(slug)) {
         return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -26811,15 +23731,15 @@ var init_slug_svg = __esm({
 });
 
 // og/[slug].svg.js
-var onRequestGet86;
+var onRequestGet76;
 var init_slug_svg2 = __esm({
   "og/[slug].svg.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_cover_svg();
     init_template();
     init_settings();
     init_util();
-    onRequestGet86 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
+    onRequestGet76 = /* @__PURE__ */ __name(async ({ env, request, params }) => {
       const slug = String(params.slug || "").toLowerCase();
       if (!/^[a-z0-9-]{1,200}$/.test(slug)) {
         return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -26890,12 +23810,12 @@ var init_slug_svg2 = __esm({
 });
 
 // image/[[path]].js
-var CARD_PREFIX, onRequestGet87;
+var CARD_PREFIX, onRequestGet77;
 var init_path = __esm({
   "image/[[path]].js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     CARD_PREFIX = "card/";
-    onRequestGet87 = /* @__PURE__ */ __name(async ({ env, params }) => {
+    onRequestGet77 = /* @__PURE__ */ __name(async ({ env, params }) => {
       const parts = Array.isArray(params.path) ? params.path : [params.path].filter(Boolean);
       const key = parts.join("/");
       if (!key || !/^[a-zA-Z0-9._/-]+$/.test(key) || key.includes("..")) {
@@ -26918,13 +23838,13 @@ var init_path = __esm({
 });
 
 // [project]/blog/index.js
-var onRequestGet88;
+var onRequestGet78;
 var init_blog2 = __esm({
   "[project]/blog/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_blog();
     init_project_scope();
-    onRequestGet88 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet78 = /* @__PURE__ */ __name(async (ctx) => {
       const slug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
@@ -26937,10 +23857,10 @@ var init_blog2 = __esm({
 function rfc822(epoch) {
   return new Date((epoch || 0) * 1e3).toUTCString();
 }
-var ITEMS_LIMIT, renderFeed, onRequestGet89;
+var ITEMS_LIMIT, renderFeed, onRequestGet79;
 var init_feed_xml = __esm({
   "feed.xml.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_settings();
     init_util();
     init_project_scope();
@@ -27006,22 +23926,22 @@ ${items}
         }
       });
     }, "renderFeed");
-    onRequestGet89 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderFeed(ctx), 300), "onRequestGet");
+    onRequestGet79 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderFeed(ctx), 300), "onRequestGet");
   }
 });
 
 // [project]/feed.xml.js
-var onRequestGet90;
+var onRequestGet80;
 var init_feed_xml2 = __esm({
   "[project]/feed.xml.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_feed_xml();
     init_project_scope();
-    onRequestGet90 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet80 = /* @__PURE__ */ __name(async (ctx) => {
       const slug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
-      return onRequestGet89({ env: ctx.env, request: ctx.request, waitUntil: ctx.waitUntil, params: { project: slug } });
+      return onRequestGet79({ env: ctx.env, request: ctx.request, waitUntil: ctx.waitUntil, params: { project: slug } });
     }, "onRequestGet");
   }
 });
@@ -27174,10 +24094,10 @@ function renderHubIndexCached(ctx) {
     basePath: project ? `/${project}` : ""
   }));
 }
-var onRequestGet91;
+var onRequestGet81;
 var init_hubs2 = __esm({
   "hubs/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_settings();
     init_page_render();
@@ -27185,32 +24105,32 @@ var init_hubs2 = __esm({
     init_hubs();
     __name(renderHubIndex, "renderHubIndex");
     __name(renderHubIndexCached, "renderHubIndexCached");
-    onRequestGet91 = /* @__PURE__ */ __name((ctx) => renderHubIndexCached(ctx), "onRequestGet");
+    onRequestGet81 = /* @__PURE__ */ __name((ctx) => renderHubIndexCached(ctx), "onRequestGet");
   }
 });
 
 // [project]/hubs/index.js
-var onRequestGet92;
+var onRequestGet82;
 var init_hubs3 = __esm({
   "[project]/hubs/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_hubs2();
     init_project_scope();
-    onRequestGet92 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet82 = /* @__PURE__ */ __name(async (ctx) => {
       const projectSlug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, projectSlug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
-      return onRequestGet91({ env: ctx.env, request: ctx.request, params: { project: projectSlug } });
+      return onRequestGet81({ env: ctx.env, request: ctx.request, params: { project: projectSlug } });
     }, "onRequestGet");
   }
 });
 
 // [project]/rss.xml.js
-var onRequestGet93;
+var onRequestGet83;
 var init_rss_xml = __esm({
   "[project]/rss.xml.js"() {
-    init_functionsRoutes_0_692476336876716();
-    onRequestGet93 = /* @__PURE__ */ __name(async () => new Response(null, {
+    init_functionsRoutes_0_5310878456197219();
+    onRequestGet83 = /* @__PURE__ */ __name(async () => new Response(null, {
       status: 301,
       headers: { location: "feed.xml", "cache-control": "public, max-age=3600" }
     }), "onRequestGet");
@@ -27345,10 +24265,10 @@ async function pagesUrlset({ env, request, projectSlug = null, basePath = "", pa
     }
   });
 }
-var SITEMAP_NS, IMAGE_NS, MAX_URLS2, CHUNK, renderSitemap, onRequestGet94;
+var SITEMAP_NS, IMAGE_NS, MAX_URLS2, CHUNK, renderSitemap, onRequestGet84;
 var init_sitemap_xml = __esm({
   "sitemap.xml.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     init_blog();
     init_project_scope();
@@ -27397,15 +24317,15 @@ var init_sitemap_xml = __esm({
       });
     }, "renderSitemap");
     __name(pagesUrlset, "pagesUrlset");
-    onRequestGet94 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderSitemap(ctx), 300), "onRequestGet");
+    onRequestGet84 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderSitemap(ctx), 300), "onRequestGet");
   }
 });
 
 // [project]/sitemap-pages.xml.js
-var renderProjectUrlset, onRequestGet95;
+var renderProjectUrlset, onRequestGet85;
 var init_sitemap_pages_xml = __esm({
   "[project]/sitemap-pages.xml.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_sitemap_xml();
     init_project_scope();
     init_util();
@@ -27416,22 +24336,22 @@ var init_sitemap_pages_xml = __esm({
       const part = new URL(ctx.request.url).searchParams.get("part") || 1;
       return pagesUrlset({ env: ctx.env, request: ctx.request, projectSlug: slug, basePath: `/${slug}`, part });
     }, "renderProjectUrlset");
-    onRequestGet95 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderProjectUrlset(ctx), 300), "onRequestGet");
+    onRequestGet85 = /* @__PURE__ */ __name((ctx) => edgeCached(ctx.request, ctx.waitUntil, () => renderProjectUrlset(ctx), 300), "onRequestGet");
   }
 });
 
 // [project]/sitemap.xml.js
-var onRequestGet96;
+var onRequestGet86;
 var init_sitemap_xml2 = __esm({
   "[project]/sitemap.xml.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_sitemap_xml();
     init_project_scope();
-    onRequestGet96 = /* @__PURE__ */ __name(async (ctx) => {
+    onRequestGet86 = /* @__PURE__ */ __name(async (ctx) => {
       const slug = String(ctx.params?.project || "").toLowerCase();
       const project = await resolveProjectBySlugPath(ctx.env, slug).catch(() => null);
       if (!project) return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
-      return onRequestGet94({ env: ctx.env, request: ctx.request, waitUntil: ctx.waitUntil, params: { project: slug } });
+      return onRequestGet84({ env: ctx.env, request: ctx.request, waitUntil: ctx.waitUntil, params: { project: slug } });
     }, "onRequestGet");
   }
 });
@@ -27451,79 +24371,61 @@ function renderSections() {
 </section>`
   ).join("\n");
 }
-var SECTIONS, onRequestGet97;
+var SECTIONS, onRequestGet87;
 var init_docs = __esm({
   "docs/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     SECTIONS = [
       { id: "quick-start", title: "Quick start", level: 1, content: `
-<p class="lede">Two ways to install pages-seo. Pick whichever you can run.</p>
-<h3>Browser install (recommended)</h3>
+<p class="lede">This repository is the application. Clone it, build it, deploy it.</p>
+<h3>Deploy</h3>
 <ol>
-  <li>Go to <a href="/install">/install</a></li>
-  <li>Click <em>Sign in with GitHub</em>. We use OAuth to look up your account and create a fork of <code>Benjamin-Bloch/pages-seo</code>.</li>
-  <li>Click <em>Create a Cloudflare API token</em>. The link pre-selects the right permissions; click <em>Continue</em>, <em>Continue</em>, <em>Create</em>, then copy the token.</li>
-  <li>Paste the token back into the install tab (we attempt to auto-paste from clipboard).</li>
-  <li>Type your site name. The Pages subdomain comes from a slug auto-derived from the name.</li>
-  <li>Click <em>Install</em>. The installer creates D1, R2, the Pages project, applies the schema, hands you a one-time magic link.</li>
-  <li>Open the link to set your admin email + password on your new site.</li>
+  <li>Clone the repo and install dependencies: <code>npm install</code></li>
+  <li>Build: <code>npm run build</code> \u2014 checks public mirrors and JSX imports, bundles the schema, builds the admin</li>
+  <li>Deploy: <code>npm run deploy</code> \u2014 ships the Pages site <em>and</em> the cron Worker</li>
+  <li>Open <code>https://&lt;your-slug&gt;.pages.dev/admin</code> and complete the setup wizard</li>
 </ol>
-<h3>CLI install</h3>
-<p>If you'd rather stay in the terminal, paste one of these in your shell. Each is the same logic in a different language \u2014 pick what you have installed.</p>
-<pre><code># bash
-curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash
-
-# python
-curl -fsSL https://seo.benjaminb.xyz/install/run.py | python3
-
-# node
-curl -fsSL https://seo.benjaminb.xyz/install/run.js | node</code></pre>
-<p>Both paths end in the same place: <code>https://&lt;your-slug&gt;.pages.dev/admin</code>.</p>
+<p>The D1 resource is <code>pages-seo-db</code>, bound as <code>DB</code> in <code>wrangler.toml</code>. Apply pending migrations with <code>npm run db:migrate</code>.</p>
+<p>Daily automation is optional. <code>npm run deploy</code> already ships the cron Worker; alternatively press <em>Run now</em> in the dashboard whenever you want a fresh post.</p>
 ` },
       { id: "setup", title: "Setup walkthrough", level: 1, content: `
-<p>The full happy-path install with what each step actually does.</p>
+<p>What each step of the deploy actually does.</p>
 
 <h3 id="setup-prereqs">Prerequisites</h3>
 <ul>
   <li>A Cloudflare account (free tier is enough).</li>
-  <li>A GitHub account.</li>
-  <li>If using the CLI: <code>node \u2265 18</code> + <code>npm</code> (wrangler bootstraps from there).</li>
+  <li><code>node \u2265 20</code> and <code>npm</code>.</li>
+  <li><code>wrangler</code>, logged in: <code>npx wrangler login</code>. If <code>npx wrangler whoami</code> fails, stop and log in first.</li>
 </ul>
 
-<h3 id="setup-github">Step 1 \u2014 Sign in with GitHub</h3>
-<p>The OAuth scope we request is <code>public_repo read:user user:email</code>. We use these for: creating your fork (<code>public_repo</code>), listing your Cloudflare GitHub App installation (<code>read:user</code>), and prefilling your admin email (<code>user:email</code>). We do NOT request private-repo access. Your token never leaves the browser tab + the encrypted cookie that holds it for the duration of the install.</p>
+<h3 id="setup-fork">Step 1 \u2014 Get the code</h3>
+<p>Clone the repository and install dependencies. <code>npm install</code> pulls in the admin's React dependencies and <code>wrangler</code>.</p>
+<pre><code>git clone &lt;repo-url&gt; &amp;&amp; cd pages-seo
+npm install</code></pre>
 
-<h3 id="setup-fork">Step 2 \u2014 Fork the upstream repo</h3>
-<p>We create <code>&lt;your-login&gt;/pages-seo</code> via the GitHub API. If you already have that name taken by a non-fork repo, the installer tells you and asks you to rename it on GitHub first.</p>
+<h3 id="setup-provision">Step 2 \u2014 Point the config at your account</h3>
+<p><code>wrangler.toml</code> carries the Pages project name and the <code>DB</code> binding. The D1 resource and the R2 bucket must exist on your account before the first deploy \u2014 create them once with <code>npx wrangler d1 create</code> and <code>npx wrangler r2 bucket create</code>, then paste the ids into <code>wrangler.toml</code>. <code>wrangler.template.toml</code> is the shape to copy.</p>
 
-<h3 id="setup-cf-app">Step 3 \u2014 Authorise the Cloudflare GitHub App</h3>
-<p>Cloudflare Pages can only see GitHub repos owned by an account that has authorised the <em>Cloudflare Workers and Pages</em> app. The installer attempts to add your new fork to your existing installation automatically (via <code>PUT /user/installations/:id/repositories/:repo_id</code>). If you've never installed the app at all, you'll be sent to <a href="https://github.com/apps/cloudflare-workers-and-pages/installations/new" target="_blank">github.com/apps/cloudflare-workers-and-pages</a> to do that once.</p>
+<h3 id="setup-build">Step 3 \u2014 Build</h3>
+<p><code>npm run build</code> runs four gates in order: mirror check, JSX import check, schema bundle, admin bundle. A green build means the admin SPA and the Functions bundle both match the source.</p>
 
-<h3 id="setup-cf-token">Step 4 \u2014 Cloudflare API token</h3>
-<p>The token link pre-selects six permissions on your account: <code>Cloudflare Pages: Edit</code>, <code>D1: Edit</code>, <code>Workers R2: Edit</code>, <code>Workers AI: Edit</code>, <code>Workers Scripts: Edit</code>, <code>Account Settings: Read</code>. The token is account-scoped (NOT user-API-key-scoped) so the blast radius is minimal \u2014 anyone who steals it can manage Pages/D1/R2/AI on your account, nothing else.</p>
+<h3 id="setup-deploy">Step 4 \u2014 Deploy</h3>
+<p><code>npm run deploy</code> runs <code>deploy.sh</code>, which ships the Pages site and then the cron Worker. It reads the project name from <code>wrangler.toml</code>, so there is nothing to keep in sync by hand.</p>
+<p>If you wire this into Cloudflare Workers Builds, use <code>npm run build</code> as the build command and leave the deploy command empty \u2014 <code>deploy.sh</code> no-ops when <code>CF_PAGES</code> is set, and Pages uploads <code>./public</code> itself.</p>
 
-<h3 id="setup-provision">Step 5 \u2014 Provisioning</h3>
-<p>The installer runs six idempotent steps:</p>
-<ol>
-  <li>Resolve your account id from the token.</li>
-  <li>Create (or reuse) a D1 database named <code>&lt;your-slug&gt;</code>.</li>
-  <li>Create (or reuse) an R2 bucket named <code>&lt;your-slug&gt;-images</code>.</li>
-  <li>Create the Pages project bound to your fork + D1 + R2 + Workers AI.</li>
-  <li>PATCH the project bindings (Cloudflare's POST sometimes silently drops them; we verify and retry).</li>
-  <li>Trigger the first deployment.</li>
-</ol>
-<p>State is saved to the installer's own D1 keyed by <code>(project_slug, token_fingerprint)</code>. If you close the tab mid-install, re-opening <a href="/install">/install</a> and pasting the same token resumes from the last completed step.</p>
+<h3 id="setup-migrations">Step 5 \u2014 Migrations</h3>
+<p>Every migration is additive and idempotent. <code>npm run db:migrate</code> applies the ones that have not run yet; re-running it is safe.</p>
 
-<h3 id="setup-magic-link">Step 6 \u2014 Magic link</h3>
-<p>The installer hands you a one-time URL <code>/admin?setup=&lt;hex&gt;&amp;email=&lt;your-gh-email&gt;</code>. Visit it once to set your admin password. The token is consumed on first POST; re-using it returns 401.</p>
+<h3 id="setup-magic-link">Step 6 \u2014 First visit</h3>
+<p>Open <code>/admin</code> and the setup wizard walks you through Brand DNA \u2192 AI providers \u2192 the 28-day content plan. On the maintainer's deployment the first account is created with a one-time <code>/admin?setup=&lt;hex&gt;&amp;email=\u2026</code> link, which is consumed on first use.</p>
 ` },
       { id: "troubleshooting", title: "Troubleshooting", level: 1, content: `
 <p>Symptom \u2192 cause \u2192 fix. If your symptom isn't here, check the <a href="#errors">error code reference</a> below.</p>
 
 <h3 id="ts-marketing-page">My site shows the maintainer's marketing page</h3>
-<p><strong>Cause:</strong> your fork is stale \u2014 you forked before the marketing/installer code was moved to a separate repo. Cloudflare Pages built the wrong commit.</p>
-<p><strong>Fix:</strong> open <a href="/update">/update</a>, sign in with GitHub, click <em>Sync from upstream</em>, then redeploy. Or rerun <a href="/install">/install</a> with the same slug \u2014 the auto-sync step runs.</p>
+<p><strong>Cause:</strong> your fork is stale \u2014 you forked before the marketing/installer code was moved out. Cloudflare Pages built the wrong commit.</p>
+<p><strong>Fix:</strong> open <a href="/admin#updates">/admin \u2192 Updates</a>, sign in with GitHub, click <em>Sync from upstream</em>, then redeploy. Or <code>git pull</code> in your fork and run <code>npm run deploy</code>.</p>
 
 <h3 id="ts-no-db-binding">/admin shows <code>no_db_binding</code></h3>
 <p><strong>Cause:</strong> Cloudflare Pages occasionally drops D1/R2 bindings during a project update. The site's Functions can't see <code>env.DB</code>.</p>
@@ -27537,20 +24439,12 @@ curl -fsSL https://seo.benjaminb.xyz/install/run.js | node</code></pre>
 <p><strong>Cause:</strong> R2 binding missing (<code>r2_binding_missing</code>), or the image generator hit a provider error and the post shipped without a key.</p>
 <p><strong>Fix:</strong> /admin \u2192 Status (when this page lands) shows R2 health. If R2 is fine, click into the post in the calendar; if <code>hero_image_key</code> is null, click <em>Regenerate image</em>. If you're on cover-mode the hero is server-rendered from <code>/cover/&lt;slug&gt;.svg</code> \u2014 no per-post storage needed.</p>
 
-<h3 id="ts-install-cf-app">"Internal issue with your Cloudflare Pages Git installation"</h3>
-<p><strong>Cause:</strong> Cloudflare can't see your fork because the <em>Cloudflare Workers and Pages</em> GitHub App either isn't installed or doesn't have access to the new fork.</p>
-<p><strong>Fix:</strong> click the <em>Manage permissions</em> link in the install failure pane. You'll land on github.com pre-narrowed to your new fork; tick it, save. Retry install \u2014 it'll resume from where it stopped.</p>
-
 <h3 id="ts-gh-rate-limit">"GitHub API rate limit exceeded"</h3>
-<p><strong>Cause:</strong> the unauthenticated GitHub API has a 60-req/hr-per-IP cap, and the installer uses it for upstream commit lookups.</p>
+<p><strong>Cause:</strong> the unauthenticated GitHub API has a 60-req/hr-per-IP cap, and the in-app Updates tab uses it for upstream commit lookups.</p>
 <p><strong>Fix:</strong> wait an hour. Or sign in with GitHub first \u2014 the authenticated cap is 5000/hr.</p>
-
-<h3 id="ts-stuck-install">Install tab crashed mid-flow</h3>
-<p><strong>Cause:</strong> network blip, browser refresh, or just closing the tab.</p>
-<p><strong>Fix:</strong> reopen <a href="/install">/install</a> in the same browser. The installer remembers the slug + token fingerprint and resumes from the last completed step. If you used a different browser, paste the same CF token \u2014 state is keyed by token fingerprint.</p>
 ` },
       { id: "errors", title: "Error code reference", level: 1, content: `
-<p>Every error code emitted by the install and admin APIs. Searchable by URL anchor (e.g. <code>/docs#err-wrong_parent</code>).</p>
+<p>Every error code emitted by the admin APIs. Searchable by URL anchor (e.g. <code>/docs#err-wrong_parent</code>).</p>
 
 <dl class="err-dl">
   <dt id="err-bad_json"><code>bad_json</code></dt>
@@ -27631,10 +24525,10 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
   <dd><strong>Cause:</strong> Direct-Upload deploys (the default for CLI installs) don't update D1's <code>installed_sha</code> setting because there's no GitHub webhook to fire. The deployed code IS up to date \u2014 only the marker is stale. <strong>Fix:</strong> click <em>Mark as up to date</em> in <code>/admin \u2192 System \u2192 Updates</code>, OR <code>POST /api/admin/update/dismiss</code> with the admin bearer token. Cosmetic, never blocks anything.</dd>
 
   <dt id="err-cf-token-missing-scope"><code>Cloudflare API token missing scope</code></dt>
-  <dd><strong>Cause:</strong> the CF API token used by the browser installer / repair flow doesn't have one of the six required permissions. <strong>Fix:</strong> recreate the token at <a href="https://dash.cloudflare.com/profile/api-tokens" rel="noopener" target="_blank">dash.cloudflare.com/profile/api-tokens</a> with exactly: Cloudflare Pages: Edit, D1: Edit, Workers R2: Edit, Workers AI: Edit, Workers Scripts: Edit, Account Settings: Read. The token-create link on <code>/install</code> pre-selects these.</dd>
+  <dd><strong>Cause:</strong> the CF API token configured for the self-heal flow doesn't have one of the six required permissions. <strong>Fix:</strong> recreate the token at <a href="https://dash.cloudflare.com/profile/api-tokens" rel="noopener" target="_blank">dash.cloudflare.com/profile/api-tokens</a> with exactly: Cloudflare Pages: Edit, D1: Edit, Workers R2: Edit, Workers AI: Edit, Workers Scripts: Edit, Account Settings: Read, then update the <code>CF_API_TOKEN</code> secret.</dd>
 
   <dt id="err-deploy-button-auth-10000"><code>Authentication error [code: 10000]</code> (Deploy to Cloudflare button)</dt>
-  <dd><strong>Cause:</strong> the API token Cloudflare auto-generates for Workers Builds on new projects doesn't include <code>Pages:Edit</code> scope, so the first deploy fails. Cloudflare-side limitation of the 1-click button \u2014 not fixable from the repo. <strong>Status:</strong> we've removed the 1-click button from <a href="/install">/install</a> until Cloudflare ships a fix. <strong>If you already hit this:</strong> finish in the dashboard. Create a fresh token at <a href="https://dash.cloudflare.com/profile/api-tokens" rel="noopener" target="_blank">dash.cloudflare.com/profile/api-tokens</a> with the six Account permissions (Pages, D1, R2, Workers AI, Workers Scripts, Account Settings). Then in your Pages project: Settings \u2192 Build &amp; deployments \u2192 API token \u2192 paste it. Re-trigger the deploy. Or scrap the half-broken project and re-install via <a href="/install">/install</a>'s browser flow \u2014 that one actually works end-to-end.</dd>
+  <dd><strong>Cause:</strong> the API token Cloudflare auto-generates for Workers Builds on new projects doesn't include <code>Pages:Edit</code> scope, so the first deploy fails. Cloudflare-side limitation \u2014 not fixable from the repo. <strong>Fix:</strong> in your Pages project, Settings \u2192 Build &amp; deployments \u2192 API token, paste a token with the six Account permissions (Pages, D1, R2, Workers AI, Workers Scripts, Account Settings), then re-trigger the deploy. Or skip the build-time token entirely and deploy from your own machine with <code>npm run deploy</code>.</dd>
 
   <dt id="err-pages-deploy-failed"><code>Pages deploy failed</code></dt>
   <dd><strong>Cause:</strong> the most recent deployment attempt errored \u2014 usually a Functions bundle size cap (~10MB) or a syntax error in code pushed from a custom fork. <strong>Fix:</strong> <code>wrangler pages deployment list --project-name=&lt;slug&gt;</code> to see the failed deployment id, then open the build log link in the Cloudflare dashboard. If the issue is bundle size, check that <code>node_modules/</code> isn't being uploaded \u2014 only <code>public/</code> + <code>functions/</code> ship.</dd>
@@ -27643,20 +24537,17 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
   <dd><strong>Cause:</strong> R2 bucket was deleted or renamed in the dashboard; hero images return 404 but the site otherwise works. <strong>Fix:</strong> re-create or rename the bucket back to <code>&lt;slug&gt;-images</code>, OR update the binding: dashboard \u2192 Pages \u2192 your project \u2192 Settings \u2192 Functions \u2192 R2 bindings. The schema and posts table are unaffected \u2014 images regenerate on next cron tick.</dd>
 
   <dt id="err-cf-rate-limit"><code>Cloudflare rate-limited</code> (during install / repair)</dt>
-  <dd><strong>Cause:</strong> the CF API enforces ~1200 requests per 5-minute window per token. Re-running the installer repeatedly can hit it. <strong>Fix:</strong> wait 5 minutes. The installer is idempotent \u2014 re-run with the same slug and it resumes from where it stopped.</dd>
+  <dd><strong>Cause:</strong> the CF API enforces ~1200 requests per 5-minute window per token. Repeated setup or sync calls can hit it. <strong>Fix:</strong> wait 5 minutes. Both setup and sync are idempotent \u2014 re-run and they resume from where they stopped.</dd>
 </dl>
 ` },
       { id: "update", title: "Updating your install", level: 1, content: `
-<p>Two ways to pull the latest pages-seo into your fork + redeploy:</p>
+<p>Pull the latest pages-seo into your fork + redeploy:</p>
 
 <h3>In /admin \u2192 Updates</h3>
-<p>The Updates tab compares your installed commit SHA to upstream <code>main</code> and shows a diff summary. Click <em>Sync &amp; deploy</em> to merge upstream into your fork and trigger a Pages rebuild. Works for browser-installed sites (which have a GitHub fork to sync from). CLI installs see a message explaining how to <code>git pull</code> + <code>wrangler pages deploy</code> manually.</p>
-
-<h3>At seo.benjaminb.xyz/update</h3>
-<p>Hosted equivalent \u2014 useful if your /admin is broken. Sign in with GitHub, we look up your fork automatically, show the diff, sync, and trigger a deploy. Works on any pages-seo install on any Cloudflare account.</p>
+<p>The Updates tab compares your installed commit SHA to upstream <code>main</code> and shows a diff summary. Click <em>Sync &amp; deploy</em> to merge upstream into your fork and trigger a Pages rebuild. Works for browser-installed sites (which have a GitHub fork to sync from). CLI installs see a message explaining how to <code>git pull</code> + <code>npm run deploy</code> manually.</p>
 
 <h3>If sync fails with merge conflicts</h3>
-<p>You've edited the fork directly. Open your fork on GitHub, resolve the conflict in the PR our sync attempt created, then retry. The installer never edits files in your fork \u2014 conflicts only happen if you did.</p>
+<p>You've edited the fork directly. Open your fork on GitHub, resolve the conflict in the PR our sync attempt created, then retry. The sync never edits files in your fork \u2014 conflicts only happen if you did.</p>
 ` },
       { id: "admin-tour", title: "Admin tour", level: 1, content: `
 <p>Every tab in /admin and what it's for.</p>
@@ -27754,7 +24645,7 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
     ];
     __name(renderToc, "renderToc");
     __name(renderSections, "renderSections");
-    onRequestGet97 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestGet87 = /* @__PURE__ */ __name(async ({ request }) => {
       const url = new URL(request.url);
       const host = url.hostname;
       const body = `<!doctype html>
@@ -27817,8 +24708,8 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
 <header class="nav">
   <a class="brand" href="/">pages-seo</a>
   <nav>
-    <a href="/install">Install</a>
-    <a href="/update">Update</a>
+    <a href="/admin">Admin</a>
+    <a href="/admin#updates">Update</a>
     <a href="/docs" aria-current="page">Docs</a>
   </nav>
 </header>
@@ -27851,13 +24742,13 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
 });
 
 // embed/index.js
-var VALID_THEME, onRequestGet98;
+var VALID_THEME, onRequestGet88;
 var init_embed = __esm({
   "embed/index.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_util();
     VALID_THEME = ["auto", "light", "dark"];
-    onRequestGet98 = /* @__PURE__ */ __name(async ({ request }) => {
+    onRequestGet88 = /* @__PURE__ */ __name(async ({ request }) => {
       const url = new URL(request.url);
       const count = Math.min(50, Math.max(1, parseInt(url.searchParams.get("count"), 10) || 5));
       const title = String(url.searchParams.get("title") || "").trim().slice(0, 100);
@@ -27900,12 +24791,12 @@ var init_embed = __esm({
 });
 
 // robots.txt.js
-var onRequestGet99;
+var onRequestGet89;
 var init_robots_txt = __esm({
   "robots.txt.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_project_scope();
-    onRequestGet99 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet89 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const host = requestHost(request);
       const project = await resolveProjectByHost(env, host).catch(() => null);
       const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
@@ -27947,11 +24838,11 @@ Sitemap: https://${sitemapHost}/sitemap.xml
 });
 
 // rss.xml.js
-var onRequestGet100;
+var onRequestGet90;
 var init_rss_xml2 = __esm({
   "rss.xml.js"() {
-    init_functionsRoutes_0_692476336876716();
-    onRequestGet100 = /* @__PURE__ */ __name(async () => new Response(null, {
+    init_functionsRoutes_0_5310878456197219();
+    onRequestGet90 = /* @__PURE__ */ __name(async () => new Response(null, {
       status: 301,
       headers: { location: "/feed.xml", "cache-control": "public, max-age=3600" }
     }), "onRequestGet");
@@ -27959,13 +24850,13 @@ var init_rss_xml2 = __esm({
 });
 
 // sitemap-pages.xml.js
-var onRequestGet101;
+var onRequestGet91;
 var init_sitemap_pages_xml2 = __esm({
   "sitemap-pages.xml.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_sitemap_xml();
     init_util();
-    onRequestGet101 = /* @__PURE__ */ __name((ctx) => edgeCached(
+    onRequestGet91 = /* @__PURE__ */ __name((ctx) => edgeCached(
       ctx.request,
       ctx.waitUntil,
       () => pagesUrlset({ env: ctx.env, request: ctx.request, part: new URL(ctx.request.url).searchParams.get("part") || 1 }),
@@ -27975,13 +24866,13 @@ var init_sitemap_pages_xml2 = __esm({
 });
 
 // widget.js.js
-var onRequestGet102;
+var onRequestGet92;
 var init_widget_js = __esm({
   "widget.js.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_widget_render();
     init_site_identity();
-    onRequestGet102 = /* @__PURE__ */ __name(async ({ env, request }) => {
+    onRequestGet92 = /* @__PURE__ */ __name(async ({ env, request }) => {
       const url = new URL(request.url);
       const apiBase = `${url.protocol}//${url.host}`;
       const id = await getSiteIdentity(env);
@@ -28002,7 +24893,7 @@ var init_widget_js = __esm({
 var onRequest;
 var init_middleware = __esm({
   "admin/_middleware.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     onRequest = /* @__PURE__ */ __name(async ({ request, env, next }) => {
       const url = new URL(request.url);
       if (url.pathname === "/admin" || url.pathname === "/admin/") {
@@ -28020,12 +24911,12 @@ var init_middleware = __esm({
 });
 
 // [indexnow_key].txt.js
-var onRequestGet103;
+var onRequestGet93;
 var init_indexnow_key_txt = __esm({
   "[indexnow_key].txt.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_indexnow_key();
-    onRequestGet103 = /* @__PURE__ */ __name(async ({ params, env }) => {
+    onRequestGet93 = /* @__PURE__ */ __name(async ({ params, env }) => {
       const requested = String(params.indexnow_key || "").toLowerCase();
       const expected = (await getIndexNowKey(env)).toLowerCase();
       if (!expected || requested !== expected) {
@@ -28054,45 +24945,33 @@ async function isMaintainer(env) {
 }
 var init_maintainer = __esm({
   "_lib/maintainer.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_settings();
     __name(isMaintainer, "isMaintainer");
   }
 });
 
 // _middleware.js
-var INSTALLER_RX, INSTALLER_API_RX, onRequest2;
+var onRequest2;
 var init_middleware2 = __esm({
   "_middleware.js"() {
-    init_functionsRoutes_0_692476336876716();
+    init_functionsRoutes_0_5310878456197219();
     init_maintainer();
     init_project_scope();
-    INSTALLER_RX = /^\/(install|update)(\/.*)?$/;
-    INSTALLER_API_RX = /^\/api\/(install|update)(\/.*)?$/;
     onRequest2 = /* @__PURE__ */ __name(async ({ request, env, next }) => {
       const url = new URL(request.url);
       const path = url.pathname;
-      const isInstallerSurface = INSTALLER_RX.test(path) || INSTALLER_API_RX.test(path);
       const isRoot = path === "/" || path === "/index.html";
-      if (!isInstallerSurface && !isRoot) {
+      if (!isRoot) {
         return next();
       }
-      if (isRoot) {
-        const host = requestHost(request);
-        const customProject = await resolveProjectByHost(env, host, path);
-        if (customProject?.custom_domain && normalizeHost(customProject.custom_domain) === normalizeHost(host)) {
-          return Response.redirect(new URL("/blog", request.url).toString(), 302);
-        }
+      const host = requestHost(request);
+      const customProject = await resolveProjectByHost(env, host, path);
+      if (customProject?.custom_domain && normalizeHost(customProject.custom_domain) === normalizeHost(host)) {
+        return Response.redirect(new URL("/blog", request.url).toString(), 302);
       }
-      const maintainer = await isMaintainer(env);
-      if (maintainer) {
+      if (await isMaintainer(env)) {
         return next();
-      }
-      if (isInstallerSurface) {
-        return new Response("Not Found", {
-          status: 404,
-          headers: { "content-type": "text/plain; charset=utf-8" }
-        });
       }
       if (env?.ASSETS?.fetch) {
         const signin = await env.ASSETS.fetch(new URL("/sign-in.html", url));
@@ -28102,15 +24981,15 @@ var init_middleware2 = __esm({
           return new Response(signin.body, { status: signin.status, headers });
         }
       }
-      return Response.redirect(new URL("/admin", url).toString(), 302);
+      return Response.redirect(new URL("/admin", request.url).toString(), 302);
     }, "onRequest");
   }
 });
 
-// ../.wrangler/tmp/pages-UlEm2Z/functionsRoutes-0.692476336876716.mjs
+// ../.wrangler/tmp/pages-djVTrq/functionsRoutes-0.5310878456197219.mjs
 var routes;
-var init_functionsRoutes_0_692476336876716 = __esm({
-  "../.wrangler/tmp/pages-UlEm2Z/functionsRoutes-0.692476336876716.mjs"() {
+var init_functionsRoutes_0_5310878456197219 = __esm({
+  "../.wrangler/tmp/pages-djVTrq/functionsRoutes-0.5310878456197219.mjs"() {
     init_export();
     init_import();
     init_sync();
@@ -28189,15 +25068,6 @@ var init_functionsRoutes_0_692476336876716 = __esm({
     init_publish2();
     init_templates2();
     init_website();
-    init_delete2();
-    init_list3();
-    init_cf_app();
-    init_fork();
-    init_callback();
-    init_repos();
-    init_start2();
-    init_status();
-    init_sync2();
     init_id();
     init_id();
     init_id();
@@ -28251,7 +25121,7 @@ var init_functionsRoutes_0_692476336876716 = __esm({
     init_settings2();
     init_social();
     init_social();
-    init_status2();
+    init_status();
     init_topics2();
     init_topics2();
     init_trend_discover();
@@ -28264,31 +25134,21 @@ var init_functionsRoutes_0_692476336876716 = __esm({
     init_users();
     init_users();
     init_whoami();
-    init_diagnose();
     init_feedback();
     init_leads();
     init_leads();
     init_views();
     init_views();
-    init_check();
-    init_deploy_status();
-    init_projects3();
-    init_provision();
-    init_provision();
-    init_redeploy();
     init_latest_post();
     init_platform_stats();
     init_register();
     init_send_otp();
     init_showcase();
-    init_diff();
-    init_rebuild();
     init_id2();
     init_page2();
     init_slug3();
     init_pillar2();
     init_slug5();
-    init_ai_prompt();
     init_changes();
     init_github_stats();
     init_health();
@@ -28872,69 +25732,6 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         modules: [onRequestPost50]
       },
       {
-        routePath: "/api/install/d1/delete",
-        mountPath: "/api/install/d1",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost51]
-      },
-      {
-        routePath: "/api/install/d1/list",
-        mountPath: "/api/install/d1",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost52]
-      },
-      {
-        routePath: "/api/install/github/cf-app",
-        mountPath: "/api/install/github",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet22]
-      },
-      {
-        routePath: "/api/install/github/fork",
-        mountPath: "/api/install/github",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost53]
-      },
-      {
-        routePath: "/api/update/github/callback",
-        mountPath: "/api/update/github",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet23]
-      },
-      {
-        routePath: "/api/update/github/repos",
-        mountPath: "/api/update/github",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet24]
-      },
-      {
-        routePath: "/api/update/github/start",
-        mountPath: "/api/update/github",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet25]
-      },
-      {
-        routePath: "/api/update/github/status",
-        mountPath: "/api/update/github",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet26]
-      },
-      {
-        routePath: "/api/update/github/sync",
-        mountPath: "/api/update/github",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost54]
-      },
-      {
         routePath: "/api/admin/projects/:id",
         mountPath: "/api/admin/projects",
         method: "DELETE",
@@ -28946,7 +25743,7 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin/projects",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet27]
+        modules: [onRequestGet22]
       },
       {
         routePath: "/api/admin/projects/:id",
@@ -28960,21 +25757,21 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/public/post",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet28]
+        modules: [onRequestGet23]
       },
       {
         routePath: "/:project/blog/page/:page",
         mountPath: "/:project/blog/page",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet30]
+        modules: [onRequestGet25]
       },
       {
         routePath: "/api/admin/activation",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet31]
+        modules: [onRequestGet26]
       },
       {
         routePath: "/api/admin/aliases",
@@ -28988,7 +25785,7 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin/aliases",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet32]
+        modules: [onRequestGet27]
       },
       {
         routePath: "/api/admin/aliases",
@@ -29002,42 +25799,42 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin/aliases",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost55]
+        modules: [onRequestPost51]
       },
       {
         routePath: "/api/admin/analytics",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet33]
+        modules: [onRequestGet28]
       },
       {
         routePath: "/api/admin/attention",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet34]
+        modules: [onRequestGet29]
       },
       {
         routePath: "/api/admin/audit",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet35]
+        modules: [onRequestGet30]
       },
       {
         routePath: "/api/admin/brand-dna",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet36]
+        modules: [onRequestGet31]
       },
       {
         routePath: "/api/admin/brand-dna",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost56]
+        modules: [onRequestPost52]
       },
       {
         routePath: "/api/admin/brand-dna",
@@ -29051,7 +25848,7 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost57]
+        modules: [onRequestPost53]
       },
       {
         routePath: "/api/admin/calendar",
@@ -29065,7 +25862,7 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin/calendar",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet37]
+        modules: [onRequestGet32]
       },
       {
         routePath: "/api/admin/calendar",
@@ -29079,21 +25876,21 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin/calendar",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost58]
+        modules: [onRequestPost54]
       },
       {
         routePath: "/api/admin/competitors",
         mountPath: "/api/admin/competitors",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet38]
+        modules: [onRequestGet33]
       },
       {
         routePath: "/api/admin/embed-preview",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet39]
+        modules: [onRequestGet34]
       },
       {
         routePath: "/api/admin/embeds",
@@ -29107,14 +25904,14 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet40]
+        modules: [onRequestGet35]
       },
       {
         routePath: "/api/admin/embeds",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost59]
+        modules: [onRequestPost55]
       },
       {
         routePath: "/api/admin/embeds",
@@ -29135,63 +25932,63 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin/google-search-console",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet41]
+        modules: [onRequestGet36]
       },
       {
         routePath: "/api/admin/google-search-console",
         mountPath: "/api/admin/google-search-console",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost60]
+        modules: [onRequestPost56]
       },
       {
         routePath: "/api/admin/indexnow-ping",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost61]
+        modules: [onRequestPost57]
       },
       {
         routePath: "/api/admin/insights",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet42]
+        modules: [onRequestGet37]
       },
       {
         routePath: "/api/admin/login",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost62]
+        modules: [onRequestPost58]
       },
       {
         routePath: "/api/admin/logout",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost63]
+        modules: [onRequestPost59]
       },
       {
         routePath: "/api/admin/migrate",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet43]
+        modules: [onRequestGet38]
       },
       {
         routePath: "/api/admin/migrate",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost64]
+        modules: [onRequestPost60]
       },
       {
         routePath: "/api/admin/notices",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet44]
+        modules: [onRequestGet39]
       },
       {
         routePath: "/api/admin/onboarding",
@@ -29205,56 +26002,56 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet45]
+        modules: [onRequestGet40]
       },
       {
         routePath: "/api/admin/onboarding",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost65]
+        modules: [onRequestPost61]
       },
       {
         routePath: "/api/admin/preview-sample",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost66]
+        modules: [onRequestPost62]
       },
       {
         routePath: "/api/admin/pricing",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet46]
+        modules: [onRequestGet41]
       },
       {
         routePath: "/api/admin/pricing",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost67]
+        modules: [onRequestPost63]
       },
       {
         routePath: "/api/admin/projects",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet47]
+        modules: [onRequestGet42]
       },
       {
         routePath: "/api/admin/projects",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost68]
+        modules: [onRequestPost64]
       },
       {
         routePath: "/api/admin/providers",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet48]
+        modules: [onRequestGet43]
       },
       {
         routePath: "/api/admin/secrets",
@@ -29268,21 +26065,21 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet49]
+        modules: [onRequestGet44]
       },
       {
         routePath: "/api/admin/secrets",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost69]
+        modules: [onRequestPost65]
       },
       {
         routePath: "/api/admin/settings",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet50]
+        modules: [onRequestGet45]
       },
       {
         routePath: "/api/admin/settings",
@@ -29296,42 +26093,42 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet51]
+        modules: [onRequestGet46]
       },
       {
         routePath: "/api/admin/social",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost70]
+        modules: [onRequestPost66]
       },
       {
         routePath: "/api/admin/status",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet52]
+        modules: [onRequestGet47]
       },
       {
         routePath: "/api/admin/topics",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet53]
+        modules: [onRequestGet48]
       },
       {
         routePath: "/api/admin/topics",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost71]
+        modules: [onRequestPost67]
       },
       {
         routePath: "/api/admin/trend-discover",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet54]
+        modules: [onRequestGet49]
       },
       {
         routePath: "/api/admin/trend-discover",
@@ -29345,21 +26142,21 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost72]
+        modules: [onRequestPost68]
       },
       {
         routePath: "/api/admin/update",
         mountPath: "/api/admin/update",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet55]
+        modules: [onRequestGet50]
       },
       {
         routePath: "/api/admin/usage",
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet56]
+        modules: [onRequestGet51]
       },
       {
         routePath: "/api/admin/users",
@@ -29373,14 +26170,14 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet57]
+        modules: [onRequestGet52]
       },
       {
         routePath: "/api/admin/users",
         mountPath: "/api/admin",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost73]
+        modules: [onRequestPost69]
       },
       {
         routePath: "/api/admin/users",
@@ -29394,406 +26191,336 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/api/admin",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet58]
-      },
-      {
-        routePath: "/api/ai-prompt/diagnose",
-        mountPath: "/api/ai-prompt",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet59]
+        modules: [onRequestGet53]
       },
       {
         routePath: "/api/blog/feedback",
         mountPath: "/api/blog",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost74]
+        modules: [onRequestPost70]
       },
       {
         routePath: "/api/blog/leads",
         mountPath: "/api/blog",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet60]
+        modules: [onRequestGet54]
       },
       {
         routePath: "/api/blog/leads",
         mountPath: "/api/blog",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost75]
+        modules: [onRequestPost71]
       },
       {
         routePath: "/api/blog/views",
         mountPath: "/api/blog",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet61]
+        modules: [onRequestGet55]
       },
       {
         routePath: "/api/blog/views",
         mountPath: "/api/blog",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost76]
-      },
-      {
-        routePath: "/api/install/check",
-        mountPath: "/api/install",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet62]
-      },
-      {
-        routePath: "/api/install/deploy-status",
-        mountPath: "/api/install",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost77]
-      },
-      {
-        routePath: "/api/install/projects",
-        mountPath: "/api/install",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost78]
-      },
-      {
-        routePath: "/api/install/provision",
-        mountPath: "/api/install",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet63]
-      },
-      {
-        routePath: "/api/install/provision",
-        mountPath: "/api/install",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost79]
-      },
-      {
-        routePath: "/api/install/redeploy",
-        mountPath: "/api/install",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost80]
+        modules: [onRequestPost72]
       },
       {
         routePath: "/api/public/latest-post",
         mountPath: "/api/public",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet64]
+        modules: [onRequestGet56]
       },
       {
         routePath: "/api/public/platform-stats",
         mountPath: "/api/public",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet65]
+        modules: [onRequestGet57]
       },
       {
         routePath: "/api/public/register",
         mountPath: "/api/public",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost81]
+        modules: [onRequestPost73]
       },
       {
         routePath: "/api/public/send-otp",
         mountPath: "/api/public",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost82]
+        modules: [onRequestPost74]
       },
       {
         routePath: "/api/public/showcase",
         mountPath: "/api/public",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet66]
-      },
-      {
-        routePath: "/api/update/diff",
-        mountPath: "/api/update",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet67]
-      },
-      {
-        routePath: "/api/update/rebuild",
-        mountPath: "/api/update",
-        method: "POST",
-        middlewares: [],
-        modules: [onRequestPost83]
+        modules: [onRequestGet58]
       },
       {
         routePath: "/api/embed/:id",
         mountPath: "/api/embed",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet68]
+        modules: [onRequestGet59]
       },
       {
         routePath: "/blog/page/:page",
         mountPath: "/blog/page",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet69]
+        modules: [onRequestGet60]
       },
       {
         routePath: "/:project/blog/:slug",
         mountPath: "/:project/blog",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet71]
+        modules: [onRequestGet62]
       },
       {
         routePath: "/:project/hubs/:pillar",
         mountPath: "/:project/hubs",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet73]
+        modules: [onRequestGet64]
       },
       {
         routePath: "/:project/p/:slug",
         mountPath: "/:project/p",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet75]
-      },
-      {
-        routePath: "/api/ai-prompt",
-        mountPath: "/api",
-        method: "GET",
-        middlewares: [],
-        modules: [onRequestGet76]
+        modules: [onRequestGet66]
       },
       {
         routePath: "/api/changes",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet77]
+        modules: [onRequestGet67]
       },
       {
         routePath: "/api/github-stats",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet78]
+        modules: [onRequestGet68]
       },
       {
         routePath: "/api/health",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet79]
+        modules: [onRequestGet69]
       },
       {
         routePath: "/api/repair-bindings",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet80]
+        modules: [onRequestGet70]
       },
       {
         routePath: "/api/repair-bindings",
         mountPath: "/api",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost84]
+        modules: [onRequestPost75]
       },
       {
         routePath: "/api/setup",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet81]
+        modules: [onRequestGet71]
       },
       {
         routePath: "/api/setup",
         mountPath: "/api",
         method: "POST",
         middlewares: [],
-        modules: [onRequestPost85]
+        modules: [onRequestPost76]
       },
       {
         routePath: "/api/version",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet82]
+        modules: [onRequestGet72]
       },
       {
         routePath: "/api/widget",
         mountPath: "/api",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet83]
+        modules: [onRequestGet73]
       },
       {
         routePath: "/tools/seo-check",
         mountPath: "/tools",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet84]
+        modules: [onRequestGet74]
       },
       {
         routePath: "/blog/:slug",
         mountPath: "/blog",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet70]
+        modules: [onRequestGet61]
       },
       {
         routePath: "/cover/:slug.svg",
         mountPath: "/cover",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet85]
+        modules: [onRequestGet75]
       },
       {
         routePath: "/hubs/:pillar",
         mountPath: "/hubs",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet72]
+        modules: [onRequestGet63]
       },
       {
         routePath: "/og/:slug.svg",
         mountPath: "/og",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet86]
+        modules: [onRequestGet76]
       },
       {
         routePath: "/p/:slug",
         mountPath: "/p",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet74]
+        modules: [onRequestGet65]
       },
       {
         routePath: "/image/:path*",
         mountPath: "/image",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet87]
+        modules: [onRequestGet77]
       },
       {
         routePath: "/:project/blog",
         mountPath: "/:project/blog",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet88]
+        modules: [onRequestGet78]
       },
       {
         routePath: "/:project/feed.xml",
         mountPath: "/:project",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet90]
+        modules: [onRequestGet80]
       },
       {
         routePath: "/:project/hubs",
         mountPath: "/:project/hubs",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet92]
+        modules: [onRequestGet82]
       },
       {
         routePath: "/:project/rss.xml",
         mountPath: "/:project",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet93]
+        modules: [onRequestGet83]
       },
       {
         routePath: "/:project/sitemap-pages.xml",
         mountPath: "/:project",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet95]
+        modules: [onRequestGet85]
       },
       {
         routePath: "/:project/sitemap.xml",
         mountPath: "/:project",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet96]
+        modules: [onRequestGet86]
       },
       {
         routePath: "/blog",
         mountPath: "/blog",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet29]
+        modules: [onRequestGet24]
       },
       {
         routePath: "/docs",
         mountPath: "/docs",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet97]
+        modules: [onRequestGet87]
       },
       {
         routePath: "/embed",
         mountPath: "/embed",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet98]
+        modules: [onRequestGet88]
       },
       {
         routePath: "/feed.xml",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet89]
+        modules: [onRequestGet79]
       },
       {
         routePath: "/hubs",
         mountPath: "/hubs",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet91]
+        modules: [onRequestGet81]
       },
       {
         routePath: "/robots.txt",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet99]
+        modules: [onRequestGet89]
       },
       {
         routePath: "/rss.xml",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet100]
+        modules: [onRequestGet90]
       },
       {
         routePath: "/sitemap-pages.xml",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet101]
+        modules: [onRequestGet91]
       },
       {
         routePath: "/sitemap.xml",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet94]
+        modules: [onRequestGet84]
       },
       {
         routePath: "/widget.js",
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet102]
+        modules: [onRequestGet92]
       },
       {
         routePath: "/admin",
@@ -29807,7 +26534,7 @@ var init_functionsRoutes_0_692476336876716 = __esm({
         mountPath: "/",
         method: "GET",
         middlewares: [],
-        modules: [onRequestGet103]
+        modules: [onRequestGet93]
       },
       {
         routePath: "/",
@@ -29821,10 +26548,10 @@ var init_functionsRoutes_0_692476336876716 = __esm({
 });
 
 // ../node_modules/.pnpm/wrangler@4.136.3/node_modules/wrangler/templates/pages-template-worker.ts
-init_functionsRoutes_0_692476336876716();
+init_functionsRoutes_0_5310878456197219();
 
 // ../node_modules/.pnpm/path-to-regexp@6.3.0/node_modules/path-to-regexp/dist.es2015/index.js
-init_functionsRoutes_0_692476336876716();
+init_functionsRoutes_0_5310878456197219();
 function lexer(str) {
   var tokens = [];
   var i = 0;
