@@ -1,25 +1,56 @@
 :root {
-  /* Paper. Tinted a hair toward the brand hue so a white page never
-     reads as an empty container, but far under the threshold where the
-     warmth becomes a colour. */
-  --bg: #faf8f4;
-  --bg-2: #f2eee6;
+  /* Paper. Every tier below was measured against this pair with WCAG 2.1
+     rather than picked by eye. A paler page made the hairlines vanish
+     (--line sat at 1.24:1, --line-strong at 1.68) and pushed the brand
+     orange to 3.49:1, so no surface read as its own surface. The paper
+     is warm enough to still feel like paper, dark enough that every
+     text tier clears 4.5:1 and every control edge clears 3:1. The
+     measured ratios are pinned in scripts/check-contrast.js, which
+     exits non-zero if a token drifts back. */
+  --bg: #eeeae0;
+  --bg-2: #e3ded1;
   --surface: #ffffff;
-  --ink: #14140f;
-  --ink-2: #35352c;
-  --muted: #5c5c50;
-  --muted-2: #6f6f61;
-  --line: #e4e0d6;
-  --line-strong: #c6c2b5;
-  --brand: #e05a2b;
-  /* The brand orange is a large-format colour: 3.5:1 on paper, fine
-     for a 40px headline or a filled block, a fail for the 11px mono
-     topic labels it also dresses. This darker step is the same hue
-     and clears 4.5:1, so small text in the accent stays readable. */
-  --brand-text: #b8400f;
-  --brand-light: #fff4ef;
-  --brand-dark: #c43d10;
-  --link: #1a6dd4;
+  --ink: #0c0c0a;         /* 16.30:1 on --bg */
+  --ink-2: #2b2b23;       /* 11.87:1 */
+  --muted: #4b4b3f;       /*  7.35:1 */
+  --muted-2: #5c5c4e;     /*  5.65:1 on --bg, 5.05:1 on --bg-2 */
+  --line: #c5bfac;        /*  1.53:1 — separator hairline */
+  --line-strong: #807a65; /*  3.81:1 — a control edge, e.g. a field's underline */
+
+  /* Three accent steps, because one orange cannot be both a fill that
+     takes white label text and type that has to clear 4.5:1 on paper.
+     Binding both jobs to --brand is what put the brand at 3.49:1
+     everywhere it was used as small text. */
+  --brand: #e05a2b;          /* decoration only — never carries a label */
+  --brand-fill: #b8480f;     /* filled blocks */
+  --on-brand: #ffffff;       /* label on --brand-fill; 5.29:1 here */
+  --brand-ink: #9c3306;      /* accent text; 6.05:1 on --bg, 5.41:1 on --bg-2 */
+  --brand-light: #f7ece5;
+  --brand-dark: #9c3306;     /* hover fill; white label 7.27:1 */
+  --link: #1657ad;           /*  5.83:1 */
+
+  /* Status tones. A neutral archive has exactly three things to say
+     about a post, so the chip palette is three hues, not six. */
+  --fail: #a8231c;       /* 5.35:1 on --bg-2 */
+  --warn: #8a5200;       /* 4.76:1 */
+  --pass: #1a6a3b;       /* 4.93:1 */
+
+  /* Share targets. Naming the platform is the whole point of these two,
+     so the brand hues stay — but the literal hexes measured 3.99:1 and
+     4.48:1 on paper and 4.39:1 and 3.91:1 in the dark scheme. Each is
+     the same hue, stepped until it clears 4.5:1 on both grounds. */
+  --share-fb: #0b4fa8;   /* 6.90:1 on --bg */
+  --share-zalo: #0047b3; /* 7.29:1 on --bg */
+
+  /* The ink plate. The footer and the ink buttons are a *printed* dark
+     mass, not this theme's dark mode — they keep these values in both
+     schemes. They used to read --ink, which inverted them in dark mode
+     where --ink is the light tier: a white slab with white type. */
+  --plate: #0c0c0a;
+  --plate-ink-1: #c9c7be;  /* 11.56:1 on --plate */
+  --plate-ink-2: #a3a198;  /*  7.56:1 */
+  --plate-ink-3: #7e7c74;  /*  4.68:1 */
+
   --max: 720px;
   --max-wide: 1080px;
   --radius: 10px;
@@ -42,20 +73,39 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #13130f;
-    --bg-2: #1c1c17;
-    --surface: #201f1a;
-    --ink: #f2f0e9;
-    --ink-2: #dedbd0;
-    --muted: #a3a294;
-    --muted-2: #8b8a7d;
-    --line: #302f28;
-    --line-strong: #43423a;
-    --brand: #ff7a4d;
-    --brand-text: #ff9a76;
+    --bg: #141310;
+    --bg-2: #1e1d19;
+    --surface: #26251f;
+    --ink: #f4f2eb;         /* 16.58:1 on --bg */
+    --ink-2: #e2dfd4;       /* 13.92:1 */
+    --muted: #b0afa2;       /*  8.40:1 */
+    --muted-2: #9a998c;     /*  6.47:1 on --bg, 5.87:1 on --bg-2 */
+    --line: #3a3830;        /*  1.58:1 */
+    --line-strong: #6e6c5e; /*  3.19:1 on --bg-2 */
+
+    /* The accent is asymmetric here, and deliberately. On a dark
+       ground the light orange already clears 4.5:1 as type, so there
+       is no reason to darken it for text — and darkening it would
+       break the one place it is a fill with a label, because white on
+       #ff7a4d is only 2.58:1. So the label there is --bg (near
+       black, 7.20:1), not white. */
+    --brand: #ff7a4d;       /* 7.20:1 */
+    --brand-fill: #ff7a4d;  /* label is --bg, never #fff — white is 2.58:1 */
+    --on-brand: #141310;   /* 7.20:1 on --brand-fill */
+    --brand-ink: #ff9a76;   /* 8.97:1 */
     --brand-light: #2c1d16;
     --brand-dark: #ff9a76;
-    --link: #6ba4ff;
+    --link: #7db1ff;        /*  8.50:1 */
+
+    --fail: #f87171;
+    --warn: #fbbf24;
+    --pass: #4ade80;
+
+    /* The dark steps of the same two hues — 6.70:1 and 8.50:1. */
+    --share-fb: #5b9bff;
+    --share-zalo: #7db1ff;
+
+    /* Unchanged from light: the plate is the plate in both schemes. */
   }
 }
 
@@ -115,7 +165,7 @@ img { max-width: 100%; height: auto; display: block; }
    none: several controls set `outline: none` with nothing in its
    place, so a keyboard user had no idea where they were. */
 :focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--brand-ink);
   outline-offset: 3px;
   border-radius: 2px;
 }
@@ -144,7 +194,7 @@ img { max-width: 100%; height: auto; display: block; }
   display: inline-flex; align-items: center; gap: 10px;
   min-width: 0;
 }
-.header-brand:hover { text-decoration: none; color: var(--brand); }
+.header-brand:hover { text-decoration: none; color: var(--brand-ink); }
 .header-nav {
   display: flex; align-items: center; gap: 22px;
   font-family: var(--font-num);
@@ -159,7 +209,7 @@ img { max-width: 100%; height: auto; display: block; }
 .header-nav a.active::after {
   content: ""; position: absolute;
   left: 0; right: 0; bottom: -7px; height: 2px;
-  background: var(--brand);
+  background: var(--brand-ink);
 }
 .header-cta {
   background: var(--ink); color: var(--bg) !important;
@@ -169,23 +219,31 @@ img { max-width: 100%; height: auto; display: block; }
   text-transform: none; font-size: 0.85rem;
   transition: background .16s;
 }
-.header-cta:hover { background: var(--brand); color: #fff !important; text-decoration: none !important; }
+/* The hover state is a *filled* block, so it takes --brand-fill and a
+   white label. On the raw brand orange a white label measured 3.71:1,
+   which is a fail — this is the only CTA that changed state. */
+.header-cta:hover { background: var(--brand-fill); color: var(--on-brand) !important; text-decoration: none !important; }
 .header-logo-img {
   height: 26px; width: auto; max-width: 180px;
   object-fit: contain;
 }
 
 /* A project that has its own accent paints the header bar with it. The
-   brand text, nav links and CTA flip to white-on-accent so the bar stays
-   readable; without the class the header keeps the plain surface look. */
-.site-header.is-themed { background: var(--brand); border-bottom-color: var(--brand-dark); }
+   brand text, nav links and CTA flip to a light label so the bar stays
+   readable; without the class the header keeps the plain surface look.
+
+   The bar takes --brand-fill, not --brand, for the same reason the
+   buttons do: a white label on the raw accent measured 3.71:1. The
+   label colour is --on-brand, which is what keeps this legible when a
+   tenant's accent is a light orange and --on-brand flips to near-black. */
+.site-header.is-themed { background: var(--brand-fill); border-bottom-color: var(--brand-dark); }
 .site-header.is-themed .header-brand,
-.site-header.is-themed .header-brand:hover { color: #fff; }
-.site-header.is-themed .header-nav a { color: rgba(255, 255, 255, .82); }
+.site-header.is-themed .header-brand:hover { color: var(--on-brand); }
+.site-header.is-themed .header-nav a { color: color-mix(in srgb, var(--on-brand) 82%, transparent); }
 .site-header.is-themed .header-nav a:hover,
-.site-header.is-themed .header-nav a.active { color: #fff; }
-.site-header.is-themed .header-cta { background: #fff; color: var(--brand) !important; }
-.site-header.is-themed .header-cta:hover { background: rgba(255, 255, 255, .85); }
+.site-header.is-themed .header-nav a.active { color: var(--on-brand); }
+.site-header.is-themed .header-cta { background: var(--on-brand); color: var(--brand-fill) !important; }
+.site-header.is-themed .header-cta:hover { background: color-mix(in srgb, var(--on-brand) 85%, var(--brand-fill)); }
 
 /* ══════════════════════════════════════════════════════════════════
    THE DISPATCH — the article page
@@ -218,7 +276,7 @@ img { max-width: 100%; height: auto; display: block; }
   padding: 20px 0 0;
 }
 .crumb a { color: var(--muted-2); text-decoration: none; }
-.crumb a:hover { color: var(--brand); }
+.crumb a:hover { color: var(--brand-ink); }
 .crumb-sep { color: var(--line-strong); }
 /* The final crumb is the current page, not a link. Dimming it by
    another step keeps the trail readable without an underline. */
@@ -260,7 +318,7 @@ img { max-width: 100%; height: auto; display: block; }
   border-bottom: 1px solid var(--line);
 }
 .post-sep { color: var(--line-strong); }
-.post-byline .post-topic { color: var(--brand-text); }
+.post-byline .post-topic { color: var(--brand-ink); }
 
 /* ── Hero ──────────────────────────────────────────────────────
    No radius. The fallback card bakes the headline into the artwork,
@@ -311,13 +369,13 @@ img { max-width: 100%; height: auto; display: block; }
 .prose li > ul, .prose li > ol { margin: .5em 0 .25em; }
 /* A list whose markers are the brand accent — the one place colour
    carries structural meaning inside the body. */
-.prose li::marker { color: var(--brand); }
+.prose li::marker { color: var(--brand-ink); }
 .prose strong { color: var(--ink); font-weight: 700; }
 .prose a { color: var(--link); text-underline-offset: 3px; }
 .prose blockquote {
   margin: 2em 0;
   padding: 2px 0 2px 22px;
-  border-left: 2px solid var(--brand);
+  border-left: 2px solid var(--brand-ink);
   color: var(--ink-2);
   font-size: 1.06rem; line-height: 1.7;
 }
@@ -328,8 +386,12 @@ img { max-width: 100%; height: auto; display: block; }
   background: var(--bg-2); padding: .12em .38em; border-radius: 3px;
   font-family: var(--font-mono); font-size: .85em;
 }
+/* A code block is another printed mark, so it takes the plate — the
+   same near-black in both schemes, where it measured 15.68:1. The old
+   --bg-deep fallback was a cool #17181c that nothing else on the page
+   used, and nothing ever defined it. */
 .prose pre {
-  background: var(--bg-deep, #17181c); color: #e8e6df;
+  background: var(--plate); color: var(--plate-ink-1);
   padding: 18px 20px; margin: 1.8em 0;
   overflow-x: auto;
   font-size: .85rem; line-height: 1.65;
@@ -364,7 +426,7 @@ img { max-width: 100%; height: auto; display: block; }
    publication instead of a widget dropped into it. */
 .article-cta {
   margin: 48px 0; padding: 30px 0 0;
-  border-top: 2px solid var(--brand);
+  border-top: 2px solid var(--brand-ink);
 }
 .article-cta h3 {
   font-family: var(--font-serif);
@@ -374,7 +436,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .article-cta p { color: var(--muted); margin: 0 0 20px; font-size: 0.98rem; }
 .cta-btn {
-  display: inline-block; background: var(--brand); color: #fff !important;
+  display: inline-block; background: var(--brand-fill); color: var(--on-brand) !important;
   padding: 13px 28px; border-radius: 0; font-weight: 600;
   font-size: 0.95rem; text-decoration: none !important;
   transition: background .16s;
@@ -389,9 +451,13 @@ img { max-width: 100%; height: auto; display: block; }
   background: transparent; color: var(--ink);
   transition: border-color .16s;
 }
-.mini-builder-input:focus { border-bottom-color: var(--brand); }
+.mini-builder-input:focus { border-bottom-color: var(--brand-ink); }
+/* An ink button is a printed mark, so it takes the plate rather than
+   --ink. Both used to read --ink, which in dark mode made a near-white
+   block with near-white type on it. The label names a light ink
+   explicitly for the same reason the footer does. */
 .mini-builder-btn {
-  background: var(--ink); color: #fff; border: 0; padding: 11px 18px;
+  background: var(--plate); color: #fff; border: 0; padding: 11px 18px;
   font-weight: 600; font-size: 0.9rem; cursor: pointer;
   white-space: nowrap; transition: opacity .16s; font-family: inherit;
 }
@@ -416,10 +482,10 @@ img { max-width: 100%; height: auto; display: block; }
   background: transparent; color: var(--ink);
   transition: border-color .16s;
 }
-.lead-input:focus { border-bottom-color: var(--brand); }
+.lead-input:focus { border-bottom-color: var(--brand-ink); }
 .lead-submit-btn {
   width: auto; min-width: 240px;
-  display: inline-block; background: var(--brand); color: #fff;
+  display: inline-block; background: var(--brand-fill); color: var(--on-brand);
   border: 0; padding: 12px 24px; border-radius: 0;
   font-weight: 600; font-size: 0.95rem; cursor: pointer;
   transition: background .16s; font-family: inherit;
@@ -431,8 +497,8 @@ img { max-width: 100%; height: auto; display: block; }
   font-size: 11px; letter-spacing: .04em;
   color: var(--muted); margin-top: 10px;
 }
-.lead-form-msg.error { color: #b3261e; }
-.lead-form-msg.success { color: #1e6b3a; }
+.lead-form-msg.error { color: var(--fail); }
+.lead-form-msg.success { color: var(--pass); }
 
 /* ── Sticky CTA ────────────────────────────────────────────────
    A fixed bar sits on top of the column, so the article reserves the
@@ -440,7 +506,7 @@ img { max-width: 100%; height: auto; display: block; }
    and the share row are permanently unreadable behind it. */
 .sticky-cta {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 99;
-  background: var(--brand); padding: 13px 24px;
+  background: var(--brand-fill); padding: 13px 24px;
   /* Clear of the iOS home indicator. */
   padding-bottom: max(13px, env(safe-area-inset-bottom));
   text-align: center; transform: translateY(101%);
@@ -448,7 +514,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .sticky-cta.visible { transform: translateY(0); }
 .sticky-cta-btn {
-  color: #fff !important; font-weight: 600;
+  color: var(--on-brand) !important; font-weight: 600;
   font-size: 0.95rem; text-decoration: none !important;
 }
 /* Only the Gulagi tenant ships the sticky bar, so only then does the
@@ -481,12 +547,14 @@ img { max-width: 100%; height: auto; display: block; }
   transition: opacity .16s;
   font-family: inherit;
 }
-.share-fb { color: #1877f2 !important; }
+/* Naming the platform is the whole point of these two, so the brand
+   hues stay — stepped in :root until they clear 4.5:1 on both grounds. */
+.share-fb { color: var(--share-fb) !important; }
 .share-fb:hover { opacity: .68; }
-.share-zalo { color: #0068ff !important; }
+.share-zalo { color: var(--share-zalo) !important; }
 .share-zalo:hover { opacity: .68; }
 .share-copy { color: var(--ink); }
-.share-copy:hover { color: var(--brand); border-bottom-color: var(--brand); }
+.share-copy:hover { color: var(--brand-ink); border-bottom-color: var(--brand-ink); }
 
 /* ── Feedback ──────────────────────────────────────────────────
    A question, not a widget. Left-aligned, no fill, no radius — a
@@ -513,7 +581,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .feedback-btn:hover:not(:disabled) { border-color: var(--ink); }
 .feedback-btn:disabled { opacity: .5; cursor: not-allowed; }
-.feedback-yes:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.feedback-yes:hover:not(:disabled) { border-color: var(--brand-ink); color: var(--brand-ink); }
 .feedback-comment-wrap { max-width: 420px; margin: 0; }
 /* A placeholder was the only label this field had. Placeholders
    vanish on focus, so the field had no accessible name at all. */
@@ -539,7 +607,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .feedback-thanks {
   font-family: var(--font-serif);
-  font-size: 1.15rem; color: var(--brand-text); padding: 4px 0 0;
+  font-size: 1.15rem; color: var(--brand-ink); padding: 4px 0 0;
 }
 
 /* ── Author box ────────────────────────────────────────────────
@@ -592,7 +660,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .read-next-list a:hover { padding-left: 6px; }
 .read-next-list a:focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--brand-ink);
   outline-offset: 3px;
 }
 .read-next-list img {
@@ -611,18 +679,25 @@ img { max-width: 100%; height: auto; display: block; }
 .read-next-meta p { margin: 0; color: var(--muted); font-size: 0.86rem; line-height: 1.5; }
 
 /* ── Footer ────────────────────────────────────────────────────
-   Ink plate, same as before — the one dark mass in the publication.
-   The links drop to mono so the last thing on the page uses the same
-   voice as the first. */
+   The one dark mass in the publication. It takes --plate, not --ink:
+   the footer is a printed mark that must stay dark in both schemes,
+   and --ink is the *text* tier, so binding the two together inverted
+   the whole plate in dark mode — near-white slab, near-white type.
+   The links drop to mono so the last thing on the page speaks in the
+   same voice as the first. */
 .site-footer {
-  background: var(--ink); color: #b8b6ad;
+  background: var(--plate); color: var(--plate-ink-1);
   padding: 44px 24px 30px; margin-top: 0;
 }
 .footer-inner { max-width: var(--max-wide); margin: 0 auto; text-align: center; }
+/* The wordmark, the links and the copyright name their inks off the
+   plate, not off the page. They used to read var(--bg), which is the
+   page ground — in dark mode that is near-black on a near-black plate,
+   so the whole footer collapsed to one unreadable tone. */
 .footer-brand {
   font-family: var(--font-ui);
   font-size: 1.05rem; font-weight: 700;
-  color: var(--bg); margin-bottom: 18px;
+  color: var(--plate-ink-1); margin-bottom: 18px;
   display: flex; align-items: center; justify-content: center; gap: 10px;
   flex-wrap: wrap;
 }
@@ -633,11 +708,11 @@ img { max-width: 100%; height: auto; display: block; }
   font-size: 11px; font-weight: 500;
   letter-spacing: 0.12em; text-transform: uppercase;
 }
-.footer-links a { color: #8f8d85; text-decoration: none; }
-.footer-links a:hover { color: var(--bg); }
+.footer-links a { color: var(--plate-ink-2); text-decoration: none; }
+.footer-links a:hover { color: #fff; }
 .footer-copy {
   font-family: var(--font-num);
-  font-size: 10.5px; letter-spacing: 0.08em; color: #8a8880;
+  font-size: 10.5px; letter-spacing: 0.08em; color: var(--plate-ink-3);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -686,7 +761,7 @@ img { max-width: 100%; height: auto; display: block; }
   margin: 0;
   color: var(--ink);
 }
-.masthead h1 em { font-style: italic; color: var(--brand); }
+.masthead h1 em { font-style: italic; color: var(--brand-ink); }
 .masthead-lede {
   max-width: 62ch;
   margin: 20px 0 0;
@@ -730,7 +805,7 @@ img { max-width: 100%; height: auto; display: block; }
   font-size: 16px; line-height: 1;
   transition: color .18s, transform .18s;
 }
-.blog-search-go:hover { color: var(--brand); transform: translateX(3px); }
+.blog-search-go:hover { color: var(--brand-ink); transform: translateX(3px); }
 
 .masthead-rss {
   display: inline-flex; align-items: center; gap: 8px;
@@ -742,7 +817,7 @@ img { max-width: 100%; height: auto; display: block; }
   white-space: nowrap;
   transition: color .18s;
 }
-.masthead-rss:hover { color: var(--brand); }
+.masthead-rss:hover { color: var(--brand-ink); }
 
 /* ── Lead story ────────────────────────────────────────────────
    The newest post gets the front page. Its headline can be three
@@ -763,7 +838,7 @@ img { max-width: 100%; height: auto; display: block; }
   font-family: var(--font-num);
   font-size: 11px; font-weight: 500;
   letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--brand-text);
+  color: var(--brand-ink);
   margin-bottom: 18px;
 }
 .lead-kicker::after {
@@ -780,7 +855,7 @@ img { max-width: 100%; height: auto; display: block; }
   margin: 0 0 16px;
 }
 .lead-story h2 a { color: var(--ink); text-decoration: none; }
-.lead-story h2 a:hover { color: var(--brand); }
+.lead-story h2 a:hover { color: var(--brand-ink); }
 .lead-story p {
   max-width: 54ch;
   color: var(--muted);
@@ -852,7 +927,7 @@ img { max-width: 100%; height: auto; display: block; }
   margin: 0 0 7px;
 }
 .entry-title a { color: var(--ink); text-decoration: none; }
-.entry-title a:hover { color: var(--brand); }
+.entry-title a:hover { color: var(--brand-ink); }
 .entry-excerpt {
   margin: 0;
   color: var(--muted);
@@ -871,7 +946,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .entry-facts .fact-sep { color: var(--line-strong); }
 .entry-topic {
-  color: var(--brand-text);
+  color: var(--brand-ink);
   text-decoration: none !important;
 }
 .entry-topic:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -881,7 +956,7 @@ img { max-width: 100%; height: auto; display: block; }
 .entry-link::after { content: ""; position: absolute; inset: 0; }
 .entry { position: relative; }
 .entry-link:focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--brand-ink);
   outline-offset: 6px;
   border-radius: 2px;
 }
@@ -914,9 +989,9 @@ img { max-width: 100%; height: auto; display: block; }
   text-decoration: none;
   transition: color .16s, padding-left .16s;
 }
-.topic-list a:hover { color: var(--brand); padding-left: 8px; }
+.topic-list a:hover { color: var(--brand-ink); padding-left: 8px; }
 .topic-list a:focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--brand-ink);
   outline-offset: 2px;
 }
 .topic-label { font-size: 1rem; font-weight: 600; }
@@ -928,9 +1003,13 @@ img { max-width: 100%; height: auto; display: block; }
   height: 3px; background: var(--bg-2); overflow: hidden;
   align-self: center;
 }
+/* The bar is a filled mark with nothing on it, so it keeps the accent
+   and gets a little more opacity than before: the paper underneath it
+   darkened, and a 45%-opacity stroke against a darker ground reads as
+   a smudge rather than a bar. */
 .topic-bar span {
   display: block; height: 100%;
-  background: var(--brand); opacity: .45;
+  background: var(--brand); opacity: .62;
   transition: opacity .16s;
 }
 .topic-list a:hover .topic-bar span { opacity: 1; }
@@ -950,7 +1029,7 @@ img { max-width: 100%; height: auto; display: block; }
   color: var(--muted);
   text-decoration: none !important;
 }
-.topic-more:hover { color: var(--brand); }
+.topic-more:hover { color: var(--brand-ink); }
 
 /* ── Empty / search states ─────────────────────────────────────
    An archive with nothing in it still has a job: tell the reader
@@ -975,7 +1054,7 @@ img { max-width: 100%; height: auto; display: block; }
   display: block; color: var(--muted); font-size: 0.95rem;
   max-width: 52ch; line-height: 1.6;
 }
-.blog-noposts span a { color: var(--brand-text); }
+.blog-noposts span a { color: var(--brand-ink); }
 
 /* ── Tools (/tools/seo-check) ──────────────────────────────────── */
 .tool-page { max-width: 760px; margin: 0 auto; padding: 40px 20px 72px; }
@@ -986,21 +1065,26 @@ img { max-width: 100%; height: auto; display: block; }
   flex: 1 1 260px; padding: 12px 14px; font: inherit; font-size: 0.95rem;
   border: 1px solid var(--line); border-radius: 8px; background: var(--bg, #fff); color: var(--ink);
 }
-.tool-form-row input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+.tool-form-row input:focus { outline: 2px solid var(--brand-ink); outline-offset: 1px; }
 .tool-form-row button {
   padding: 12px 22px; font: inherit; font-size: 0.95rem; font-weight: 600;
-  background: var(--brand); color: #fff; border: 0; border-radius: 8px; cursor: pointer;
+  background: var(--brand-fill); color: var(--on-brand); border: 0; border-radius: 8px; cursor: pointer;
 }
 .tool-hint { margin: 8px 0 0; font-size: 0.8rem; color: var(--muted-2); }
 
 .tool-result { margin: 36px 0 0; padding-top: 24px; border-top: 1px solid var(--line); }
 .tool-audited { margin: 0 0 16px; font-size: 0.9rem; color: var(--muted); word-break: break-all; }
 .tool-score { display: flex; align-items: center; gap: 18px; margin: 0 0 20px; }
-.tool-score-num { font-size: 2.6rem; font-weight: 700; line-height: 1; color: var(--brand); }
+.tool-score-num { font-size: 2.6rem; font-weight: 700; line-height: 1; color: var(--brand-ink); }
 .tool-score-num small { font-size: 0.95rem; color: var(--muted-2); font-weight: 400; margin-left: 4px; }
 .tool-grade { font-weight: 600; margin: 0 0 4px; }
 .tool-counts { display: flex; gap: 12px; font-size: 0.8rem; }
-.c-fail { color: #c0392b; } .c-warn { color: #b26a00; } .c-pass { color: #1e7a44; }
+/* Status comes from the three tokens, not from literals. The old hexes
+   measured 4.29–4.36:1 on the paper — technically under 4.5 for the
+   0.72rem status label — and were single-hue dark, which would have
+   failed outright on the dark ground. The tokens are stepped per
+   scheme, so both are covered. */
+.c-fail { color: var(--fail); } .c-warn { color: var(--warn); } .c-pass { color: var(--pass); }
 
 .tool-checks { list-style: none; margin: 0; padding: 0; }
 .tool-checks .chk { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
@@ -1008,14 +1092,14 @@ img { max-width: 100%; height: auto; display: block; }
   flex: 0 0 74px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.04em; padding-top: 2px;
 }
-.chk-pass .chk-status { color: #1e7a44; }
-.chk-warn .chk-status { color: #b26a00; }
-.chk-fail .chk-status { color: #c0392b; }
+.chk-pass .chk-status { color: var(--pass); }
+.chk-warn .chk-status { color: var(--warn); }
+.chk-fail .chk-status { color: var(--fail); }
 .chk-body { display: flex; flex-direction: column; gap: 2px; }
 .chk-body strong { font-size: 0.92rem; }
 .chk-detail { font-size: 0.85rem; color: var(--muted); }
 .chk-fix { font-size: 0.82rem; color: var(--ink); }
-.tool-err { margin: 24px 0 0; padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; color: #c0392b; }
+.tool-err { margin: 24px 0 0; padding: 12px 16px; border: 1px solid var(--fail); border-radius: 8px; color: var(--fail); }
 
 .tool-embed-box { margin: 48px 0 0; padding-top: 28px; border-top: 1px solid var(--line); }
 .tool-embed-box h2 { font-size: 1.15rem; margin: 0 0 6px; }
@@ -1037,8 +1121,12 @@ img { max-width: 100%; height: auto; display: block; }
 .tool-embed-body { margin: 0; padding: 16px; background: transparent; }
 .tool-embed { font-size: 14px; color: var(--ink, #111); }
 .tool-embed .tool-score-num { font-size: 2rem; }
-.tool-attrib { margin: 16px 0 0; font-size: 0.78rem; color: #666; }
-.tool-attrib a { color: var(--brand, #06c); }
+/* The attribution line is the quietest text in the embed, but it was
+   a flat #666 — 5.41:1 on the old paper, and it would have carried
+   over the host's own background into a frame that may not be ours.
+   The token keeps it on the same tier as every other caption. */
+.tool-attrib { margin: 16px 0 0; font-size: 0.78rem; color: var(--muted-2, #5c5c4e); }
+.tool-attrib a { color: var(--brand-ink, #9c3306); }
 
 /* ── Hubs (hub-and-spoke spine) ───────────────────────────────── */
 /* .hub-rail was the pill row the old index used; the topic index
@@ -1050,7 +1138,7 @@ img { max-width: 100%; height: auto; display: block; }
   margin: 0; padding: 14px 0; border-bottom: 1px solid var(--line);
 }
 #hub-list li a { color: var(--ink); text-decoration: none; font-weight: 600; }
-#hub-list li a:hover { color: var(--brand); }
+#hub-list li a:hover { color: var(--brand-ink); }
 .hub-count { color: var(--muted-2); font-size: 0.8rem; white-space: nowrap; }
 
 .hub-siblings { margin: 48px 0 0; padding-top: 24px; border-top: 1px solid var(--line); }
@@ -1058,13 +1146,13 @@ img { max-width: 100%; height: auto; display: block; }
 .hub-siblings ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .hub-siblings li { margin: 0; }
 .hub-siblings li a { font-size: 0.85rem; color: var(--ink); text-decoration: none; }
-.hub-siblings li a:hover { color: var(--brand); }
+.hub-siblings li a:hover { color: var(--brand-ink); }
 
 .hub-crumb { font-size: 0.82rem; color: var(--muted); margin: 0 0 8px; }
 .hub-crumb a { color: var(--muted); }
 
 .post-hub { margin: 32px 0 0; padding-top: 20px; border-top: 1px solid var(--line); font-size: 0.9rem; }
-.post-hub a { color: var(--brand-text); text-decoration: none; font-weight: 600; }
+.post-hub a { color: var(--brand-ink); text-decoration: none; font-weight: 600; }
 .post-hub a:hover { text-decoration: underline; }
 .post-hub .hub-count { margin-left: 8px; }
 
@@ -1089,7 +1177,7 @@ img { max-width: 100%; height: auto; display: block; }
   font-weight: 600;
   transition: color .16s;
 }
-.pager-prev:hover, .pager-next:hover { color: var(--brand); }
+.pager-prev:hover, .pager-next:hover { color: var(--brand-ink); }
 .pager-nums { display: flex; gap: 14px; align-items: baseline; }
 .pager-num {
   text-decoration: none !important;
@@ -1100,11 +1188,11 @@ img { max-width: 100%; height: auto; display: block; }
   border-bottom: 2px solid transparent;
   transition: color .16s, border-color .16s;
 }
-.pager-num:hover { color: var(--brand); }
+.pager-num:hover { color: var(--brand-ink); }
 /* Current page is marked by a rule under the number, not by a filled
    block — it stays inside the paper metaphor and the state is still
    carried by more than colour (aria-current is set server-side). */
-.pager-current { color: var(--ink); border-bottom-color: var(--brand); font-weight: 500; }
+.pager-current { color: var(--ink); border-bottom-color: var(--brand-ink); font-weight: 500; }
 .pager-pos {
   margin-left: auto;
   color: var(--muted-2);
@@ -1207,8 +1295,8 @@ img { max-width: 100%; height: auto; display: block; }
 /* Touch devices get no hover affordance to lean on, so the row's
    active state carries the emphasis instead. */
 @media (hover: none) {
-  .entry:active, .entry:active .entry-title a { color: var(--brand); }
-  .topic-list a:active { color: var(--brand); padding-left: 8px; }
+  .entry:active, .entry:active .entry-title a { color: var(--brand-ink); }
+  .topic-list a:active { color: var(--brand-ink); padding-left: 8px; }
 }
 
 /* Motion is a courtesy. The entrances below are the only animation
