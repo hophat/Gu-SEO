@@ -10,7 +10,7 @@
 // the hero image alongside the page. Image Search is a real source
 // of organic for blogs.
 
-import { esc } from './_lib/util.js';
+import { esc, imageUrl } from './_lib/util.js';
 import { PAGE_SIZE } from './blog/index.js';
 import { resolveProjectByHost, resolveProjectBySlug, requestHost, normalizeHost } from './_lib/project_scope.js';
 import { listPillars } from './_lib/hubs.js';
@@ -137,7 +137,7 @@ async function fetchEntries(env, host, project = null, basePath = '') {
 
   for (const p of (blogsRes.results || [])) {
     const images = p.hero_image_key ? [{
-      loc: `${site}/image/${p.hero_image_key}`,
+      loc: imageUrl(`${site}/image/${p.hero_image_key}`),
       title: p.title,
       caption: p.hero_image_alt || p.meta_description || '',
     }] : [];
@@ -150,7 +150,7 @@ async function fetchEntries(env, host, project = null, basePath = '') {
   }
   for (const p of (progsRes.results || [])) {
     const images = p.hero_image_key ? [{
-      loc: `${site}/image/${p.hero_image_key}`,
+      loc: imageUrl(`${site}/image/${p.hero_image_key}`),
       title: p.title,
       caption: p.hero_image_alt || p.meta_description || '',
     }] : [];

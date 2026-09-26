@@ -56,8 +56,13 @@ export function esc(s) {
 // fresh fetch is forced. Bump it whenever published image bytes change.
 export const IMAGE_VERSION = 4;
 
+// Handles both the root-relative form the HTML renderers use and the
+// absolute form the sitemap emits, so neither can silently keep serving a
+// stale copy. Anything already carrying a query is left alone — a URL we
+// did not build is not ours to re-sign.
 export function imageUrl(url) {
-  if (typeof url !== 'string' || !url.startsWith('/image/')) return url;
+  if (typeof url !== 'string') return url;
+  if (url.includes('?') || !url.includes('/image/')) return url;
   return `${url}?v=${IMAGE_VERSION}`;
 }
 
