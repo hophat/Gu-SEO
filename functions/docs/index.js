@@ -27,66 +27,48 @@ import { esc } from '../_lib/util.js';
 // don't have here).
 const SECTIONS = [
   { id: 'quick-start', title: 'Quick start', level: 1, content: `
-<p class="lede">Two ways to install pages-seo. Pick whichever you can run.</p>
-<h3>Browser install (recommended)</h3>
+<p class="lede">This repository is the application. Clone it, build it, deploy it.</p>
+<h3>Deploy</h3>
 <ol>
-  <li>Go to <a href="/install">/install</a></li>
-  <li>Click <em>Sign in with GitHub</em>. We use OAuth to look up your account and create a fork of <code>Benjamin-Bloch/pages-seo</code>.</li>
-  <li>Click <em>Create a Cloudflare API token</em>. The link pre-selects the right permissions; click <em>Continue</em>, <em>Continue</em>, <em>Create</em>, then copy the token.</li>
-  <li>Paste the token back into the install tab (we attempt to auto-paste from clipboard).</li>
-  <li>Type your site name. The Pages subdomain comes from a slug auto-derived from the name.</li>
-  <li>Click <em>Install</em>. The installer creates D1, R2, the Pages project, applies the schema, hands you a one-time magic link.</li>
-  <li>Open the link to set your admin email + password on your new site.</li>
+  <li>Clone the repo and install dependencies: <code>npm install</code></li>
+  <li>Build: <code>npm run build</code> — checks public mirrors and JSX imports, bundles the schema, builds the admin</li>
+  <li>Deploy: <code>npm run deploy</code> — ships the Pages site <em>and</em> the cron Worker</li>
+  <li>Open <code>https://&lt;your-slug&gt;.pages.dev/admin</code> and complete the setup wizard</li>
 </ol>
-<h3>CLI install</h3>
-<p>If you'd rather stay in the terminal, paste one of these in your shell. Each is the same logic in a different language — pick what you have installed.</p>
-<pre><code># bash
-curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash
-
-# python
-curl -fsSL https://seo.benjaminb.xyz/install/run.py | python3
-
-# node
-curl -fsSL https://seo.benjaminb.xyz/install/run.js | node</code></pre>
-<p>Both paths end in the same place: <code>https://&lt;your-slug&gt;.pages.dev/admin</code>.</p>
+<p>The D1 resource is <code>pages-seo-db</code>, bound as <code>DB</code> in <code>wrangler.toml</code>. Apply pending migrations with <code>npm run db:migrate</code>.</p>
+<p>Daily automation is optional. <code>npm run deploy</code> already ships the cron Worker; alternatively press <em>Run now</em> in the dashboard whenever you want a fresh post.</p>
 ` },
 
   { id: 'setup', title: 'Setup walkthrough', level: 1, content: `
-<p>The full happy-path install with what each step actually does.</p>
+<p>What each step of the deploy actually does.</p>
 
 <h3 id="setup-prereqs">Prerequisites</h3>
 <ul>
   <li>A Cloudflare account (free tier is enough).</li>
-  <li>A GitHub account.</li>
-  <li>If using the CLI: <code>node ≥ 18</code> + <code>npm</code> (wrangler bootstraps from there).</li>
+  <li><code>node ≥ 20</code> and <code>npm</code>.</li>
+  <li><code>wrangler</code>, logged in: <code>npx wrangler login</code>. If <code>npx wrangler whoami</code> fails, stop and log in first.</li>
 </ul>
 
-<h3 id="setup-github">Step 1 — Sign in with GitHub</h3>
-<p>The OAuth scope we request is <code>public_repo read:user user:email</code>. We use these for: creating your fork (<code>public_repo</code>), listing your Cloudflare GitHub App installation (<code>read:user</code>), and prefilling your admin email (<code>user:email</code>). We do NOT request private-repo access. Your token never leaves the browser tab + the encrypted cookie that holds it for the duration of the install.</p>
+<h3 id="setup-fork">Step 1 — Get the code</h3>
+<p>Clone the repository and install dependencies. <code>npm install</code> pulls in the admin's React dependencies and <code>wrangler</code>.</p>
+<pre><code>git clone &lt;repo-url&gt; &amp;&amp; cd pages-seo
+npm install</code></pre>
 
-<h3 id="setup-fork">Step 2 — Fork the upstream repo</h3>
-<p>We create <code>&lt;your-login&gt;/pages-seo</code> via the GitHub API. If you already have that name taken by a non-fork repo, the installer tells you and asks you to rename it on GitHub first.</p>
+<h3 id="setup-provision">Step 2 — Point the config at your account</h3>
+<p><code>wrangler.toml</code> carries the Pages project name and the <code>DB</code> binding. The D1 resource and the R2 bucket must exist on your account before the first deploy — create them once with <code>npx wrangler d1 create</code> and <code>npx wrangler r2 bucket create</code>, then paste the ids into <code>wrangler.toml</code>. <code>wrangler.template.toml</code> is the shape to copy.</p>
 
-<h3 id="setup-cf-app">Step 3 — Authorise the Cloudflare GitHub App</h3>
-<p>Cloudflare Pages can only see GitHub repos owned by an account that has authorised the <em>Cloudflare Workers and Pages</em> app. The installer attempts to add your new fork to your existing installation automatically (via <code>PUT /user/installations/:id/repositories/:repo_id</code>). If you've never installed the app at all, you'll be sent to <a href="https://github.com/apps/cloudflare-workers-and-pages/installations/new" target="_blank">github.com/apps/cloudflare-workers-and-pages</a> to do that once.</p>
+<h3 id="setup-build">Step 3 — Build</h3>
+<p><code>npm run build</code> runs four gates in order: mirror check, JSX import check, schema bundle, admin bundle. A green build means the admin SPA and the Functions bundle both match the source.</p>
 
-<h3 id="setup-cf-token">Step 4 — Cloudflare API token</h3>
-<p>The token link pre-selects six permissions on your account: <code>Cloudflare Pages: Edit</code>, <code>D1: Edit</code>, <code>Workers R2: Edit</code>, <code>Workers AI: Edit</code>, <code>Workers Scripts: Edit</code>, <code>Account Settings: Read</code>. The token is account-scoped (NOT user-API-key-scoped) so the blast radius is minimal — anyone who steals it can manage Pages/D1/R2/AI on your account, nothing else.</p>
+<h3 id="setup-deploy">Step 4 — Deploy</h3>
+<p><code>npm run deploy</code> runs <code>deploy.sh</code>, which ships the Pages site and then the cron Worker. It reads the project name from <code>wrangler.toml</code>, so there is nothing to keep in sync by hand.</p>
+<p>If you wire this into Cloudflare Workers Builds, use <code>npm run build</code> as the build command and leave the deploy command empty — <code>deploy.sh</code> no-ops when <code>CF_PAGES</code> is set, and Pages uploads <code>./public</code> itself.</p>
 
-<h3 id="setup-provision">Step 5 — Provisioning</h3>
-<p>The installer runs six idempotent steps:</p>
-<ol>
-  <li>Resolve your account id from the token.</li>
-  <li>Create (or reuse) a D1 database named <code>&lt;your-slug&gt;</code>.</li>
-  <li>Create (or reuse) an R2 bucket named <code>&lt;your-slug&gt;-images</code>.</li>
-  <li>Create the Pages project bound to your fork + D1 + R2 + Workers AI.</li>
-  <li>PATCH the project bindings (Cloudflare's POST sometimes silently drops them; we verify and retry).</li>
-  <li>Trigger the first deployment.</li>
-</ol>
-<p>State is saved to the installer's own D1 keyed by <code>(project_slug, token_fingerprint)</code>. If you close the tab mid-install, re-opening <a href="/install">/install</a> and pasting the same token resumes from the last completed step.</p>
+<h3 id="setup-migrations">Step 5 — Migrations</h3>
+<p>Every migration is additive and idempotent. <code>npm run db:migrate</code> applies the ones that have not run yet; re-running it is safe.</p>
 
-<h3 id="setup-magic-link">Step 6 — Magic link</h3>
-<p>The installer hands you a one-time URL <code>/admin?setup=&lt;hex&gt;&amp;email=&lt;your-gh-email&gt;</code>. Visit it once to set your admin password. The token is consumed on first POST; re-using it returns 401.</p>
+<h3 id="setup-magic-link">Step 6 — First visit</h3>
+<p>Open <code>/admin</code> and the setup wizard walks you through Brand DNA → AI providers → the 28-day content plan. On the maintainer's deployment the first account is created with a one-time <code>/admin?setup=&lt;hex&gt;&amp;email=…</code> link, which is consumed on first use.</p>
 ` },
 
   { id: 'troubleshooting', title: 'Troubleshooting', level: 1, content: `
@@ -108,21 +90,13 @@ curl -fsSL https://seo.benjaminb.xyz/install/run.js | node</code></pre>
 <p><strong>Cause:</strong> R2 binding missing (<code>r2_binding_missing</code>), or the image generator hit a provider error and the post shipped without a key.</p>
 <p><strong>Fix:</strong> /admin → Status (when this page lands) shows R2 health. If R2 is fine, click into the post in the calendar; if <code>hero_image_key</code> is null, click <em>Regenerate image</em>. If you're on cover-mode the hero is server-rendered from <code>/cover/&lt;slug&gt;.svg</code> — no per-post storage needed.</p>
 
-<h3 id="ts-install-cf-app">"Internal issue with your Cloudflare Pages Git installation"</h3>
-<p><strong>Cause:</strong> Cloudflare can't see your fork because the <em>Cloudflare Workers and Pages</em> GitHub App either isn't installed or doesn't have access to the new fork.</p>
-<p><strong>Fix:</strong> click the <em>Manage permissions</em> link in the install failure pane. You'll land on github.com pre-narrowed to your new fork; tick it, save. Retry install — it'll resume from where it stopped.</p>
-
 <h3 id="ts-gh-rate-limit">"GitHub API rate limit exceeded"</h3>
-<p><strong>Cause:</strong> the unauthenticated GitHub API has a 60-req/hr-per-IP cap, and the installer uses it for upstream commit lookups.</p>
+<p><strong>Cause:</strong> the unauthenticated GitHub API has a 60-req/hr-per-IP cap, and the in-app Updates tab uses it for upstream commit lookups.</p>
 <p><strong>Fix:</strong> wait an hour. Or sign in with GitHub first — the authenticated cap is 5000/hr.</p>
-
-<h3 id="ts-stuck-install">Install tab crashed mid-flow</h3>
-<p><strong>Cause:</strong> network blip, browser refresh, or just closing the tab.</p>
-<p><strong>Fix:</strong> reopen <a href="/install">/install</a> in the same browser. The installer remembers the slug + token fingerprint and resumes from the last completed step. If you used a different browser, paste the same CF token — state is keyed by token fingerprint.</p>
 ` },
 
   { id: 'errors', title: 'Error code reference', level: 1, content: `
-<p>Every error code emitted by the install and admin APIs. Searchable by URL anchor (e.g. <code>/docs#err-wrong_parent</code>).</p>
+<p>Every error code emitted by the admin APIs. Searchable by URL anchor (e.g. <code>/docs#err-wrong_parent</code>).</p>
 
 <dl class="err-dl">
   <dt id="err-bad_json"><code>bad_json</code></dt>
@@ -203,10 +177,10 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
   <dd><strong>Cause:</strong> Direct-Upload deploys (the default for CLI installs) don't update D1's <code>installed_sha</code> setting because there's no GitHub webhook to fire. The deployed code IS up to date — only the marker is stale. <strong>Fix:</strong> click <em>Mark as up to date</em> in <code>/admin → System → Updates</code>, OR <code>POST /api/admin/update/dismiss</code> with the admin bearer token. Cosmetic, never blocks anything.</dd>
 
   <dt id="err-cf-token-missing-scope"><code>Cloudflare API token missing scope</code></dt>
-  <dd><strong>Cause:</strong> the CF API token used by the browser installer / repair flow doesn't have one of the six required permissions. <strong>Fix:</strong> recreate the token at <a href="https://dash.cloudflare.com/profile/api-tokens" rel="noopener" target="_blank">dash.cloudflare.com/profile/api-tokens</a> with exactly: Cloudflare Pages: Edit, D1: Edit, Workers R2: Edit, Workers AI: Edit, Workers Scripts: Edit, Account Settings: Read. The token-create link on <code>/install</code> pre-selects these.</dd>
+  <dd><strong>Cause:</strong> the CF API token configured for the self-heal flow doesn't have one of the six required permissions. <strong>Fix:</strong> recreate the token at <a href="https://dash.cloudflare.com/profile/api-tokens" rel="noopener" target="_blank">dash.cloudflare.com/profile/api-tokens</a> with exactly: Cloudflare Pages: Edit, D1: Edit, Workers R2: Edit, Workers AI: Edit, Workers Scripts: Edit, Account Settings: Read, then update the <code>CF_API_TOKEN</code> secret.</dd>
 
   <dt id="err-deploy-button-auth-10000"><code>Authentication error [code: 10000]</code> (Deploy to Cloudflare button)</dt>
-  <dd><strong>Cause:</strong> the API token Cloudflare auto-generates for Workers Builds on new projects doesn't include <code>Pages:Edit</code> scope, so the first deploy fails. Cloudflare-side limitation of the 1-click button — not fixable from the repo. <strong>Status:</strong> we've removed the 1-click button from <a href="/install">/install</a> until Cloudflare ships a fix. <strong>If you already hit this:</strong> finish in the dashboard. Create a fresh token at <a href="https://dash.cloudflare.com/profile/api-tokens" rel="noopener" target="_blank">dash.cloudflare.com/profile/api-tokens</a> with the six Account permissions (Pages, D1, R2, Workers AI, Workers Scripts, Account Settings). Then in your Pages project: Settings → Build &amp; deployments → API token → paste it. Re-trigger the deploy. Or scrap the half-broken project and re-install via <a href="/install">/install</a>'s browser flow — that one actually works end-to-end.</dd>
+  <dd><strong>Cause:</strong> the API token Cloudflare auto-generates for Workers Builds on new projects doesn't include <code>Pages:Edit</code> scope, so the first deploy fails. Cloudflare-side limitation — not fixable from the repo. <strong>Fix:</strong> in your Pages project, Settings → Build &amp; deployments → API token, paste a token with the six Account permissions (Pages, D1, R2, Workers AI, Workers Scripts, Account Settings), then re-trigger the deploy. Or skip the build-time token entirely and deploy from your own machine with <code>npm run deploy</code>.</dd>
 
   <dt id="err-pages-deploy-failed"><code>Pages deploy failed</code></dt>
   <dd><strong>Cause:</strong> the most recent deployment attempt errored — usually a Functions bundle size cap (~10MB) or a syntax error in code pushed from a custom fork. <strong>Fix:</strong> <code>wrangler pages deployment list --project-name=&lt;slug&gt;</code> to see the failed deployment id, then open the build log link in the Cloudflare dashboard. If the issue is bundle size, check that <code>node_modules/</code> isn't being uploaded — only <code>public/</code> + <code>functions/</code> ship.</dd>
@@ -406,8 +380,8 @@ export const onRequestGet = async ({ request }) => {
 <header class="nav">
   <a class="brand" href="/">pages-seo</a>
   <nav>
-    <a href="/install">Install</a>
-    <a href="/update">Update</a>
+    <a href="/admin">Admin</a>
+    <a href="/admin#updates">Update</a>
     <a href="/docs" aria-current="page">Docs</a>
   </nav>
 </header>

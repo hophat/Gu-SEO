@@ -43,72 +43,42 @@ Multi-Brand AI Content Platform supporting independent project configuration, to
 - **Multi-AI registry** — Workers AI → OpenAI → Anthropic → Gemini → Groq → DeepSeek → Mistral → Together → Cerebras. Each is optional.
 - **Multi-platform distribution** — every new post fans out to all enabled channels at once: Facebook Page, Instagram, Threads and X (Twitter), plus WordPress / Webhook / Custom API. Per-channel content adaptation (X's 280 weighted chars, Threads' 500, Instagram's photo-only + link-in-bio), durable per-channel queue with retry/backoff, and one-click Meta OAuth for Facebook/Instagram/Threads.
 
-## 🚀 Install in one command
+## 🚀 Running it
 
-### Recommended — Browser installer (no terminal)
+This repository is the application, not a template. It is already
+provisioned against a live D1 database and a live R2 bucket, so there is
+nothing to install — you deploy what is here.
 
-[**seo.benjaminb.xyz/install →**](https://seo.benjaminb.xyz/install)
-
-Sign in with GitHub, paste one Cloudflare API token (the page pre-fills every required permission for you — one click to generate), and we provision D1, R2, the Pages project, the schema, and your admin account in about a minute. Nothing to install locally.
-
-### Or — Terminal installer
-
-If you'd rather drive `wrangler` yourself, pick whichever runtime you already have:
+### Deploy
 
 ```bash
-# Bash / Zsh
-curl -fsSL https://seo.benjaminb.xyz/install/run.sh | bash
-
-# Python
-curl -fsSL https://seo.benjaminb.xyz/install/run.py | python3
-
-# Node
-curl -fsSL https://seo.benjaminb.xyz/install/run.js | node
+npm install
+npm run build     # check-public + check-jsx + bundle-schema + admin:build
+npm run deploy    # Pages + cron-worker
 ```
 
-The CLI installer uses `wrangler login` (OAuth) instead of a token — no scope juggling required.
+`deploy.sh` is the only deploy path. It ships the Pages site **and** the
+cron Worker, and it no-ops automatically when Cloudflare runs it inside
+Workers Builds. Never wire it as a build command there.
 
-> [!NOTE]
-> We previously offered a "Deploy to Cloudflare" 1-click button. Cloudflare's auto-generated CI token for new Pages projects doesn't include `Pages:Edit`, which breaks the first deploy. Until Cloudflare ships a fix, the browser installer above is the no-terminal path that actually works end-to-end.
+### Database
 
-Either way, the installer will:
-
-1. Check that `wrangler` is installed (offers to install it for you).
-2. Run `wrangler login` if needed — opens your browser, no API token to copy.
-3. Prompt for your project slug, site name, admin email, and password.
-4. Provision a D1 database and an R2 bucket on your Cloudflare account.
-5. Download the latest source, patch `wrangler.toml`, run `wrangler pages deploy` (which uploads both the static assets and the Functions bundle — no GitHub linkage needed).
-6. Set `SITE_NAME` and `SITE_URL` as Pages environment variables.
-7. Open your new site's `/admin` with the credentials baked into the URL hash, so the first-run setup card auto-creates your account.
-
-Total wall-clock time: about 2 minutes. The installer is idempotent — re-run with the same slug if anything fails and it'll pick up from where it stopped. See [`cli/README.md`](./cli/README.md) for details.
-
-> [!TIP]
-> The legacy `bash setup.sh` flow also works from a clone (provisions via Wrangler the same way) — see the section below.
-
-### Alternatives
-
-<details>
-<summary><b>Browser installer at <a href="https://seo.benjaminb.xyz/install">seo.benjaminb.xyz/install</a></b></summary>
-
-The browser flow uses a Cloudflare API token instead of `wrangler login`. It's another option if you can't run Node locally, but it requires you to authorise the **Cloudflare Workers & Pages GitHub App** on your account once (because the browser flow can't deploy Functions via Direct Upload — Cloudflare's public REST API doesn't expose that yet). The CLI above avoids that step entirely.
-</details>
-
-<details>
-<summary><b>From a clone with <code>bash setup.sh</code></b></summary>
+The D1 resource is `pages-seo-db`, bound as `DB` in `wrangler.toml`.
 
 ```bash
-git clone https://github.com/Benjamin-Bloch/pages-seo
-cd pages-seo
-npm install -g wrangler && wrangler login
-
-npm run setup        # or: bash setup.sh / python3 setup.py / node setup.js
+npm run db:migrate              # apply pending migrations
+npm run db:console              # quick count against the live database
 ```
 
-Resumable — if a step fails, fix the issue and re-run. Delete `.setup-state` to start over.
-</details>
+Both default to `pages-seo-db`; override with `--db <name>` or
+`D1_DATABASE=<name>`.
 
-After install, the onboarding wizard walks you through Brand DNA → AI providers → 28-day content plan. **Daily automation** is optional — the cron Worker in `cron-worker/` needs `wrangler deploy` once for that, or just hit **Run now** from the admin dashboard whenever you want a fresh post.
+### Admin
+
+`/admin` is the operator console. On first visit it runs its own setup
+wizard: Brand DNA → AI providers → 28-day content plan. Daily automation
+is optional — the cron Worker ships with `npm run deploy`, or press
+**Run now** in the dashboard whenever you want a fresh post.
 
 ## 🗓️ Content calendar
 

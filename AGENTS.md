@@ -19,25 +19,25 @@ repo.
 | `functions/api/**.js` | Cloudflare Pages Functions (HTTP routes) |
 | `functions/_lib/**.js` | Shared helpers — auth, util, settings, schema, dedup, etc. |
 | `functions/_lib/cover_spec.js` | The cover policy in one place: what counts as a paintable template (`isRenderableSpec`), the canvas size, spec normalisation and the branded starter card (`fallbackCoverSpec`). Server callers import it; the browser clients receive it from `/api/admin/cover/templates` (each row carries `renderable` + a normalised `spec`, the payload carries `starter_spec`). |
-| `public/**` | Static assets (HTML, CSS, JS for /install, /admin, /ai-setup, /repair, /docs) |
+| `public/**` | Static assets (HTML, CSS, JS for /admin, /docs, and the 404) |
 | `schema/init.sql` | Authoritative D1 schema. **Must stay additive.** |
 | `functions/_lib/schema.js` | Bundled output of `schema/init.sql`. Regenerate with `node scripts/bundle-schema.js`. Never edit by hand. |
 | `functions/[project]/**` | Per-project public routes on a shared host (`/<slug>/blog`, `/<slug>/p/<slug>`, `/<slug>/feed.xml`, `/<slug>/sitemap.xml`). Thin wrappers that delegate to the root renderers with `projectSlug` + `basePath`. |
 | `cron-worker/` | Separate Cloudflare Worker (`gulagi-cron-worker`) that POSTs one call per schedule to `/api/admin/cron/tick`, which fans the task out across every active project |
-| `cli/index.js` | Single-file Node installer used by `public/install/run.js` (the canonical install path) |
-| `public/install/run.{sh,py,js}` | Three identical installers shipped at `seo.benjaminb.xyz/install/run.*` |
-| `wrangler.template.toml` | Template shipped in the repo. The real `wrangler.toml` (with the user's D1/R2 ids) is **gitignored** — never commit it. |
+| `deploy.sh` | The only deploy path: Pages + cron-worker, no-ops under Workers Builds. `npm run deploy` calls it. |
+| `wrangler.template.toml` | Template shipped in the repo for a fresh setup. `wrangler.toml` is **checked in on purpose** with this deployment's real D1/R2 ids; maintainers keep a different machine's ids in the gitignored `wrangler.live.toml`. |
 
 ## Hard rules — never violate
 
-- ❌ Do not commit `wrangler.toml`. It has real account-specific ids.
+- ❌ Do not commit secrets into `wrangler.toml`. The file is tracked, but
+  only with ids for this deployment. Anything from `.dev.vars` or a live
+  token stays out of git.
 - ❌ Do not delete a D1 database in any script or instruction. D1
   holds every post ever generated.
 - ❌ Do not weaken `adminGate` in `functions/_lib/auth.js`. Every
   admin endpoint must call it before doing anything.
-- ❌ Do not `console.log` anything containing the admin password,
-  the magic-link URL, or `Bearer` tokens. The installer specifically
-  delivers credentials via clipboard / 0600 tmpfile to avoid this.
+- ❌ Do not `console.log` anything containing the admin password or
+  `Bearer` tokens.
 - ❌ Do not edit `functions/_lib/schema.js` directly. Edit
   `schema/init.sql` and re-bundle.
 - ❌ Do not introduce destructive schema migrations (DROP TABLE,
@@ -93,13 +93,13 @@ wire one up:
 2. Run `node scripts/bundle-schema.js` to regenerate
    `functions/_lib/schema.js`.
 3. Commit both files.
-4. The next `/api/setup` call (or any install) applies it idempotently.
+4. The next `/api/setup` call (or a fresh install on another account) applies it idempotently.
 
 ### Adding an AI provider
 1. New module at `functions/_lib/providers/<name>.js` exporting
    `{ id, label, env_required, generate(prompt, opts) }`.
 2. Register in the provider index.
-3. Add `<name>_API_KEY` to the secrets the installer prompts for
+3. Add `<name>_API_KEY` to the secrets a fresh setup asks for
    (optional — providers without keys are skipped).
 
 ## Release flow
@@ -113,18 +113,21 @@ wire one up:
 6. Create a GitHub Release on the upstream repo with the changelog
    section as the body.
 
-## Per-task playbooks
+## Deploying
 
-For step-by-step install / update / repair guidance, use the prompts
-at `https://seo.benjaminb.xyz/api/ai-prompt?tool=codex&mode=<mode>`.
-The same playbooks are also shipped as Copilot prompt files at
-`.github/prompts/pages-seo-{install,update,repair}.prompt.md` and as
-a Claude Code skill at `.claude/skills/pages-seo/SKILL.md`.
+One path, and it is the only one: `npm run deploy` → `deploy.sh` →
+Pages + cron-worker. It reads the project name out of `wrangler.toml`,
+so there is nothing to keep in sync by hand, and it no-ops when
+`CF_PAGES` is set so wiring it as a Workers Builds command is harmless.
+
+`functions_dist/` is the compiled Functions bundle. Rebuild it with
+`npm run build:functions` and commit the result — a stale bundle
+deploys routes the source no longer has.
 
 ## When you're unsure
 
 - Schema or auth change → ask before editing. Both are load-bearing.
 - Upstream API contract change (`/api/version`, `/api/health`) →
-  ask. External installs and uptime monitors depend on the shape.
+  ask. Uptime monitors and embed widgets depend on the shape.
 - A "small fix" that requires editing `wrangler.toml` → it doesn't.
   Edit `wrangler.template.toml` instead.
