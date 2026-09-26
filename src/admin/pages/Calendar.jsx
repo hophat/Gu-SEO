@@ -264,7 +264,7 @@ export default function CalendarPage() {
           <Space>
             <CalendarOutlined />
             <span>{selectedDate.format('DD/MM/YYYY')}</span>
-            <Tag>{selectedSlots.length} bài viết</Tag>
+            <span className="ps-chip ps-chip--plain">{selectedSlots.length} bài viết</span>
           </Space>
         }
         open={drawerOpen}

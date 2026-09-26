@@ -27,9 +27,10 @@
   ],
   "scripts": {
     "setup": "bash setup.sh",
-    "build": "npm run check-public && npm run bundle-schema && npm run admin:build",
+    "build": "npm run check-public && npm run check-jsx && npm run bundle-schema && npm run admin:build",
     "bundle-schema": "node scripts/bundle-schema.js && node scripts/bundle-migrations.js",
     "check-public": "node scripts/check-public-mirrors.js",
+    "check-jsx": "node scripts/check-jsx-imports.js",
     "test": "node scripts/run-tests.js && node --no-warnings scripts/run-platform-tests.js && node --no-warnings scripts/run-admin-hook-tests.mjs && node --no-warnings scripts/run-video-agent-tests.mjs && node --no-warnings scripts/run-loop-tests.mjs",
     "seed": "node scripts/seed-runner.js",
     "build:functions": "npx wrangler pages functions build --outdir functions_dist",
