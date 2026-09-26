@@ -3138,10 +3138,16 @@ async function testSitemapChunking() {
     }
     fetched += locs.length;
   }
-  // The urlset also carries /, /blog, /hubs and the paginated
-  // /blog/page/N listings, so the post count is what matters here.
+  // The urlset also carries /, /blog and /hubs, so the post count is
+  // what matters here.
   const postUrls = [...seen].filter((u) => /\/blog\/chunk-post-\d+$/.test(u));
   assert.equal(postUrls.length, TOTAL, 'every published post appears across the chunks');
+  // Paginated archives are self-canonical and reachable through the
+  // rel=next/prev chain, which is how a crawler should walk them. Every
+  // one listed here is crawl budget spent on a listing page.
+  const paginated = [...seen].filter((u) => /\/blog\/page\/\d+$/.test(u));
+  assert.equal(paginated.length, 0, 'no /blog/page/N URL reaches the sitemap');
+  assert.ok(seen.has('https://seo.test/hubs'), 'the hub directory is still listed');
   ok('a 5.500-post archive is fully covered by the chunked sitemap');
 }
 async function main() {

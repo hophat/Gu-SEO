@@ -111,28 +111,14 @@ async function fetchEntries(env, host, project = null, basePath = '') {
     ? env.DB.prepare(progsSql).bind(projectId)
     : env.DB.prepare(progsSql);
 
-  // Find out how many blog index pages exist (1 + total/PAGE_SIZE).
-  // PAGE_SIZE is sourced from blog/index.js so we never drift out of
-  // sync — sitemap pages have to match what /blog/page/N actually
-  // serves or crawlers hit empty/duplicate archives. The count uses the
-  // same project filter as the index page or the two disagree.
-  const totalBlogsSql = projectId
-    ? `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published' AND project_id = ?`
-    : `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published'`;
-  const totalBlogs = projectId
-    ? env.DB.prepare(totalBlogsSql).bind(projectId)
-    : env.DB.prepare(totalBlogsSql);
-
-  // Four independent reads sharing nothing but the project filter, so they
-  // go out together. Chained, a crawler re-fetching the sitemap paid four
-  // serial D1 round-trips before a single <url> was written.
-  const [blogsRes, progsRes, totalBlogsRow, pillars] = await Promise.all([
+  // Three independent reads sharing nothing but the project filter, so
+  // they go out together. Chained, a crawler re-fetching the sitemap paid
+  // three serial D1 round-trips before a single <url> was written.
+  const [blogsRes, progsRes, pillars] = await Promise.all([
     blogs.all().catch(() => ({ results: [] })),
     progs.all().catch(() => ({ results: [] })),
-    totalBlogs.first().catch(() => ({ n: 0 })),
     listPillars(env, projectId).catch(() => []),
   ]);
-  const totalPages = Math.max(1, Math.ceil((totalBlogsRow?.n || 0) / PAGE_SIZE));
 
   const today = isoDay(0);
   // Project-scoped sitemaps list only /<slug>/blog and its posts; the
@@ -143,10 +129,11 @@ async function fetchEntries(env, host, project = null, basePath = '') {
         { path: '/',     priority: '1.0', changefreq: 'weekly', lastmod: today },
         { path: '/blog', priority: '0.9', changefreq: 'daily',  lastmod: today },
       ];
-  // /blog/page/2, /3, … — Google indexes paginated archive pages.
-  for (let i = 2; i <= totalPages; i++) {
-    entries.push({ path: `${basePath}/blog/page/${i}`, priority: '0.5', changefreq: 'weekly', lastmod: today });
-  }
+  // /blog/page/2, /3, … are deliberately NOT listed here. They are
+  // self-canonical and reachable through the rel=next/prev chain the
+  // archive renders, which is how Google says crawlers should walk a
+  // paginated list. Every one of them in the sitemap spends crawl
+  // budget on a listing page instead of the posts it links to.
 
   for (const p of (blogsRes.results || [])) {
     const images = p.hero_image_key ? [{
