@@ -53,7 +53,7 @@
   padding: 5px 8px;
   font: inherit; font-size: 12px;
 }
-.ce-input-select:focus, .ce-preset:focus { outline: none; border-color: var(--accent); }
+.ce-input-select:focus-visible, .ce-preset:focus-visible { outline: 2px dashed var(--accent); outline-offset: 1px; border-color: var(--accent); }
 
 .ce-icon-btn {
   background: transparent;
@@ -69,8 +69,8 @@
 .ce-icon-btn:hover { background: var(--bg-soft); color: var(--ink); border-color: var(--line); }
 
 .ce-btn {
-  background: var(--accent); color: #062826;
-  border: 0; border-radius: 6px;
+  background: var(--accent); color: var(--accent-ink);
+  border: 0; border-radius: 4px;
   padding: 7px 14px;
   font: inherit; font-weight: 600; font-size: 13px;
   cursor: pointer;
@@ -159,7 +159,7 @@
   font: inherit; font-size: 13px;
   box-sizing: border-box;
 }
-.ce-panel-search:focus { outline: none; border-color: var(--accent); }
+.ce-panel-search:focus-visible { outline: 2px dashed var(--accent); outline-offset: 1px; border-color: var(--accent); }
 .ce-panel-sec + .ce-panel-sec { margin-top: 18px; }
 .ce-panel-sec-h {
   font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
@@ -196,7 +196,7 @@
   height: 30px;
   box-sizing: border-box;
 }
-.ce-ctx-input:focus { outline: none; border-color: var(--accent); }
+.ce-ctx-input:focus-visible { outline: 2px dashed var(--accent); outline-offset: 1px; border-color: var(--accent); }
 .ce-ctx-size { width: 64px; }
 .ce-ctx-range { width: 90px; padding: 0; }
 .ce-ctx-color {
@@ -237,7 +237,7 @@
   display: inline-flex; align-items: center; justify-content: center;
 }
 .ce-ctx-seg:hover { background: var(--bg-card); color: var(--ink); }
-.ce-ctx-seg.is-on { background: var(--accent); color: #062826; }
+.ce-ctx-seg.is-on { background: var(--accent); color: var(--accent-ink); }
 
 .ce-ctx-spacer { flex: 1; }
 

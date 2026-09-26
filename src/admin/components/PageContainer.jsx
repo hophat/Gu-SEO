@@ -6,17 +6,17 @@ const { Title, Text } = Typography;
 
 export default function PageContainer({ title, description, breadcrumb, extra, children }) {
   return (
-    <div>
+    <div className="ps-page">
       {breadcrumb && (
         <Breadcrumb
-          style={{ marginBottom: 12 }}
+          className="ps-page-crumb"
           items={[{ href: '#overview', title: <><HomeOutlined /> Trang chủ</> }, ...(breadcrumb || [])]}
         />
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+      <div className="ps-page-head">
         <div>
-          {title && <Title level={3} style={{ margin: 0 }}>{title}</Title>}
-          {description && <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>{description}</Text>}
+          {title && <Title level={3} className="ps-page-title">{title}</Title>}
+          {description && <Text className="ps-page-desc">{description}</Text>}
         </div>
         {extra && <Space wrap>{extra}</Space>}
       </div>

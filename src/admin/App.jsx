@@ -2,7 +2,7 @@
 // Hash-based routing (#overview, #blog, etc.) — same as vanilla admin.
 
 import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
-import { Layout, Menu, Avatar, Dropdown, Button, Space, Select, Badge, Skeleton, Result, ConfigProvider, App as AntApp, Form, Input, Card, Tabs, Alert, message } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Button, Space, Select, Skeleton, Result, ConfigProvider, App as AntApp, Form, Input, Card, Tabs, Alert, message } from 'antd';
 import {
   AppstoreOutlined, FileTextOutlined, GiftOutlined, BarChartOutlined,
   GlobalOutlined, DashboardOutlined, SettingOutlined, TeamOutlined,
@@ -195,7 +195,7 @@ function AdminShell() {
   // Show login gate if not authenticated
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div className="ps-boot">
         <Skeleton active paragraph={{ rows: 4 }} />
       </div>
     );
@@ -226,20 +226,19 @@ function AdminShell() {
   return (
     <ConfigProvider theme={theme === 'dark' ? darkTheme : lightTheme}>
       <AntApp>
-        <Layout className="admin-layout" style={{ minHeight: '100vh' }}>
+        <Layout className="admin-layout">
           <Sider
             collapsible
             collapsed={collapsed}
             onCollapse={setCollapsed}
-            width={240}
-            collapsedWidth={72}
+            width={232}
+            collapsedWidth={64}
             breakpoint="lg"
             className="admin-sider"
-            style={{ overflow: 'auto', height: '100vh', position: 'sticky', top: 0, borderRight: '1px solid rgba(0,0,0,0.06)' }}
           >
-            <div style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-              <img src="/logo-guseo-sm.png" alt="GU SEO" style={{ height: 28, width: 'auto' }} />
-              {!collapsed && <span style={{ marginLeft: 10, fontWeight: 700, fontSize: 16 }}>GU SEO</span>}
+            <div className="admin-sider-brand">
+              <img src="/logo-guseo-sm.png" alt="" />
+              {!collapsed && <span>GU SEO</span>}
             </div>
             <Menu
               mode="inline"
@@ -247,30 +246,36 @@ function AdminShell() {
               defaultOpenKeys={openKeys}
               onClick={({ key }) => navigate(key)}
               items={visibleMenu}
-              style={{ borderRight: 0 }}
             />
           </Sider>
 
           <Layout className="admin-main-layout">
-            <Header className="admin-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-              <Space className="admin-header-context" size="middle" wrap>
+            <Header className="admin-header">
+              <div className="admin-header-context">
                 {user?.role === 'super_admin' && projects.length > 0 && (
                   <Select
                     value={activeProject?.id}
                     onChange={switchProject}
                     className="admin-project-select"
+                    aria-label="Dự án đang làm việc"
                     options={projects.map((p) => ({ value: p.id, label: p.site_name || p.slug }))}
                   />
                 )}
                 {user?.role !== 'super_admin' && activeProject && (
-                  <Badge className="admin-context-badge" count={activeProject.site_name || activeProject.slug} style={{ backgroundColor: '#1677ff' }} />
+                  <span className="ps-chip ps-chip--plain admin-context-badge">
+                    {activeProject.site_name || activeProject.slug}
+                  </span>
                 )}
-                {user?.role === 'super_admin' && <Badge className="admin-context-badge" count="Quản trị hệ thống" style={{ backgroundColor: '#52c41a' }} />}
+                {user?.role === 'super_admin' && (
+                  <span className="ps-chip ps-chip--plain admin-context-badge">Quản trị hệ thống</span>
+                )}
                 {user?.role !== 'super_admin' && user?.plan_tier === 'free' && (
-                  <Badge className="admin-context-badge" count={`Free · ${user?.post_count || 0}/${user?.post_limit || 100} bài`} style={{ backgroundColor: '#faad14' }} />
+                  <span className="ps-chip ps-chip--warn admin-context-badge">
+                    Free · {user?.post_count || 0}/{user?.post_limit || 100} bài
+                  </span>
                 )}
-              </Space>
-              <Space className="admin-header-actions" size="small" wrap>
+              </div>
+              <div className="admin-header-actions">
                 <Button className="admin-setup-button" aria-label="Trình thiết lập" title="Trình thiết lập" icon={<RocketOutlined />} onClick={() => setWizardOpen(true)}>
                   <span className="admin-setup-label">Trình thiết lập</span>
                 </Button>
@@ -282,17 +287,17 @@ function AdminShell() {
                   onClick={toggle}
                 />
                 <Dropdown menu={userMenu} placement="bottomRight">
-                  <Space className="admin-user-menu" style={{ cursor: 'pointer' }}>
-                    <Avatar size="small" style={{ backgroundColor: '#1677ff' }}>
+                  <button type="button" className="admin-user-menu ps-user-trigger">
+                    <Avatar size={28} className="ps-user-avatar">
                       {user?.email?.[0]?.toUpperCase() || 'A'}
                     </Avatar>
-                    <span className="admin-user-email" style={{ fontSize: 13 }}>{user?.email}</span>
-                  </Space>
+                    <span className="admin-user-email">{user?.email}</span>
+                  </button>
                 </Dropdown>
-              </Space>
+              </div>
             </Header>
 
-            <Content style={{ padding: 24, overflow: 'auto' }}>
+            <Content className="admin-content">
               <Suspense fallback={<Skeleton active paragraph={{ rows: 6 }} />}>
                 <PageComponent />
               </Suspense>
@@ -395,13 +400,13 @@ function LoginGate() {
 
   return (
     <ConfigProvider theme={lightTheme}>
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
-        <div style={{ width: 420, maxWidth: '90vw' }}>
+      <div className="ps-auth">
+        <div className="ps-auth-panel">
           <Card>
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <img src="/logo-guseo.png" alt="GU SEO" style={{ height: 48, marginBottom: 12 }} />
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>GU SEO Console</h2>
-              <p style={{ color: '#00000073', marginTop: 8, fontSize: 13 }}>Đăng nhập hoặc đăng ký dùng thử 100 bài viết SEO</p>
+            <div className="ps-auth-head">
+              <img src="/logo-guseo.png" alt="GU SEO" className="ps-auth-logo" />
+              <h1 className="ps-auth-title">GU SEO Console</h1>
+              <p className="ps-auth-sub">Đăng nhập hoặc đăng ký dùng thử 100 bài viết SEO</p>
             </div>
 
             <Tabs
@@ -517,11 +522,13 @@ function SetupWizard({ onDone }) {
   if (success) {
     return (
       <ConfigProvider theme={lightTheme}>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
-          <Card style={{ textAlign: 'center', width: 400 }}>
-            <CheckCircleOutlined style={{ fontSize: 48, color: '#52c41a', marginBottom: 16 }} />
-            <h2 style={{ marginBottom: 8 }}>Hoàn tất!</h2>
-            <p style={{ color: '#00000073' }}>Tài khoản quản trị đã sẵn sàng. Đang đăng nhập...</p>
+        <div className="ps-auth">
+          <Card className="ps-auth-panel ps-auth-panel--narrow">
+            <div className="ps-auth-head">
+              <CheckCircleOutlined className="ps-auth-check" />
+              <h1 className="ps-auth-title">Hoàn tất</h1>
+              <p className="ps-auth-sub">Tài khoản quản trị đã sẵn sàng. Đang đăng nhập...</p>
+            </div>
           </Card>
         </div>
       </ConfigProvider>
@@ -530,17 +537,17 @@ function SetupWizard({ onDone }) {
 
   return (
     <ConfigProvider theme={lightTheme}>
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
-        <div style={{ width: 460, maxWidth: '90vw' }}>
+      <div className="ps-auth">
+        <div className="ps-auth-panel">
           <Card>
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <img src="/logo-guseo.png" alt="GU SEO" style={{ height: 48, marginBottom: 12 }} />
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Thiết lập ban đầu</h2>
-              <p style={{ color: '#00000073', marginTop: 8, fontSize: 13 }}>
+            <div className="ps-auth-head">
+              <img src="/logo-guseo.png" alt="GU SEO" className="ps-auth-logo" />
+              <h1 className="ps-auth-title">Thiết lập ban đầu</h1>
+              <p className="ps-auth-sub">
                 Đây là bản triển khai mới. Chọn email, mật khẩu và website của bạn — phần còn lại chúng tôi lo.
               </p>
             </div>
-            <Form form={form} layout="vertical" onFinish={onSubmit}>
+            <Form form={form} layout="vertical" onFinish={onSubmit} requiredMark={false}>
               <Form.Item name="site_name" label="Tên website" rules={[{ required: true }]}>
                 <Input placeholder="Trang web của tôi" maxLength={80} />
               </Form.Item>
@@ -556,7 +563,7 @@ function SetupWizard({ onDone }) {
               {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} closable onClose={() => setError(null)} />}
               <Button type="primary" htmlType="submit" block loading={loading}>Hoàn tất thiết lập</Button>
             </Form>
-            <p style={{ textAlign: 'center', color: '#00000045', fontSize: 12, marginTop: 16 }}>
+            <p className="ps-auth-foot">
               Bước này chỉ chạy một lần. Sau khi xong, bạn sẽ đăng nhập bình thường.
             </p>
           </Card>

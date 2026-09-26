@@ -1,8 +1,10 @@
-// Overview page — antd Statistic, Card, Progress, Row/Col, Button, Tag, Input, Alert, Collapse.
+// Overview page — the operator's landing surface: what needs a human, what
+// the project is, what it has produced.
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, Row, Col, Statistic, Progress, Button, Tag, Input, Alert, Space, Typography, Skeleton, message, Popconfirm, Tooltip, Collapse, Badge, Avatar, Descriptions, Divider } from 'antd';
+import { Card, Row, Col, Statistic, Progress, Button, Input, Alert, Space, Typography, Skeleton, message, Popconfirm, Tooltip, Collapse, Avatar, Descriptions, Divider } from 'antd';
 import { FileTextOutlined, AppstoreOutlined, ClockCircleOutlined, PlusOutlined, GlobalOutlined, DeleteOutlined, SaveOutlined, InfoCircleOutlined, ThunderboltOutlined, LinkOutlined, CheckCircleOutlined, QuestionCircleOutlined, CloudOutlined, ShopOutlined, EnvironmentOutlined, CalendarOutlined, RocketOutlined, EditOutlined, SendOutlined, WarningOutlined, UploadOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
+import StatusChip from '../components/StatusChip.jsx';
 import { apiGet, apiPost } from '../api.js';
 import { useAuth, useProjects } from '../hooks/useTheme.jsx';
 import { useProjectUrl } from '../lib/projectUrl.js';
@@ -175,7 +177,9 @@ export default function Overview() {
 
   const pct = quota.isSuper ? 100 : Math.min(100, Math.round((quota.used / quota.limit) * 100));
   const remaining = Math.max(0, quota.limit - quota.used);
-  const tierColor = quota.isSuper ? 'blue' : pct >= 100 ? 'red' : 'green';
+  // A 2px rail, not a 4px bar: in this system hairlines carry emphasis, and
+  // the tone already changes with the quota, so the width stays constant.
+  const quotaTone = quota.isSuper ? 'info' : pct >= 100 ? 'bad' : 'good';
 
   const cnameHost = domain.input || 'blog.example.com';
   const cnameTarget = domain.target;
@@ -203,26 +207,26 @@ export default function Overview() {
           size="small"
           style={{ marginBottom: 24 }}
           title={
-            <Space>
-              <WarningOutlined style={{ color: attention.counts.critical ? '#ff4d4f' : '#faad14' }} />
+            <Space wrap>
+              <WarningOutlined className={attention.counts.critical ? 'ps-stat-icon ps-stat-icon--bad' : 'ps-stat-icon ps-stat-icon--warn'} />
               Cần xử lý
-              {attention.counts.critical > 0 && <Tag color="error">{attention.counts.critical} nghiêm trọng</Tag>}
-              {attention.counts.warning > 0 && <Tag color="warning">{attention.counts.warning} cảnh báo</Tag>}
-              {attention.counts.info > 0 && <Tag>{attention.counts.info} gợi ý</Tag>}
+              {attention.counts.critical > 0 && <span className="ps-chip ps-chip--bad">{attention.counts.critical} nghiêm trọng</span>}
+              {attention.counts.warning > 0 && <span className="ps-chip ps-chip--warn">{attention.counts.warning} cảnh báo</span>}
+              {attention.counts.info > 0 && <span className="ps-chip ps-chip--plain">{attention.counts.info} gợi ý</span>}
             </Space>
           }
         >
           <Space direction="vertical" size={8} style={{ width: '100%' }}>
             {attention.items.map((it) => {
-              const color = it.severity === 'critical' ? '#ff4d4f' : it.severity === 'warning' ? '#faad14' : '#8c8c8c';
+              const tone = it.severity === 'critical' ? 'bad' : it.severity === 'warning' ? 'warn' : 'muted';
               const Icon = it.severity === 'info' ? InfoCircleOutlined : WarningOutlined;
               return (
                 <Row key={it.id} gutter={[12, 8]} align="middle" wrap={false}>
-                  <Col flex="none"><Icon style={{ color, fontSize: 16 }} /></Col>
+                  <Col flex="none"><Icon className={`ps-sev-icon ps-sev-icon--${tone}`} /></Col>
                   <Col flex="auto" style={{ minWidth: 0 }}>
                     <Text strong style={{ fontSize: 13 }}>
                       {it.title}
-                      {it.count ? <Tag style={{ marginLeft: 6, fontSize: 11 }}>{it.count}</Tag> : null}
+                      {it.count ? <span className="ps-chip ps-chip--plain ps-chip-xs" style={{ marginInlineStart: 6 }}>{it.count}</span> : null}
                     </Text>
                     <div><Text type="secondary" style={{ fontSize: 12 }}>{it.detail}</Text></div>
                   </Col>
@@ -266,13 +270,13 @@ export default function Overview() {
               <Row key={st.key} gutter={[12, 8]} align="middle" wrap={false}>
                 <Col flex="none">
                   {st.done
-                    ? <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />
-                    : <ClockCircleOutlined style={{ color: '#bfbfbf', fontSize: 16 }} />}
+                    ? <CheckCircleOutlined className="ps-sev-icon ps-sev-icon--good" />
+                    : <ClockCircleOutlined className="ps-sev-icon ps-sev-icon--muted" />}
                 </Col>
                 <Col flex="auto" style={{ minWidth: 0 }}>
                   <Text strong={!st.done} type={st.done ? 'secondary' : undefined} style={{ fontSize: 13 }}>
                     {st.title}
-                    {st.optional && <Tag style={{ marginLeft: 6, fontSize: 11 }}>tùy chọn</Tag>}
+                    {st.optional && <span className="ps-chip ps-chip--plain ps-chip-xs" style={{ marginInlineStart: 6 }}>tùy chọn</span>}
                   </Text>
                   <div><Text type="secondary" style={{ fontSize: 12 }}>{st.detail}</Text></div>
                 </Col>
@@ -291,9 +295,9 @@ export default function Overview() {
           <Row gutter={[24, 16]} align="middle">
             <Col xs={24} sm={4} style={{ textAlign: 'center' }}>
               {activeProject.logo_url ? (
-                <img src={activeProject.logo_url} alt={activeProject.site_name || activeProject.slug} style={{ maxWidth: 80, maxHeight: 80, borderRadius: 8, objectFit: 'cover' }} />
+                <img src={activeProject.logo_url} alt={activeProject.site_name || activeProject.slug} style={{ maxWidth: 80, maxHeight: 80, borderRadius: 4, objectFit: 'cover' }} />
               ) : (
-                <Avatar size={80} style={{ backgroundColor: activeProject.theme_color || '#1677ff' }}>
+                <Avatar size={80} style={{ backgroundColor: activeProject.theme_color || 'var(--accent)' }}>
                   {(activeProject.site_name || activeProject.slug || 'P')[0]?.toUpperCase()}
                 </Avatar>
               )}
@@ -306,7 +310,7 @@ export default function Overview() {
               <Space direction="vertical" size={4} style={{ width: '100%' }}>
                 <Space>
                   <Text strong style={{ fontSize: 20 }}>{activeProject.site_name || activeProject.name || activeProject.slug}</Text>
-                  {activeProject.status === 'active' ? <Tag color="success">Hoạt động</Tag> : <Tag color="default">{activeProject.status}</Tag>}
+                  <StatusChip status={activeProject.status} table="project" />
                 </Space>
                 {activeProject.site_description && (
                   <Tooltip title={activeProject.site_description}>
@@ -365,7 +369,7 @@ export default function Overview() {
                   <Row gutter={0} style={{ marginBottom: 6 }}>
                     <Col span={8}><Text type="secondary" style={{ fontSize: 12 }}>Khu vực</Text></Col>
                     <Col span={16}>
-                      <Space size={4}><EnvironmentOutlined style={{ fontSize: 11, color: '#8c8c8c' }} /><Text style={{ fontSize: 12 }}>{shorten(brand.service_area, 40)}</Text></Space>
+                      <Space size={4}><EnvironmentOutlined className="ps-inline-icon" /><Text style={{ fontSize: 12 }}>{shorten(brand.service_area, 40)}</Text></Space>
                     </Col>
                   </Row>
                 )}
@@ -376,11 +380,11 @@ export default function Overview() {
                     <Col span={16}>
                       <Space size={[4, 4]} wrap>
                         {themeList(brand.key_themes, 3).map((t) => (
-                          <Tag key={t} style={{ margin: 0, fontSize: 11, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>{t}</Tag>
+                          <span key={t} className="ps-chip ps-chip--plain ps-chip-xs ps-chip-clip">{t}</span>
                         ))}
                         {themeList(brand.key_themes, 99).length > 3 && (
                           <Tooltip title={themeList(brand.key_themes, 99).join(', ')}>
-                            <Tag style={{ margin: 0, fontSize: 11 }}>+{themeList(brand.key_themes, 99).length - 3}</Tag>
+                            <span className="ps-chip ps-chip--plain ps-chip-xs">+{themeList(brand.key_themes, 99).length - 3}</span>
                           </Tooltip>
                         )}
                       </Space>
@@ -398,13 +402,13 @@ export default function Overview() {
       )}
 
       {/* Quota hero */}
-      <Card style={{ marginBottom: 24, borderLeft: `4px solid ${tierColor === 'blue' ? '#1677ff' : tierColor === 'red' ? '#ff4d4f' : '#52c41a'}` }}>
+      <Card style={{ marginBottom: 24 }} className={`ps-quota-card ps-quota-card--${quotaTone}`}>
         <Row gutter={[24, 16]} align="middle">
           <Col xs={24} sm={8}>
             <Statistic
               title="Gói hiện tại"
               value={quota.isSuper ? 'Doanh Nghiệp' : 'Cơ Bản (Free)'}
-              prefix={<Tag color={tierColor}>{quota.isSuper ? 'SUPER' : 'FREE'}</Tag>}
+              prefix={<span className="ps-chip ps-chip--plain">{quota.isSuper ? 'SUPER' : 'FREE'}</span>}
             />
           </Col>
           <Col xs={24} sm={10}>
@@ -415,7 +419,6 @@ export default function Overview() {
             <Progress
               percent={pct}
               status={pct >= 100 ? 'exception' : 'active'}
-              strokeColor={tierColor === 'blue' ? '#1677ff' : tierColor === 'red' ? '#ff4d4f' : '#52c41a'}
               size="small"
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
@@ -432,7 +435,7 @@ export default function Overview() {
             <Statistic
               title="Bài viết đã xuất bản"
               value={stats.published}
-              prefix={<FileTextOutlined style={{ color: '#1677ff' }} />}
+              prefix={<FileTextOutlined className="ps-stat-icon ps-stat-icon--info" />}
             />
           </Card>
         </Col>
@@ -441,7 +444,7 @@ export default function Overview() {
             <Statistic
               title="Trang Prog SEO"
               value={stats.prog}
-              prefix={<AppstoreOutlined style={{ color: '#52c41a' }} />}
+              prefix={<AppstoreOutlined className="ps-stat-icon ps-stat-icon--good" />}
             />
           </Card>
         </Col>
@@ -450,7 +453,7 @@ export default function Overview() {
             <Statistic
               title="Hàng đợi chờ"
               value={stats.queue}
-              prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
+              prefix={<ClockCircleOutlined className="ps-stat-icon ps-stat-icon--warn" />}
             />
           </Card>
         </Col>
@@ -459,8 +462,8 @@ export default function Overview() {
             <Statistic
               title="Lịch đã lên"
               value={calendar.scheduled}
-              suffix={calendar.today > 0 ? <Tag color="processing" style={{ fontSize: 10, marginLeft: 4 }}>Hôm nay {calendar.today}</Tag> : null}
-              prefix={<CalendarOutlined style={{ color: '#722ed1' }} />}
+              suffix={calendar.today > 0 ? <span className="ps-chip ps-chip--info ps-chip-xs" style={{ marginInlineStart: 4 }}>Hôm nay {calendar.today}</span> : null}
+              prefix={<CalendarOutlined className="ps-stat-icon ps-stat-icon--info" />}
             />
             {calendar.nextDate && (
               <Text type="secondary" style={{ fontSize: 12 }}>
@@ -471,43 +474,44 @@ export default function Overview() {
         </Col>
       </Row>
 
-      {/* Quick actions */}
+      {/* Quick actions — real anchors so they are tabbable and openable in a
+          new tab, rather than cards with a click handler. */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={8}>
-          <Card hoverable onClick={() => { window.location.hash = 'brand'; }} style={{ cursor: 'pointer' }}>
+          <a className="ps-quick" href="#brand">
             <Space>
-              <Avatar size={40} style={{ backgroundColor: '#1677ff' }}><ShopOutlined /></Avatar>
+              <Avatar size={40} className="ps-quick-icon"><ShopOutlined /></Avatar>
               <div>
                 <Text strong>Brand DNA</Text>
                 <br />
                 <Text type="secondary" style={{ fontSize: 12 }}>{brand?.business_type ? 'Đã thiết lập' : 'Chưa thiết lập'}</Text>
               </div>
             </Space>
-          </Card>
+          </a>
         </Col>
         <Col xs={24} sm={8}>
-          <Card hoverable onClick={() => { window.location.hash = 'calendar'; }} style={{ cursor: 'pointer' }}>
+          <a className="ps-quick" href="#calendar">
             <Space>
-              <Avatar size={40} style={{ backgroundColor: '#722ed1' }}><CalendarOutlined /></Avatar>
+              <Avatar size={40} className="ps-quick-icon"><CalendarOutlined /></Avatar>
               <div>
                 <Text strong>Lịch nội dung</Text>
                 <br />
                 <Text type="secondary" style={{ fontSize: 12 }}>{calendar.total} lịch · {calendar.published} đã xuất bản</Text>
               </div>
             </Space>
-          </Card>
+          </a>
         </Col>
         <Col xs={24} sm={8}>
-          <Card hoverable onClick={() => { window.location.hash = 'blog'; }} style={{ cursor: 'pointer' }}>
+          <a className="ps-quick" href="#blog">
             <Space>
-              <Avatar size={40} style={{ backgroundColor: '#52c41a' }}><FileTextOutlined /></Avatar>
+              <Avatar size={40} className="ps-quick-icon"><FileTextOutlined /></Avatar>
               <div>
                 <Text strong>Tạo bài viết</Text>
                 <br />
                 <Text type="secondary" style={{ fontSize: 12 }}>{stats.published} đã xuất bản · {stats.queue} chờ</Text>
               </div>
             </Space>
-          </Card>
+          </a>
         </Col>
       </Row>
 
@@ -547,9 +551,9 @@ export default function Overview() {
                 />
               )}
               <Row gutter={[16, 12]}>
-                <Col xs={12} sm={6}><Statistic title="Đã đăng" value={counts.published || 0} valueStyle={{ color: '#52c41a', fontSize: 20 }} /></Col>
-                <Col xs={12} sm={6}><Statistic title="Chờ đăng" value={counts.pending || 0} valueStyle={{ color: '#faad14', fontSize: 20 }} /></Col>
-                <Col xs={12} sm={6}><Statistic title="Thất bại" value={counts.failed || 0} valueStyle={{ color: counts.failed ? '#ff4d4f' : undefined, fontSize: 20 }} /></Col>
+                <Col xs={12} sm={6}><Statistic title="Đã đăng" value={counts.published || 0} valueStyle={{ color: 'var(--good)', fontSize: 20 }} /></Col>
+                <Col xs={12} sm={6}><Statistic title="Chờ đăng" value={counts.pending || 0} valueStyle={{ color: 'var(--warn)', fontSize: 20 }} /></Col>
+                <Col xs={12} sm={6}><Statistic title="Thất bại" value={counts.failed || 0} valueStyle={{ color: counts.failed ? 'var(--bad)' : undefined, fontSize: 20 }} /></Col>
                 <Col xs={12} sm={6}><Statistic title="Đã huỷ" value={counts.skipped || 0} valueStyle={{ fontSize: 20 }} /></Col>
               </Row>
 
@@ -560,10 +564,10 @@ export default function Overview() {
                     {publishedJobs.slice(0, 6).map((j) => (
                       <Col xs={12} sm={8} lg={4} key={j.id}>
                         <a href={j.external_url || '#'} target="_blank" rel="noopener">
-                          <div style={{ borderRadius: 6, overflow: 'hidden', border: '1px solid #f0f0f0' }}>
+                          <div className="ps-thumb">
                             {j.hero_image_key
                               ? <img src={`/image/${j.hero_image_key}`} alt="" loading="lazy" style={{ width: '100%', height: 70, objectFit: 'cover', display: 'block' }} />
-                              : <div style={{ height: 70, background: 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><SendOutlined style={{ color: '#bfbfbf' }} /></div>}
+                              : <div className="ps-media-empty" style={{ height: 70 }}><SendOutlined /></div>}
                             <div style={{ padding: '4px 6px' }}>
                               <Text ellipsis style={{ fontSize: 11, display: 'block' }}>{j.post_title || '—'}</Text>
                               <Text type="secondary" style={{ fontSize: 10 }}>
@@ -588,9 +592,9 @@ export default function Overview() {
         extra={
           <Space>
             {domain.current ? (
-              <Badge status="success" text={<Text strong>{domain.current}</Text>} />
+              <Space size={6}><StatusChip status="live" table="domain" /><Text strong>{domain.current}</Text></Space>
             ) : (
-              <Tag>Chưa thiết lập</Tag>
+              <span className="ps-chip ps-chip--muted">Chưa thiết lập</span>
             )}
             <Button
               size="small"
@@ -631,7 +635,7 @@ export default function Overview() {
                     Yêu cầu đã được gửi. Trong lúc chờ, <Text strong>tạo ngay bản ghi CNAME này tại DNS</Text> —{' '}
                     domain chỉ hoạt động khi <Text strong>vừa được duyệt vừa có CNAME</Text>:
                   </div>
-                  <Card size="small" style={{ background: '#fafafa' }}>
+                  <Card size="small" className="ps-inset-card">
                     <Row gutter={[8, 8]}>
                       <Col xs={24} sm={8}>
                         <Text type="secondary" style={{ fontSize: 12 }}>Loại (Type):</Text>
@@ -705,7 +709,7 @@ export default function Overview() {
                 {/* Step 1 */}
                 <div>
                   <Space align="start">
-                    <Badge count={1} style={{ backgroundColor: '#1677ff' }} />
+                    <span className="ps-step">1</span>
                     <div>
                       <Text strong>Nhập tên miền và lưu</Text>
                       <br />
@@ -717,14 +721,14 @@ export default function Overview() {
                 {/* Step 2 */}
                 <div>
                   <Space align="start">
-                    <Badge count={2} style={{ backgroundColor: '#1677ff' }} />
+                    <span className="ps-step">2</span>
                     <div>
                       <Text strong>Tạo bản ghi CNAME tại nhà cung cấp DNS</Text>
                       <br />
                       <Text type="secondary">Đăng nhập vào trang quản lý DNS của bạn (Cloudflare, GoDaddy, Namecheap...) và tạo bản ghi:</Text>
                     </div>
                   </Space>
-                  <Card size="small" style={{ marginTop: 8, background: '#fafafa' }}>
+                  <Card size="small" className="ps-inset-card" style={{ marginTop: 8 }}>
                     <Row gutter={[8, 8]}>
                       <Col xs={24} sm={8}>
                         <Text type="secondary" style={{ fontSize: 12 }}>Loại (Type):</Text>
@@ -748,7 +752,7 @@ export default function Overview() {
                 {/* Step 3 */}
                 <div>
                   <Space align="start">
-                    <Badge count={3} style={{ backgroundColor: '#1677ff' }} />
+                    <span className="ps-step">3</span>
                     <div>
                       <Text strong>Đợi DNS truyền (5-30 phút)</Text>
                       <br />
@@ -760,7 +764,7 @@ export default function Overview() {
                 {/* Step 4 */}
                 <div>
                   <Space align="start">
-                    <Badge count={4} style={{ backgroundColor: '#1677ff' }} />
+                    <span className="ps-step">4</span>
                     <div>
                       <Text strong>Kiểm tra tên miền</Text>
                       <br />

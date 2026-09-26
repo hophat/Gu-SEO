@@ -13,37 +13,36 @@
 // API: /api/admin/social (GET list + counts, POST retry/cancel)
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Card, Table, Button, Tag, Space, Typography, message, Select, Row, Col,
+  Card, Table, Button, Space, Typography, message, Select, Row, Col,
   Statistic, Tooltip, Popconfirm, Alert, Empty, Segmented,
 } from 'antd';
 import {
   ReloadOutlined, RedoOutlined, CloseOutlined, LinkOutlined, WarningOutlined,
-  CheckCircleOutlined, ClockCircleOutlined, SendOutlined, PictureOutlined,
+  CheckCircleOutlined, ClockCircleOutlined, PictureOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
+import StatusChip from '../components/StatusChip.jsx';
 import { apiGet, apiPost } from '../api.js';
 import { useProjectUrl } from '../lib/projectUrl.js';
 
 const { Text } = Typography;
 
-const STATUS_META = {
-  pending:    { color: 'default',    text: 'Chờ đăng',   icon: <ClockCircleOutlined /> },
-  publishing: { color: 'processing', text: 'Đang đăng',  icon: <SendOutlined /> },
-  published:  { color: 'success',    text: 'Đã đăng',    icon: <CheckCircleOutlined /> },
-  failed:     { color: 'error',      text: 'Thất bại',   icon: <WarningOutlined /> },
-  skipped:    { color: 'warning',    text: 'Đã huỷ',     icon: <CloseOutlined /> },
-};
+// Job status labels come from lib/status.js (`social` table).
 
-const CHANNEL_META = {
-  facebook:  { color: 'blue',   text: 'Facebook' },
-  facebook_video: { color: 'geekblue', text: 'Facebook Video' },
-  youtube_video: { color: 'red', text: 'YouTube Video' },
-  instagram: { color: 'magenta', text: 'Instagram' },
-  threads:   { color: 'purple', text: 'Threads' },
-  x:         { color: 'black',  text: 'X (Twitter)' },
-  wordpress: { color: 'cyan',   text: 'WordPress' },
-  webhook:   { color: 'default', text: 'Webhook' },
-  custom_api: { color: 'default', text: 'Custom API' },
+// A channel is an identity, not a state. Nine rainbow chips would compete
+// with the status column for attention, so the channel renders as a neutral
+// chip and the name alone identifies it.
+const CHANNEL_LABEL = {
+  facebook: 'Facebook',
+  facebook_video: 'Facebook Video',
+  youtube_video: 'YouTube Video',
+  instagram: 'Instagram',
+  threads: 'Threads',
+  x: 'X (Twitter)',
+  youtube: 'YouTube',
+  wordpress: 'WordPress',
+  webhook: 'Webhook',
+  custom_api: 'Custom API',
 };
 
 export default function Social() {
@@ -95,25 +94,24 @@ export default function Social() {
         <Space>
           {r.hero_image_key
             ? <img src={`/image/${r.hero_image_key}`} alt="" loading="lazy" style={{ width: 48, height: 32, objectFit: 'cover', borderRadius: 4 }} />
-            : <div style={{ width: 48, height: 32, borderRadius: 4, background: 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><PictureOutlined style={{ color: '#bfbfbf' }} /></div>}
+            : <div className="ps-media-empty" style={{ width: 48, height: 32 }}><PictureOutlined /></div>}
           <Space direction="vertical" size={0}>
             <Text style={{ fontSize: 13 }}>{r.post_title || r.video_slug || r.blog_post_id || '—'}</Text>
             {r.post_slug && <Text type="secondary" style={{ fontSize: 11 }}>/blog/{r.post_slug}</Text>}
           </Space>
         </Space>
       ) },
-    { title: 'Kênh', dataIndex: 'channel', key: 'channel', width: 110,
-      render: (c) => { const m = CHANNEL_META[c] || { color: 'default', text: c }; return <Tag color={m.color}>{m.text}</Tag>; } },
-    { title: 'Trạng thái', dataIndex: 'status', key: 'status', width: 140,
-      render: (s, r) => {
-        const m = STATUS_META[s] || STATUS_META.pending;
-        return (
-          <Space size={4}>
-            <Tag color={m.color} icon={m.icon}>{m.text}</Tag>
-            {r.needs_reconnect ? <Tooltip title="Cần kết nối lại kênh"><WarningOutlined style={{ color: '#ff4d4f' }} /></Tooltip> : null}
-          </Space>
-        );
-      } },
+    { title: 'Kênh', dataIndex: 'channel', key: 'channel', width: 120,
+      render: (c) => <span className="ps-chip ps-chip--plain">{CHANNEL_LABEL[c] || c}</span> },
+    { title: 'Trạng thái', dataIndex: 'status', key: 'status', width: 150,
+      render: (s, r) => (
+        <Space size={4} wrap>
+          <StatusChip status={s} table="social" />
+          {r.needs_reconnect
+            ? <Tooltip title="Cần kết nối lại kênh"><span className="ps-chip ps-chip--bad"><WarningOutlined /> Cần kết nối</span></Tooltip>
+            : null}
+        </Space>
+      ) },
     { title: 'Lần thử', key: 'attempts', width: 90,
       render: (_, r) => <Text type="secondary">{r.attempts}/{r.max_attempts}</Text> },
     { title: 'Thử lại lúc', key: 'next', width: 120,
@@ -185,9 +183,9 @@ export default function Social() {
       )}
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={6}><Card size="small"><Statistic title="Đã đăng" value={counts.published || 0} prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} /></Card></Col>
-        <Col xs={12} sm={6}><Card size="small"><Statistic title="Chờ đăng" value={counts.pending || 0} prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />} /></Card></Col>
-        <Col xs={12} sm={6}><Card size="small"><Statistic title="Thất bại" value={counts.failed || 0} valueStyle={{ color: counts.failed ? '#ff4d4f' : undefined }} /></Card></Col>
+        <Col xs={12} sm={6}><Card size="small"><Statistic title="Đã đăng" value={counts.published || 0} prefix={<CheckCircleOutlined className="ps-stat-icon ps-stat-icon--good" />} /></Card></Col>
+        <Col xs={12} sm={6}><Card size="small"><Statistic title="Chờ đăng" value={counts.pending || 0} prefix={<ClockCircleOutlined className="ps-stat-icon ps-stat-icon--warn" />} /></Card></Col>
+        <Col xs={12} sm={6}><Card size="small"><Statistic title="Thất bại" value={counts.failed || 0} valueStyle={counts.failed ? { color: 'var(--bad)' } : undefined} prefix={<WarningOutlined className="ps-stat-icon ps-stat-icon--bad" />} /></Card></Col>
         <Col xs={12} sm={6}><Card size="small"><Statistic title="Đã huỷ" value={counts.skipped || 0} /></Card></Col>
       </Row>
 
@@ -204,7 +202,7 @@ export default function Social() {
                     hoverable
                     cover={j.hero_image_key
                       ? <img src={`/image/${j.hero_image_key}`} alt="" loading="lazy" style={{ height: 150, objectFit: 'cover' }} />
-                      : <div style={{ height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.03)' }}><PictureOutlined style={{ fontSize: 28, color: '#bfbfbf' }} /></div>}
+                      : <div className="ps-media-empty" style={{ height: 150 }}><PictureOutlined style={{ fontSize: 28 }} /></div>}
                     actions={[
                       j.external_url
                         ? <a href={j.external_url} target="_blank" rel="noopener" key="view"><LinkOutlined /> Xem bài</a>
@@ -216,9 +214,9 @@ export default function Social() {
                       description={
                         <Space direction="vertical" size={2} style={{ width: '100%' }}>
                           <Space size={4}>
-                            <Tag color={(CHANNEL_META[j.channel] || {}).color || 'default'} style={{ margin: 0 }}>
-                              {(CHANNEL_META[j.channel] || {}).text || j.channel}
-                            </Tag>
+                            <span className="ps-chip ps-chip--plain">
+                              {CHANNEL_LABEL[j.channel] || j.channel}
+                            </span>
                             <Text type="secondary" style={{ fontSize: 11 }}>
                               {j.published_at ? new Date(j.published_at * 1000).toLocaleDateString('vi-VN') : ''}
                             </Text>

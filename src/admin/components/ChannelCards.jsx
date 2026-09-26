@@ -11,7 +11,7 @@
 // card offers "dùng Page đã kết nối" instead of a separate OAuth dance.
 import { useState } from 'react';
 import {
-  Card, Button, Space, Tag, Switch, Input, Form, Alert, Typography, Popconfirm, Collapse, Select,
+  Card, Button, Space, Switch, Input, Form, Alert, Typography, Popconfirm, Collapse, Select,
 } from 'antd';
 import {
   CheckCircleOutlined, CloseCircleOutlined, ThunderboltOutlined, ApiOutlined,
@@ -173,9 +173,9 @@ export default function ChannelCards({ data, reload }) {
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: info.color, display: 'inline-block' }} />
             <Text strong>{c.label}</Text>
             {connected
-              ? <Tag icon={<CheckCircleOutlined />} color="success">Đã kết nối</Tag>
-              : <Tag icon={<CloseCircleOutlined />} color="default">Chưa kết nối</Tag>}
-            {c.enabled && <Tag color="processing">Đang đẩy bài</Tag>}
+              ? <span className="ps-chip ps-chip--good"><CheckCircleOutlined /> Đã kết nối</span>
+              : <span className="ps-chip ps-chip--muted"><CloseCircleOutlined /> Chưa kết nối</span>}
+            {c.enabled && <span className="ps-chip ps-chip--info">Đang đẩy bài</span>}
           </Space>
         }
         extra={
@@ -205,7 +205,7 @@ export default function ChannelCards({ data, reload }) {
           {c.channel === 'instagram' && connected && (
             <Text>
               Page nguồn: <Text strong>{c.config?.page_name || '(tự tìm Page có IG liên kết)'}</Text>
-              {token.source === 'global' && <Tag style={{ marginLeft: 8 }}>token toàn cục</Tag>}
+              {token.source === 'global' && <span className="ps-chip ps-chip--plain ps-chip-xs" style={{ marginInlineStart: 8 }}>token toàn cục</span>}
             </Text>
           )}
           {c.channel === 'threads' && connected && c.config?.username && (

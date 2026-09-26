@@ -82,9 +82,9 @@ export default function Status() {
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {allOk ? (
-              <CheckCircleOutlined style={{ fontSize: 48, color: '#52c41a' }} />
+              <CheckCircleOutlined className="ps-health-mark ps-health-mark--good" />
             ) : (
-              <CloseCircleOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
+              <CloseCircleOutlined className="ps-health-mark ps-health-mark--bad" />
             )}
             <div>
               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>
@@ -107,21 +107,22 @@ export default function Status() {
         ))}
         {!loading && checks.map((c, i) => (
           <Col key={i} xs={24} sm={12} lg={8}>
-            <Card size="small" style={{ borderLeft: `4px solid ${c.ok === false ? '#ff4d4f' : '#52c41a'}` }}>
+            <Card size="small" className={`ps-check-card ${c.ok === false ? 'ps-check-card--bad' : 'ps-check-card--good'}`}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Text strong>{c.label}</Text>
-                <Tag color={c.ok === false ? 'error' : 'success'} icon={c.ok === false ? <CloseCircleOutlined /> : <CheckCircleOutlined />}>
+                <span className={`ps-chip ps-chip--${c.ok === false ? 'bad' : 'good'}`}>
+                  {c.ok === false ? <CloseCircleOutlined /> : <CheckCircleOutlined />}
                   {c.ok === false ? 'Lỗi' : 'OK'}
-                </Tag>
+                </span>
               </div>
               {c.detail && <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>{c.detail}</Text>}
               <Space size={[4, 4]} wrap>
-                {c.count != null && <Tag>{`count: ${c.count}`}</Tag>}
-                {c.blogs != null && <Tag>{`blogs: ${c.blogs}`}</Tag>}
-                {c.progs != null && <Tag>{`progs: ${c.progs}`}</Tag>}
-                {c.pct != null && <Tag>{`pct: ${c.pct}`}</Tag>}
-                {c.spent_usd != null && <Tag>{`spent: $${c.spent_usd}`}</Tag>}
-                {c.cap_usd != null && <Tag>{`cap: $${c.cap_usd}`}</Tag>}
+                {c.count != null && <span className="ps-chip ps-chip--plain ps-chip-xs">{`count: ${c.count}`}</span>}
+                {c.blogs != null && <span className="ps-chip ps-chip--plain ps-chip-xs">{`blogs: ${c.blogs}`}</span>}
+                {c.progs != null && <span className="ps-chip ps-chip--plain ps-chip-xs">{`progs: ${c.progs}`}</span>}
+                {c.pct != null && <span className="ps-chip ps-chip--plain ps-chip-xs">{`pct: ${c.pct}`}</span>}
+                {c.spent_usd != null && <span className="ps-chip ps-chip--plain ps-chip-xs">{`spent: $${c.spent_usd}`}</span>}
+                {c.cap_usd != null && <span className="ps-chip ps-chip--plain ps-chip-xs">{`cap: $${c.cap_usd}`}</span>}
               </Space>
             </Card>
           </Col>
@@ -134,12 +135,13 @@ export default function Status() {
           <Row gutter={[16, 16]}>
             {providers.map((p, i) => (
               <Col key={i} xs={24} sm={12} lg={8}>
-                <Card size="small" style={{ background: 'rgba(0,0,0,0.02)' }}>
+                <Card size="small" className="ps-inset-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text strong>{p.name}</Text>
-                    <Tag color={p.ok ? 'success' : 'error'} icon={p.ok ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
-                      {p.ok ? `✓ ${p.ms != null ? p.ms + 'ms' : 'ok'}` : `✗ ${p.error || 'thất bại'}`}
-                    </Tag>
+                    <span className={`ps-chip ps-chip--${p.ok ? 'good' : 'bad'}`}>
+                      {p.ok ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                      {p.ok ? (p.ms != null ? `${p.ms}ms` : 'OK') : (p.error || 'thất bại')}
+                    </span>
                   </div>
                   {p.detail && <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>{p.detail}</Text>}
                 </Card>
@@ -150,7 +152,7 @@ export default function Status() {
       )}
 
       {/* Audit log */}
-      <Card title="Nhật ký hoạt động" size="small" extra={<Button size="small" icon={<ReloadOutlined />} loading={loadingAudit} onClick={loadAudit} />}>
+      <Card title="Nhật ký hoạt động" size="small" extra={<Button size="small" icon={<ReloadOutlined />} loading={loadingAudit} onClick={loadAudit} aria-label="Tải lại nhật ký" title="Tải lại nhật ký" />}>
         <Table
           dataSource={audit}
           columns={auditColumns}

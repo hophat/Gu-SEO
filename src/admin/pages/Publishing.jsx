@@ -235,7 +235,7 @@ export default function Publishing() {
                 <Card
                   type="inner"
                   size="small"
-                  title={<Space><CheckCircleOutlined style={{ color: '#52c41a' }} /> Đã kết nối Facebook</Space>}
+                  title={<Space><CheckCircleOutlined className="ps-stat-icon ps-stat-icon--good" /> Đã kết nối Facebook</Space>}
                   style={{ marginBottom: 16 }}
                 >
                   <Descriptions column={1} size="small">
@@ -244,7 +244,7 @@ export default function Publishing() {
                     </Descriptions.Item>
                     <Descriptions.Item label="Page ID"><Text code>{cfg?.config?.page_id}</Text></Descriptions.Item>
                     <Descriptions.Item label="Token">
-                      <Tag color="green">Dài hạn, đã lưu mã hoá</Tag>
+                      <span className="ps-chip ps-chip--good">Dài hạn, đã lưu mã hoá</span>
                     </Descriptions.Item>
                   </Descriptions>
                   <Space>
@@ -402,7 +402,12 @@ export default function Publishing() {
                   : 'Tài khoản Facebook vừa dùng không quản trị Page nào, hoặc chưa cấp quyền pages_show_list.'}
               />
             ) : pages.map((p) => (
-              <Card key={p.id} size="small" hoverable onClick={() => selectPage(p.id)}>
+              <button
+                key={p.id}
+                type="button"
+                className="ps-option ps-page-pick"
+                onClick={() => selectPage(p.id)}
+              >
                 <Space>
                   {p.picture ? <Avatar src={p.picture} /> : <Avatar icon={<ApiOutlined />} />}
                   <Space direction="vertical" size={0}>
@@ -413,7 +418,7 @@ export default function Publishing() {
                     </Text>
                   </Space>
                 </Space>
-              </Card>
+              </button>
             ))}
           </Space>
         )}

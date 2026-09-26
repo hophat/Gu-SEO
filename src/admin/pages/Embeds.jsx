@@ -11,7 +11,7 @@
 //      /api/admin/embed-preview (GET, iframe src)
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-  Card, Tabs, Typography, Input, Button, Tag, Space, message, Form, Alert, Table,
+  Card, Tabs, Typography, Input, Button, Space, message, Form, Alert, Table,
   Modal, Popconfirm, Row, Col, Statistic, Select, InputNumber, Drawer,
   Segmented, Divider, Tooltip,
 } from 'antd';
@@ -220,9 +220,9 @@ export default function Embeds() {
         <Space direction="vertical" size={0}>
           <Text strong>{n}</Text>
           <Space size={4}>
-            <Tag style={{ margin: 0, fontSize: 11 }}>{r.settings?.theme || 'auto'}</Tag>
+            <span className="ps-chip ps-chip--plain ps-chip-xs">{r.settings?.theme || 'auto'}</span>
             <Text type="secondary" style={{ fontSize: 11 }}>{r.settings?.per_page || r.settings?.limit || 10} bài</Text>
-            {r.settings?.palette && <Tag color="purple" style={{ margin: 0, fontSize: 11 }}>palette</Tag>}
+            {r.settings?.palette && <span className="ps-chip ps-chip--plain ps-chip-xs">palette</span>}
           </Space>
         </Space>
       ) },
@@ -375,7 +375,7 @@ export default function Embeds() {
                   <Text strong>Xem trước trực tiếp</Text>
                   <Button size="small" type="text" icon={<ReloadOutlined />} onClick={() => setPreviewKey((k) => k + 1)}>Tải lại</Button>
                 </Space>
-                <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+                <div className="ps-embed-frame">
                   <iframe
                     key={previewKey}
                     title="embed-preview"
@@ -403,7 +403,7 @@ export default function Embeds() {
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <div>
               <Text strong>Widget</Text>
-              <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden', marginTop: 8, background: '#fff' }}>
+              <div className="ps-embed-frame" style={{ marginTop: 8 }}>
                 <iframe
                   title="embed-full-preview"
                   src={`/api/admin/embed-preview?id=${previewEmbed.id}`}

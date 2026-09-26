@@ -12,7 +12,7 @@
 // API: /api/admin/insights
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Card, Row, Col, Statistic, Table, Typography, Space, Tag, Alert,
+  Card, Row, Col, Statistic, Table, Typography, Space, Alert,
   Tooltip, Empty, Skeleton, Button,
 } from 'antd';
 import {
@@ -24,19 +24,27 @@ import { apiGet } from '../api.js';
 
 const { Text } = Typography;
 
-// Green → amber → red as a retention percentage falls. Reads as a heatmap
-// without needing a chart library.
-function pctColor(pct) {
-  if (pct >= 70) return '#52c41a';
-  if (pct >= 40) return '#faad14';
-  if (pct > 0) return '#ff7a45';
-  return '#d9d9d9';
+// A retention percentage reads as a heatmap: healthy, thinning, nearly
+// gone, none. The bar is tinted by a class rather than a hex literal so the
+// dark theme gets its own values instead of a washed-out light-mode fill.
+function pctTone(pct) {
+  if (pct >= 70) return 'good';
+  if (pct >= 40) return 'warn';
+  if (pct > 0) return 'low';
+  return 'none';
 }
 
-function Bar({ pct, color = '#1677ff' }) {
+// `tone` is a semantic name (good/warn/low/none/info) mapped to a bar fill
+// in tokens.css; `color` is reserved for the rare case that needs a
+// literal, such as a one-off series colour.
+function Bar({ pct, tone = 'info', color }) {
+  const width = `${Math.max(0, Math.min(100, pct))}%`;
   return (
-    <div style={{ background: 'rgba(0,0,0,0.04)', borderRadius: 3, height: 8, overflow: 'hidden' }}>
-      <div style={{ width: `${Math.max(0, Math.min(100, pct))}%`, height: '100%', background: color, borderRadius: 3 }} />
+    <div className="ps-bar">
+      <div
+        className={color ? 'ps-bar-fill' : `ps-bar-fill ps-bar-fill--${tone}`}
+        style={color ? { width, background: color } : { width }}
+      />
     </div>
   );
 }
@@ -91,7 +99,7 @@ export default function Insights() {
               title="Đang hoạt động"
               value={totals.projects_healthy}
               suffix={<Text type="secondary" style={{ fontSize: 12 }}>/{totals.projects}</Text>}
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+              prefix={<CheckCircleOutlined className="ps-stat-icon ps-stat-icon--good" />}
             />
             <Text type="secondary" style={{ fontSize: 11 }}>có bài trong 7 ngày qua</Text>
           </Card>
@@ -121,8 +129,8 @@ export default function Insights() {
                       </Col>
                       <Col flex="auto" style={{ minWidth: 0 }}>
                         {notYet
-                          ? <div style={{ borderTop: '1px dashed #d9d9d9', marginTop: 4 }} />
-                          : <Bar pct={(f.count / maxFunnel) * 100} color={i === 0 ? '#1677ff' : pctColor(f.pct)} />}
+                          ? <div className="ps-funnel-gap" />
+                          : <Bar pct={(f.count / maxFunnel) * 100} tone={i === 0 ? 'info' : pctTone(f.pct)} />}
                       </Col>
                       <Col flex="none" style={{ width: 110, textAlign: 'right' }}>
                         {notYet ? (
@@ -138,7 +146,7 @@ export default function Insights() {
                       </Col>
                       <Col flex="none" style={{ width: 64, textAlign: 'right' }}>
                         {!notYet && drop != null && drop > 0
-                          ? <Tag color={drop >= 50 ? 'error' : 'warning'} style={{ margin: 0, fontSize: 11 }}>−{drop}%</Tag>
+                          ? <span className={`ps-chip ps-chip-xs ps-chip--${drop >= 50 ? 'bad' : 'warn'}`}>−{drop}%</span>
                           : <Text type="secondary" style={{ fontSize: 11 }}>—</Text>}
                       </Col>
                     </Row>
@@ -170,11 +178,11 @@ export default function Insights() {
                 </Row>
                 <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>Dưới 24 giờ: {ttfp.under_24h}/{ttfp.n}</Text>
-                  <Bar pct={(ttfp.under_24h / ttfp.n) * 100} color="#52c41a" />
+                  <Bar pct={(ttfp.under_24h / ttfp.n) * 100} tone="good" />
                 </div>
                 <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>Dưới 72 giờ: {ttfp.under_72h}/{ttfp.n}</Text>
-                  <Bar pct={(ttfp.under_72h / ttfp.n) * 100} color="#faad14" />
+                  <Bar pct={(ttfp.under_72h / ttfp.n) * 100} tone="warn" />
                 </div>
               </Space>
             )}
@@ -208,7 +216,7 @@ export default function Insights() {
                   if (!occurred) return <Text type="secondary" style={{ fontSize: 11 }}>—</Text>;
                   return (
                     <Space size={6}>
-                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: pctColor(r[`${w}_pct`]) }} />
+                      <span className={`ps-swatch ps-swatch--${pctTone(r[`${w}_pct`])}`} />
                       <Text style={{ fontSize: 12 }}>{r[`${w}_pct`]}%</Text>
                       <Text type="secondary" style={{ fontSize: 11 }}>({r[w]})</Text>
                     </Space>
@@ -233,7 +241,7 @@ export default function Insights() {
               <Row key={w.week} gutter={8} align="middle" wrap={false}>
                 <Col flex="none" style={{ width: 90 }}><Text code style={{ fontSize: 12 }}>{w.week}</Text></Col>
                 <Col flex="auto" style={{ minWidth: 0 }}>
-                  <Bar pct={(w.posts / maxWeekly) * 100} color="#1677ff" />
+                  <Bar pct={(w.posts / maxWeekly) * 100} />
                 </Col>
                 <Col flex="none" style={{ width: 130, textAlign: 'right' }}>
                   <Text style={{ fontSize: 12 }}>{w.posts} bài · {w.projects} dự án</Text>
@@ -256,24 +264,36 @@ export default function Insights() {
           columns={[
             { title: 'Dự án', dataIndex: 'name', key: 'name', ellipsis: true,
               render: (n, r) => <Space direction="vertical" size={0}><Text strong style={{ fontSize: 13 }}>{n}</Text><Text type="secondary" style={{ fontSize: 11 }}>{r.slug}</Text></Space> },
-            { title: 'Trạng thái', key: 'health', width: 110,
+            { title: 'Trạng thái', key: 'health', width: 120,
               render: (_, r) => r.healthy
-                ? <Tag color="success" icon={<CheckCircleOutlined />}>Đang chạy</Tag>
+                ? <span className="ps-chip ps-chip--good"><CheckCircleOutlined /> Đang chạy</span>
                 : r.posts === 0
-                  ? <Tag color="error" icon={<WarningOutlined />}>Chưa có bài</Tag>
-                  : <Tag color="warning" icon={<ClockCircleOutlined />}>Đã dừng</Tag> },
+                  ? <span className="ps-chip ps-chip--bad"><WarningOutlined /> Chưa có bài</span>
+                  : <span className="ps-chip ps-chip--warn"><ClockCircleOutlined /> Đã dừng</span> },
             { title: 'Tuổi', dataIndex: 'age_days', key: 'age', width: 80, render: (d) => `${d} ngày` },
             { title: 'Bài', dataIndex: 'posts', key: 'posts', width: 70 },
             { title: 'Bài đầu (giờ)', dataIndex: 'first_post_hours', key: 'ttfp', width: 110,
               render: (h) => h == null ? <Text type="secondary">—</Text> : h },
             { title: 'Lần cuối', dataIndex: 'days_since_last_post', key: 'last', width: 100,
               render: (d) => d == null ? <Text type="secondary">—</Text> : (d === 0 ? 'hôm nay' : `${d} ngày trước`) },
-            { title: 'Thiết lập', key: 'setup', width: 150,
+            { title: 'Thiết lập', key: 'setup', width: 160,
               render: (_, r) => (
-                <Space size={4}>
-                  <Tooltip title="Brand DNA"><Tag color={r.has_brand_dna ? 'green' : 'default'} style={{ margin: 0 }}>DNA</Tag></Tooltip>
-                  <Tooltip title="Lịch nội dung"><Tag color={r.has_schedule ? 'green' : 'default'} style={{ margin: 0 }}>Lịch</Tag></Tooltip>
-                  <Tooltip title="Kênh mạng xã hội"><Tag color={r.has_channel ? 'green' : 'default'} style={{ margin: 0 }}>Kênh</Tag></Tooltip>
+                <Space size={4} wrap>
+                  <Tooltip title="Brand DNA">
+                    <span className={`ps-chip ps-chip-xs ps-chip--${r.has_brand_dna ? 'good' : 'muted'}`}>
+                      {r.has_brand_dna ? '✓ ' : ''}DNA
+                    </span>
+                  </Tooltip>
+                  <Tooltip title="Lịch nội dung">
+                    <span className={`ps-chip ps-chip-xs ps-chip--${r.has_schedule ? 'good' : 'muted'}`}>
+                      {r.has_schedule ? '✓ ' : ''}Lịch
+                    </span>
+                  </Tooltip>
+                  <Tooltip title="Kênh mạng xã hội">
+                    <span className={`ps-chip ps-chip-xs ps-chip--${r.has_channel ? 'good' : 'muted'}`}>
+                      {r.has_channel ? '✓ ' : ''}Kênh
+                    </span>
+                  </Tooltip>
                 </Space>
               ) },
           ]}

@@ -1,4 +1,4 @@
-// Links page — antd Table, Card, Button, Tag, Modal, Form, Input, Tabs.
+// Links page — internal URL aliases in three kinds.
 // API: /api/admin/aliases (GET/POST/PATCH/DELETE), /api/admin/aliases/sync
 // Aliases are global site shortcuts the LLM uses. Three kinds:
 //   - reserved: blog/home/rss/sitemap (read-only)
@@ -8,7 +8,7 @@
 // URLs are stored root-relative (/blog/<slug>) but projects are served
 // under /<project-slug>/. We prepend the project base path when displaying.
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, Table, Button, Tag, Space, Typography, message, Modal, Form, Input, Empty, Popconfirm, Row, Col, Statistic, Tabs, Tooltip, Alert } from 'antd';
+import { Card, Table, Button, Space, Typography, message, Modal, Form, Input, Empty, Popconfirm, Row, Col, Statistic, Tabs, Tooltip, Alert } from 'antd';
 import { PlusOutlined, ReloadOutlined, LinkOutlined, DeleteOutlined, EditOutlined, SyncOutlined, LockOutlined, GlobalOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, api } from '../api.js';
@@ -17,10 +17,13 @@ import { useProjectUrl, projectBasePath, projectHref } from '../lib/projectUrl.j
 
 const { Text } = Typography;
 
-const KIND_TAG = {
-  reserved: { color: 'default', text: 'Mặc định' },
-  manual:   { color: 'blue',    text: 'Tùy chỉnh' },
-  sitemap:  { color: 'green',   text: 'Sitemap' },
+// An alias's kind is a fact about where the URL came from, not a health
+// signal. Neutral chips keep the eye on the URLs themselves; the lock icon
+// already marks the reserved ones.
+const KIND_LABEL = {
+  reserved: 'Mặc định',
+  manual: 'Tùy chỉnh',
+  sitemap: 'Sitemap',
 };
 
 export default function Links() {
@@ -96,7 +99,7 @@ export default function Links() {
       render: (n, r) => (
         <Space>
           <Text code>{n}</Text>
-          {r.kind === 'reserved' && <LockOutlined style={{ color: '#00000045', fontSize: 12 }} />}
+          {r.kind === 'reserved' && <LockOutlined className="ps-lock" />}
         </Space>
       ) },
     { title: 'URL lưu', dataIndex: 'url', key: 'url-stored', width: 180, ellipsis: true,
@@ -105,19 +108,17 @@ export default function Links() {
       render: (_, r) => {
         const full = displayUrl(r.url);
         const tag = activeProject?.custom_domain
-          ? { color: 'green', text: activeProject.custom_domain }
-          : (basePath && full !== r.url ? { color: 'blue', text: basePath } : null);
+          ? activeProject.custom_domain
+          : (basePath && full !== r.url ? basePath : null);
         return (
           <Space>
             <a href={full} target="_blank" rel="noopener">{full}</a>
-            {tag && <Tag color={tag.color} style={{ fontSize: 10 }}>{tag.text}</Tag>}
+            {tag && <span className="ps-chip ps-chip--plain ps-chip-xs">{tag}</span>}
           </Space>
         );
       } },
-    { title: 'Mô tả', dataIndex: 'description', key: 'desc', ellipsis: true,
-      render: (d) => d ? <Text type="secondary">{d}</Text> : '-' },
     { title: 'Loại', dataIndex: 'kind', key: 'kind', width: 100,
-      render: (k) => { const t = KIND_TAG[k] || KIND_TAG.manual; return <Tag color={t.color}>{t.text}</Tag>; } },
+      render: (k) => <span className="ps-chip ps-chip--plain">{KIND_LABEL[k] || KIND_LABEL.manual}</span> },
     { title: '', key: 'actions', width: 80,
       render: (_, r) => r.kind === 'manual' ? (
         <Space>
@@ -137,19 +138,19 @@ export default function Links() {
       render: (_, r) => {
         const full = displayUrl(r.url);
         const tag = activeProject?.custom_domain
-          ? { color: 'green', text: activeProject.custom_domain }
-          : (basePath && full !== r.url ? { color: 'blue', text: basePath } : null);
+          ? activeProject.custom_domain
+          : (basePath && full !== r.url ? basePath : null);
         return (
           <Space>
             <a href={full} target="_blank" rel="noopener">{full}</a>
-            {tag && <Tag color={tag.color} style={{ fontSize: 10 }}>{tag.text}</Tag>}
+            {tag && <span className="ps-chip ps-chip--plain ps-chip-xs">{tag}</span>}
           </Space>
         );
       } },
     { title: 'Mô tả', dataIndex: 'description', key: 'desc', ellipsis: true,
       render: (d) => d ? <Text type="secondary">{d}</Text> : '-' },
     { title: 'Loại', dataIndex: 'kind', key: 'kind', width: 100,
-      render: () => <Tag color="green">Sitemap</Tag> },
+      render: () => <span className="ps-chip ps-chip--plain">{KIND_LABEL.sitemap}</span> },
   ];
 
   return (
@@ -177,9 +178,9 @@ export default function Links() {
               <Text>Liên kết hiển thị cho dự án: </Text>
               <Text strong>{activeProject.site_name || activeProject.slug}</Text>
               {basePath ? (
-                <Tag color="blue">Đường dẫn: {basePath}/</Tag>
+                <span className="ps-chip ps-chip--plain">Đường dẫn: {basePath}/</span>
               ) : (
-                <Tag color="green">Domain riêng: {activeProject.custom_domain || 'root'}</Tag>
+                <span className="ps-chip ps-chip--plain">Domain riêng: {activeProject.custom_domain || 'root'}</span>
               )}
             </Space>
           }
@@ -192,9 +193,9 @@ export default function Links() {
       )}
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={8}><Card><Statistic title="Tùy chỉnh" value={manualAliases.filter((a) => a.kind === 'manual').length} prefix={<EditOutlined />} valueStyle={{ color: '#1677ff' }} /></Card></Col>
-        <Col xs={8}><Card><Statistic title="Mặc định" value={manualAliases.filter((a) => a.kind === 'reserved').length} prefix={<LockOutlined />} /></Card></Col>
-        <Col xs={8}><Card><Statistic title="Sitemap" value={sitemapAliases.length} prefix={<LinkOutlined />} valueStyle={{ color: '#52c41a' }} /></Card></Col>
+        <Col xs={8}><Card><Statistic title="Tùy chỉnh" value={manualAliases.filter((a) => a.kind === 'manual').length} prefix={<EditOutlined className="ps-stat-icon ps-stat-icon--info" />} /></Card></Col>
+        <Col xs={8}><Card><Statistic title="Mặc định" value={manualAliases.filter((a) => a.kind === 'reserved').length} prefix={<LockOutlined className="ps-stat-icon ps-stat-icon--info" />} /></Card></Col>
+        <Col xs={8}><Card><Statistic title="Sitemap" value={sitemapAliases.length} prefix={<LinkOutlined className="ps-stat-icon ps-stat-icon--info" />} /></Card></Col>
       </Row>
 
       {scope.shared > 0 && (

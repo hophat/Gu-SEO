@@ -65,8 +65,7 @@ export default function Updates() {
             <Statistic
               title="Phiên bản mới nhất"
               value={data?.latest?.short || '-'}
-              prefix={<ArrowUpOutlined />}
-              valueStyle={upToDate ? {} : { color: '#1677ff' }}
+              prefix={<ArrowUpOutlined className="ps-stat-icon ps-stat-icon--info" />}
             />
             {data?.latest?.date && <Text type="secondary" style={{ fontSize: 12 }}>{new Date(data.latest.date).toLocaleDateString('vi-VN')}</Text>}
           </Card>
@@ -76,8 +75,7 @@ export default function Updates() {
             <Statistic
               title="Trạng thái"
               value={upToDate ? 'Mới nhất' : `${data?.ahead || 0} commit sau`}
-              prefix={<SyncOutlined />}
-              valueStyle={upToDate ? { color: '#52c41a' } : { color: '#faad14' }}
+              prefix={<SyncOutlined className={upToDate ? 'ps-stat-icon ps-stat-icon--good' : 'ps-stat-icon ps-stat-icon--warn'} />}
             />
           </Card>
         </Col>

@@ -12,29 +12,11 @@ export const CAROUSEL_KIND = 'carousel';
 export const EXPLAINER_KIND = 'explainer';
 export const IN_PROGRESS = ['pending', 'claimed', 'rendering'];
 
-const VIDEO_STATUS_META = {
-  pending:   { color: 'default',    text: 'Chờ render' },
-  claimed:   { color: 'processing', text: 'Đang render' },
-  rendering: { color: 'processing', text: 'Đang render' },
-  done:      { color: 'success',    text: 'Đã có video' },
-  failed:    { color: 'error',      text: 'Lỗi render' },
-};
-
-const CAROUSEL_STATUS_META = {
-  pending:   { color: 'default',    text: 'Chờ tạo slide' },
-  claimed:   { color: 'processing', text: 'Đang tạo slide' },
-  rendering: { color: 'processing', text: 'Đang tạo slide' },
-  done:      { color: 'success',    text: 'Sẵn sàng đăng' },
-  failed:    { color: 'error',      text: 'Lỗi' },
-};
-
-// Status label depends on the job kind — a carousel generates slides, a
-// video renders an MP4, so "done" reads differently for each. An
-// explainer is a video (it delivers an MP4), so it shares VIDEO_STATUS_META.
-export function statusMeta(kind, status) {
-  const table = kind === CAROUSEL_KIND ? CAROUSEL_STATUS_META : VIDEO_STATUS_META;
-  return table[status] || { color: 'default', text: status };
-}
+// Status labels live in lib/status.js, shared by every queue in the app.
+// The Video and Carousel pages both read through StatusChip with the
+// 'video' / 'carousel' table, because a finished job reads differently for
+// a rendered MP4 than for a set of slides.
+export { statusMeta } from './status.js';
 
 export function fmtDateTime(sec) {
   if (!sec) return '—';

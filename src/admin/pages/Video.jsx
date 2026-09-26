@@ -19,7 +19,7 @@ import {
   ReloadOutlined, VideoCameraOutlined,
   ClockCircleOutlined, DownloadOutlined, FacebookOutlined, YoutubeOutlined,
   DeleteOutlined, PlayCircleOutlined, PauseCircleOutlined, UploadOutlined,
-  ShareAltOutlined,
+  ShareAltOutlined, CheckOutlined,
 } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import VideoStatusTag from '../components/VideoStatusTag.jsx';
@@ -282,7 +282,7 @@ export default function Video() {
               muted
               playsInline
               onClick={() => setViewing(r)}
-              style={{ width: 64, height: 114, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', background: '#000', display: 'block' }}
+              style={{ width: 64, height: 114, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', background: '#000', display: 'block' }}
             />
           </Tooltip>
         ) : <Text type="secondary">—</Text>;
@@ -507,25 +507,21 @@ export default function Video() {
                   const disabled = !srcOk || !presenterOk;
                   const selected = tplId === t.id;
                   const card = (
-                    <div
+                    <button
+                      type="button"
+                      className="ps-option"
+                      aria-pressed={selected}
+                      disabled={disabled}
                       onClick={() => { if (!disabled) pickTemplate(t); }}
-                      style={{
-                        border: `1px solid ${selected ? '#1677ff' : '#d9d9d9'}`,
-                        borderRadius: 8,
-                        padding: '8px 10px',
-                        cursor: disabled ? 'not-allowed' : 'pointer',
-                        opacity: disabled ? 0.45 : 1,
-                        background: selected ? '#e6f4ff' : '#fff',
-                      }}
                     >
-                      <Text strong style={{ fontSize: 13, display: 'block' }}>
+                      <span className="ps-option-title">
                         {t.id === 'auto' ? 'Tự động (để engine chọn)' : t.label}
-                      </Text>
-                      <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{t.desc}</Text>
-                      <Text type="secondary" style={{ fontSize: 11 }}>
+                      </span>
+                      <span className="ps-option-desc">{t.desc}</span>
+                      <span className="ps-option-meta">
                         {t.defaultDuration ? `~${t.defaultDuration}s` : 'Thời lượng tự động'}
-                      </Text>
-                    </div>
+                      </span>
+                    </button>
                   );
                   return !presenterOk ? (
                     <Tooltip key={t.id} title="Chưa có ảnh người dẫn — thêm trong Brand video bên dưới">
@@ -545,54 +541,43 @@ export default function Video() {
               {[
                 { id: 'auto', label: 'Tự động', desc: 'Chọn nhạc free từ thư viện' },
                 { id: 'none', label: 'Không nhạc', desc: 'Chỉ giọng đọc' },
-              ].map((o) => {
-                const selected = bgmId === o.id;
-                return (
-                  <div
-                    key={o.id}
-                    onClick={() => setBgmId(o.id)}
-                    style={{
-                      border: `1px solid ${selected ? '#1677ff' : '#d9d9d9'}`,
-                      borderRadius: 8,
-                      padding: '6px 10px',
-                      cursor: 'pointer',
-                      background: selected ? '#e6f4ff' : '#fff',
-                    }}
-                  >
-                    <Text strong style={{ fontSize: 13 }}>{o.label}</Text>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{o.desc}</Text>
-                  </div>
-                );
-              })}
+              ].map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className="ps-option"
+                  aria-pressed={bgmId === o.id}
+                  onClick={() => setBgmId(o.id)}
+                >
+                  <span className="ps-option-title">{o.label}</span>
+                  <span className="ps-option-desc">{o.desc}</span>
+                </button>
+              ))}
             </div>
-            <div style={{ maxHeight: 168, overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 8 }}>
+            <div className="ps-tracklist">
               {(tplData.music || []).map((t) => {
                 const selected = bgmId === t.id;
                 const playing = playingBgm === t.id;
                 return (
-                  <div
-                    key={t.id}
-                    onClick={() => setBgmId(t.id)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '6px 10px', cursor: 'pointer',
-                      background: selected ? '#e6f4ff' : '#fff',
-                      borderBottom: '1px solid #f5f5f5',
-                    }}
-                  >
+                  <div key={t.id} className="ps-track">
                     <Button
                       type="text"
                       size="small"
                       icon={playing ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
                       onClick={(e) => { e.stopPropagation(); togglePreview(t); }}
-                      aria-label={`Nghe thử ${t.label}`}
+                      aria-label={playing ? `Dừng ${t.label}` : `Nghe thử ${t.label}`}
                     />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <Text strong style={{ fontSize: 13 }}>{t.label}</Text>
-                      <Text type="secondary" style={{ fontSize: 11 }}> — {t.artist} · {t.mood} · {t.duration}</Text>
-                      <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{t.desc}</Text>
-                    </div>
-                    {selected && <Text style={{ color: '#1677ff', fontSize: 11 }}>✓</Text>}
+                    <button
+                      type="button"
+                      className="ps-track-pick"
+                      aria-pressed={selected}
+                      onClick={() => setBgmId(t.id)}
+                    >
+                      <span className="ps-option-title">{t.label}</span>
+                      <span className="ps-option-desc">{t.artist} · {t.mood} · {t.duration}</span>
+                      <span className="ps-option-meta">{t.desc}</span>
+                    </button>
+                    {selected && <CheckOutlined className="ps-track-tick" />}
                   </div>
                 );
               })}
@@ -635,7 +620,7 @@ export default function Video() {
             controls
             autoPlay
             playsInline
-            style={{ width: '100%', aspectRatio: '9 / 16', maxHeight: '70vh', background: '#000', borderRadius: 8 }}
+            style={{ width: '100%', aspectRatio: '9 / 16', maxHeight: '70vh', background: '#000', borderRadius: 4 }}
           />
         )}
         <Space style={{ marginTop: 12 }} direction="vertical" size={0}>

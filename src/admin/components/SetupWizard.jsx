@@ -8,7 +8,7 @@
 // Reuses /api/admin/brand-dna, /api/admin/calendar/plan, /api/admin/onboarding,
 // /api/admin/projects/profile.
 import { useState, useEffect, useCallback } from 'react';
-import { Modal, Steps, Button, Form, Input, Alert, Spin, Card, Tag, Space, Typography, message, Row, Col, List } from 'antd';
+import { Modal, Steps, Button, Form, Input, Alert, Spin, Card, Space, Typography, message, Row, Col, List } from 'antd';
 import {
   RocketOutlined, GlobalOutlined, GiftOutlined, CalendarOutlined,
   CheckCircleOutlined, LoadingOutlined, ArrowRightOutlined, ArrowLeftOutlined,
@@ -261,7 +261,7 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
       keyboard={!blocking}
       title={
         <Space>
-          <RocketOutlined style={{ color: '#1677ff' }} />
+          <RocketOutlined className="ps-stat-icon ps-stat-icon--info" />
           <span>Trình thiết lập{blocking ? ' — bắt buộc' : ''}</span>
         </Space>
       }
@@ -277,7 +277,7 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
       )}
       <Steps current={step} items={steps.map((s, i) => ({
         title: s.title,
-        icon: i < step ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : s.icon,
+        icon: i < step ? <CheckCircleOutlined className="ps-stat-icon ps-stat-icon--good" /> : s.icon,
       }))} style={{ marginBottom: 32 }} />
 
       {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} closable onClose={() => setError(null)} />}
@@ -334,7 +334,7 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
           {loading ? (
             <div style={{ textAlign: 'center', padding: 40 }}>
               <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} />} />
-              <p style={{ marginTop: 16, color: '#00000073' }}>
+              <p className="ps-wizard-note">
                 Đang đọc <Text strong>{url && new URL(url).hostname}</Text> và tạo Brand DNA...
               </p>
             </div>
@@ -400,12 +400,12 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
           {loading ? (
             <div style={{ textAlign: 'center', padding: 40 }}>
               <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} />} />
-              <p style={{ marginTop: 16, color: '#00000073' }}>Đang lên lịch 28 ngày...</p>
+              <p className="ps-wizard-note">Đang lên lịch 28 ngày...</p>
             </div>
           ) : (
             <>
               <Paragraph>
-                <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
+                <CheckCircleOutlined className="ps-stat-icon ps-stat-icon--good" />
                 <Text strong>Đã lên lịch {planSlots.length} bài viết!</Text>
               </Paragraph>
               <Card size="small" style={{ maxHeight: 300, overflow: 'auto' }}>
@@ -418,9 +418,9 @@ export default function SetupWizard({ open, onClose, onComplete, blocking = fals
                     return (
                       <List.Item>
                         <Space>
-                          <Tag color="blue">{dateLabel}</Tag>
+                          <span className="ps-chip ps-chip--plain ps-chip-xs">{dateLabel}</span>
                           <Text>{s.title}</Text>
-                          {s.primary_keyword && <Tag>{s.primary_keyword}</Tag>}
+                          {s.primary_keyword && <span className="ps-chip ps-chip--plain ps-chip-xs">{s.primary_keyword}</span>}
                         </Space>
                       </List.Item>
                     );

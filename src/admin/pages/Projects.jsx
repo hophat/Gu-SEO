@@ -1,16 +1,18 @@
-// Projects page — antd Table, Card, Tag, Button, Modal, Form, Statistic.
+// Projects page — the super-admin tenant list.
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Tag, Button, Modal, Form, Input, Select, Space, Statistic, Row, Col, Typography, message, Popconfirm } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, Select, Space, Statistic, Row, Col, Typography, message, Popconfirm } from 'antd';
 import { PlusOutlined, ReloadOutlined, DeleteOutlined, EditOutlined, ProjectOutlined } from '@ant-design/icons';
 import PageContainer from '../components/PageContainer.jsx';
 import { apiGet, apiPost, api } from '../api.js';
 
 const { Text } = Typography;
 
-const STATUS_TAG = {
-  active: { color: 'success', text: 'Active' },
-  paused: { color: 'warning', text: 'Paused' },
-  archived: { color: 'default', text: 'Archived' },
+// This is the super-admin console, so the labels stay in English. The tones
+// still come from lib/status.js so a state looks the same everywhere.
+const PROJECT_STATUS = {
+  active: { tone: 'good', text: 'Active' },
+  paused: { tone: 'warn', text: 'Paused' },
+  archived: { tone: 'muted', text: 'Archived' },
 };
 
 export default function Projects() {
@@ -52,11 +54,14 @@ export default function Projects() {
       } },
     { title: 'Slug', dataIndex: 'slug', key: 'slug', render: (s) => <Text code>{s}</Text> },
     { title: 'Domain', dataIndex: 'custom_domain', key: 'custom_domain',
-      render: (d) => d ? <Tag color="success">{d}</Tag> : <Text type="secondary">—</Text> },
-    { title: 'Status', dataIndex: 'status', key: 'status', width: 100,
-      render: (s) => { const t = STATUS_TAG[s] || STATUS_TAG.active; return <Tag color={t.color}>{t.text}</Tag>; } },
+      render: (d) => d ? <span className="ps-chip ps-chip--plain">{d}</span> : <Text type="secondary">—</Text> },
+    { title: 'Status', dataIndex: 'status', key: 'status', width: 110,
+      render: (s) => {
+        const t = PROJECT_STATUS[s] || PROJECT_STATUS.active;
+        return <span className={`ps-chip ps-chip--${t.tone}`}>{t.text}</span>;
+      } },
     { title: 'Mode', dataIndex: 'approval_mode', key: 'approval_mode', width: 100,
-      render: (m) => <Tag>{m === 'approval' ? 'Duyệt' : 'Auto'}</Tag> },
+      render: (m) => <span className="ps-chip ps-chip--plain">{m === 'approval' ? 'Duyệt' : 'Auto'}</span> },
     { title: '', key: 'actions', width: 100,
       render: (_, r) => (
         <Space>
