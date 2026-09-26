@@ -54,7 +54,7 @@ export function esc(s) {
 // landed in the bucket as the wrong bytes stayed invisible for that long.
 // Tagging image URLs with this value makes the URL itself change, so a
 // fresh fetch is forced. Bump it whenever published image bytes change.
-export const IMAGE_VERSION = 3;
+export const IMAGE_VERSION = 4;
 
 export function imageUrl(url) {
   if (typeof url !== 'string' || !url.startsWith('/image/')) return url;

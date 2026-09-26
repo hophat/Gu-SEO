@@ -19,6 +19,9 @@
 #               from the sibling original still in the bucket and rewrite
 #               it. The rows are left alone. Use when a run published the
 #               wrong bytes under the .webp key.
+#   --logo-size N  resize the project logo objects to an NxN square, in
+#               place. The header renders the logo at 28px, so a 1046px
+#               source is paying for pixels nobody sees.
 #   --crop      re-encode the current .webp object in place, cropping to
 #               the 1200x630 box the hero actually renders in. Use after a
 #               conversion run: the generated heroes are 1024x1024 and the
@@ -36,14 +39,17 @@ cd "$(dirname "$0")/.."
 DRY_RUN=""
 REPAIR=""
 CROP=""
+LOGO_SIZE=""
 QUALITY=82
-for arg in "$@"; do
-  case "$arg" in
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --dry-run) DRY_RUN="--dry-run" ;;
     --repair) REPAIR="--repair" ;;
     --crop) CROP="--crop" ;;
-    *) QUALITY="$arg" ;;
+    --logo-size) LOGO_SIZE="${2:-}"; shift ;;
+    *) QUALITY="$1" ;;
   esac
+  shift
 done
 
 BUCKET=$(awk -F\" '/^bucket_name *=/{print $2; exit}' wrangler.toml)
@@ -58,7 +64,12 @@ WRANGLER="${WRANGLER:-$(command -v wrangler || echo "npx --yes wrangler")}"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
-if [[ -n "$CROP" ]]; then
+if [[ -n "$LOGO_SIZE" ]]; then
+  # Logo mode re-encodes the .webp object in place, at a square size.
+  HERO_WHERE="hero_image_key LIKE '%.logo-mode-excluded'"
+  LOGO_WHERE="logo_url LIKE '%.webp'"
+  echo "▸ Logo mode: resizing logo objects to ${LOGO_SIZE}x${LOGO_SIZE} in $DB"
+elif [[ -n "$CROP" ]]; then
   # Crop re-encodes the object in place, so the source *is* the .webp key.
   # Logos are excluded: the 1200x630 window is a hero layout decision, and
   # cropping a square logo to 1.9:1 would cut the mark in half.
@@ -87,12 +98,13 @@ $WRANGLER d1 execute "$DB" --remote --json \
   --command "SELECT slug, logo_url FROM projects WHERE $LOGO_WHERE" \
   > "$WORK/logos.json"
 
-python3 - "$WORK" "$BUCKET" "$DB" "$QUALITY" "$DRY_RUN" "$WRANGLER" "$REPAIR" "$CROP" <<'EOF'
+python3 - "$WORK" "$BUCKET" "$DB" "$QUALITY" "$DRY_RUN" "$WRANGLER" "$REPAIR" "$CROP" "$LOGO_SIZE" <<'EOF'
 import json, subprocess, os, sys
 work, bucket, db, q, dry = sys.argv[1:6]
 WRANGLER = sys.argv[6].split()
 repair = bool(sys.argv[7])
 crop = bool(sys.argv[8])
+logo_size = int(sys.argv[9]) if sys.argv[9] else 0
 rows = json.load(open(f"{work}/rows.json"))[0]["results"]
 logos = json.load(open(f"{work}/logos.json"))[0]["results"]
 if dry:
@@ -160,7 +172,7 @@ def convert(source_key, dest_key, tag):
     # when it is also the destination — that is the already-converted case.
     # Crop mode re-encodes an object in place, so source == dest and the
     # skip has to stand down.
-    if ext in SKIP_EXT and not (crop and source_key == dest_key):
+    if ext in SKIP_EXT and not ((crop or logo_size) and source_key == dest_key):
         print(f"  {tag} {source_key}: skipped ({ext} not convertible)")
         return None
     src = f"{work}/{tag}{ext}"
@@ -172,7 +184,20 @@ def convert(source_key, dest_key, tag):
         return None
     # Crop mode recompresses the object's own .webp key, so src and dst
     # are both derived here rather than assumed to be distinct files.
-    args = ["cwebp", "-quiet", "-q", str(q)] + (crop_args(src) or []) + [src, "-o", dst]
+    # Resizing down is the point; resizing up would invent detail and can
+    # make a small logo larger than it started. -resize needs explicit
+    # dimensions, so the aspect-preserving fit is computed here.
+    geometry = []
+    if logo_size:
+        size = px(src)
+        if not size or max(size) > logo_size:
+            fit = logo_size / max(size)
+            geometry = ["-resize", str(max(1, round(size[0] * fit))), str(max(1, round(size[1] * fit)))]
+        else:
+            print(f"  {tag} {source_key}: already {size[0]}x{size[1]}, within {logo_size} — recompressing only")
+    else:
+        geometry = crop_args(src) or []
+    args = ["cwebp", "-quiet", "-q", str(q)] + geometry + [src, "-o", dst]
     made = subprocess.run(args, capture_output=True, text=True)
     if made.returncode != 0 or not os.path.exists(dst):
         print(f"  {tag} {source_key}: SKIPPED — cwebp could not read it ({made.stderr.strip().splitlines()[-1] if made.stderr.strip() else 'unknown'})")
@@ -268,11 +293,14 @@ for r in logos:
     key = r["logo_url"].split("/image/", 1)[-1]
     if not key:
         continue
-    if key.lower().endswith(".webp") and not repair:
+    # A row already on .webp is only interesting when this run is here to
+    # rewrite the existing object (--repair, --logo-size); a plain run has
+    # already done it and must not redo the whole corpus.
+    if key.lower().endswith(".webp") and not (repair or logo_size):
         continue
     stem = os.path.splitext(key)[0]
     source = key
-    if key.lower().endswith(".webp"):
+    if key.lower().endswith(".webp") and repair:
         source = None
         for e in (".jpg", ".jpeg", ".png"):
             got = subprocess.run(WRANGLER + ["r2", "object", "get", f"{bucket}/{stem}{e}",
@@ -296,9 +324,9 @@ for r in logos:
     if not dry:
         # logo_url keeps its '/image/' prefix — the public renderers and the
         # cover SVG builder both resolve the stored value from there. In
-        # repair mode the row already holds it, so only the object is
+        # repair/logo mode the row already holds it, so only the object is
         # rewritten.
-        if repair:
+        if repair or logo_size:
             put_object(converted, stem + ".webp")
         else:
             publish(converted, stem + ".webp", "projects", "logo_url", "slug", r["slug"], "/image/" + stem + ".webp")

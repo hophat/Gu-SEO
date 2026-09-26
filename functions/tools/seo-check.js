@@ -9,7 +9,7 @@
 // Retrieval lives in _lib/safe_fetch.js because the URL comes from a
 // stranger; the checks live in _lib/seo_audit.js and take HTML only.
 
-import { esc, edgeCached } from '../_lib/util.js';
+import { esc, edgeCached, imageUrl } from '../_lib/util.js';
 import { loadSettings } from '../_lib/settings.js';
 import { themeStyle } from '../_lib/page_render.js';
 import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost } from '../_lib/project_scope.js';
@@ -185,7 +185,7 @@ ${themeStyle(project?.theme_color)}
   <div class="header-inner">
     <a class="header-brand" href="${esc(homeUrl)}">
       ${project?.logo_url
-        ? `<img class="header-logo-img" src="${esc(project.logo_url)}" alt="${esc(siteName)}" height="28" /><span class="header-logo">${esc(siteName)}</span>`
+        ? `<img class="header-logo-img" src="${esc(imageUrl(project.logo_url))}" alt="${esc(siteName)}" height="28" /><span class="header-logo">${esc(siteName)}</span>`
         : `<span class="header-logo">${esc(siteName)}</span>`}
     </a>
     <nav class="header-nav">
