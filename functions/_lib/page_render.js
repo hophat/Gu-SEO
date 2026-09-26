@@ -198,7 +198,7 @@ export function renderContentPage({ env, request, post, kind, related = [], sett
       return `
       <li>
         <a href="${effectiveBasePath}/blog/${esc(r.slug)}">
-          <img src="${rSrc}" alt="${esc(r.hero_image_alt || r.title)}" width="640" height="336" loading="lazy" decoding="async" />
+          <img src="${rSrc}" alt="${esc(r.hero_image_alt || r.title)}" width="1200" height="630" loading="lazy" decoding="async" />
           <div class="read-next-meta">
             <h3>${esc(r.title)}</h3>
             ${r.meta_description ? `<p>${esc(excerpt(r.meta_description, 140))}</p>` : ''}
@@ -335,59 +335,69 @@ ${themeStyle(site.themeColor)}
   </div>
 </header>
 
-<main class="post-shell">
-  <div class="crumb"><a href="${esc(site.homeUrl)}">Trang chủ</a>${kind === 'blog' ? ` · <a href="${effectiveBasePath}/blog">Blog</a>` : ''}${pillar?.slug ? ` · <a href="${effectiveBasePath}/hubs/${esc(pillar.slug)}">${esc(pillar.label)}</a>` : ''} · <span>${esc(post.title.slice(0, 40))}…</span></div>
-  <h1 class="post-title">${esc(post.title)}</h1>
-  <div class="post-meta">
-    <span class="post-date">${esc(dateStr)}</span>
-    <span class="post-sep">·</span>
-    <span class="post-read">${readMin} phút đọc</span>
-  </div>
+<main class="post-shell${site.isGulagi ? ' has-sticky-cta' : ''}">
+  <nav class="crumb" aria-label="Breadcrumb">
+    <a href="${esc(site.homeUrl)}">Trang chủ</a>
+    ${kind === 'blog' ? `<span class="crumb-sep">/</span><a href="${effectiveBasePath}/blog">Bài viết</a>` : ''}
+    ${pillar?.slug ? `<span class="crumb-sep">/</span><a href="${effectiveBasePath}/hubs/${esc(pillar.slug)}">${esc(pillar.label)}</a>` : ''}
+  </nav>
+
+  <article>
+  <header class="post-head">
+    <h1 class="post-title">${esc(post.title)}</h1>
+    ${post.meta_description ? `<p class="post-standfirst">${esc(post.meta_description)}</p>` : ''}
+    <div class="post-byline">
+      <span class="post-date">${esc(dateStr)}</span>
+      <span class="post-sep">·</span>
+      <span class="post-read">${readMin} phút đọc</span>
+      ${pillar?.slug ? `<span class="post-sep">·</span><a class="post-topic" href="${effectiveBasePath}/hubs/${esc(pillar.slug)}">${esc(pillar.label)}</a>` : ''}
+    </div>
+  </header>
   ${heroImg}
-  <article class="prose">
+  <div class="prose">
     ${bodyHTML}
     ${site.isGulagi ? `
     <div class="article-cta">
-      <div class="cta-box">
-        <h3>Tạo website cho quán của bạn ngay</h3>
-        <p>Chỉ cần dán link Google Maps, Gulagi sẽ tự động tạo website chuyên nghiệp cho quán.</p>
-        <div class="mini-builder">
-          <form id="mini-builder-form" onsubmit="event.preventDefault();var url=this.querySelector('input').value.trim();if(url){window.location.href='${esc(site.ctaSignupUrl)}/?maps='+encodeURIComponent(url);}">
-            <input type="url" placeholder="Dán link Google Maps của quán..." required class="mini-builder-input" />
-            <button type="submit" class="mini-builder-btn">Tạo web ngay →</button>
-          </form>
-        </div>
-        <a href="${esc(site.ctaSignupUrl)}" class="cta-btn" style="margin-top:12px">Bắt đầu miễn phí →</a>
+      <h3>Tạo website cho quán của bạn ngay</h3>
+      <p>Chỉ cần dán link Google Maps, Gulagi sẽ tự động tạo website chuyên nghiệp cho quán.</p>
+      <div class="mini-builder">
+        <form id="mini-builder-form" onsubmit="event.preventDefault();var url=this.querySelector('input').value.trim();if(url){window.location.href='${esc(site.ctaSignupUrl)}/?maps='+encodeURIComponent(url);}">
+          <input type="url" aria-label="${'Dán link Google Maps của quán'}" placeholder="Dán link Google Maps của quán..." required class="mini-builder-input" />
+          <button type="submit" class="mini-builder-btn">Tạo web ngay →</button>
+        </form>
       </div>
+      <a href="${esc(site.ctaSignupUrl)}" class="cta-btn" style="margin-top:12px">Bắt đầu miễn phí →</a>
     </div>
     <div class="lead-form-box">
       <h3>Tải cẩm nang tăng đơn</h3>
       <p>Nhận ngay tài liệu hướng dẫn tối ưu Google Maps &amp; tăng doanh thu cho quán.</p>
       <form id="lead-capture-form" class="lead-form">
         <div class="lead-form-fields">
-          <input type="text" id="lead-name" name="name" placeholder="Họ và tên" class="lead-input" />
-          <input type="email" id="lead-email" name="email" placeholder="Email nhận tài liệu" class="lead-input" />
-          <input type="tel" id="lead-phone" name="phone" placeholder="Số điện thoại" class="lead-input" />
+          <input type="text" id="lead-name" name="name" placeholder="Họ và tên" aria-label="Họ và tên" class="lead-input" autocomplete="name" />
+          <input type="email" id="lead-email" name="email" placeholder="Email nhận tài liệu" aria-label="Email nhận tài liệu" class="lead-input" autocomplete="email" />
+          <input type="tel" id="lead-phone" name="phone" placeholder="Số điện thoại" aria-label="Số điện thoại" class="lead-input" autocomplete="tel" />
         </div>
         <button type="submit" id="lead-submit-btn" class="lead-submit-btn">Nhận cẩm nang miễn phí →</button>
         <div id="lead-form-msg" class="lead-form-msg" role="status" aria-live="polite"></div>
       </form>
     </div>` : ''}
+  </div>
   </article>
   <div class="share-bar">
-    <span class="share-label">Chia sẻ bài viết:</span>
-    <a href="https://www.facebook.com/sharer/sharer.php?u=${shareUrlEnc}" target="_blank" rel="noopener" class="share-btn share-fb">Facebook</a>
-    <a href="https://zalo.me/oa/share?url=${shareUrlEnc}" target="_blank" rel="noopener" class="share-btn share-zalo">Zalo</a>
-    <button class="share-btn share-copy" onclick="navigator.clipboard.writeText('${shareUrl}').then(()=>this.textContent='Đã copy!')">Sao chép link</button>
+    <span class="share-label" id="share-label">Chia sẻ</span>
+    <a href="https://www.facebook.com/sharer/sharer.php?u=${shareUrlEnc}" target="_blank" rel="noopener" class="share-btn share-fb" aria-label="Chia sẻ trên Facebook">Facebook</a>
+    <a href="https://zalo.me/oa/share?url=${shareUrlEnc}" target="_blank" rel="noopener" class="share-btn share-zalo" aria-label="Chia sẻ qua Zalo">Zalo</a>
+    <button class="share-btn share-copy" onclick="navigator.clipboard.writeText('${shareUrl}').then(()=>{this.textContent='Đã sao chép';setTimeout(()=>{this.textContent='Sao chép link'},1800)})">Sao chép link</button>
   </div>
   <div class="feedback-block" id="feedback-block">
     <div class="feedback-title">Bài viết này có hữu ích?</div>
-    <div class="feedback-actions">
-      <button type="button" class="feedback-btn feedback-yes" id="feedback-btn-yes" data-rating="yes">Có</button>
+    <div class="feedback-actions" role="group" aria-label="Đánh giá bài viết">
+      <button type="button" class="feedback-btn feedback-yes" id="feedback-btn-yes" data-rating="yes">Có, hữu ích</button>
       <button type="button" class="feedback-btn feedback-no" id="feedback-btn-no" data-rating="no">Không</button>
     </div>
     <div class="feedback-comment-wrap">
-      <input type="text" class="feedback-comment-input" id="feedback-comment" placeholder="Ý kiến đóng góp thêm (không bắt buộc)..." maxlength="500" />
+      <label for="feedback-comment" class="feedback-comment-label">Góp ý thêm (không bắt buộc)</label>
+      <input type="text" class="feedback-comment-input" id="feedback-comment" maxlength="500" />
     </div>
     <div class="feedback-msg" id="feedback-msg" role="status" aria-live="polite"></div>
   </div>
@@ -422,10 +432,28 @@ ${site.isGulagi ? `<div class="sticky-cta" id="sticky-cta">
 </footer>
 
 <script>
-window.addEventListener('scroll', function() {
-  var btn = document.getElementById('sticky-cta');
-  if (btn) btn.classList.toggle('visible', window.scrollY > 600);
-});
+// The sticky bar is a nudge back to the product. It appears once the
+// reader is into the article and retreats at the foot, where the inline
+// CTA and the footer link already do the job — a bar competing with its
+// own page section is noise.
+(function() {
+  var cta = document.getElementById('sticky-cta');
+  if (!cta) return;
+  var ticking = false;
+  function update() {
+    ticking = false;
+    var doc = document.documentElement;
+    var past = window.scrollY > 600;
+    var atFoot = window.scrollY + window.innerHeight > doc.scrollHeight - 240;
+    cta.classList.toggle('visible', past && !atFoot);
+  }
+  window.addEventListener('scroll', function() {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(update);
+  }, { passive: true });
+  update();
+})();
 (function() {
   var blogSlug = ${blogSlugEsc};
   var PS_BP = ${JSON.stringify(basePath)};

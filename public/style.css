@@ -12,6 +12,11 @@
   --line: #e4e0d6;
   --line-strong: #c6c2b5;
   --brand: #e05a2b;
+  /* The brand orange is a large-format colour: 3.5:1 on paper, fine
+     for a 40px headline or a filled block, a fail for the 11px mono
+     topic labels it also dresses. This darker step is the same hue
+     and clears 4.5:1, so small text in the accent stays readable. */
+  --brand-text: #b8400f;
   --brand-light: #fff4ef;
   --brand-dark: #c43d10;
   --link: #1a6dd4;
@@ -47,6 +52,7 @@
     --line: #302f28;
     --line-strong: #43423a;
     --brand: #ff7a4d;
+    --brand-text: #ff9a76;
     --brand-light: #2c1d16;
     --brand-dark: #ff9a76;
     --link: #6ba4ff;
@@ -114,9 +120,13 @@ img { max-width: 100%; height: auto; display: block; }
   border-radius: 2px;
 }
 
-/* ── Header ──────────────────────────────────────────────────── */
+/* ── Header ────────────────────────────────────────────────────
+   Shared by the archive, the article, /hubs and the tool page, so it
+   has to already speak the editorial language or every page inherits
+   the mismatch. Geist for the wordmark, mono for the running meta,
+   square CTA. */
 .site-header {
-  background: var(--surface);
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 100;
   backdrop-filter: blur(12px);
@@ -128,22 +138,40 @@ img { max-width: 100%; height: auto; display: block; }
   display: flex; align-items: center; justify-content: space-between;
 }
 .header-brand {
-  font-size: 1.3rem; font-weight: 800; color: var(--brand);
-  text-decoration: none; letter-spacing: -0.02em;
-  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-ui);
+  font-size: 1.15rem; font-weight: 700; color: var(--ink);
+  text-decoration: none; letter-spacing: -0.015em;
+  display: inline-flex; align-items: center; gap: 10px;
+  min-width: 0;
 }
-.header-brand:hover { text-decoration: none; color: var(--brand-dark); }
-.header-nav { display: flex; align-items: center; gap: 24px; font-size: 0.9rem; }
-.header-nav a { color: var(--muted); font-weight: 500; transition: color .15s; }
-.header-nav a:hover, .header-nav a.active { color: var(--ink); text-decoration: none; }
+.header-brand:hover { text-decoration: none; color: var(--brand); }
+.header-nav {
+  display: flex; align-items: center; gap: 22px;
+  font-family: var(--font-num);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.header-nav a { color: var(--muted-2); text-decoration: none; transition: color .16s; }
+.header-nav a:hover, .header-nav a.active { color: var(--ink); }
+.header-nav a.active { position: relative; }
+/* The current section is marked by a rule, matching how the pager
+   marks the current page — one way of saying "you are here". */
+.header-nav a.active::after {
+  content: ""; position: absolute;
+  left: 0; right: 0; bottom: -7px; height: 2px;
+  background: var(--brand);
+}
 .header-cta {
-  background: var(--brand); color: #fff !important;
-  padding: 10px 22px; border-radius: 8px; font-weight: 600;
-  font-size: 0.88rem; transition: background .15s;
+  background: var(--ink); color: var(--bg) !important;
+  padding: 9px 18px; border-radius: 0;
+  font-family: var(--font-ui);
+  font-weight: 600; letter-spacing: 0;
+  text-transform: none; font-size: 0.85rem;
+  transition: background .16s;
 }
-.header-cta:hover { background: var(--brand-dark); text-decoration: none !important; }
+.header-cta:hover { background: var(--brand); color: #fff !important; text-decoration: none !important; }
 .header-logo-img {
-  height: 28px; width: auto; max-width: 180px;
+  height: 26px; width: auto; max-width: 180px;
   object-fit: contain;
 }
 
@@ -159,228 +187,458 @@ img { max-width: 100%; height: auto; display: block; }
 .site-header.is-themed .header-cta { background: #fff; color: var(--brand) !important; }
 .site-header.is-themed .header-cta:hover { background: rgba(255, 255, 255, .85); }
 
-/* ── Breadcrumb ──────────────────────────────────────────────── */
-.crumb {
-  font-size: 0.82rem; color: var(--muted-2); margin-bottom: 20px;
-}
-.crumb a { color: var(--muted-2); }
-.crumb a:hover { color: var(--brand); }
+/* ══════════════════════════════════════════════════════════════════
+   THE DISPATCH — the article page
 
-/* ── Post shell ──────────────────────────────────────────────── */
+   The archive and the article are one product, so they speak one
+   language: warm paper, hairline rules, no cards, one serif for
+   anything a human wrote and one mono for every number.
+
+   The article itself is the constraint. 720px of measure is what makes
+   70 characters of Vietnamese legible, so the column does not move.
+   What changes is everything around it — the title becomes a headline
+   rather than a bold paragraph, the byline becomes a masthead rule,
+   and the related block stops being three boxes.
+   ══════════════════════════════════════════════════════════════════ */
+
 .post-shell {
   max-width: var(--max); margin: 0 auto;
-  padding: 48px 24px 80px;
+  padding: 0 24px 96px;
 }
+
+/* ── Crumb ─────────────────────────────────────────────────────
+   Was a 13px grey trail. It is a provenance line now: mono, tracked
+   out, sitting on a rule above the headline. */
+.crumb {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-family: var(--font-num);
+  font-size: 10.5px; font-weight: 400;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted-2);
+  padding: 20px 0 0;
+}
+.crumb a { color: var(--muted-2); text-decoration: none; }
+.crumb a:hover { color: var(--brand); }
+.crumb-sep { color: var(--line-strong); }
+/* The final crumb is the current page, not a link. Dimming it by
+   another step keeps the trail readable without an underline. */
+.crumb [aria-current="page"] { color: var(--ink); }
+
+/* ── Article head ──────────────────────────────────────────────
+   The headline is the one thing on the page set in the serif, and it
+   is set large. The rule under it is 2px — the same weight as the
+   masthead rule on the archive, so the two pages are visibly the
+   same publication. */
+.post-head { padding: 26px 0 0; }
 .post-title {
-  font-weight: 800; font-size: clamp(1.8rem, 4vw, 2.6rem);
-  line-height: 1.2; margin: 0 0 12px; color: var(--ink);
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(2.1rem, 5.2vw, 3.4rem);
+  line-height: 1.08;
+  letter-spacing: -0.022em;
+  margin: 18px 0 0;
+  color: var(--ink);
+  text-wrap: balance;
 }
-.post-meta {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 0.85rem; color: var(--muted); margin-bottom: 32px;
+.post-standfirst {
+  margin: 20px 0 0;
+  font-size: 1.1rem; line-height: 1.6;
+  color: var(--muted);
+  max-width: 58ch;
+}
+/* Byline: the running foot of a printed article. Rules above and
+   below, mono, so the reader's eye lands on the body not the meta. */
+.post-byline {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  font-family: var(--font-num);
+  font-size: 11px; font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--muted-2);
+  margin-top: 26px;
+  padding: 13px 0;
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--line);
 }
 .post-sep { color: var(--line-strong); }
+.post-byline .post-topic { color: var(--brand-text); }
+
+/* ── Hero ──────────────────────────────────────────────────────
+   No radius. The fallback card bakes the headline into the artwork,
+   so it is shown whole at its own ratio — cropping it to a rounded
+   portrait box cut the title in half. */
 .hero-wrap {
-  position: relative; width: 100%; border-radius: var(--radius);
-  margin: 0 0 36px; background: var(--bg-2); overflow: hidden;
+  position: relative; width: 100%;
+  margin: 32px 0 8px;
+  background: var(--bg-2);
+  overflow: hidden;
 }
 .hero {
-  width: 100%; height: 100%; object-fit: cover; display: block;
+  width: 100%; height: auto; aspect-ratio: auto; display: block;
   opacity: 0; transition: opacity .3s ease;
 }
 .hero.is-loaded { opacity: 1; }
 
-/* ── Prose ───────────────────────────────────────────────────── */
-.prose { font-size: 1rem; line-height: 1.85; color: var(--ink-2); }
+/* ── Prose ─────────────────────────────────────────────────────
+   The reading surface. Generous leading, a hard cap on measure, and
+   headings that step down visibly. Every size below is a clear step
+   from its neighbour — a flat scale is how a page stops reading as
+   structured content. */
+.prose { font-size: 1.0625rem; line-height: 1.78; color: var(--ink-2); }
+.prose p { margin: 0 0 1.35em; }
+/* Vietnamese syllables are taller than Latin at the same x-height, so
+   the body sits a touch larger and looser than an English default. */
 .prose h2 {
-  font-weight: 800; font-size: 1.5rem;
-  margin: 44px 0 14px; color: var(--ink); line-height: 1.3;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.85rem;
+  line-height: 1.2;
+  letter-spacing: -0.014em;
+  margin: 2.4em 0 .6em;
+  color: var(--ink);
+  text-wrap: balance;
 }
-.prose h3 { font-size: 1.15rem; font-weight: 700; margin: 32px 0 10px; color: var(--ink); }
-.prose p { margin: 0 0 18px; }
-.prose ul, .prose ol { margin: 0 0 20px; padding-left: 24px; }
-.prose li { margin-bottom: 8px; }
-.prose li > ul, .prose li > ol { margin: 8px 0 4px; }
+.prose h3 {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 1.2rem;
+  line-height: 1.35;
+  margin: 2em 0 .5em;
+  color: var(--ink);
+}
+.prose h4 { font-weight: 700; font-size: 1.02rem; margin: 1.7em 0 .4em; color: var(--ink); }
+.prose ul, .prose ol { margin: 0 0 1.4em; padding-left: 1.4em; }
+.prose li { margin-bottom: .5em; }
+.prose li > ul, .prose li > ol { margin: .5em 0 .25em; }
+/* A list whose markers are the brand accent — the one place colour
+   carries structural meaning inside the body. */
+.prose li::marker { color: var(--brand); }
 .prose strong { color: var(--ink); font-weight: 700; }
+.prose a { color: var(--link); text-underline-offset: 3px; }
 .prose blockquote {
-  margin: 28px 0; padding: 12px 0 12px 20px;
-  border-left: 3px solid var(--brand);
-  color: var(--ink-2); font-size: 1.02rem; line-height: 1.65;
+  margin: 2em 0;
+  padding: 2px 0 2px 22px;
+  border-left: 2px solid var(--brand);
+  color: var(--ink-2);
+  font-size: 1.06rem; line-height: 1.7;
 }
 .prose blockquote p:last-child { margin-bottom: 0; }
-.prose img { border-radius: var(--radius); margin: 24px auto; }
-.prose a { color: var(--link); }
+.prose blockquote p:first-child { margin-top: 0; }
+.prose img { margin: 2em auto; border-radius: 0; }
 .prose code {
-  background: var(--bg-2); padding: 2px 6px; border-radius: 4px;
-  font-family: var(--font-mono); font-size: 0.88em;
+  background: var(--bg-2); padding: .12em .38em; border-radius: 3px;
+  font-family: var(--font-mono); font-size: .85em;
 }
 .prose pre {
-  background: #1a1a1a; color: #e0e0e0;
-  border-radius: var(--radius); padding: 16px; margin: 24px 0;
-  overflow-x: auto; font-size: 0.86rem; line-height: 1.6;
+  background: var(--bg-deep, #17181c); color: #e8e6df;
+  padding: 18px 20px; margin: 1.8em 0;
+  overflow-x: auto;
+  font-size: .85rem; line-height: 1.65;
+  border-radius: 0;
 }
 .prose pre code { background: none; padding: 0; color: inherit; white-space: pre; }
-.prose table { border-collapse: collapse; width: 100%; margin: 28px 0; font-size: 0.95rem; }
-.prose th, .prose td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--line); }
-.prose th { font-weight: 700; color: var(--ink); background: var(--bg-2); }
-.prose hr { border: 0; border-top: 1px solid var(--line); margin: 40px 0; }
-
-/* ── Article CTA ─────────────────────────────────────────────── */
-.article-cta {
-  margin: 48px 0; padding: 32px 28px;
-  background: var(--brand-light);
-  border: 1px solid rgba(224,90,43,0.2);
-  border-radius: var(--radius); text-align: center;
+/* A table is a data object, not a decoration: the header row is
+   inverted, the rules are hairlines, and the whole thing scrolls
+   rather than crushing a 5-column table into 720px. */
+.prose table {
+  border-collapse: collapse; width: 100%;
+  margin: 1.8em 0; font-size: .92rem;
+  display: block; overflow-x: auto;
 }
-.article-cta h3 { font-size: 1.3rem; font-weight: 800; margin: 0 0 8px; color: var(--brand); }
-.article-cta p { color: var(--ink-2); margin: 0 0 20px; font-size: 0.95rem; }
+.prose th, .prose td {
+  padding: 10px 14px; text-align: left;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.prose th {
+  font-weight: 600; color: var(--ink);
+  background: var(--bg-2);
+  font-family: var(--font-num);
+  font-size: .78rem; letter-spacing: .06em; text-transform: uppercase;
+}
+.prose hr { border: 0; border-top: 1px solid var(--ink); margin: 2.6em 0; }
+
+/* ── Article CTA ───────────────────────────────────────────────
+   The conversion moment, and the one place on the page that earns a
+   filled block. It is bounded by a 2px accent rule rather than a
+   rounded card, so it reads as an inserted panel in the same
+   publication instead of a widget dropped into it. */
+.article-cta {
+  margin: 48px 0; padding: 30px 0 0;
+  border-top: 2px solid var(--brand);
+}
+.article-cta h3 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.6rem; line-height: 1.22;
+  margin: 0 0 8px; color: var(--ink);
+}
+.article-cta p { color: var(--muted); margin: 0 0 20px; font-size: 0.98rem; }
 .cta-btn {
   display: inline-block; background: var(--brand); color: #fff !important;
-  padding: 14px 32px; border-radius: 8px; font-weight: 700;
-  font-size: 1rem; text-decoration: none !important; transition: background .15s;
+  padding: 13px 28px; border-radius: 0; font-weight: 600;
+  font-size: 0.95rem; text-decoration: none !important;
+  transition: background .16s;
 }
 .cta-btn:hover { background: var(--brand-dark); }
 
-.mini-builder { margin: 16px 0 8px; }
-.mini-builder form { display: flex; gap: 8px; max-width: 480px; margin: 0 auto; flex-wrap: wrap; }
+.mini-builder { margin: 18px 0 10px; }
+.mini-builder form { display: flex; gap: 10px; max-width: 440px; margin: 0; flex-wrap: wrap; }
 .mini-builder-input {
-  flex: 1; min-width: 200px; padding: 10px 14px; font-size: 0.9rem; font-family: inherit;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
-  color: var(--ink); outline: none;
+  flex: 1; min-width: 200px; padding: 11px 0; font-size: 0.95rem; font-family: inherit;
+  border: 0; border-bottom: 1px solid var(--line-strong);
+  background: transparent; color: var(--ink);
+  transition: border-color .16s;
 }
+.mini-builder-input:focus { border-bottom-color: var(--brand); }
 .mini-builder-btn {
-  background: var(--ink); color: #fff; border: 0; padding: 10px 18px;
-  border-radius: 6px; font-weight: 700; font-size: 0.88rem; cursor: pointer;
-  white-space: nowrap; transition: opacity .15s; font-family: inherit;
+  background: var(--ink); color: #fff; border: 0; padding: 11px 18px;
+  font-weight: 600; font-size: 0.9rem; cursor: pointer;
+  white-space: nowrap; transition: opacity .16s; font-family: inherit;
 }
-.mini-builder-btn:hover { opacity: 0.9; }
+.mini-builder-btn:hover { opacity: .88; }
 
 .lead-form-box {
-  margin: 32px 0 48px; padding: 28px 24px;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius); text-align: center;
+  margin: 40px 0 48px; padding: 28px 0 0;
+  border-top: 1px solid var(--line);
 }
-.lead-form-box h3 { font-size: 1.25rem; font-weight: 800; margin: 0 0 8px; color: var(--ink); }
-.lead-form-box p { color: var(--muted); margin: 0 0 20px; font-size: 0.9rem; }
-.lead-form { max-width: 520px; margin: 0 auto; }
-.lead-form-fields { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.lead-form-box h3 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.45rem; line-height: 1.24;
+  margin: 0 0 8px; color: var(--ink);
+}
+.lead-form-box p { color: var(--muted); margin: 0 0 20px; font-size: 0.92rem; }
+.lead-form { max-width: 440px; margin: 0; }
+.lead-form-fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
 .lead-input {
-  width: 100%; padding: 10px 14px; font-size: 0.9rem; font-family: inherit;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--bg-2);
-  color: var(--ink); outline: none; transition: border-color .15s;
+  width: 100%; padding: 10px 0; font-size: 0.95rem; font-family: inherit;
+  border: 0; border-bottom: 1px solid var(--line-strong);
+  background: transparent; color: var(--ink);
+  transition: border-color .16s;
 }
-.lead-input:focus { border-color: var(--brand); background: var(--surface); }
+.lead-input:focus { border-bottom-color: var(--brand); }
 .lead-submit-btn {
-  width: 100%; display: inline-block; background: var(--brand); color: #fff;
-  border: 0; padding: 12px 24px; border-radius: 6px; font-weight: 700;
-  font-size: 0.95rem; cursor: pointer; transition: background .15s; font-family: inherit;
+  width: auto; min-width: 240px;
+  display: inline-block; background: var(--brand); color: #fff;
+  border: 0; padding: 12px 24px; border-radius: 0;
+  font-weight: 600; font-size: 0.95rem; cursor: pointer;
+  transition: background .16s; font-family: inherit;
 }
 .lead-submit-btn:hover:not(:disabled) { background: var(--brand-dark); }
-.lead-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.lead-form-msg { font-size: 0.85rem; font-weight: 600; margin-top: 10px; }
-.lead-form-msg.error { color: #d32f2f; }
-.lead-form-msg.success { color: #2e7d32; }
+.lead-submit-btn:disabled { opacity: .55; cursor: not-allowed; }
+.lead-form-msg {
+  font-family: var(--font-num);
+  font-size: 11px; letter-spacing: .04em;
+  color: var(--muted); margin-top: 10px;
+}
+.lead-form-msg.error { color: #b3261e; }
+.lead-form-msg.success { color: #1e6b3a; }
 
-/* ── Sticky CTA ──────────────────────────────────────────────── */
+/* ── Sticky CTA ────────────────────────────────────────────────
+   A fixed bar sits on top of the column, so the article reserves the
+   same height at the foot. Without the reserve the last paragraph
+   and the share row are permanently unreadable behind it. */
 .sticky-cta {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 99;
-  background: var(--brand); padding: 14px 24px;
-  text-align: center; transform: translateY(100%);
-  transition: transform .3s ease;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+  background: var(--brand); padding: 13px 24px;
+  /* Clear of the iOS home indicator. */
+  padding-bottom: max(13px, env(safe-area-inset-bottom));
+  text-align: center; transform: translateY(101%);
+  transition: transform .28s cubic-bezier(.22, 1, .36, 1);
 }
 .sticky-cta.visible { transform: translateY(0); }
 .sticky-cta-btn {
-  color: #fff !important; font-weight: 700;
+  color: #fff !important; font-weight: 600;
   font-size: 0.95rem; text-decoration: none !important;
 }
+/* Only the Gulagi tenant ships the sticky bar, so only then does the
+   shell need the clearance. The class is set by the renderer, which
+   already knows the condition — no reliance on :has() support. */
+.post-shell.has-sticky-cta { padding-bottom: 148px; }
 
-/* ── Share bar ───────────────────────────────────────────────── */
+/* ── Share bar ─────────────────────────────────────────────────
+   Mono label, hairline rules, no filled pills. The one place the
+   network brand colours appear is here, where naming the platform is
+   the entire point. */
 .share-bar {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  padding: 24px 0; margin-top: 36px;
-  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap;
+  padding: 18px 0; margin-top: 40px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
-.share-label { font-size: 0.88rem; font-weight: 600; color: var(--muted); }
+.share-label {
+  font-family: var(--font-num);
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted-2);
+  margin-right: 4px;
+}
 .share-btn {
-  padding: 8px 16px; border-radius: 6px; font-size: 0.82rem;
-  font-weight: 600; border: 1px solid var(--line); cursor: pointer;
-  text-decoration: none !important; transition: all .15s;
+  padding: 7px 0; font-size: 0.85rem;
+  font-weight: 600; border: 0; background: none; cursor: pointer;
+  text-decoration: none !important;
+  border-bottom: 1px solid currentColor;
+  transition: opacity .16s;
+  font-family: inherit;
 }
-.share-fb { color: #1877f2 !important; border-color: #1877f2; }
-.share-fb:hover { background: #1877f2; color: #fff !important; }
-.share-zalo { color: #0068ff !important; border-color: #0068ff; }
-.share-zalo:hover { background: #0068ff; color: #fff !important; }
-.share-copy { background: var(--bg-2); color: var(--ink); font-family: inherit; }
-.share-copy:hover { background: var(--line); }
+.share-fb { color: #1877f2 !important; }
+.share-fb:hover { opacity: .68; }
+.share-zalo { color: #0068ff !important; }
+.share-zalo:hover { opacity: .68; }
+.share-copy { color: var(--ink); }
+.share-copy:hover { color: var(--brand); border-bottom-color: var(--brand); }
 
+/* ── Feedback ──────────────────────────────────────────────────
+   A question, not a widget. Left-aligned, no fill, no radius — a
+   centred box mid-article interrupts the column. */
 .feedback-block {
-  padding: 20px 24px; margin: 24px 0 36px;
-  background: var(--bg-2); border: 1px solid var(--line);
-  border-radius: var(--radius); text-align: center;
+  padding: 22px 0 0; margin: 32px 0 0;
+  border-top: 1px solid var(--line);
+  text-align: left;
 }
-.feedback-title { font-size: 0.95rem; font-weight: 700; color: var(--ink); margin-bottom: 12px; }
-.feedback-actions { display: flex; justify-content: center; gap: 12px; margin-bottom: 12px; }
+.feedback-title {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.3rem; line-height: 1.25;
+  color: var(--ink); margin-bottom: 14px;
+}
+.feedback-actions { display: flex; gap: 10px; margin-bottom: 14px; }
 .feedback-btn {
-  padding: 8px 24px; border-radius: 6px; font-size: 0.88rem;
-  font-weight: 600; border: 1px solid var(--line); background: var(--surface);
-  color: var(--ink); cursor: pointer; transition: all .15s; font-family: inherit;
+  padding: 9px 20px; font-size: 0.88rem;
+  font-weight: 600; border: 1px solid var(--line-strong); background: none;
+  color: var(--ink); cursor: pointer;
+  font-family: inherit;
+  transition: border-color .16s, color .16s;
+  min-height: 40px;
 }
-.feedback-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
-.feedback-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.feedback-yes:hover:not(:disabled) { background: var(--brand-light); }
-.feedback-no:hover:not(:disabled) { background: var(--bg-2); }
-.feedback-comment-wrap { max-width: 480px; margin: 0 auto; }
+.feedback-btn:hover:not(:disabled) { border-color: var(--ink); }
+.feedback-btn:disabled { opacity: .5; cursor: not-allowed; }
+.feedback-yes:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.feedback-comment-wrap { max-width: 420px; margin: 0; }
+/* A placeholder was the only label this field had. Placeholders
+   vanish on focus, so the field had no accessible name at all. */
+.feedback-comment-label {
+  display: block;
+  font-family: var(--font-num);
+  font-size: 10.5px; font-weight: 400;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted-2);
+  margin-bottom: 6px;
+}
 .feedback-comment-input {
-  width: 100%; padding: 8px 12px; font-size: 0.85rem; font-family: inherit;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
-  color: var(--ink); outline: none; transition: border-color .15s;
+  width: 100%; padding: 9px 0; font-size: 0.9rem; font-family: inherit;
+  border: 0; border-bottom: 1px solid var(--line-strong);
+  background: transparent; color: var(--ink);
+  transition: border-color .16s;
 }
-.feedback-comment-input:focus { border-color: var(--brand); }
-.feedback-msg { font-size: 0.85rem; font-weight: 600; margin-top: 10px; min-height: 20px; }
-.feedback-thanks { font-size: 0.95rem; font-weight: 700; color: var(--brand); padding: 8px 0; }
+.feedback-comment-input:focus { border-bottom-color: var(--ink); }
+.feedback-msg {
+  font-family: var(--font-num);
+  font-size: 11px; letter-spacing: .04em;
+  color: var(--muted); margin-top: 10px; min-height: 18px;
+}
+.feedback-thanks {
+  font-family: var(--font-serif);
+  font-size: 1.15rem; color: var(--brand-text); padding: 4px 0 0;
+}
 
-/* ── Author box ──────────────────────────────────────────────── */
+/* ── Author box ────────────────────────────────────────────────
+   Was a grey filled box. A byline block is a line of small type, not
+   a container — the reader has finished the article and the author's
+   name is provenance, same as the crumb at the top. */
 .author-box {
-  margin: 36px 0; padding: 24px; background: var(--bg-2);
-  border-radius: var(--radius); display: flex; align-items: flex-start; gap: 16px;
+  margin: 44px 0 0; padding: 20px 0;
+  border-top: 1px solid var(--line);
+  display: flex; align-items: flex-start; gap: 14px;
 }
-.author-info strong { font-weight: 700; color: var(--ink); }
-.author-info p { color: var(--muted); font-size: 0.88rem; margin: 4px 0 0; }
+.author-info strong {
+  display: block;
+  font-weight: 700; color: var(--ink);
+  font-size: 0.92rem;
+  margin-bottom: 3px;
+}
+.author-info p {
+  color: var(--muted); font-size: 0.88rem;
+  margin: 0; line-height: 1.55;
+  max-width: 56ch;
+}
 
-/* ── Related articles ────────────────────────────────────────── */
-.read-next { margin: 48px 0 0; padding: 32px 0 0; border-top: 1px solid var(--line); }
-.read-next-title {
-  font-weight: 800; font-size: 1.2rem; margin: 0 0 20px; color: var(--ink);
+/* ── Related articles ──────────────────────────────────────────
+   Was three equal cards. Cards make every entry carry the same
+   weight, which is exactly the sameness the archive was redesigned
+   to kill. These are rows now: the same ruled grammar as .entry on
+   the index, so a reader who learned the archive can read this
+   without re-learning anything. */
+.read-next { margin: 56px 0 0; padding: 28px 0 0; border-top: 2px solid var(--ink); }
+.read-next-title,
+.read-next .section-label {
+  font-family: var(--font-num);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--muted-2);
+  margin: 0 0 16px;
 }
-.read-next-list {
-  list-style: none; padding: 0; margin: 0;
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-}
+.read-next-list { list-style: none; padding: 0; margin: 0; }
 .read-next-list li { margin: 0; }
+.read-next-list li + li { border-top: 1px solid var(--line); }
 .read-next-list a {
-  display: flex; flex-direction: column; gap: 12px;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: 14px; color: var(--ink);
-  text-decoration: none; transition: border-color .2s, transform .2s; height: 100%;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 18px; align-items: center;
+  padding: 16px 0;
+  color: var(--ink);
+  text-decoration: none;
+  transition: padding-left .18s;
 }
-.read-next-list a:hover { border-color: var(--brand); transform: translateY(-2px); text-decoration: none; }
-.read-next-list img { width: 100%; aspect-ratio: 1.6; object-fit: cover; border-radius: 8px; }
-.read-next-meta h3 { font-size: 0.95rem; font-weight: 700; margin: 0 0 6px; line-height: 1.3; }
-.read-next-meta p { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.5; }
+.read-next-list a:hover { padding-left: 6px; }
+.read-next-list a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+.read-next-list img {
+  width: 76px; aspect-ratio: 1 / 1; object-fit: cover;
+  background: var(--bg-2);
+  transition: opacity .2s ease;
+}
+.read-next-list a:hover img { opacity: .85; }
+.read-next-meta h3 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.16rem; line-height: 1.26;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+.read-next-meta p { margin: 0; color: var(--muted); font-size: 0.86rem; line-height: 1.5; }
 
-/* ── Footer ──────────────────────────────────────────────────── */
+/* ── Footer ────────────────────────────────────────────────────
+   Ink plate, same as before — the one dark mass in the publication.
+   The links drop to mono so the last thing on the page uses the same
+   voice as the first. */
 .site-footer {
-  background: var(--ink); color: #ccc;
-  padding: 48px 24px 32px; margin-top: 64px;
+  background: var(--ink); color: #b8b6ad;
+  padding: 44px 24px 30px; margin-top: 0;
 }
 .footer-inner { max-width: var(--max-wide); margin: 0 auto; text-align: center; }
-.footer-brand { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 16px; }
-.footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 20px; font-size: 0.88rem; }
-.footer-links a { color: #aaa; }
-.footer-links a:hover { color: #fff; text-decoration: none; }
-.footer-copy { font-size: 0.78rem; color: #666; }
+.footer-brand {
+  font-family: var(--font-ui);
+  font-size: 1.05rem; font-weight: 700;
+  color: var(--bg); margin-bottom: 18px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  flex-wrap: wrap;
+}
+.footer-links {
+  display: flex; justify-content: center; gap: 22px; flex-wrap: wrap;
+  margin-bottom: 18px;
+  font-family: var(--font-num);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.footer-links a { color: #8f8d85; text-decoration: none; }
+.footer-links a:hover { color: var(--bg); }
+.footer-copy {
+  font-family: var(--font-num);
+  font-size: 10.5px; letter-spacing: 0.08em; color: #8a8880;
+}
 
 /* ══════════════════════════════════════════════════════════════════
    THE DISPATCH — /blog
@@ -418,9 +676,6 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .masthead-issue { display: flex; gap: 18px; flex-wrap: wrap; }
 .masthead-issue > span { white-space: nowrap; }
-/* The issue number is the one thing on the page set in the accent —
-   it is the identity of this particular issue, not decoration. */
-.masthead-issue .masthead-no { color: var(--brand); }
 
 .masthead h1 {
   font-family: var(--font-serif);
@@ -508,7 +763,7 @@ img { max-width: 100%; height: auto; display: block; }
   font-family: var(--font-num);
   font-size: 11px; font-weight: 500;
   letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--brand);
+  color: var(--brand-text);
   margin-bottom: 18px;
 }
 .lead-kicker::after {
@@ -616,7 +871,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .entry-facts .fact-sep { color: var(--line-strong); }
 .entry-topic {
-  color: var(--brand);
+  color: var(--brand-text);
   text-decoration: none !important;
 }
 .entry-topic:hover { text-decoration: underline; text-underline-offset: 3px; }
@@ -720,7 +975,7 @@ img { max-width: 100%; height: auto; display: block; }
   display: block; color: var(--muted); font-size: 0.95rem;
   max-width: 52ch; line-height: 1.6;
 }
-.blog-noposts span a { color: var(--brand); }
+.blog-noposts span a { color: var(--brand-text); }
 
 /* ── Tools (/tools/seo-check) ──────────────────────────────────── */
 .tool-page { max-width: 760px; margin: 0 auto; padding: 40px 20px 72px; }
@@ -809,7 +1064,7 @@ img { max-width: 100%; height: auto; display: block; }
 .hub-crumb a { color: var(--muted); }
 
 .post-hub { margin: 32px 0 0; padding-top: 20px; border-top: 1px solid var(--line); font-size: 0.9rem; }
-.post-hub a { color: var(--brand); text-decoration: none; font-weight: 600; }
+.post-hub a { color: var(--brand-text); text-decoration: none; font-weight: 600; }
 .post-hub a:hover { text-decoration: underline; }
 .post-hub .hub-count { margin-left: 8px; }
 
@@ -902,8 +1157,30 @@ img { max-width: 100%; height: auto; display: block; }
   .header-nav { gap: 16px; font-size: 0.82rem; flex-wrap: wrap; row-gap: 8px; }
   .header-cta { padding: 8px 16px; font-size: 0.82rem; }
   .post-shell, .blog-index { padding-left: 16px; padding-right: 16px; }
-  .post-shell { padding-top: 32px; padding-bottom: 60px; }
-  .read-next-list { grid-template-columns: 1fr; }
+  .post-shell { padding-bottom: 72px; }
+
+  .post-title { font-size: clamp(1.85rem, 8.4vw, 2.4rem); }
+  .post-standfirst { font-size: 1.04rem; }
+  .post-byline { gap: 8px; font-size: 10.5px; }
+  .crumb { padding-top: 16px; font-size: 10px; }
+
+  /* Vietnamese at 17px on a 320px screen is genuinely hard to read;
+     the body steps down rather than the measure narrowing further. */
+  .prose { font-size: 1rem; line-height: 1.75; }
+  .prose h2 { font-size: 1.5rem; }
+  .prose h3 { font-size: 1.12rem; }
+
+  .read-next-list a { grid-template-columns: 60px minmax(0, 1fr); gap: 14px; }
+  .read-next-list img { width: 60px; }
+  .read-next-meta h3 { font-size: 1.06rem; }
+
+  /* A 3px underline is below the 44px comfortable target and reads as
+     decoration on touch. 4px keeps the colour cue without pretending
+     to be a button. */
+  .share-bar { gap: 6px 16px; }
+  .share-label { flex-basis: 100%; }
+  .share-btn { min-height: 40px; display: inline-flex; align-items: center; }
+
   .site-footer { padding: 36px 16px 24px; }
 
   .masthead { padding: 30px 0 18px; }
