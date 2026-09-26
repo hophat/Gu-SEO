@@ -21,12 +21,17 @@ function rfc822(epoch) {
 }
 
 export const onRequestGet = async ({ env, request, params }) => {
-  const settings = await loadSettings(env).catch(() => ({}));
   const projectSlug = String(params?.project || '').toLowerCase() || null;
   const basePath = projectSlug ? `/${projectSlug}` : '';
-  const project = projectSlug
-    ? await resolveProjectBySlug(env, projectSlug).catch(() => null)
-    : await resolveProjectForRequest(env, request).catch(() => null);
+  // Settings and the project row don't depend on each other, so they go
+  // out together instead of stacking two round-trips before the feed query
+  // even starts.
+  const [settings, project] = await Promise.all([
+    loadSettings(env).catch(() => ({})),
+    projectSlug
+      ? resolveProjectBySlug(env, projectSlug).catch(() => null)
+      : resolveProjectForRequest(env, request).catch(() => null),
+  ]);
   if (projectSlug && !project) return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain' } });
   const projectId = project?.id || null;
 

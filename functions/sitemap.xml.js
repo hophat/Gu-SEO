@@ -96,9 +96,9 @@ async function fetchEntries(env, host, project = null, basePath = '') {
     : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
          FROM blog_posts WHERE status='published'
          ORDER BY published_at DESC LIMIT ${MAX_URLS}`;
-  const blogs = await (projectId
+  const blogs = projectId
     ? env.DB.prepare(blogsSql).bind(projectId)
-    : env.DB.prepare(blogsSql)).all().catch(() => ({ results: [] }));
+    : env.DB.prepare(blogsSql);
 
   const progsSql = projectId
     ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
@@ -107,9 +107,9 @@ async function fetchEntries(env, host, project = null, basePath = '') {
     : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
          FROM prog_pages WHERE status='published'
          ORDER BY published_at DESC LIMIT ${MAX_URLS}`;
-  const progs = await (projectId
+  const progs = projectId
     ? env.DB.prepare(progsSql).bind(projectId)
-    : env.DB.prepare(progsSql)).all().catch(() => ({ results: [] }));
+    : env.DB.prepare(progsSql);
 
   // Find out how many blog index pages exist (1 + total/PAGE_SIZE).
   // PAGE_SIZE is sourced from blog/index.js so we never drift out of
@@ -119,9 +119,19 @@ async function fetchEntries(env, host, project = null, basePath = '') {
   const totalBlogsSql = projectId
     ? `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published' AND project_id = ?`
     : `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published'`;
-  const totalBlogsRow = await (projectId
+  const totalBlogs = projectId
     ? env.DB.prepare(totalBlogsSql).bind(projectId)
-    : env.DB.prepare(totalBlogsSql)).first().catch(() => ({ n: 0 }));
+    : env.DB.prepare(totalBlogsSql);
+
+  // Four independent reads sharing nothing but the project filter, so they
+  // go out together. Chained, a crawler re-fetching the sitemap paid four
+  // serial D1 round-trips before a single <url> was written.
+  const [blogsRes, progsRes, totalBlogsRow, pillars] = await Promise.all([
+    blogs.all().catch(() => ({ results: [] })),
+    progs.all().catch(() => ({ results: [] })),
+    totalBlogs.first().catch(() => ({ n: 0 })),
+    listPillars(env, projectId).catch(() => []),
+  ]);
   const totalPages = Math.max(1, Math.ceil((totalBlogsRow?.n || 0) / PAGE_SIZE));
 
   const today = isoDay(0);
@@ -138,7 +148,7 @@ async function fetchEntries(env, host, project = null, basePath = '') {
     entries.push({ path: `${basePath}/blog/page/${i}`, priority: '0.5', changefreq: 'weekly', lastmod: today });
   }
 
-  for (const p of (blogs.results || [])) {
+  for (const p of (blogsRes.results || [])) {
     const images = p.hero_image_key ? [{
       loc: `${site}/image/${p.hero_image_key}`,
       title: p.title,
@@ -151,7 +161,7 @@ async function fetchEntries(env, host, project = null, basePath = '') {
       images,
     });
   }
-  for (const p of (progs.results || [])) {
+  for (const p of (progsRes.results || [])) {
     const images = p.hero_image_key ? [{
       loc: `${site}/image/${p.hero_image_key}`,
       title: p.title,
@@ -167,8 +177,7 @@ async function fetchEntries(env, host, project = null, basePath = '') {
   // Cluster hubs. There is one per distinct topic_seed, so this stays
   // small, and they outrank the posts they list: a hub is the only link
   // from the archive into a cluster, so a crawler that never sees it
-  // never walks the spine.
-  const pillars = await listPillars(env, projectId).catch(() => []);
+  // never walks the spine. `pillars` was fetched with the rest above.
   entries.push({ path: `${basePath}/hubs`, priority: '0.8', changefreq: 'weekly', lastmod: today });
   for (const pl of pillars) {
     entries.push({ path: `${basePath}/hubs/${pl.slug}`, priority: '0.8', changefreq: 'weekly', lastmod: today });
