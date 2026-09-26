@@ -1,13 +1,16 @@
 :root {
-  --bg: #fafaf8;
-  --bg-2: #f0f0ec;
+  /* Paper. Tinted a hair toward the brand hue so a white page never
+     reads as an empty container, but far under the threshold where the
+     warmth becomes a colour. */
+  --bg: #faf8f4;
+  --bg-2: #f2eee6;
   --surface: #ffffff;
-  --ink: #111111;
-  --ink-2: #333333;
-  --muted: #666666;
-  --muted-2: #999999;
-  --line: #e0e0e0;
-  --line-strong: #cccccc;
+  --ink: #14140f;
+  --ink-2: #35352c;
+  --muted: #5c5c50;
+  --muted-2: #6f6f61;
+  --line: #e4e0d6;
+  --line-strong: #c6c2b5;
   --brand: #e05a2b;
   --brand-light: #fff4ef;
   --brand-dark: #c43d10;
@@ -15,26 +18,79 @@
   --max: 720px;
   --max-wide: 1080px;
   --radius: 10px;
+
+  /* The archive runs at its own measure. 720px is the *article* width —
+     reusing it for a list is what made the index feel like a page of
+     notes rather than a front page. */
+  --max-index: 1120px;
+
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* The two editorial voices. Instrument Serif is the promise a human
+     makes; Geist is the mechanism explained; JetBrains Mono carries
+     every number, because a number in a proportional face is a
+     different number. */
+  --font-serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Geist", var(--font-sans);
+  --font-num: "JetBrains Mono", var(--font-mono);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111111;
-    --bg-2: #1a1a1a;
-    --surface: #222222;
-    --ink: #f0f0f0;
-    --ink-2: #d0d0d0;
-    --muted: #999999;
-    --muted-2: #666666;
-    --line: #2a2a2a;
-    --line-strong: #333333;
-    --brand: #ff7043;
-    --brand-light: #2a1f1a;
-    --brand-dark: #ff8a65;
-    --link: #5b9bf5;
+    --bg: #13130f;
+    --bg-2: #1c1c17;
+    --surface: #201f1a;
+    --ink: #f2f0e9;
+    --ink-2: #dedbd0;
+    --muted: #a3a294;
+    --muted-2: #8b8a7d;
+    --line: #302f28;
+    --line-strong: #43423a;
+    --brand: #ff7a4d;
+    --brand-light: #2c1d16;
+    --brand-dark: #ff9a76;
+    --link: #6ba4ff;
   }
 }
+
+/* Instrument Serif has no Vietnamese diacritics. A Vietnamese tenant
+   gets the grotesk masthead instead so no headline renders half in one
+   face and half in a fallback. */
+html[lang="vi"] { --font-serif: "Geist Display", var(--font-ui); }
+
+/* ── Editorial faces ──────────────────────────────────────────────
+   The archive needs a real editorial voice, not system-sans-at-700.
+   These are the same self-hosted files the landing page inlines, so
+   the blog ships no new font bytes and no external font request.
+
+   Instrument Serif carries no Vietnamese diacritics, so a Vietnamese
+   tenant gets "Geist Display" for the masthead instead — set that on
+   html[lang="vi"] below rather than letting a fallback render half a
+   headline in one face and half in another. */
+@font-face { font-family: "Instrument Serif"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/_fonts/instrument-serif-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0305, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Instrument Serif"; font-style: italic; font-weight: 400; font-display: swap;
+  src: url("/_fonts/instrument-serif-400-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0305, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Geist"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("/_fonts/geist.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0305, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Geist"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("/_fonts/geist-vietnamese.woff2") format("woff2");
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0305, U+0308, U+0329, U+1EA0-1EF9, U+20AB; }
+@font-face { font-family: "Geist Display"; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url("/_fonts/geist.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0305, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Geist Display"; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url("/_fonts/geist-vietnamese.woff2") format("woff2");
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0305, U+0308, U+0329, U+1EA0-1EF9, U+20AB; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/_fonts/jetbrains-mono-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0305, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("/_fonts/jetbrains-mono-500.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0305, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -48,6 +104,15 @@ body {
 a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 3px; }
 img { max-width: 100%; height: auto; display: block; }
+
+/* One focus treatment for the whole site. The old stylesheet had
+   none: several controls set `outline: none` with nothing in its
+   place, so a keyboard user had no idea where they were. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
 
 /* ── Header ──────────────────────────────────────────────────── */
 .site-header {
@@ -317,49 +382,345 @@ img { max-width: 100%; height: auto; display: block; }
 .footer-links a:hover { color: #fff; text-decoration: none; }
 .footer-copy { font-size: 0.78rem; color: #666; }
 
-/* ── Blog index ──────────────────────────────────────────────── */
-.blog-index {
-  max-width: var(--max); margin: 0 auto; padding: 48px 24px 80px;
-}
-.blog-index h1 {
-  font-weight: 800; font-size: clamp(1.8rem, 4vw, 2.6rem);
-  margin: 0 0 12px; line-height: 1.2;
-}
-.blog-index .lede { color: var(--muted); margin: 0 0 40px; }
-.blog-index ul { list-style: none; padding: 0; margin: 0; }
-.blog-index li {
-  padding: 20px 0; border-bottom: 1px solid var(--line);
-  display: flex; gap: 20px; align-items: flex-start;
-}
-.blog-index li img {
-  flex-shrink: 0; width: 180px; aspect-ratio: 1.7;
-  object-fit: cover; border-radius: 8px; background: var(--bg-2);
-}
-.blog-index li h2 { font-size: 1.15rem; font-weight: 700; margin: 0 0 6px; line-height: 1.3; }
-.blog-index li h2 a { color: var(--ink); }
-.blog-index li h2 a:hover { color: var(--brand); text-decoration: none; }
-.blog-index li .blog-date {
-  font-size: 0.78rem; color: var(--muted-2); margin-bottom: 6px;
-}
-.blog-index li p { color: var(--muted); font-size: 0.92rem; margin: 0; line-height: 1.5; }
+/* ══════════════════════════════════════════════════════════════════
+   THE DISPATCH — /blog
 
-/* ── Blog search ─────────────────────────────────────────────── */
-.blog-index-head {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 20px; flex-wrap: wrap; margin-bottom: 24px;
+   An archive is not a list of posts, it is an issue. The page is
+   built like a printed record: a masthead, one lead story that owns
+   the front, a ruled table of contents, and an index of topics with
+   counts. Rules do the separating that boxes used to do — no cards,
+   no pills, no grid of equal thumbnails. The newest post is the
+   reason someone landed; everything else is a lookup.
+   ══════════════════════════════════════════════════════════════════ */
+
+.blog-index {
+  max-width: var(--max-index); margin: 0 auto;
+  padding: 0 24px 96px;
+}
+
+/* ── Masthead ──────────────────────────────────────────────────
+   The nameplate. Hairline top and bottom rules, the title set as a
+   masthead, and the running meta in mono so every number on the page
+   comes from one voice. */
+.masthead {
+  padding: 44px 0 20px;
+  border-bottom: 2px solid var(--ink);
+}
+.masthead-top {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  font-family: var(--font-num);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--muted-2);
+  padding-bottom: 14px;
+  margin-bottom: 22px;
+}
+.masthead-issue { display: flex; gap: 18px; flex-wrap: wrap; }
+.masthead-issue > span { white-space: nowrap; }
+/* The issue number is the one thing on the page set in the accent —
+   it is the identity of this particular issue, not decoration. */
+.masthead-issue .masthead-no { color: var(--brand); }
+
+.masthead h1 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(3rem, 11vw, 6.5rem);
+  line-height: 0.92;
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: var(--ink);
+}
+.masthead h1 em { font-style: italic; color: var(--brand); }
+.masthead-lede {
+  max-width: 62ch;
+  margin: 20px 0 0;
+  font-size: 1.06rem; line-height: 1.62;
+  color: var(--muted);
+}
+
+/* Search sits in the masthead as a ruled field, not a floating pill. */
+.masthead-tools {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap;
+  margin-top: 26px;
 }
 .blog-search {
-  display: flex; background: var(--bg-2); border: 1px solid var(--line);
-  border-radius: 8px; padding: 2px 2px 2px 12px; min-width: min(260px, 100%);
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--line-strong);
+  padding-bottom: 7px;
+  min-width: min(300px, 100%);
+  transition: border-color .18s;
+}
+.blog-search:focus-within { border-bottom-color: var(--ink); }
+.blog-search-label {
+  font-family: var(--font-num);
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--muted-2);
+  flex: none;
 }
 .blog-search input {
-  background: transparent; border: 0; font: inherit; font-size: 14px;
-  padding: 8px; color: var(--ink); flex: 1; outline: none;
+  background: transparent; border: 0; font: inherit;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  padding: 4px 0; color: var(--ink);
+  flex: 1; min-width: 0; outline: none;
 }
+.blog-search input::placeholder { color: var(--muted-2); }
 .blog-search-go {
-  background: var(--brand); color: #fff; border: 0; border-radius: 6px;
-  width: 32px; height: 32px; cursor: pointer;
+  flex: none;
+  background: none; border: 0; padding: 4px;
+  color: var(--muted); cursor: pointer;
+  font-size: 16px; line-height: 1;
+  transition: color .18s, transform .18s;
 }
+.blog-search-go:hover { color: var(--brand); transform: translateX(3px); }
+
+.masthead-rss {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-num);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none !important;
+  white-space: nowrap;
+  transition: color .18s;
+}
+.masthead-rss:hover { color: var(--brand); }
+
+/* ── Lead story ────────────────────────────────────────────────
+   The newest post gets the front page. Its headline can be three
+   times the size of every other headline on the page — that ratio is
+   the whole editorial decision, and it is what the old uniform-row
+   list could not express. */
+.lead-story {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 44px;
+  align-items: center;
+  padding: 44px 0 46px;
+  border-bottom: 1px solid var(--ink);
+}
+.lead-body { display: flex; flex-direction: column; align-items: flex-start; }
+.lead-kicker {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--font-num);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--brand);
+  margin-bottom: 18px;
+}
+.lead-kicker::after {
+  content: ""; flex: 1; height: 1px;
+  background: var(--line-strong);
+  max-width: 120px;
+}
+.lead-story h2 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(2rem, 4.2vw, 3.15rem);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+}
+.lead-story h2 a { color: var(--ink); text-decoration: none; }
+.lead-story h2 a:hover { color: var(--brand); }
+.lead-story p {
+  max-width: 54ch;
+  color: var(--muted);
+  font-size: 1.02rem; line-height: 1.65;
+  margin: 0 0 22px;
+}
+.lead-body .entry-facts { flex-wrap: wrap; justify-content: flex-start; padding-top: 0; }
+.lead-figure { margin: 0; display: block; }
+.lead-figure a { display: block; line-height: 0; }
+/* The fallback card bakes the headline into the artwork, so it has to
+   be seen whole — cropping it to a portrait box cut the title in half.
+   Natural ratio, with width/height on the img to keep the box stable
+   before the bytes land. */
+.lead-figure img {
+  width: 100%; height: auto; aspect-ratio: auto;
+  /* The card can take a moment on a cold cache. A tinted plate means
+     the wait reads as a placeholder, not a hole in the page. */
+  background: var(--bg-2);
+  transition: opacity .3s ease;
+}
+.lead-figure img:hover { opacity: .9; }
+
+/* ── Entries — a table of contents, not a card grid ─────────────
+   Rows are ruled, aligned to a shared baseline grid, and numbered in
+   mono. A number is how a reader refers to an entry out loud. */
+.index-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  padding: 30px 0 14px;
+}
+.index-head h2 {
+  font-family: var(--font-num);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--muted-2);
+  margin: 0;
+}
+.blog-list { list-style: none; padding: 0; margin: 0; }
+.entry {
+  display: grid;
+  grid-template-columns: 44px 88px minmax(0, 1fr) 132px;
+  gap: 20px;
+  align-items: start;
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+}
+.entry:first-child { border-top: 1px solid var(--ink); }
+.entry-num {
+  font-family: var(--font-num);
+  font-size: 12px; font-weight: 400;
+  color: var(--muted-2);
+  padding-top: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.entry-figure { margin: 0; }
+.entry-figure a { display: block; line-height: 0; }
+.entry-figure img {
+  width: 88px; aspect-ratio: 1 / 1; object-fit: cover;
+  background: var(--bg-2);
+  transition: opacity .3s ease;
+}
+.entry-figure img:hover { opacity: .85; }
+.entry-title {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.42rem;
+  line-height: 1.22;
+  letter-spacing: -0.012em;
+  margin: 0 0 7px;
+}
+.entry-title a { color: var(--ink); text-decoration: none; }
+.entry-title a:hover { color: var(--brand); }
+.entry-excerpt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.925rem; line-height: 1.55;
+  max-width: 58ch;
+}
+.entry-facts {
+  display: flex; align-items: baseline; gap: 7px;
+  font-family: var(--font-num);
+  font-size: 10.5px; font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--muted-2);
+  white-space: nowrap;
+  padding-top: 8px;
+  justify-content: flex-end;
+}
+.entry-facts .fact-sep { color: var(--line-strong); }
+.entry-topic {
+  color: var(--brand);
+  text-decoration: none !important;
+}
+.entry-topic:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* The whole row is the target. A 1.4rem headline is an easy click
+   but the description is what a reader aims at, and 22px of padding
+   either side means the row is a comfortable touch target on touch. */
+.entry-link::after { content: ""; position: absolute; inset: 0; }
+.entry { position: relative; }
+.entry-link:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 6px;
+  border-radius: 2px;
+}
+.entry-topic, .entry-figure a { position: relative; z-index: 1; }
+
+/* ── Topic index ───────────────────────────────────────────────
+   The rail was a row of pills. An index is a different object: it has
+   an alphabet, counts that mean something, and no rounded chrome. */
+.topic-index {
+  margin-top: 64px;
+  padding-top: 30px;
+  border-top: 2px solid var(--ink);
+}
+.topic-index h2 {
+  font-family: var(--font-num);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--muted-2);
+  margin: 0 0 18px;
+}
+.topic-list { list-style: none; padding: 0; margin: 0; }
+.topic-list li { border-top: 1px solid var(--line); }
+.topic-list li:first-child { border-top: 0; }
+.topic-list a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 56px;
+  gap: 16px; align-items: baseline;
+  padding: 13px 2px;
+  color: var(--ink);
+  text-decoration: none;
+  transition: color .16s, padding-left .16s;
+}
+.topic-list a:hover { color: var(--brand); padding-left: 8px; }
+.topic-list a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.topic-label { font-size: 1rem; font-weight: 600; }
+.topic-list a:hover .topic-label { text-decoration: underline; text-underline-offset: 3px; }
+/* A hairline bar proportional to the cluster's size. The largest
+   topic fills the rule, the smallest is a stub — the reader can see
+   the shape of the archive before clicking anything. */
+.topic-bar {
+  height: 3px; background: var(--bg-2); overflow: hidden;
+  align-self: center;
+}
+.topic-bar span {
+  display: block; height: 100%;
+  background: var(--brand); opacity: .45;
+  transition: opacity .16s;
+}
+.topic-list a:hover .topic-bar span { opacity: 1; }
+.topic-count {
+  font-family: var(--font-num);
+  font-size: 12px; font-weight: 400;
+  color: var(--muted-2);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.topic-more {
+  display: inline-block;
+  margin-top: 18px;
+  font-family: var(--font-num);
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none !important;
+}
+.topic-more:hover { color: var(--brand); }
+
+/* ── Empty / search states ─────────────────────────────────────
+   An archive with nothing in it still has a job: tell the reader
+   what belongs here and give them the way in. */
+.blog-empty, .blog-noposts {
+  margin: 0;
+  padding: 56px 0 64px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+.blog-empty:empty, .blog-empty[hidden] { display: none; }
+.blog-empty strong, .blog-noposts strong {
+  display: block;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.7rem;
+  line-height: 1.2;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.blog-empty span, .blog-noposts span {
+  display: block; color: var(--muted); font-size: 0.95rem;
+  max-width: 52ch; line-height: 1.6;
+}
+.blog-noposts span a { color: var(--brand); }
 
 /* ── Tools (/tools/seo-check) ──────────────────────────────────── */
 .tool-page { max-width: 760px; margin: 0 auto; padding: 40px 20px 72px; }
@@ -425,16 +786,9 @@ img { max-width: 100%; height: auto; display: block; }
 .tool-attrib a { color: var(--brand, #06c); }
 
 /* ── Hubs (hub-and-spoke spine) ───────────────────────────────── */
-.hub-rail { margin: 0 0 28px; padding: 0 0 20px; border-bottom: 1px solid var(--line); }
-.hub-rail ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
-.hub-rail li { margin: 0; }
-.hub-rail li a {
-  display: inline-block; padding: 6px 12px; border: 1px solid var(--line);
-  border-radius: 999px; color: var(--ink); text-decoration: none; font-size: 0.85rem;
-}
-.hub-rail li a:hover { border-color: var(--brand); color: var(--brand); }
-.hub-rail-all { font-size: 0.85rem; color: var(--muted); }
-
+/* .hub-rail was the pill row the old index used; the topic index
+   (.topic-index, above) replaced it. The /hubs index keeps the list
+   treatment it always had. */
 #hub-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 #hub-list li {
   display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
@@ -459,15 +813,88 @@ img { max-width: 100%; height: auto; display: block; }
 .post-hub a:hover { text-decoration: underline; }
 .post-hub .hub-count { margin-left: 8px; }
 
-/* ── Pager ───────────────────────────────────────────────────── */
-.pager { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 40px 0 0; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; }
-.pager-prev, .pager-next { text-decoration: none; color: var(--ink); padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; }
-.pager-num { text-decoration: none; color: var(--muted); padding: 6px 10px; border-radius: 6px; text-align: center; }
+/* ── Pager ─────────────────────────────────────────────────────
+   The old pager was boxed pills. A paginated archive reads better as
+   a running foot: mono numbers, a rule above, the position stated in
+   words. */
+.pager {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px;
+  margin: 44px 0 0; padding-top: 20px;
+  border-top: 1px solid var(--ink);
+  font-family: var(--font-num);
+  font-size: 12px; font-weight: 400;
+  letter-spacing: 0.04em;
+}
+.pager-prev, .pager-next {
+  text-decoration: none !important;
+  color: var(--ink);
+  padding: 6px 2px;
+  font-family: var(--font-ui);
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: color .16s;
+}
+.pager-prev:hover, .pager-next:hover { color: var(--brand); }
+.pager-nums { display: flex; gap: 14px; align-items: baseline; }
+.pager-num {
+  text-decoration: none !important;
+  color: var(--muted-2);
+  padding: 6px 0;
+  min-width: 22px; text-align: center;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 2px solid transparent;
+  transition: color .16s, border-color .16s;
+}
 .pager-num:hover { color: var(--brand); }
-.pager-current { background: var(--brand); color: #fff; font-weight: 600; }
-.pager-pos { margin-left: auto; color: var(--muted-2); font-size: 12px; }
+/* Current page is marked by a rule under the number, not by a filled
+   block — it stays inside the paper metaphor and the state is still
+   carried by more than colour (aria-current is set server-side). */
+.pager-current { color: var(--ink); border-bottom-color: var(--brand); font-weight: 500; }
+.pager-pos {
+  margin-left: auto;
+  color: var(--muted-2);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font-num);
+}
+.pager-single .pager-pos { margin-left: 0; }
 
-/* ── Responsive ──────────────────────────────────────────────── */
+/* ── Responsive ────────────────────────────────────────────────
+   The lead story goes vertical before the type gets cramped, and the
+   entry row drops its thumbnail column before it drops its number —
+   the number is the identity, the picture is the ornament. */
+@media (max-width: 900px) {
+  .lead-story {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    padding: 36px 0 40px;
+  }
+  /* Image first on narrow screens: the picture is what stops the
+     scroll, and reading order should not put 200px of text above it. */
+  .lead-figure { order: -1; }
+}
+
+@media (max-width: 720px) {
+  .entry {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 6px 14px;
+  }
+  .entry-figure { display: none; }
+  .entry-num { grid-row: 1; padding-top: 6px; }
+  .entry-title { font-size: 1.28rem; }
+  /* The facts row has to sit in the text column, not the 40px number
+     column — nowrap inside a 40px track pushes the whole document
+     wider than the viewport. */
+  .entry-facts {
+    grid-column: 2;
+    padding-top: 0;
+    white-space: normal;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 600px) {
   .header-inner { padding: 12px 16px; flex-wrap: wrap; row-gap: 10px; }
   .header-brand { min-width: 0; max-width: 100%; }
@@ -476,8 +903,48 @@ img { max-width: 100%; height: auto; display: block; }
   .header-cta { padding: 8px 16px; font-size: 0.82rem; }
   .post-shell, .blog-index { padding-left: 16px; padding-right: 16px; }
   .post-shell { padding-top: 32px; padding-bottom: 60px; }
-  .blog-index li { flex-direction: column; gap: 12px; }
-  .blog-index li img { width: 100%; }
   .read-next-list { grid-template-columns: 1fr; }
   .site-footer { padding: 36px 16px 24px; }
+
+  .masthead { padding: 30px 0 18px; }
+  .masthead h1 { font-size: clamp(2.5rem, 15vw, 3.6rem); }
+  .masthead-lede { font-size: 1rem; }
+  /* Two issue groups side by side cannot both fit; stacking keeps the
+     page position where the reader expects it. */
+  .masthead-top { flex-direction: column; align-items: flex-start; gap: 6px; font-size: 10px; }
+  .masthead-issue { gap: 12px; }
+  .masthead-tools { margin-top: 20px; }
+  .blog-search { min-width: 100%; }
+  .blog-search input { font-size: 1rem; }
+
+  .index-head { padding-top: 24px; }
+  .entry { padding: 18px 0; }
+
+  .topic-list a { grid-template-columns: minmax(0, 1fr) 44px; gap: 10px; }
+  .topic-bar { display: none; }
+
+  .pager { gap: 10px 14px; }
+  .pager-pos { margin-left: 0; flex-basis: 100%; }
+}
+
+/* Touch devices get no hover affordance to lean on, so the row's
+   active state carries the emphasis instead. */
+@media (hover: none) {
+  .entry:active, .entry:active .entry-title a { color: var(--brand); }
+  .topic-list a:active { color: var(--brand); padding-left: 8px; }
+}
+
+/* Motion is a courtesy. The entrances below are the only animation
+   on the page and they all collapse to nothing here. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .masthead, .lead-story, .entry, .topic-list li, .topic-index, .pager {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  *, *::before, *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
 }

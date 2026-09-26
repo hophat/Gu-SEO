@@ -11,8 +11,8 @@
 import { esc, edgeCached, imageUrl } from '../_lib/util.js';
 import { loadSettings } from '../_lib/settings.js';
 import { themeStyle } from '../_lib/page_render.js';
-import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost } from '../_lib/project_scope.js';
-import { listPillars } from '../_lib/hubs.js';
+import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost, projectLocale } from '../_lib/project_scope.js';
+import { listPillars, pillarLabel } from '../_lib/hubs.js';
 
 // Page size for /blog and /blog/page/N. Matches the embed widget's
 // default so the SERP archive feels the same as the embed.
@@ -47,11 +47,17 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
   const totalSql = projectId
     ? `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published' AND project_id = ?`
     : `SELECT COUNT(*) AS n FROM blog_posts WHERE status='published'`;
+  // topic_seed joins the entry to its cluster (the topic label under
+  // each title) and body_markdown is only here to derive a read time.
+  // Both are needed to render the row, so they ride along with the
+  // row the page already fetches rather than costing a second query.
   const pageSql = projectId
-    ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+    ? `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at,
+              topic_seed, LENGTH(body_markdown) AS body_len
        FROM blog_posts WHERE status='published' AND project_id = ?
        ORDER BY published_at DESC LIMIT ? OFFSET ?`
-    : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at
+    : `SELECT slug, title, meta_description, hero_image_key, hero_image_alt, published_at,
+              topic_seed, LENGTH(body_markdown) AS body_len
        FROM blog_posts WHERE status='published'
        ORDER BY published_at DESC LIMIT ? OFFSET ?`;
   // Three independent reads in one wave: the total, this page of posts,
@@ -78,6 +84,7 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
   const posts = r.results || [];
 
   const isVi = true;
+  const locale = projectLocale(project?.language);
   const homeHost = (() => { try { return new URL(project?.website_url || '').hostname; } catch { return ''; } })();
   const isGulagi = !project || !homeHost || /(^|\.)gulagi\.com$/.test(homeHost);
   const homeUrl = project?.website_url || 'https://gulagi.com';
@@ -85,49 +92,120 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
   const siteDesc = project?.site_description || env.SITE_DESCRIPTION || settings.site_description ||
                    (isVi ? `Bài viết và giải pháp phát triển kinh doanh từ ${siteName}.` : `Articles from ${siteName}.`);
 
-  const items = posts.map((p, i) => {
-    const date = isVi
-      ? new Date((p.published_at || 0) * 1000).toLocaleDateString('vi-VN', {
-          year: 'numeric', month: 'long', day: 'numeric',
-        })
-      : new Date((p.published_at || 0) * 1000).toLocaleDateString('en-GB', {
-          year: 'numeric', month: 'long', day: 'numeric',
-        });
+  // Pillar slug -> label, so an entry can name its own topic. The rail
+  // gives us the list; this turns the seed on the row into the same slug
+  // the /hubs link would use. The collision suffix in pillarSlug() is
+  // positional, so only listPillars() output is authoritative — matching
+  // on the raw seed finds the un-suffixed entry, which is correct
+  // whenever the seeds are distinct (the overwhelmingly common case)
+  // and degrades to no link rather than a wrong one when they collide.
+  const pillarBySeed = new Map((pillars || []).map((pl) => [pl.seed, pl]));
+  const topicFor = (p) => {
+    if (!p.topic_seed) return null;
+    const pl = pillarBySeed.get(p.topic_seed);
+    return pl ? { label: pl.label, slug: pl.slug } : { label: pillarLabel(p.topic_seed), slug: null };
+  };
+
+  const fmtDate = (ts) => new Date((ts || 0) * 1000).toLocaleDateString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+  // Vietnamese averages ~1.8 words/chars shorter than the English 200
+  // wpm used on the post page, so the same rate overestimates here and
+  // the index ends up claiming 6 minutes for a 3-minute read.
+  const readMin = (len) => Math.max(1, Math.round((Number(len) || 0) / 1000));
+
+  const imgFor = (p, eager) => {
     // Prefer the stored R2 hero image. /cover/<slug>.svg only renders
     // when the site has a default cover template and 404s without one,
     // so a card with no hero falls back to the OG renderer, which always
     // paints.
-    const imgSrc = p.hero_image_key
+    const src = p.hero_image_key
       ? imageUrl(`/image/card/${esc(p.hero_image_key)}`)
       : `/og/${esc(p.slug)}.svg`;
-    // First card is the LCP candidate — load it eagerly with high
-    // priority; everything below the fold stays lazy.
-    const loadAttrs = i === 0
+    // The lead is the LCP candidate — load it eagerly at high priority;
+    // everything below the fold stays lazy.
+    const load = eager
       ? 'fetchpriority="high" decoding="async"'
       : 'loading="lazy" decoding="async"';
-    const img = `<img src="${imgSrc}" alt="${esc(p.hero_image_alt || p.title)}" width="640" height="336" ${loadAttrs} />`;
-    return `
-      <li>
-        ${img}
-        <div class="blog-meta">
-          <div class="blog-date">${esc(date)}</div>
-          <h2><a href="${bp}/blog/${esc(p.slug)}">${esc(p.title)}</a></h2>
-          <p>${esc((p.meta_description || '').slice(0, 200))}</p>
-        </div>
-      </li>`;
-  }).join('');
+    // 1200x630 is what both the OG renderer and the R2 card variant
+    // emit. Declaring the true intrinsic size keeps the CSS aspect-ratio
+    // box and the pre-layout box in agreement, so a slow image does not
+    // shove the list down the page.
+    return `<img src="${src}" alt="${esc(p.hero_image_alt || p.title)}" width="1200" height="630" ${load} />`;
+  };
 
-  // Hub rail: the top clusters, each a link to its /hubs/<pillar> page.
-  // Capped at eight so the archive still reads as an archive — a wall of
-  // cluster links above the post list is just a second sitemap on screen.
+  const topicHTML = (p) => {
+    const t = topicFor(p);
+    if (!t) return '';
+    return t.slug
+      ? `<a class="entry-topic" href="${bp}/hubs/${esc(t.slug)}">${esc(t.label)}</a>`
+      : `<span class="entry-topic">${esc(t.label)}</span>`;
+  };
+
+  // The newest post is the reason anyone landed on this page, so it gets
+  // the front. Everything after it is a lookup row: numbered, ruled, and
+  // one size down from the lead. Numbers continue from the lead so the
+  // whole page reads as a single sequence rather than two lists.
+  const [lead, ...rest] = posts;
+
+  const leadHTML = lead ? `
+<article class="lead-story">
+  <div class="lead-body">
+    <div class="lead-kicker">${isVi ? 'Mới nhất' : 'Latest'}</div>
+    <h2><a href="${bp}/blog/${esc(lead.slug)}">${esc(lead.title)}</a></h2>
+    <p>${esc((lead.meta_description || '').slice(0, 220))}</p>
+    <div class="entry-facts">
+      <span>${esc(fmtDate(lead.published_at))}</span>
+      <span class="fact-sep">·</span>
+      <span>${readMin(lead.body_len)} ${isVi ? 'phút đọc' : 'min read'}</span>
+      ${topicHTML(lead)}
+    </div>
+  </div>
+  <a class="lead-figure" href="${bp}/blog/${esc(lead.slug)}" tabindex="-1" aria-hidden="true">
+    ${imgFor(lead, true)}
+  </a>
+</article>` : '';
+
+  const entryHTML = rest.map((p, i) => `
+      <li class="entry">
+        <div class="entry-num">${String(offset + i + 2).padStart(2, '0')}</div>
+        <figure class="entry-figure">
+          <a href="${bp}/blog/${esc(p.slug)}" tabindex="-1" aria-hidden="true">${imgFor(p, false)}</a>
+        </figure>
+        <div class="entry-body">
+          <h3 class="entry-title"><a class="entry-link" href="${bp}/blog/${esc(p.slug)}">${esc(p.title)}</a></h3>
+          <p class="entry-excerpt">${esc((p.meta_description || '').slice(0, 180))}</p>
+        </div>
+        <div class="entry-facts">
+          <span>${esc(fmtDate(p.published_at))}</span>
+          <span class="fact-sep">·</span>
+          <span>${readMin(p.body_len)} ${isVi ? "ph" : "min"}</span>
+        </div>
+      </li>`).join('');
+
+  // Topic index. This is the hub-and-spoke spine the rail used to be,
+  // but as an index rather than a row of pills: a name, a bar scaled to
+  // the cluster's size, and a count. The bar lets a reader see the shape
+  // of the archive before committing to a click. Capped at eight so the
+  // archive still reads as an archive — a wall of cluster links above the
+  // post list is just a second sitemap on screen.
   const railPillars = (pillars || []).slice(0, 8);
+  const maxCount = railPillars.reduce((m, pl) => Math.max(m, pl.count), 1);
   const railHTML = railPillars.length ? `
-<nav class="hub-rail" aria-label="Chủ đề nổi bật">
-  <a class="hub-rail-all" href="${bp}/hubs">Tất cả chủ đề</a>
-  <ul>
-    ${railPillars.map((pl) => `<li><a href="${bp}/hubs/${esc(pl.slug)}">${esc(pl.label)}</a> <span class="hub-count">${pl.count}</span></li>`).join('\n    ')}
+<section class="topic-index" aria-labelledby="topic-index-title">
+  <h2 id="topic-index-title">${isVi ? 'Chủ đề' : 'Topics'}</h2>
+  <ul class="topic-list">
+    ${railPillars.map((pl) => {
+      const pct = Math.max(6, Math.round((pl.count / maxCount) * 100));
+      return `<li><a href="${bp}/hubs/${esc(pl.slug)}">
+      <span class="topic-label">${esc(pl.label)}</span>
+      <span class="topic-bar" aria-hidden="true"><span style="width:${pct}%"></span></span>
+      <span class="topic-count">${pl.count}</span>
+    </a></li>`;
+    }).join('\n    ')}
   </ul>
-</nav>` : '';
+  <a class="topic-more" href="${bp}/hubs">${isVi ? 'Toàn bộ chủ đề' : 'All topics'} →</a>
+</section>` : '';
 
   const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
   const effectiveBaseUrl = customHost ? `https://${customHost}` : baseUrl;
@@ -222,7 +300,7 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
   ].filter(Boolean).join('\n');
 
   const body = `<!doctype html>
-<html lang="en">
+<html lang="${esc(locale.htmlLang)}">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -261,30 +339,61 @@ ${themeStyle(project?.theme_color)}
   </div>
 </header>
 <main class="blog-index">
-  <header class="blog-index-head">
-    <div>
-      <h1>Blog${page > 1 ? ` <span class="page-suffix">— page ${page}</span>` : ''}</h1>
-      <p class="lede">${esc(siteDesc)}</p>
+
+<header class="masthead">
+  <div class="masthead-top">
+    <div class="masthead-issue">
+      <span>${esc(siteName)}</span>
+      ${total > 0 ? `<span>${isVi ? `${total} bài viết` : `${total} post${total === 1 ? '' : 's'}`}</span>` : ''}
     </div>
+    <div class="masthead-issue">
+      ${totalPages > 1 ? `<span>${isVi ? `Trang ${page} / ${totalPages}` : `Page ${page} / ${totalPages}`}</span>` : ''}
+      <span>${new Date().getFullYear()}</span>
+    </div>
+  </div>
+  <h1>${isVi ? 'Bài viết' : 'The Dispatch'}</h1>
+  <p class="masthead-lede">${esc(siteDesc)}</p>
+  <div class="masthead-tools">
     <!-- Search box. Filters the visible list via /api/widget?q=…
          (same endpoint the embed widget uses), so result ordering
          is consistent across surfaces. Falls back to the canonical
          /blog?q= URL if JavaScript is disabled — Google's
          SearchAction JSON-LD targets that URL too. -->
     <form id="blog-search-form" role="search" action="${bp}/blog" method="GET" class="blog-search">
+      <label class="blog-search-label" for="blog-search-input">${isVi ? 'Tìm' : 'Find'}</label>
       <input id="blog-search-input"
              type="search" name="q"
-             placeholder="${isVi ? 'Tìm kiếm bài viết…' : 'Search posts…'}"
+             placeholder="${isVi ? 'Tìm trong các bài đã đăng…' : 'Search published writing…'}"
              autocomplete="off" spellcheck="false"
              aria-label="${isVi ? 'Tìm kiếm bài viết' : 'Search posts'}"
              value="" />
-      <button type="submit" class="blog-search-go" aria-label="Search">→</button>
+      <button type="submit" class="blog-search-go" aria-label="${isVi ? 'Tìm kiếm' : 'Search'}">→</button>
     </form>
-  </header>
-  ${railHTML}
-  ${posts.length ? `<ul id="blog-list">${items}</ul>` : `<ul id="blog-list" hidden></ul><p id="blog-noposts" class="lede">${isVi ? 'Các bài viết sẽ sớm xuất hiện.' : 'First post lands soon.'}</p>`}
-  <div id="blog-empty" class="blog-empty" hidden></div>
-  ${pagerHTML}
+    <a class="masthead-rss" href="${effectiveBaseUrl}${effectiveBp}/feed.xml">RSS ↗</a>
+  </div>
+</header>
+
+${leadHTML}
+
+${rest.length ? `
+<div class="index-head">
+  <h2>${isVi ? 'Tất cả bài viết' : 'All entries'}</h2>
+  <h2>${isVi ? `Cập nhật lần cuối · ${esc(fmtDate(posts[0].published_at))}` : `Last updated · ${esc(fmtDate(posts[0].published_at))}`}</h2>
+</div>
+<ul class="blog-list" id="blog-list">${entryHTML}</ul>` : `<ul class="blog-list" id="blog-list" hidden></ul>`}
+
+${!posts.length ? `
+<div class="blog-noposts">
+  <strong>${isVi ? 'Chưa có bài viết nào' : 'Nothing published yet'}</strong>
+  <span>${isVi
+    ? `Khi ${esc(siteName)} bắt đầu đăng, các bài mới sẽ xuất hiện ngay tại đây.`
+    : `When ${esc(siteName)} starts publishing, new writing lands here.`}</span>
+</div>` : ''}
+
+<div id="blog-empty" class="blog-empty" hidden></div>
+
+${railHTML}
+${pagerHTML}
 </main>
 
 <!-- Inline client-side search. Reads ?q= from the URL on load to
@@ -305,7 +414,9 @@ ${themeStyle(project?.theme_color)}
   var list  = document.getElementById('blog-list');
   var empty = document.getElementById('blog-empty');
   var pager = document.querySelector('main.blog-index .pager');
-  var noposts = document.getElementById('blog-noposts');
+  var lead  = document.querySelector('main.blog-index .lead-story');
+  var indexHead = document.querySelector('main.blog-index .index-head');
+  var noposts = document.querySelector('main.blog-index .blog-noposts');
   if (!form || !input || !list) return;
 
   // Restore q from URL on first paint.
@@ -326,43 +437,80 @@ ${themeStyle(project?.theme_color)}
     t = setTimeout(function () { doSearch(input.value.trim(), false); }, 200);
   });
 
-  function setEmpty(msg) {
-    if (msg) { empty.hidden = false; empty.textContent = msg; }
-    else { empty.hidden = true; empty.textContent = ''; }
+  // The empty state is a block of children, not a text node, so it can
+  // say what belongs here and point at the way back. textContent alone
+  // can only ever say one flat sentence.
+  function setEmpty(title, body) {
+    if (!title) { empty.hidden = true; empty.textContent = ''; return; }
+    empty.textContent = '';
+    var h = document.createElement('strong');
+    h.textContent = title;
+    var s = document.createElement('span');
+    s.textContent = body;
+    empty.appendChild(h);
+    empty.appendChild(s);
+    empty.hidden = false;
   }
 
   function clearList() {
     while (list.firstChild) list.removeChild(list.firstChild);
   }
 
-  function buildItem(p) {
+  // Results render as the same ruled entry rows the server emits, so a
+  // search never looks like a different page. No lead story: the first
+  // match is a result, not a headline, and promoting it would imply a
+  // ranking the backend never computed.
+  function buildItem(p, i) {
     var li = document.createElement('li');
+    li.className = 'entry';
+
+    var num = document.createElement('div');
+    num.className = 'entry-num';
+    num.textContent = String(i + 1).padStart(2, '0');
+    li.appendChild(num);
+
     if (p.image) {
+      var fig = document.createElement('figure');
+      fig.className = 'entry-figure';
+      var fa = document.createElement('a');
+      fa.href = (PS_BP || '') + '/blog/' + encodeURIComponent(p.slug);
+      fa.tabIndex = -1;
+      fa.setAttribute('aria-hidden', 'true');
       var img = document.createElement('img');
       img.src = p.image;
       img.alt = p.title || '';
-      img.setAttribute('width',  '640');
-      img.setAttribute('height', '336');
+      img.setAttribute('width',  '1200');
+      img.setAttribute('height', '630');
       img.loading  = 'lazy';
       img.decoding = 'async';
-      li.appendChild(img);
+      fa.appendChild(img);
+      fig.appendChild(fa);
+      li.appendChild(fig);
     }
-    var meta = document.createElement('div');
-    meta.className = 'blog-meta';
-    var date = document.createElement('div');
-    date.className = 'blog-date';
-    date.textContent = p.date || '';
-    meta.appendChild(date);
-    var h2 = document.createElement('h2');
-    var a  = document.createElement('a');
+
+    var body = document.createElement('div');
+    body.className = 'entry-body';
+    var h3 = document.createElement('h3');
+    h3.className = 'entry-title';
+    var a = document.createElement('a');
+    a.className = 'entry-link';
     a.href = (PS_BP || '') + '/blog/' + encodeURIComponent(p.slug);
     a.textContent = p.title || '';
-    h2.appendChild(a);
-    meta.appendChild(h2);
-    var pgr = document.createElement('p');
-    pgr.textContent = (p.excerpt || '').slice(0, 200);
-    meta.appendChild(pgr);
-    li.appendChild(meta);
+    h3.appendChild(a);
+    body.appendChild(h3);
+    var ex = document.createElement('p');
+    ex.className = 'entry-excerpt';
+    ex.textContent = (p.excerpt || '').slice(0, 180);
+    body.appendChild(ex);
+    li.appendChild(body);
+
+    var facts = document.createElement('div');
+    facts.className = 'entry-facts';
+    var d = document.createElement('span');
+    d.textContent = p.date || '';
+    facts.appendChild(d);
+    li.appendChild(facts);
+
     return li;
   }
 
@@ -384,6 +532,19 @@ ${themeStyle(project?.theme_color)}
     fetchPage(q, 1);
   }
 
+  // A search replaces the whole reading surface, so the editorial
+  // furniture that describes the archive — the lead story, the index
+  // heading, the topic index, the "nothing published" note — steps
+  // aside for the duration rather than sitting above a list of hits
+  // it does not describe.
+  function setReadingMode(on) {
+    if (lead) lead.hidden = on;
+    if (indexHead) indexHead.hidden = on;
+    if (noposts) noposts.hidden = on;
+    var topics = document.querySelector('main.blog-index .topic-index');
+    if (topics) topics.hidden = on;
+  }
+
   function fetchPage(q, page) {
     var url = '/api/widget?per_page=10&page=' + page + (q ? '&q=' + encodeURIComponent(q) : '');
     if (PS_PROJECT) url += '&project=' + encodeURIComponent(PS_PROJECT);
@@ -392,21 +553,28 @@ ${themeStyle(project?.theme_color)}
       .then(function (d) {
         clearList();
         list.hidden = false;
-        if (noposts) noposts.hidden = true;
         if (!d.posts || !d.posts.length) {
-          setEmpty(q ? 'No posts match "' + q + '".' : 'First post lands soon.');
+          setReadingMode(true);
+          if (q) {
+            setEmpty('Không có bài nào khớp', 'Từ khóa "' + q + '" không trả về kết quả nào. Thử một từ ngắn hơn, hoặc xem toàn bộ chủ đề.');
+          } else {
+            setReadingMode(false);
+            setEmpty('');
+            if (noposts) noposts.hidden = false;
+          }
           if (pager) pager.style.display = 'none';
           return;
         }
         setEmpty('');
+        setReadingMode(Boolean(q));
         for (var i = 0; i < d.posts.length; i++) {
-          list.appendChild(buildItem(d.posts[i]));
+          list.appendChild(buildItem(d.posts[i], i));
         }
         // Hide server-rendered pager while in search mode.
         if (pager) pager.style.display = q ? 'none' : '';
       })
       .catch(function () {
-        setEmpty('Search failed. Try again, or browse the full list.');
+        setEmpty('Tìm kiếm không hoạt động', 'Kết nối có vẻ đã gián đoạn. Thử lại, hoặc duyệt toàn bộ danh sách bài viết.');
       });
   }
 })();
