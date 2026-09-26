@@ -19,6 +19,12 @@
 #               from the sibling original still in the bucket and rewrite
 #               it. The rows are left alone. Use when a run published the
 #               wrong bytes under the .webp key.
+#   --crop      re-encode the current .webp object in place, cropping to
+#               the 1200x630 box the hero actually renders in. Use after a
+#               conversion run: the generated heroes are 1024x1024 and the
+#               browser discards ~47% of every one at paint time. Bump
+#               IMAGE_VERSION in functions/_lib/util.js afterwards, or the
+#               edge keeps serving the uncropped bytes.
 #   quality     WebP quality, default 82
 #
 # Measured on the live bucket at q82: ~6.5x smaller across 255 heroes
@@ -29,11 +35,13 @@ cd "$(dirname "$0")/.."
 
 DRY_RUN=""
 REPAIR=""
+CROP=""
 QUALITY=82
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN="--dry-run" ;;
     --repair) REPAIR="--repair" ;;
+    --crop) CROP="--crop" ;;
     *) QUALITY="$arg" ;;
   esac
 done
@@ -50,7 +58,14 @@ WRANGLER="${WRANGLER:-$(command -v wrangler || echo "npx --yes wrangler")}"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
-if [[ -n "$REPAIR" ]]; then
+if [[ -n "$CROP" ]]; then
+  # Crop re-encodes the object in place, so the source *is* the .webp key.
+  # Logos are excluded: the 1200x630 window is a hero layout decision, and
+  # cropping a square logo to 1.9:1 would cut the mark in half.
+  HERO_WHERE="hero_image_key LIKE '%.webp'"
+  LOGO_WHERE="logo_url LIKE '%.crop-excluded'"
+  echo "▸ Crop mode: re-encoding .webp objects at 1200x630 in $DB"
+elif [[ -n "$REPAIR" ]]; then
   HERO_WHERE="hero_image_key LIKE '%.webp'"
   LOGO_WHERE="logo_url LIKE '%.webp'"
   echo "▸ Repair mode: re-deriving .webp objects from their originals in $DB"
@@ -72,11 +87,12 @@ $WRANGLER d1 execute "$DB" --remote --json \
   --command "SELECT slug, logo_url FROM projects WHERE $LOGO_WHERE" \
   > "$WORK/logos.json"
 
-python3 - "$WORK" "$BUCKET" "$DB" "$QUALITY" "$DRY_RUN" "$WRANGLER" "$REPAIR" <<'EOF'
+python3 - "$WORK" "$BUCKET" "$DB" "$QUALITY" "$DRY_RUN" "$WRANGLER" "$REPAIR" "$CROP" <<'EOF'
 import json, subprocess, os, sys
 work, bucket, db, q, dry = sys.argv[1:6]
 WRANGLER = sys.argv[6].split()
 repair = bool(sys.argv[7])
+crop = bool(sys.argv[8])
 rows = json.load(open(f"{work}/rows.json"))[0]["results"]
 logos = json.load(open(f"{work}/logos.json"))[0]["results"]
 if dry:
@@ -96,6 +112,35 @@ def dimensions(path):
 
 SKIP_EXT = {".webp", ".svg", ".gif", ".ico", ".avif"}
 
+# The hero is rendered inside a box that declares aspect-ratio 1200/630, and
+# page_render.js writes the same 1200x630 into the JSON-LD ImageObject. The
+# generated heroes are 1024x1024, so the browser crops ~47% of every one at
+# paint time. Cropping to that same window before encoding ships the visible
+# region only, and makes the JSON-LD width/height claim true.
+HERO_ASPECT = 1200 / 630
+HERO_OUT_W, HERO_OUT_H = 1200, 630
+
+def px(path):
+    out = subprocess.run(["sips", "-g", "pixelWidth", "-g", "pixelHeight", path],
+                         capture_output=True, text=True).stdout
+    w = [l.split(":")[1].strip() for l in out.splitlines() if "pixelWidth" in l]
+    h = [l.split(":")[1].strip() for l in out.splitlines() if "pixelHeight" in l]
+    if not (w and h):
+        return None
+    return int(w[0]), int(h[0])
+
+def crop_args(src):
+    """cwebp crop window matching the rendered 1200x630 box, or None when
+    the source is already at or below that aspect and needs no crop."""
+    size = px(src)
+    if not size:
+        return None
+    w, h = size
+    if h <= 0 or w / h >= HERO_ASPECT:
+        return None
+    ch = int(w / HERO_ASPECT)
+    return ["-crop", "0", str((h - ch) // 2), str(w), str(ch), "-resize", str(HERO_OUT_W), str(HERO_OUT_H)]
+
 def convert(source_key, dest_key, tag):
     """Fetch `source_key` from R2, recompress it, and return
     (converted_path, in_bytes, out_bytes) or None when the object is not
@@ -111,7 +156,11 @@ def convert(source_key, dest_key, tag):
     nothing — so the two paths are named apart on purpose.
     """
     ext = os.path.splitext(source_key)[1].lower()
-    if ext in SKIP_EXT:
+    # SKIP_EXT guards the *source* format. A .webp source is only refused
+    # when it is also the destination — that is the already-converted case.
+    # Crop mode re-encodes an object in place, so source == dest and the
+    # skip has to stand down.
+    if ext in SKIP_EXT and not (crop and source_key == dest_key):
         print(f"  {tag} {source_key}: skipped ({ext} not convertible)")
         return None
     src = f"{work}/{tag}{ext}"
@@ -121,7 +170,10 @@ def convert(source_key, dest_key, tag):
     if got.returncode != 0 or not os.path.exists(src):
         print(f"  {tag} {source_key}: SKIPPED — could not read from R2 ({got.stderr.strip().splitlines()[-1] if got.stderr.strip() else 'not found'})")
         return None
-    made = subprocess.run(["cwebp", "-quiet", "-q", str(q), src, "-o", dst], capture_output=True, text=True)
+    # Crop mode recompresses the object's own .webp key, so src and dst
+    # are both derived here rather than assumed to be distinct files.
+    args = ["cwebp", "-quiet", "-q", str(q)] + (crop_args(src) or []) + [src, "-o", dst]
+    made = subprocess.run(args, capture_output=True, text=True)
     if made.returncode != 0 or not os.path.exists(dst):
         print(f"  {tag} {source_key}: SKIPPED — cwebp could not read it ({made.stderr.strip().splitlines()[-1] if made.stderr.strip() else 'unknown'})")
         return None
@@ -201,7 +253,7 @@ for r in rows:
         # Repair mode rewrites only the object; the row already points at
         # this .webp key. A normal run writes the object *and* repoints the
         # row, so the object is never the optional half.
-        if repair:
+        if repair or crop:
             put_object(converted, key)
         else:
             publish(converted, key, "blog_posts", "hero_image_key", "id", r["id"], key)
@@ -211,6 +263,8 @@ for r in rows:
 # cover SVG builder both resolve it from there.
 logo_in = logo_out = logos_done = 0
 for r in logos:
+    if crop:
+        break
     key = r["logo_url"].split("/image/", 1)[-1]
     if not key:
         continue
