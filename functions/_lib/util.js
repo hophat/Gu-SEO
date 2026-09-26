@@ -102,6 +102,10 @@ export async function audit(env, actor, action, targetId, details) {
 // previous revision for an hour. A minute still absorbs the repeat views and
 // crawler re-crawls that matter.
 const EDGE_SMAXAGE = 60;
+// How long the edge may keep serving the stored copy while it refreshes.
+// Long enough to cover an origin hiccup, short enough that a route which
+// opts out of caching is not silently resurrected.
+const EDGE_SWR = 86400;
 
 // Public responses (HTML, generated SVG) served from the Cloudflare edge cache.
 //
@@ -150,6 +154,17 @@ export async function edgeCached(request, waitUntil, build, sMaxAge = EDGE_SMAXA
   const cc = res.headers.get('cache-control') || '';
   const directives = cc.split(',').map((d) => d.trim()).filter(Boolean).filter((d) => !/^s-maxage=/i.test(d));
   directives.push(`s-maxage=${sMaxAge}`);
+
+  // Without stale-while-revalidate the visitor who arrives after a TTL
+  // expiry waits for the whole render — Lighthouse put the root document
+  // at 200-350ms for exactly that reason. With it the edge answers from the
+  // stored copy and revalidates behind the request, so the cost stops
+  // landing on a real page load. The freshness guarantee is unchanged:
+  // s-maxage still governs how old a served copy may be, this only says
+  // what to do while the refresh is in flight.
+  if (!directives.some((d) => /^stale-while-revalidate=/i.test(d))) {
+    directives.push(`stale-while-revalidate=${EDGE_SWR}`);
+  }
 
   const headers = new Headers(res.headers);
   headers.set('cache-control', directives.join(', '));
