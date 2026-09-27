@@ -7,6 +7,33 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.25.0 — 2026-09-27
+
+Video có ảnh riêng cho từng màn hình, và chữ trên màn hình nói đúng lời đang đọc.
+
+### Added
+- **`aifree` — nguồn tạo ảnh mới (aifree.gulagi.com).** Thêm vào `IMAGE_PROVIDERS`
+  trong `functions/_lib/ai.js`, đứng đầu sau Workers AI nên key của chính nền tảng
+  được dùng trước khi tốn key bên thứ ba. Một POST `/v1/images/generations`, đọc
+  được cả hai kiểu trả về: `b64_json` inline và `url` phải tải về. Đăng ký thêm
+  `AIFREE_API_KEY` + `AIFREE_IMAGE_MODEL` vào vault (`/api/admin/secrets`) và thẻ
+  provider trong `/admin`.
+- **`video-agent` sinh ảnh cho từng màn hình.** Sau khi lời đọc đã fit xong, mỗi
+  cảnh nền tràn màn hình (`hook`, `problem`, `photo`, `quote`, `headline`) được
+  sinh một ảnh dọc 9:16 từ **chính câu voice đang đọc** ở màn đó — nên ảnh khớp
+  nội dung thay vì lấy ảnh đầu tiên bắt được trên trang chủ. Screenshot `site:*`
+  và hero của bài là tư liệu thật nên không bị đụng; ảnh hỏng hoặc không có key thì
+  màn đó giữ nguyên nền cũ. Tắt bằng `VIDEO_AI_IMAGES=0`, giới hạn số ảnh bằng
+  `VIDEO_AI_MAX_IMAGES` (mặc định 6).
+
+### Fixed
+- **Chữ trên màn hình không còn nói khác lời đọc.** Board dựng sẵn ghi caption là
+  nhãn chung chung ("Vấn đề khách hàng gặp") rồi lại đọc một câu thật của bài, và
+  `fitNarration` có thể rút ngắn lời đọc *sau khi* caption đã viết theo bản dài.
+  `alignCaptions()` chạy sau `fitNarration` sửa đúng những caption voice không đọc
+  tới, thay bằng câu đầu của lời đọc thật. Caption vốn đã lấy từ lời đọc (hook
+  gọn, ví dụ "Google Maps chưa đủ bán hàng") được giữ nguyên — chỉ sửa cái lệch.
+
 ## 1.24.1 — 2026-09-26
 
 Sitemap không còn nuôi các trang phân trang.

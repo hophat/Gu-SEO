@@ -25,6 +25,7 @@ import { setVaultSecret, describeKeys } from '../../_lib/secret_vault.js';
 // The same list as PROVIDER_SECRET_NAMES in ai.js — keep them in sync.
 const ALLOWED = [
   'GUROUTER_API_KEY',
+  'AIFREE_API_KEY',
   'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY',
   'GROQ_API_KEY', 'DEEPSEEK_API_KEY', 'MISTRAL_API_KEY',
   'TOGETHER_API_KEY', 'CEREBRAS_API_KEY',
@@ -32,7 +33,7 @@ const ALLOWED = [
   'WORKERS_AI_TEXT_MODEL', 'ANTHROPIC_TEXT_MODEL', 'OPENAI_TEXT_MODEL',
   'GEMINI_TEXT_MODEL', 'GUROUTER_TEXT_MODEL', 'GROQ_TEXT_MODEL',
   'DEEPSEEK_TEXT_MODEL', 'MISTRAL_TEXT_MODEL', 'TOGETHER_TEXT_MODEL',
-  'CEREBRAS_TEXT_MODEL',
+  'CEREBRAS_TEXT_MODEL', 'AIFREE_IMAGE_MODEL',
 ];
 
 // Per-provider minimal length sanity check. Doesn't validate against

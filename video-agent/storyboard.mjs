@@ -794,6 +794,73 @@ export function clampWords(s, max) {
   return w.slice(0, max).join(' ').replace(/[,;:]$/u, '') + '…';
 }
 
+// ── caption / voice alignment ────────────────────────────────────────
+// The caption on screen and the line in the voice are the same claim, and the
+// pipeline has three ways to let them drift: the deterministic board writes a
+// placeholder label ("Vấn đề khách hàng gặp") and then narrates a real source
+// sentence, and `fitNarration` shortens the narration after the caption was
+// written. Either way the viewer reads words the speaker never says.
+//
+// The repair is deliberately narrow. A caption that reuses the narration's
+// own words is left exactly as the model wrote it — the punchy hook survives.
+// Only a caption with almost nothing in common with what is actually being
+// said is replaced, and then by the opening of the line being said.
+const CAPTION_STOPWORDS = new Set([
+  'của', 'các', 'cho', 'với', 'và', 'là', 'một', 'những', 'người', 'không',
+  'được', 'trong', 'này', 'đó', 'để', 'khi', 'đã', 'rất', 'cũng', 'tại', 'theo', 'như',
+  'the', 'and', 'for', 'with', 'that', 'this', 'your', 'you', 'are', 'was', 'not',
+]);
+
+// Case, diacritics and punctuation off, so "Google Maps" and "google maps"
+// are the same evidence.
+function normalizeForMatch(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function captionTokens(s) {
+  return normalizeForMatch(s).split(' ').filter((w) => w.length >= 3 && !CAPTION_STOPWORDS.has(w));
+}
+
+// The caption a scene deserves when the one it has is not what is said:
+// the first clause of the line, cut to a caption's length.
+export function captionFromSay(say, max = MAX_TEXT_WORDS) {
+  const first = String(say || '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+/)[0] || '';
+  return clampText(first || String(say || ''), max);
+}
+
+// How many of the caption's own words the narration says out loud. A model
+// caption is kept when at least this many match — two for anything longer than
+// a single word, all of them when the caption is one word.
+export function captionGroundedIn(text, say) {
+  const tokens = captionTokens(text);
+  if (!tokens.length) return true;
+  const said = ' ' + normalizeForMatch(say) + ' ';
+  const hit = tokens.filter((w) => said.includes(' ' + w)).length;
+  return hit >= Math.min(2, tokens.length);
+}
+
+// Rewrites the captions that the voice does not back up. Returns the number
+// changed so the run can say so in its log instead of fixing it silently.
+export function alignCaptions(sb) {
+  let changed = 0;
+  for (const scene of sb?.scenes || []) {
+    const say = String(scene.say || '').trim();
+    if (!say) continue;
+    if (captionGroundedIn(scene.text, say)) continue;
+    const next = captionFromSay(say);
+    // An empty derivation would leave the screen with no words at all, which
+    // is worse than the mismatch it replaces.
+    if (!next) continue;
+    scene.text = next;
+    changed++;
+  }
+  return changed;
+}
+
 // ── quality gate ─────────────────────────────────────────────────────
 // The check the spec asks for, made mechanical: if most of the storyboard is
 // words with nothing to look at, it is a slideshow and must not ship.

@@ -1627,6 +1627,15 @@
       ],
     },
     {
+      name: 'aifree', label: 'AI Free (aifree.gulagi.com)', envKey: 'AIFREE_API_KEY',
+      text: false, image: true, optional: true,
+      modelEnvKey: 'AIFREE_IMAGE_MODEL',
+      modelDefault: 'ag/gemini-3.1-flash-image',
+      models: [
+        { id: 'ag/gemini-3.1-flash-image', label: 'Gemini 3.1 Flash Image (mặc định)' },
+      ],
+    },
+    {
       name: 'anthropic', label: 'Anthropic Claude', envKey: 'ANTHROPIC_API_KEY',
       text: true, image: false, optional: true,
       modelEnvKey: 'ANTHROPIC_TEXT_MODEL',

@@ -483,6 +483,58 @@ async function pollinationsImage(env, prompt) {
   };
 }
 
+// Gulagi's own OpenAI-compatible image gateway (aifree.gulagi.com). One POST
+// to /v1/images/generations, and the payload comes back either inline
+// (`b64_json`) or as a signed `url` to fetch — so both are handled, and the
+// fetched URL is byte-checked the same way as the inline one.
+//
+// `output_format` is a request, not a guarantee: asking for png here has
+// returned jpeg bytes. Callers write by sniffed type, never by the request.
+const AIFREE_BASE = 'https://aifree.gulagi.com/v1';
+const AIFREE_IMAGE_MODEL = 'ag/gemini-3.1-flash-image';
+const AIFREE_IMAGE_SIZE = '1536x1024';
+
+async function aifreeImage(env, prompt) {
+  if (!env?.AIFREE_API_KEY) throw new Error('aifree_not_configured');
+  const model = env.AIFREE_IMAGE_MODEL || AIFREE_IMAGE_MODEL;
+  const base = (env.AIFREE_BASE_URL || AIFREE_BASE).replace(/\/+$/, '');
+  const r = await fetch(`${base}/images/generations`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${env.AIFREE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      prompt,
+      n: 1,
+      size: env.AIFREE_IMAGE_SIZE || AIFREE_IMAGE_SIZE,
+      quality: 'auto',
+      background: 'auto',
+      image_detail: 'high',
+      output_format: 'png',
+    }),
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    throw new Error('aifree_image_http_' + r.status + ': ' + t.slice(0, 200));
+  }
+  const data = await r.json();
+  const item = data?.data?.[0];
+  if (!item) throw new Error('aifree_image_empty');
+  let bytes = item.b64_json ? b64ToBytes(item.b64_json) : null;
+  if (!bytes && item.url) {
+    const img = await fetch(item.url, { signal: AbortSignal.timeout(30000) });
+    if (!img.ok) throw new Error('aifree_image_fetch_http_' + img.status);
+    bytes = new Uint8Array(await img.arrayBuffer());
+  }
+  if (!bytes?.length) throw new Error('aifree_image_empty');
+  return {
+    bytes,
+    usage: { provider: 'aifree', model, prompt_tokens: 1, completion_tokens: 0, estimated: true },
+  };
+}
+
 function b64ToBytes(b64) {
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
@@ -910,9 +962,12 @@ const TEXT_PROVIDERS = [
 ];
 
 // Image providers — Anthropic, Groq, DeepSeek etc. don't do image gen,
-// so they don't appear here.
+// so they don't appear here. Workers AI stays first because the binding is
+// always present; aifree is the first *keyed* one so the platform's own
+// gateway is used before a third-party key is spent.
 const IMAGE_PROVIDERS = [
   { name: 'workers-ai',   available: (e) => !!e?.AI,             call: workersAIImage    },
+  { name: 'aifree',       available: (e) => !!e?.AIFREE_API_KEY, call: aifreeImage       },
   { name: 'openai',       available: (e) => !!e?.OPENAI_API_KEY, call: openAIImage       },
   { name: 'gemini',       available: (e) => !!e?.GEMINI_API_KEY, call: geminiImage       },
   { name: 'pollinations', available: () => true,                 call: pollinationsImage },
@@ -934,6 +989,7 @@ export function orderProviders(registry, env, preferred) {
 import { envWithVault, getVaultSecret } from './secret_vault.js';
 const PROVIDER_SECRET_NAMES = [
   'GUROUTER_API_KEY',
+  'AIFREE_API_KEY',
   'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY',
   'GROQ_API_KEY', 'DEEPSEEK_API_KEY', 'MISTRAL_API_KEY',
   'TOGETHER_API_KEY', 'CEREBRAS_API_KEY',
@@ -941,7 +997,7 @@ const PROVIDER_SECRET_NAMES = [
   'WORKERS_AI_TEXT_MODEL', 'ANTHROPIC_TEXT_MODEL', 'OPENAI_TEXT_MODEL',
   'GEMINI_TEXT_MODEL', 'GUROUTER_TEXT_MODEL', 'GROQ_TEXT_MODEL',
   'DEEPSEEK_TEXT_MODEL', 'MISTRAL_TEXT_MODEL', 'TOGETHER_TEXT_MODEL',
-  'CEREBRAS_TEXT_MODEL',
+  'CEREBRAS_TEXT_MODEL', 'AIFREE_IMAGE_MODEL',
 ];
 
 // Overlay any vault-stored keys on top of env so the rest of this file

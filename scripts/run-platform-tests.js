@@ -1550,6 +1550,52 @@ async function testProviderDispatch() {
     globalThis.fetch = realFetchImg;
   }
 
+  // Gulagi's own image gateway. It answers either inline (`b64_json`) or as a
+  // `url` to fetch, so the dispatcher has to read both. It is keyed, not
+  // always-on: a deployment without the key must still resolve to
+  // pollinations alone rather than offer a provider it cannot call.
+  const bare = (await listProviders({ AIFREE_API_KEY: undefined })).image;
+  assert.ok(!bare.includes('aifree'), 'aifree must not be offered without its key');
+  const withAifree = (await listProviders({ ...env, AIFREE_API_KEY: 'k' })).image;
+  assert.equal(withAifree[1], 'aifree',
+    'aifree must be the first keyed image provider — the platform gateway is spent before a third-party key');
+  assert.equal(withAifree[withAifree.length - 1], 'pollinations',
+    'pollinations still closes the chain with aifree configured');
+  ok('aifree is registered as a keyed image provider ahead of the other vendors');
+
+  const realFetchAifree = globalThis.fetch;
+  try {
+    let seen = null;
+    globalThis.fetch = async (u, o) => {
+      seen = { url: String(u), body: JSON.parse(o?.body || '{}'), auth: o?.headers?.Authorization };
+      return new Response(JSON.stringify({
+        data: [{ b64_json: Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]).toString('base64') }],
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+    const inline = await generateImage({ AIFREE_API_KEY: 'sk-test' }, {
+      prompt: 'a test hero image', provider: 'aifree', source: 'platform-test',
+    });
+    assert.equal(inline.ai_provider, 'aifree', 'aifree must be the provider that answered');
+    assert.ok(inline.bytes instanceof Uint8Array && inline.bytes.length === 8,
+      'the inline b64 payload must be decoded to bytes');
+    assert.equal(seen.url, 'https://aifree.gulagi.com/v1/images/generations');
+    assert.equal(seen.auth, 'Bearer sk-test');
+    assert.equal(seen.body.model, 'ag/gemini-3.1-flash-image', 'the default image model must be the one configured');
+    assert.equal(seen.body.n, 1);
+
+    // The same endpoint answering with a url instead of inline bytes.
+    globalThis.fetch = async (u) => (String(u).includes('/v1/images/generations')
+      ? new Response(JSON.stringify({ data: [{ url: 'https://cdn.test/a.png' }] }), { status: 200 })
+      : new Response(new Uint8Array([1, 2, 3, 4, 5, 6]), { status: 200 }));
+    const fetched = await generateImage({ AIFREE_API_KEY: 'sk-test' }, {
+      prompt: 'a test hero image', provider: 'aifree', source: 'platform-test',
+    });
+    assert.equal(fetched.bytes.length, 6, 'a url payload must be downloaded and returned as bytes');
+    ok('generateImage reads aifree payloads from both b64_json and url');
+  } finally {
+    globalThis.fetch = realFetchAifree;
+  }
+
   // ── provider preference order ────────────────────────────────────
   // The operator sets `default_ai_provider` precisely when the registry's
   // first choice stops working (Workers AI's free quota runs out). brand DNA

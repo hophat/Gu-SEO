@@ -16,16 +16,21 @@
 //
 // Config in video-agent/.env (0600): BASE_URL, ADMIN_TOKEN,
 // GUROUTER_API_KEY, VIDEO_VOICE, VIDEO_PROJECT_ID, VIDEO_BATCH, ACCENT.
+// AI scene images need one more: AIFREE_API_KEY. Without it (or with
+// VIDEO_AI_IMAGES=0) every background screen keeps the gradient it draws
+// today; VIDEO_AI_MAX_IMAGES caps how many are generated per video.
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync, statSync, readdirSync, copyFileSync, realpathSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { esc, sceneInner, wantsBackground } from './scenes.mjs';
 import {
-  DURATION, INTENTS, MIN_SCENES, beatSlots, clampDuration, clampWords, intentFromSignals,
+  AIFREE_BASE, AIFREE_MODEL, AI_IMAGE_MAX, collectAssets, downloadLogo, generateSceneImages,
+} from './assets.mjs';
+import {
+  DURATION, INTENTS, MIN_SCENES, alignCaptions, beatSlots, clampDuration, clampWords, intentFromSignals,
   reviewStoryboard, sanitizeStoryboard, storyboardFromContent, suggestDuration, wordCount,
 } from './storyboard.mjs';
-import { collectAssets, downloadLogo } from './assets.mjs';
 import { templateById, intentForTemplate } from './templates.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -50,6 +55,15 @@ const VOICE = E('VIDEO_VOICE') || 'vi-VN-NamMinhNeural';
 const PROJECT_ID = E('VIDEO_PROJECT_ID');
 const ACCENT = E('ACCENT') || '#1677ff';
 const BATCH = Math.max(1, parseInt(E('VIDEO_BATCH') || '1', 10) || 1);
+// AI scene images. VIDEO_AI_IMAGES=0 turns them off; without a key they are
+// off anyway, so the default is "generate as many as the cap allows".
+const AI_IMAGES = E('VIDEO_AI_IMAGES') !== '0';
+const AI_IMAGE_CONFIG = {
+  key: AI_IMAGES ? E('AIFREE_API_KEY') : null,
+  base: E('AIFREE_BASE_URL') || AIFREE_BASE,
+  model: E('AIFREE_IMAGE_MODEL') || AIFREE_MODEL,
+  max: Math.max(0, parseInt(E('VIDEO_AI_MAX_IMAGES') || String(AI_IMAGE_MAX), 10) || 0),
+};
 const SLUG = process.argv.includes('--slug') ? process.argv[process.argv.indexOf('--slug') + 1] : null;
 const TYPE = process.argv.includes('--type') ? process.argv[process.argv.indexOf('--type') + 1] : null;
 const PROJECT_ARG = process.argv.includes('--project') ? process.argv[process.argv.indexOf('--project') + 1] : null;
@@ -1370,6 +1384,17 @@ export async function renderOne(job, deps = {}) {
   // 4. Narration, written to fit and measured.
   const { segs, total } = fitNarration(storyboard, work, spawn, log);
   log(`video: ${total}s · ${storyboard.scenes.map((s) => s.type).join(' → ')}`);
+
+  // The voice is final here, so this is the only point where the caption, the
+  // words being spoken and the picture behind them can be made to agree:
+  // `fitNarration` may have shortened the line under a caption written for the
+  // longer one, and the placeholder labels the deterministic board writes are
+  // never said out loud.
+  const realigned = alignCaptions(storyboard);
+  if (realigned) log(`captions: ${realigned} screen(s) re-derived from what the voice actually says`);
+
+  const made = await generateSceneImages({ storyboard, job, assets, work, config: AI_IMAGE_CONFIG, log });
+  if (made) log(`ai images: ${made} screen(s) illustrated`);
 
   const bgmSrc = await prepareBgm(job, total, work, log);
 

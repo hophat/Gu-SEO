@@ -61,10 +61,14 @@ const {
 // values (a free-form plan allowed 5-9, the 60s default story wants 3-8) and a bare
 // name here silently mixed the two.
 const { ICON_NAMES, icon, sceneInner, statSize, wantsBackground } = await import('../video-agent/scenes.mjs');
-const { MIN_SHOT_BYTES, pickShowcaseLinks, extractVisibleText } = await import('../video-agent/assets.mjs');
+const {
+  AI_IMAGE_TYPES, MIN_SHOT_BYTES, generateSceneImages, isSubjectMaterial, pickShowcaseLinks,
+  extractVisibleText, sceneImagePrompt,
+} = await import('../video-agent/assets.mjs');
 const { TEMPLATES, templateById, intentForTemplate } = await import('../video-agent/templates.mjs');
 const {
-  DURATION, INTENTS, MAX_TEXT_WORDS, beatSlots, intentFromSignals, reviewStoryboard,
+  DURATION, INTENTS, MAX_TEXT_WORDS, alignCaptions, beatSlots, captionFromSay,
+  captionGroundedIn, intentFromSignals, reviewStoryboard,
   sanitizeStoryboard, signatureTypes, storyboardFromContent, suggestDuration, wordCount,
   narrationBudget, expandBeats, sceneCountFor, isIllustrated, numOf,
   MIN_SCENES: SB_MIN_SCENES, MAX_SCENES: SB_MAX_SCENES,
@@ -2051,6 +2055,153 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
   }, { source: STORY_ARTICLE, intent: 'news', target: 60, assets: { presenter: 'p.jpg' } });
   assert.equal(unnamed.storyboard.scenes[0].name, 'Bản tin', 'without a project name the model text stays');
   ok('signature beats are named per intent, and the anchor wears the project presenter name');
+}
+
+// ── the picture, the caption and the voice have to agree ──────────────
+// The reported failure was a video whose picture, on-screen words and spoken
+// line were three different things. Each of the three has its own drift, and
+// each is pinned here.
+
+{
+  // 1. The caption. The deterministic board writes a placeholder label and
+  //    then narrates a real sentence; `fitNarration` can shorten the line
+  //    after the caption was written for the longer one.
+  assert.ok(captionGroundedIn('Google Maps chưa đủ bán hàng',
+    'Google Maps giúp khách tìm quán, nhưng nếu thông tin mở rời rạc, khách vẫn khó quyết định có ghé hay không.'),
+    'a caption reusing the narration’s own nouns is already grounded');
+  assert.ok(!captionGroundedIn('Vấn đề khách hàng gặp',
+    'Khách tìm quán trên bản đồ nhưng giờ mở cửa và món nổi bật đều rời rạc nên khó quyết định.'),
+    'a placeholder label is not what the voice says');
+  assert.equal(captionFromSay('Khách tìm quán. Còn lại thì sao?'), 'Khách tìm quán',
+    'the caption is the opening of the line, at caption length');
+  assert.ok(wordCount(captionFromSay('một '.repeat(40))) <= MAX_TEXT_WORDS,
+    'a long line still yields a caption, not a paragraph');
+
+  const realigned = {
+    scenes: [
+      { type: 'problem', text: 'Vấn đề khách hàng gặp', say: 'Khách tìm quán trên bản đồ nhưng giờ mở cửa và món nổi bật đều rời rạc nên khó quyết định.' },
+      { type: 'hook', text: 'Google Maps chưa đủ bán hàng', say: 'Google Maps giúp khách tìm quán, nhưng nếu thông tin mở rời rạc thì khách vẫn khó quyết định.' },
+      { type: 'cta', text: 'Mở website ngay', say: '' },
+    ],
+  };
+  assert.equal(alignCaptions(realigned), 1, 'only the unbacked caption is rewritten');
+  assert.match(realigned.scenes[0].text, /^Khách tìm quán/,
+    'the replacement is what the voice actually reads on that screen');
+  assert.equal(realigned.scenes[1].text, 'Google Maps chưa đủ bán hàng',
+    'a caption the narration backs is left exactly as written');
+  assert.equal(realigned.scenes[2].text, 'Mở website ngay',
+    'a scene with nothing to say is never touched');
+  ok('a caption the voice does not back up is replaced by the line it does read');
+
+  // The whole deterministic board goes through the repair, because every one
+  // of its placeholder labels is unbacked by construction.
+  const board = { intent: 'educational', duration: 60, scenes: storyboardFromContent({
+    title: 'Cách mở quán cà phê tại nhà',
+    body_markdown: STORY_ARTICLE,
+    project: { name: 'Cà Phê Sáng' },
+  }, 'educational', {}, 60).scenes };
+  const before = board.scenes.map((s) => s.text);
+  alignCaptions(board);
+  assert.equal(board.scenes.length, before.length, 'alignment never adds or drops a screen');
+  assert.ok(board.scenes.every((s) => s.text), 'no screen is left with nothing on it');
+  assert.ok(board.scenes.every((s) => captionGroundedIn(s.text, s.say)),
+    'after the repair every caption is backed by its own narration');
+  ok('a no-model storyboard comes out with every caption matching its narration');
+
+  // 2. The picture. The prompt is built from the line the voice reads while
+  //    the picture is on screen, not from the article's summary.
+  const prompt = sceneImagePrompt(
+    { type: 'problem', say: 'Khách tìm quán trên bản đồ nhưng giờ mở cửa đều rời rạc.' },
+    { job: { project: { name: 'Cà Phê Sáng' } } });
+  assert.match(prompt, /Khách tìm quán trên bản đồ/,
+    'the prompt carries the words the scene is actually saying');
+  assert.match(prompt, /Cà Phê Sáng/, 'and the subject it is about');
+  assert.match(prompt, /không chữ|không logo/,
+    'and never asks for text — the caption is drawn over it by the renderer');
+  assert.ok(!sceneImagePrompt({ type: 'photo', say: '' }, {}).includes('undefined'),
+    'a scene with no narration still produces a prompt');
+  ok('the image prompt is derived from the scene’s own narration');
+
+  assert.ok(isSubjectMaterial('site:0') && isSubjectMaterial('hero'),
+    'a screenshot of the thing being sold, and the article hero, are the real thing');
+  assert.ok(!isSubjectMaterial('photo:0') && !isSubjectMaterial(null),
+    'the first <img> on a homepage is not material for this scene');
+  for (const type of AI_IMAGE_TYPES) {
+    assert.ok(wantsBackground(type), `${type} draws a background clip to fill`);
+  }
+  ok('only the scenes that draw a background are illustrated, and captured subject material is spared');
+
+  // 3. The wiring. One image per background scene, attached by name, and the
+  //    composition draws it as that screen's background — not photo:0, which
+  //    is what the fallback used to put there for every screen.
+  const work = mkdtempSync(join(tmpdir(), 'video-ai-image-'));
+  const realFetch = globalThis.fetch;
+  try {
+    const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(3000, 7)]);
+    const asked = [];
+    globalThis.fetch = async (url, opts) => {
+      assert.equal(String(url), 'https://aifree.gulagi.com/v1/images/generations');
+      asked.push(JSON.parse(opts.body));
+      return { ok: true, json: async () => ({ data: [{ b64_json: jpeg.toString('base64') }] }) };
+    };
+    const assets = { 'photo:0': 'assets/media/img0.jpg' };
+    const storyboard = { scenes: [
+      { type: 'hook', text: 'Mở bằng câu hỏi', say: 'Vì sao quán đầy khách mà doanh thu vẫn đi ngang?' },
+      { type: 'problem', text: 'Khách lưỡng lự', say: 'Khách lưỡng lự giữa ba quán gần nhà.', asset: 'site:0' },
+      { type: 'feature', text: 'Đặt bàn nhanh', say: 'Đặt bàn chỉ mất 30 giây.' },
+      { type: 'quote', text: 'Chị Lan nói', say: 'Chị Lan bảo chỉ cần thấy giờ mở cửa là chị quyết định.' },
+    ] };
+    const made = await generateSceneImages({
+      storyboard, job: { project: { name: 'Cà Phê Sáng' } }, assets, work,
+      config: { key: 'sk-test' }, log: () => {},
+    });
+    assert.equal(made, 2, 'the hook and the quote are illustrated; the screenshot and the chart are not');
+    assert.deepEqual(asked.length, 2);
+    assert.equal(asked[0].size, '1024x1792', 'the request is 9:16, the shape of the canvas');
+    assert.equal(asked[0].model, 'ag/gemini-3.1-flash-image');
+    // jpeg magic in, .jpg out — the gateway has been seen answering a png
+    // request with jpeg bytes, and Chrome sniffs a local file by name.
+    assert.equal(assets['gen:0'], 'assets/gen0.jpg');
+    assert.ok(existsSync(join(work, 'assets', 'gen0.jpg')));
+    assert.equal(storyboard.scenes[0].asset, 'gen:0');
+    assert.equal(storyboard.scenes[1].asset, 'site:0', 'a captured screenshot is never overwritten');
+    assert.equal(assets['photo:0'], 'assets/media/img0.jpg', 'the scraped photo stays available as the fallback');
+
+    const html = composeStoryboardHtml(
+      { project: { name: 'Cà Phê Sáng' } },
+      { intent: 'local_business', duration: 20, scenes: [
+        { type: 'hook', text: 'Mở', say: 'a', duration: 6, start: 0, asset: 'gen:0' },
+        { type: 'feature', text: 'Nhanh', say: 'b', duration: 6, asset: 'gen:1' },
+        { type: 'cta', text: 'Đến nơi', say: 'c', duration: 6, asset: 'gen:2' },
+      ] },
+      [3, 3, 3], assets);
+    assert.match(html, /src="assets\/gen0\.jpg"/, 'the screen draws the picture made for it');
+    assert.ok(!html.includes('img0.jpg'),
+      'and no longer falls back to the same unrelated photo for every screen');
+    assert.ok(!html.includes('gen2.jpg'), 'a CTA is a card, not a background — no image is spent on it');
+    ok('each background screen draws the image generated from its own narration');
+
+    // A gateway that is down costs the picture, not the video: the scene
+    // keeps whatever it had and the run continues.
+    const brokenAssets = { 'photo:0': 'assets/media/img0.jpg' };
+    const brokenBoard = { scenes: [{ type: 'hook', text: 'Mở', say: 'Vì sao vậy?', asset: 'photo:0' }] };
+    globalThis.fetch = async () => ({ ok: false, status: 502, text: async () => 'upstream down' });
+    const survived = await generateSceneImages({
+      storyboard: brokenBoard, job: {}, assets: brokenAssets, work,
+      config: { key: 'sk-test' }, log: () => {},
+    });
+    assert.equal(survived, 0, 'a failed image is not a failed screen');
+    assert.equal(brokenBoard.scenes[0].asset, 'photo:0', 'and it keeps the material it already had');
+
+    // No key at all: the step is skipped, not attempted.
+    assert.equal(await generateSceneImages({
+      storyboard: brokenBoard, job: {}, assets: brokenAssets, work, config: {}, log: () => {},
+    }), 0, 'without a key nothing is requested');
+    ok('a failed or unconfigured image step never costs the video');
+  } finally {
+    globalThis.fetch = realFetch;
+    rmSync(work, { recursive: true, force: true });
+  }
 }
 
 console.log(`\nALL VIDEO AGENT TESTS PASSED (${passed} checks)`);

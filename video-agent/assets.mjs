@@ -285,3 +285,158 @@ export async function collectAssets({ job, intent, work, log = () => {} }) {
   log(`assets: ${roles.length ? roles.join(', ') : 'none — will fall back to the gradient'}`);
   return { assets, siteText };
 }
+
+// ── AI scene images (aifree.gulagi.com) ─────────────────────────────
+// A photo scraped off a homepage is the product shot for the first scene and
+// nothing for the rest: the picture and the words stop agreeing, which is the
+// one thing a video cannot afford. So the scenes that draw a full-bleed
+// background get their own image, generated from the line the voice is saying
+// on that screen. Material captured for the subject itself is left alone, and
+// only the gap is filled.
+
+export const AIFREE_BASE = 'https://aifree.gulagi.com/v1';
+export const AIFREE_MODEL = 'ag/gemini-3.1-flash-image';
+// 9:16. The request is `1024x1792`; the gateway answers 768x1376, the same
+// aspect as the 720x1280 canvas, so the render never crops the subject out.
+const AIFREE_SIZE = '1024x1792';
+
+// Scenes that read better over a full-bleed photo than on the gradient — the
+// same list the composition uses to decide whether a scene gets a `bgi` clip.
+// A scene outside it is a chart or a device frame, and a photo behind either
+// is what makes them unreadable.
+export const AI_IMAGE_TYPES = new Set(['hook', 'problem', 'photo', 'quote', 'headline']);
+
+// One image is ~10-25s. Six covers every background screen a 90s video has,
+// and the cap is what keeps a 12-screen board from turning into a 5-minute
+// wait for pictures nobody asked for.
+export const AI_IMAGE_MAX = 6;
+const AI_IMAGE_CONCURRENCY = 3;
+
+// Under ~2KB the gateway answered with a placeholder, not a render. Shipping
+// one puts a grey rectangle inside the frame that is supposed to sell the
+// product, which is the same failure the blank-screenshot floor guards.
+const MIN_AI_BYTES = 2000;
+
+// A screenshot of the thing being sold, or the article's own hero — captured
+// for the subject of this video, so a generated picture must not replace it.
+export function isSubjectMaterial(asset) {
+  return typeof asset === 'string' && (asset === 'hero' || asset.startsWith('site:'));
+}
+
+const SCENE_LOOK = {
+  hook: 'góc máy hơi thấp nhìn lên, chủ thể nổi bật ở giữa khung, phần trên thoáng để đặt chữ',
+  problem: 'cảnh thể hiện khó khăn người xem đang gặp, biểu cảm căng thẳng, ánh sáng lạnh',
+  photo: 'bức ảnh thật sắc nét, chủ thể rõ ràng, chụp cận cảnh',
+  quote: 'hình ảnh giàu cảm xúc, ánh sáng nhẹ, nhiều khoảng trống ở nửa trên cho câu trích dẫn',
+  headline: 'ảnh editorial sắc nét như ảnh bìa báo, tương phản cao, chủ thể lệch sang một bên',
+};
+
+const AI_STYLE = 'phong cách ảnh chụp editorial hiện đại, ánh sáng tự nhiên, màu sắc film nhẹ, '
+  + 'độ sâu trường ảnh mỏng, dọc 9:16, không chữ, không logo, không watermark, không khung viền';
+
+// The prompt is the scene's own narration, not the article's summary: the
+// picture can only match the voice if it is built from the words the voice
+// says while the picture is on screen.
+export function sceneImagePrompt(scene, { job = {} } = {}) {
+  const said = String(scene?.say || scene?.text || '').replace(/\s+/g, ' ').trim();
+  const brand = String(job?.project?.name || '').trim();
+  return [
+    'Ảnh minh hoạ cho một khung hình dọc trong video marketing.',
+    `Nội dung khung hình này: ${said.slice(0, 400)}`,
+    `Bố cục mong muốn: ${SCENE_LOOK[scene?.type] || SCENE_LOOK.photo}`,
+    brand ? `Chủ thể liên quan: ${brand}` : '',
+    AI_STYLE,
+  ].filter(Boolean).join(' ');
+}
+
+// The gateway is asked for png and has been seen answering with jpeg bytes, so
+// the extension comes from the bytes, never from the request. Chrome sniffs a
+// local file partly by name.
+function imageExtension(buf) {
+  if (buf.length < 4) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return '.jpg';
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return '.png';
+  if (buf.slice(0, 4).toString('latin1') === 'RIFF' && buf.slice(8, 12).toString('latin1') === 'WEBP') return '.webp';
+  return null;
+}
+
+// One image into assets/<base><ext>. Returns the workspace-relative path, or
+// null when the gateway would not produce a usable picture. A failed image is
+// never a failed video: the scene falls back to the gradient it draws today.
+export async function aiImage(prompt, base, { config, work, log = () => {} }) {
+  const key = String(config?.key || '');
+  if (!key) return null;
+  const root = (config?.base || AIFREE_BASE).replace(/\/+$/, '');
+  const r = await fetch(`${root}/images/generations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: config?.model || AIFREE_MODEL,
+      prompt,
+      n: 1,
+      size: config?.size || AIFREE_SIZE,
+      quality: 'auto',
+      background: 'auto',
+      image_detail: 'high',
+      output_format: 'png',
+    }),
+    signal: AbortSignal.timeout(90000),
+  });
+  if (!r.ok) throw new Error('aifree_http_' + r.status + ': ' + (await r.text().catch(() => '')).slice(0, 120));
+  const item = (await r.json())?.data?.[0];
+  let bytes = item?.b64_json ? Buffer.from(item.b64_json, 'base64') : null;
+  if (!bytes && item?.url) {
+    const img = await fetch(item.url, { signal: AbortSignal.timeout(30000) });
+    if (!img.ok) throw new Error('aifree_download_http_' + img.status);
+    bytes = Buffer.from(await img.arrayBuffer());
+  }
+  if (!bytes || bytes.length < MIN_AI_BYTES) throw new Error('aifree_empty_or_tiny');
+  const ext = imageExtension(bytes);
+  if (!ext) throw new Error('aifree_non_image_payload');
+  mkdirSync(join(work, 'assets'), { recursive: true });
+  const rel = `assets/${base}${ext}`;
+  writeFileSync(join(work, rel), bytes);
+  return rel;
+}
+
+// Fills `assets` with one `gen:<i>` per background scene that has no real
+// material of its own, and points the scene at it. Returns the number
+// generated so the caller can log it once.
+//
+// "Real material" is narrower than "has an asset". A `site:` screenshot and
+// the article's own hero were captured for this subject and always win. A
+// `photo:` is whatever the first <img> on a homepage happened to be — the
+// exact picture that does not match the words, which is why those scenes are
+// the ones worth generating. On a failed call the scene keeps its photo, so
+// the worst case is the video as it is today.
+export async function generateSceneImages({ storyboard, job = {}, assets, work, config, log = () => {} }) {
+  if (!config?.key) { log('ai images: no AIFREE_API_KEY — leaving the gradient in place'); return 0; }
+  const max = Math.max(0, Number(config?.max) || AI_IMAGE_MAX);
+  const targets = (storyboard?.scenes || [])
+    .map((scene, index) => ({ scene, index }))
+    .filter(({ scene }) => AI_IMAGE_TYPES.has(scene.type) && !isSubjectMaterial(scene.asset))
+    .slice(0, max);
+  if (!targets.length) { log('ai images: every background scene already has material'); return 0; }
+
+  let made = 0;
+  for (let i = 0; i < targets.length; i += AI_IMAGE_CONCURRENCY) {
+    const batch = targets.slice(i, i + AI_IMAGE_CONCURRENCY);
+    const settled = await Promise.all(batch.map(async ({ scene, index }) => {
+      const prompt = sceneImagePrompt(scene, { job });
+      try {
+        const rel = await aiImage(prompt, `gen${index}`, { config, work, log });
+        if (!rel) return null;
+        const name = `gen:${index}`;
+        assets[name] = rel;
+        scene.asset = name;
+        log(`ai image: scene ${index} (${scene.type}) ← "${String(scene.say || scene.text).slice(0, 60)}…"`);
+        return rel;
+      } catch (e) {
+        log(`ai image: scene ${index} (${scene.type}) failed — ${String(e?.message || e).slice(0, 90)}`);
+        return null;
+      }
+    }));
+    made += settled.filter(Boolean).length;
+  }
+  return made;
+}
