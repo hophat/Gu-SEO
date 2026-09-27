@@ -1091,6 +1091,40 @@ if (!HAS_FFMPEG) {
   }
 
   {
+    // Rounding drift: twelve screens, each rounded to a tenth, add up to a
+    // tenth over the ceiling. That is not a video that is too long — it is a
+    // video that must not be refused for arithmetic.
+    const driftWork = mkdtempSync(join(tmpdir(), 'rounding-drift-'));
+    mkdirSync(join(driftWork, 'assets'), { recursive: true });
+    const driftSpawn = (cmd, args) => {
+      if (cmd === 'edge-tts') {
+        const seconds = 4.4;
+        spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `sine=f=440:d=${seconds}`,
+          '-b:a', '128k', args[args.indexOf('--write-media') + 1]]);
+        return { status: 0, stdout: '', stderr: '' };
+      }
+      if (cmd === 'sleep') return { status: 0, stdout: '', stderr: '' };
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    // Twelve scenes of 7.5s each is 90s on paper; every voice is 4.75s, so
+    // the drift comes purely from the per-scene rounding.
+    const driftBoard = { intent: 'educational', duration: 90, scenes: Array.from({ length: 12 }, (_, i) => ({
+      type: i === 0 ? 'hook' : i === 11 ? 'cta' : 'steps',
+      text: `Màn ${i + 1}`, say: `Lời kể màn hình số ${i + 1} nói đủ ý.`, duration: 7.5,
+      ...(i > 0 && i < 11 ? { items: [{ label: 'a' }, { label: 'b' }] } : {}),
+    })) };
+    const drift = fitNarration(driftBoard, driftWork, driftSpawn, () => {});
+    assert.ok(drift.total <= 90, `twelve rounded screens still fit the ceiling (${drift.total}s)`);
+    // And no scene was shortened below the voice it has to hold.
+    driftBoard.scenes.forEach((s, i) => {
+      assert.ok(s.duration + 1e-9 >= drift.segs[i] + 0.35 - 0.11,
+        `screen ${i} still holds its own voice after absorbing the drift`);
+    });
+    rmSync(driftWork, { recursive: true, force: true });
+    ok('per-scene rounding drift is absorbed instead of failing the video');
+  }
+
+  {
     const gapWork = mkdtempSync(join(tmpdir(), 'gap-boundary-'));
     mkdirSync(join(gapWork, 'assets'), { recursive: true });
     const gapSpawn = (cmd, args) => {
@@ -1598,6 +1632,11 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
 }
 
 {
+  // Run twice: once as a bare job, and once with the assets a real one always
+  // carries. The gate may only drop a repeated screen when there is nothing
+  // left to draw it with — an empty device frame is worse than a missing
+  // screen — so the no-repeat guarantee is asserted on the second pass.
+  const withAssets = { 'site:0': 'site.png', 'photo:0': 'photo.png', hero: 'hero.jpg' };
   for (const intent of INTENTS) {
     const job = {
       title: 'Tối ưu website bán hàng', body_markdown: STORY_ARTICLE, highlights: ['Nhanh hơn', 'Rẻ hơn', 'Đẹp hơn'],
@@ -1608,13 +1647,19 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
     assert.ok(['hook', 'headline'].includes(sb.scenes[0].type), `${intent} fallback opens on a hook or a headline`);
     assert.equal(sb.scenes.at(-1).type, 'cta', `${intent} fallback closes on a CTA`);
     assert.ok(sb.scenes.every((s) => s.text && wordCount(s.text) <= MAX_TEXT_WORDS), `${intent} fallback text is caption-sized`);
-    // The gate must not have to eat a beat: two beats that want the same
-    // scene type are rebuilt as another type that beat allows.
-    const { dropped } = sanitizeStoryboard(sb, { source: STORY_ARTICLE, intent, target: 60, assets: {} });
-    assert.equal(dropped.filter((d) => d.reason === 'repeat_of_previous').length, 0,
-      `${intent} fallback must not hand the gate a repeated scene type`);
     const again = storyboardFromContent(job, intent, {}, 60);
     assert.deepEqual(again, sb, `${intent} fallback is deterministic`);
+
+    // The same board, given the assets a real job carries, must survive the
+    // gate whole: no repeat dropped, no beat lost.
+    const rich = storyboardFromContent(job, intent, withAssets, 60);
+    const { dropped, storyboard: kept } = sanitizeStoryboard(rich, {
+      source: STORY_ARTICLE, intent, target: 60, assets: withAssets,
+    });
+    assert.equal(dropped.filter((d) => d.reason === 'repeat_of_previous').length, 0,
+      `${intent} fallback must not hand the gate a repeated scene type`);
+    assert.equal(kept.scenes.length, rich.scenes.length,
+      `${intent} fallback loses no screen when the job carries assets`);
   }
   const fallbackAssets = {
     'site:0': 'site.png', 'photo:0': 'photo.png', map: 'map.png', presenter: 'presenter.png',

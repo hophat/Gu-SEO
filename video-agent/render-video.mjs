@@ -364,7 +364,20 @@ export function fitNarration(sb, work, spawn, log = () => {}) {
   sb.scenes.forEach((s, i) => {
     s.duration = Math.round(Math.max(s.duration, (segs[i] || 0) + GAP) * 10) / 10;
   });
-  const total = Math.round(sb.scenes.reduce((a, s) => a + s.duration, 0) * 10) / 10;
+  // Rounding every scene to a tenth and then adding them up drifts: twelve
+  // screens can come to 90.1s against a 90s video, and the video would be
+  // refused for a tenth of a second it never actually took. The closing
+  // screens carry the least of the story, so they absorb the drift — the same
+  // rule `sanitizeStoryboard` uses when it renormalises a board.
+  let total = Math.round(sb.scenes.reduce((a, s) => a + s.duration, 0) * 10) / 10;
+  for (let i = sb.scenes.length - 1; i >= 0 && total > limit; i--) {
+    const floor = Math.ceil(((segs[i] || 0) + GAP) * 10) / 10;
+    const room = sb.scenes[i].duration - floor;
+    if (room <= 0) continue;
+    const take = Math.min(room, Math.ceil((total - limit) * 10) / 10);
+    sb.scenes[i].duration = Math.round((sb.scenes[i].duration - take) * 10) / 10;
+    total = Math.round(sb.scenes.reduce((a, s) => a + s.duration, 0) * 10) / 10;
+  }
   if (total > limit) {
     throw new Error(`narration_exceeds_duration: ${total}s > ${limit}s after fitting`);
   }

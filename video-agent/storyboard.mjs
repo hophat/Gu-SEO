@@ -93,7 +93,9 @@ export const BEATS = {
   ),
   product_promotion: beats(
     ['hook', 1.1, ['hook']],
-    ['product', 1.5, ['product_reveal', 'ui_demo', 'icons'], true],
+    // Same reason as an announcement: a promotion told from a post has a hero
+    // image and no screenshot, so a photo leads and the device frame is last.
+    ['product', 1.5, ['photo', 'product_reveal', 'ui_demo', 'icons'], true],
     ['benefit', 1.6, ['feature', 'icons', 'steps'], true],
     ['proof', 1.3, ['rating', 'quote', 'stat'], true],
     ['offer', 1.1, ['result', 'stat']],
@@ -126,9 +128,12 @@ export const BEATS = {
   ),
   announcement: beats(
     ['hook', 1.0, ['hook']],
-    ['what', 1.6, ['product_reveal', 'ui_demo', 'icons'], true],
+    // An announcement is usually told from a written post with a hero image
+    // and no site to screenshot, so `photo` leads here: a device frame with
+    // nothing in it is the one shape that always renders empty.
+    ['what', 1.6, ['photo', 'product_reveal', 'ui_demo', 'icons'], true],
     ['why', 1.5, ['feature', 'stat', 'icons', 'steps'], true],
-    ['demo', 1.9, ['ui_demo', 'feature', 'steps', 'icons'], true],
+    ['demo', 1.9, ['ui_demo', 'feature', 'steps', 'icons', 'photo'], true],
     ['cta', 1.4, ['cta']],
   ),
   testimonial: beats(
@@ -664,7 +669,8 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
       && copiesSoFar > 1
       && proseSoFar >= Math.max(1, Math.ceil(copiesSoFar * MAX_QUOTE_SHARE));
     if (proseCapped) {
-      const alt = alternatives.find((t) => t !== varied.at(-1)?.type);
+      const alt = alternatives.find((t) => t !== varied.at(-1)?.type
+        && (!ASSET_RENDER_TYPES.has(t) || Boolean(scene.asset && ownsAsset(assets, scene.asset))));
       if (alt) {
         const reshaped = shapeItems(scene, alt, have, dropped, scene.__index);
         if (reshaped !== null) {
@@ -679,9 +685,17 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
       continue;
     }
     const allowed = slots[scene.__slot]?.types || [];
+    // A type the beat allows is not a type the job can draw. Swapping a drawn
+    // card for `ui_demo` when no screenshot exists leaves an empty device
+    // frame, so an asset-dependent type is only chosen when the scene already
+    // carries an asset the collector holds.
+    const drawable = (t) => (ASSET_RENDER_TYPES.has(t)
+      ? Boolean(scene.asset && ownsAsset(assets, scene.asset))
+      : true);
     const swap = DRAWN_ALTERNATIVES.find((t) => allowed.includes(t)
-      && t !== scene.type && t !== varied.at(-1).type);
-    const alt = swap || allowed.find((t) => t !== scene.type && t !== varied.at(-1).type);
+      && t !== scene.type && t !== varied.at(-1).type && drawable(t));
+    const alt = swap
+      || allowed.find((t) => t !== scene.type && t !== varied.at(-1).type && drawable(t));
     if (alt) {
       dropped.push({ index: scene.__index, type: scene.type, reason: 'repeated_as_alternative', as: alt });
       // The new type has to be able to draw what the old one was drawing. A
@@ -999,7 +1013,11 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     },
     product: intent === 'local_business'
       ? { type: photoAsset ? 'photo' : 'feature', text: clampText(p.name || title), asset: photoAsset }
-      : { type: siteAsset ? 'ui_demo' : 'product_reveal', text: clampText(p.name || title), asset: siteAsset, say: clampText(p.tagline || p.name || title) },
+      : photoAsset
+        ? { type: 'photo', text: clampText(p.name || title), asset: photoAsset, say: clampText(p.tagline || p.name || title) }
+        : siteAsset
+          ? { type: 'ui_demo', text: clampText(p.name || title), asset: siteAsset, say: clampText(p.tagline || p.name || title) }
+          : { type: 'product_reveal', text: clampText(p.name || title), say: clampText(p.tagline || p.name || title) },
     business: { type: photoAsset ? 'photo' : 'product_reveal', text: clampText(p.name || title), asset: photoAsset },
     // A device frame with nothing in it is an empty screen, so a demo beat with
     // no screenshot becomes a list of the source's own points instead.
@@ -1027,7 +1045,11 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
         : { type: 'quote', text: clampText(title) },
     offer: { type: 'result', text: clampText(brand.cta || 'Đăng ký ngay') },
     why: { type: 'feature', text: clampText(p.tagline || title) },
-    what: { type: siteAsset ? 'ui_demo' : 'product_reveal', text: clampText(p.name || title), asset: siteAsset },
+    what: photoAsset
+      ? { type: 'photo', text: clampText(p.name || title), asset: photoAsset }
+      : siteAsset
+        ? { type: 'ui_demo', text: clampText(p.name || title), asset: siteAsset }
+        : { type: 'icons', text: 'Có gì mới', items: (detailItems.length ? detailItems : narrativeItems).slice(0, 4) },
     voice: {
       type: 'quote',
       text: clampText(sentences[0] || title, 10),
