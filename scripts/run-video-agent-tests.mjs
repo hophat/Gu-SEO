@@ -853,19 +853,19 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
     { type: 'hook', text: 'a', say: 'a', duration: 3, motion: 'zoom' },
     { type: 'ui_demo', text: 'b', say: 'b', duration: 5, asset: 'site:0', motion: 'scroll' },
     { type: 'cta', text: 'c', say: 'c', duration: 3 }] }, [2, 2, 2], ASSETS);
-  assert.match(moving, /tl\.fromTo\("#s1 \.device-shot", \{ yPercent: 0, scale: 1\.08[^;]*yPercent: -12/,
+  assert.match(moving, /tl\.fromTo\("#s1 \.device-shot", \{ yPercent: 4, scale: 1\.12[^;]*yPercent: -22/,
     'a scroll demo glides slowly through the real screenshot');
   // The background is a SIBLING of the scene, so a zoom must name the scene's
   // own background id. The first version of this assertion pinned
   // `#s0 … .bgi img` — a selector that can never match — so it stayed green
   // while the zoom did nothing, and only `hyperframes check` (a GSAP "target
   // not found") caught it.
-  const zoom = moving.match(/tl\.fromTo\("([^"]*)"[^;]*scale: 1\.12/);
+  const zoom = moving.match(/tl\.fromTo\("([^"]*)"[^;]*scale: 1\.16/);
   assert.ok(zoom, 'a zoom tween is emitted');
   assert.match(zoom[1], /#bg0 img/, 'it targets the scene\'s own background, which is a sibling');
   assert.doesNotMatch(zoom[1], /#s0 \.bgi/, 'never a descendant selector that cannot match');
   const ctaTimeline = moving.slice(moving.indexOf('tl.fromTo("#s2"'), moving.indexOf('window.__timelines'));
-  assert.doesNotMatch(ctaTimeline, /scale: 1\.035|xPercent|yPercent: 0/,
+  assert.doesNotMatch(ctaTimeline, /scale: 1\.03[^;]*xPercent/,
     'a text-only CTA gets no invented camera target');
   assert.match(moving, /filter: "blur\(12px\)"/, 'scene handoffs share one soft blur transition');
   assert.match(moving, /tl\.fromTo\("#s1"[^\n]*duration: 0\.50/, 'incoming opacity resolves before the visual tail ends');
@@ -876,6 +876,28 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
     { type: 'cta', text: 'Kết', say: 'Kết', duration: 3 }] }, [2, 2], ASSETS, 'assets/logo.png');
   assert.match(logoMotion, /tl\.fromTo\("#s0 \.reveal-logo"/,
     'a fallback product logo receives the camera move too');
+  // A video that stops moving stops being watched. On a real render,
+  // freezedetect found ~55s of frozen frames, worst a 20s card that never
+  // moved, because the chart scenes have no image to pan and got nothing at
+  // all after their intro.
+  const alive = composeStoryboardHtml(SCENE_JOB, { intent: 'educational', duration: 60, scenes: [
+    { type: 'bars', text: 'Chi phí', say: 'Chi phí bao bì tăng', duration: 6, items: [{ label: 'Bao bì', value: 12 }, { label: 'Vận chuyển', value: 7 }] },
+    { type: 'steps', text: 'Các bước', say: 'Ba bước để bắt đầu', duration: 6, items: [{ label: 'Một' }, { label: 'Hai' }] },
+    { type: 'icons', text: 'Ý chính', say: 'Ba ý chính', duration: 6, items: [{ label: 'Một' }, { label: 'Hai' }] },
+    { type: 'cta', text: 'Xem', say: 'Xem ngay', duration: 4 }] }, [3, 3, 3, 3], ASSETS);
+  assert.match(alive, /#s0 \.bar-fill", \{ scaleX: 0 \}/,
+    'bars grow instead of sitting at their final width');
+  assert.match(alive, /#s0 \.bar-row.*stagger/s, 'and the rows arrive in sequence');
+  assert.match(alive, /#s1 \.step", \{ opacity: 0, y: 26 \}/, 'steps rise one after another');
+  assert.match(alive, /#s2 \.ig-ico", \{ rotation: -12/, 'icons pop rather than appearing flat');
+  // Every scene breathes for its whole length, so the gap between beats is
+  // never a still frame — this is what the freeze detector was measuring.
+  for (const id of [0, 1, 2]) {
+    assert.match(alive, new RegExp(`tl\\.fromTo\\("#s${id} \\.ex", \\{ scale: 1 \\}, \\{ scale: 1\\.014, duration: [\\d.]+, ease: "sine\\.inOut", yoyo: true, repeat: 1`),
+      `scene ${id} keeps moving for its whole length`);
+  }
+  ok('a graphic scene animates its data, and no scene is ever a still frame');
+
   ok('image motion targets real media, and scene transitions hand off without empty selectors');
 }
 
@@ -1029,8 +1051,14 @@ if (!HAS_FFMPEG) {
   }
 
   {
-    // The story decides the length: a slot the voice overruns is fixed by
-    // saying less, not by stretching the video.
+    // The story decides the length, but only up to the point where holding on
+    // becomes silence. A slot the voice overruns is fixed by saying less, not
+    // by stretching the video; a slot the voice underruns is fixed by ending
+    // the screen, not by freezing it.
+    //
+    // The old contract kept the video at its planned length no matter how thin
+    // the narration was. A measured render spent 33.8s of its 90s with nobody
+    // talking and held one unmoving card for 20 of them.
     const r = postRig();
     scriptStub = STORY_SB;
     // renderOne creates this; calling fitNarration on its own does not.
@@ -1041,11 +1069,14 @@ if (!HAS_FFMPEG) {
     ] };
     const { storyboard } = sanitizeStoryboard(sb, { source: '', intent: 'educational', target: 60, assets: {} });
     const { segs, total } = fitNarration(storyboard, r.work, r.deps.spawn, () => {});
-    // The fake voice is a 2s tone; the slots after rescaling are ~30s each,
-    // so nothing overruns and the scenes keep their story length.
     assert.ok(segs.every((s) => s > 1.5), 'every scene was actually spoken');
-    assert.ok(Math.abs(total - 60) < 1, `the video is the story's length (${total}s), not the voice's`);
-    ok('the narration fits the slot the story gave it');
+    // A 2s tone cannot fill a 30s screen. The video ends when the story does.
+    assert.ok(total < 10, `a 2s voice must not hold a 30s screen (video came to ${total}s)`);
+    for (const [i, scene] of storyboard.scenes.entries()) {
+      assert.ok(scene.duration <= segs[i] + 0.4 + 1.35,
+        `scene ${i} lasts ${scene.duration}s under a ${segs[i]}s voice — that is silence, not pacing`);
+    }
+    ok('a screen never outlives the voice it carries by more than a breath');
     r.done();
   }
 
@@ -1208,8 +1239,15 @@ if (!HAS_FFMPEG) {
       'the model is told the intent is fixed');
     assert.ok(lastPrompt.includes('Dàn ý beat cho intent "summary"'),
       'and is handed the summary beat outline');
-    assert.ok(lastPrompt.includes('80–95%') && lastPrompt.includes('phủ HẾT các ý chính'),
+    assert.ok(lastPrompt.includes('ĐỦ số từ trong dàn ý') && lastPrompt.includes('phủ HẾT các ý chính'),
       'the prompt asks for a full spoken script, not caption-length teasers');
+    // Every beat in the outline now names the word count its slot needs, and
+    // the shape the model copies carries the same number. Under-written
+    // narration is what left a third of a real render silent.
+    const beatLines = lastPrompt.split('\n').filter((l) => /^\s+\w+ \(~\d+(\.\d+)?s, khoảng \d+ từ\)/.test(l));
+    assert.ok(beatLines.length > 0, 'each beat states its seconds and its word budget');
+    const shape = lastPrompt.match(/"say":"<lời đọc (\d+) từ/);
+    assert.ok(shape, 'the example the model copies shows the word count per scene');
     assert.ok(lastPrompt.includes(tailMarker),
       'the full article reaches the model past the old 4000-character cutoff');
     // The example scales with whatever length this article earned, so it can
@@ -1333,8 +1371,11 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
   ok('every intent opens on a hook, closes on a CTA, and fits the band');
 
   // A long video is told across more screens, not across longer ones.
-  assert.equal(sceneCountFor(60), 9, 'a 60s video is nine screens');
-  assert.ok(sceneCountFor(75) >= 10, 'a 75s video takes more screens than a 60s one');
+  // ~5.5s a screen: a 60s video is eleven cuts, a 90s one takes as many as the
+  // ceiling allows. These are pacing numbers, not budgets — the seconds a
+  // screen holds decide whether a video reads as a video or a slideshow.
+  assert.equal(sceneCountFor(60), 11, 'a 60s video is eleven screens');
+  assert.ok(sceneCountFor(75) > sceneCountFor(60), 'a 75s video takes more screens than a 60s one');
   assert.equal(sceneCountFor(90), SB_MAX_SCENES, 'the ceiling takes as many screens as the template allows');
   assert.equal(sceneCountFor(1), 8, 'even the floor keeps a screen per beat');
   for (const intent of INTENTS) {
@@ -2072,11 +2113,26 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
   assert.ok(!captionGroundedIn('Vấn đề khách hàng gặp',
     'Khách tìm quán trên bản đồ nhưng giờ mở cửa và món nổi bật đều rời rạc nên khó quyết định.'),
     'a placeholder label is not what the voice says');
+  assert.ok(!captionGroundedIn('Đặt bàn trong 30 giây', 'Đặt bàn qua website.'),
+    'shared nouns cannot justify a number absent from the narration');
+  assert.ok(!captionGroundedIn('car car', 'cartography'),
+    'prefixes and repeated tokens do not count as shared words');
+  assert.ok(!captionGroundedIn('Những người bán hàng', 'Những người trồng cây'),
+    'Vietnamese stopwords are normalized before matching');
   assert.equal(captionFromSay('Khách tìm quán. Còn lại thì sao?'), 'Khách tìm quán',
     'the caption is the opening of the line, at caption length');
   assert.ok(wordCount(captionFromSay('một '.repeat(40))) <= MAX_TEXT_WORDS,
     'a long line still yields a caption, not a paragraph');
 
+  const educational = sanitizeStoryboard({ scenes: [
+    { type: 'hook', text: 'Chọn trường', say: 'Chọn trường phù hợp với mục tiêu học tập.' },
+    { type: 'photo', text: 'Thăm khuôn viên', say: 'Thăm khuôn viên để hiểu môi trường sống.', asset: 'hero' },
+    { type: 'keypoints', text: 'Chuẩn bị hồ sơ', say: 'Chuẩn bị giấy tờ và kiểm tra hạn nộp.', items: [{ label: 'Chuẩn bị giấy tờ' }, { label: 'Kiểm tra hạn nộp' }] },
+    { type: 'cta', text: 'Bắt đầu chuẩn bị', say: 'Hãy bắt đầu chuẩn bị từ hôm nay.' },
+  ] }, { intent: 'educational', target: 60, assets: { hero: 'assets/campus.jpg' } });
+  assert.ok(educational.storyboard.scenes.some((scene) => scene.type === 'photo' && scene.say.includes('khuôn viên')));
+  assert.ok(educational.storyboard.scenes.some((scene) => scene.type === 'keypoints' && scene.say.includes('giấy tờ')));
+  assert.ok(!educational.dropped.some((entry) => entry.reason === 'not_in_educational'));
   const realigned = {
     scenes: [
       { type: 'problem', text: 'Vấn đề khách hàng gặp', say: 'Khách tìm quán trên bản đồ nhưng giờ mở cửa và món nổi bật đều rời rạc nên khó quyết định.' },
@@ -2235,6 +2291,17 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
     // reasons for ~2 600 more. Under that total the model finished thinking
     // with nothing left to answer, returned "", and every run quietly fell
     // back to the deterministic board.
+    const prompt = body.messages[1].content;
+    assert.ok(!prompt.includes('Google Maps chưa đủ bán hàng'), 'no fixed cafe narrative contaminates other topics');
+    const exampleLine = prompt.split('\n').find((line) => line.startsWith('{"intent":') && line.includes('<caption'));
+    const example = JSON.parse(exampleLine);
+    const slots = beatSlots(ask.suggested, ask.target);
+    assert.equal(example.intent, ask.suggested);
+    assert.equal(example.scenes.length, slots.length);
+    example.scenes.forEach((scene, index) => {
+      assert.ok(slots[index].types.includes(scene.type), 'each example uses its own beat vocabulary');
+      assert.equal(scene.duration, slots[index].duration);
+    });
     assert.equal(body.max_tokens, 8192,
       'max_tokens must cover reasoning AND a full 12-screen answer — it is not a cap on the reply');
   } finally {

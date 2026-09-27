@@ -28,7 +28,7 @@ import {
   AIFREE_BASE, AIFREE_MODEL, AI_IMAGE_MAX, collectAssets, downloadLogo, generateSceneImages,
 } from './assets.mjs';
 import {
-  DURATION, INTENTS, MIN_SCENES, alignCaptions, beatSlots, clampDuration, clampWords, intentFromSignals,
+  DURATION, INTENTS, MIN_SCENES, WORDS_PER_SECOND, alignCaptions, beatSlots, clampDuration, clampWords, intentFromSignals,
   reviewStoryboard, sanitizeStoryboard, storyboardFromContent, suggestDuration, wordCount,
 } from './storyboard.mjs';
 import { templateById, intentForTemplate } from './templates.mjs';
@@ -173,8 +173,8 @@ const SCENE_BRIEF = `Các loại cảnh được phép (chỉ dùng trong danh s
 
 LUẬT BẮT BUỘC:
 1. "text" tối đa 8 từ, là CAPTION ngắn chứ không phải toàn bộ lời kể. Không xuống dòng dài dòng.
-2. "say" là lời đọc đầy đủ của cảnh đó, khoảng 80–95% số giây dàn ý (tính theo 2.3–2.7 từ/giây). Không để cảnh dài nhưng lời đọc chỉ có một câu ngắn.
-3. Lời đọc phải phủ HẾT các ý chính của bài — mỗi ý chính (mỗi mục H2, mỗi luận điểm, mỗi bước) một cảnh riêng, theo đúng thứ tự bài viết. Tuyệt đối không tạo khoảng trống, không gộp nhiều ý vào một câu, không giấu ý chính để người xem phải đọc bài mới hiểu. Cảnh cuối cùng trước CTA dành cho kết luận, không dùng để kể thêm ý mới.
+2. "say" là lời đọc đầy đủ của cảnh đó, phải ĐỦ số từ trong dàn ý để kéo dài đúng số giây đó (2.6 từ/giây). Cảnh nào để trống thời gian thì người xem nghe im lặng rồi bỏ đi — đây là lý do phần lớn video bị rời. Đếm từ trước khi trả về.
+3. Lời đọc phải phủ HẾT các ý chính của bài — mỗi ý chính (mỗi mục H2, mỗi luận điểm, mỗi bước) một cảnh riêng, theo đúng thứ tự bài viết, và mỗi cảnh chỉ kể MỘT ý. Tuyệt đối không tạo khoảng trống, không gộp nhiều ý vào một câu, không giấu ý chính để người xem phải đọc bài mới hiểu. Cảnh cuối cùng trước CTA dành cho kết luận, không dùng để kể thêm ý mới.
 4. CHỈ dùng asset có trong danh sách. Không bịa ảnh.
 5. CHỈ dùng con số CÓ TRONG NỘI DUNG. Không làm tròn, không suy diễn.
 6. Cảnh đầu là hook (bản tin mở bằng headline), cảnh cuối là cta. Không lặp hai cảnh cùng loại liền nhau.
@@ -205,13 +205,20 @@ export async function writeStoryboard(job, { source, suggested, assets, target, 
   const intentLine = forced
     ? `Intent bắt buộc do người dùng chọn: ${forced}. Trả đúng "intent":"${forced}".`
     : `Intent gợi ý từ tín hiệu nội dung: ${suggested}. Chỉ đổi nếu bạn chắc chắn intent khác đúng hơn.`;
-  // Example beat lengths scale with the selected template. Without this, a
-  // 60s example taught the model to ignore a 20s/30s template request.
-  const exampleWeights = [0.13, 0.16, 0.25, 0.25, 0.10, 0.10];
-  const exampleDurations = exampleWeights.map((w) => Math.round(target * w * 10) / 10);
-  exampleDurations[exampleDurations.length - 1] = Math.round(
-    (exampleDurations.at(-1) + target - exampleDurations.reduce((a, b) => a + b, 0)) * 10,
-  ) / 10;
+  // Only demonstrate structure. A fixed cafe story contaminates unrelated
+  // topics and teaches scene types that the selected intent cannot render.
+  // The word count in every placeholder is the one that beat actually needs, so
+  // a model copying the shape also copies the density: the under-written
+  // narration is what left a measured video silent for a third of its length.
+  const example = {
+    intent, duration: target,
+    scenes: slots.map((slot) => ({
+      type: slot.types[0], text: '<caption từ nội dung nguồn>',
+      say: `<lời đọc ${Math.max(4, Math.round(slot.duration * WORDS_PER_SECOND))} từ cho riêng ý này>`,
+      duration: slot.duration,
+      motion: 'reveal',
+    })),
+  };
 
   const user = `Nội dung nguồn:
 Tiêu đề: ${job.title || job.project?.name || ''}
@@ -230,18 +237,15 @@ ${outline}
 Asset thật đang có (dùng đúng tên này ở trường "asset"):
 ${assetList}
 
+Các loại được phép cho intent này: ${[...new Set(slots.flatMap((slot) => slot.types))].join(', ')}.
+Các mô tả dưới đây chỉ để tra cứu; loại ngoài danh sách trên không được dùng.
 ${SCENE_BRIEF}
 
+Trả đúng ${slots.length} cảnh theo thứ tự dàn ý. Mỗi cảnh chỉ dùng một loại trong beat tương ứng; không thêm dữ kiện ngoài nguồn.
 Trả JSON: {"intent":"${intent}","duration":${target},"scenes":[{"type":"...","text":"...","say":"...","duration":số,"asset":"tên asset nếu cần","motion":"zoom|pan|scroll|reveal|none","icon":"tên icon nếu cần"}]}
 
-VÍ DỤ MINH HỌA (lời đọc dài; khi target ngắn, rút gọn theo số từ trong dàn ý):
-{"intent":"product_demo","duration":${target},"scenes":[
- {"type":"hook","text":"Google Maps chưa đủ bán hàng","say":"Google Maps giúp khách tìm quán, nhưng nếu thông tin mở, giờ mở cửa và món nổi bật đều rời rạc, khách vẫn khó quyết định có ghé hay không.","duration":${exampleDurations[0]},"motion":"zoom"},
- {"type":"problem","text":"Khách thấy nhưng chưa đặt","say":"Vấn đề không phải thiếu người biết đến quán. Vấn đề là khách phải tự hỏi quán mở lúc mấy, có chỗ đậu xe không và nên gọi món nào trước khi họ bỏ khỏi trang.","duration":${exampleDurations[1]},"motion":"pan"},
- {"type":"ui_demo","text":"Một trang đủ thông tin","say":"Một website tốt gom giờ mở cửa, địa chỉ, món nổi bật, bản đồ và nút đặt bàn vào một luồng rõ ràng. Khách xem xong hiểu quán phục vụ ai và quyết định nhanh hơn.","duration":${exampleDurations[2]},"asset":"site:0","motion":"scroll"},
- {"type":"feature","text":"Đặt bàn ít bước","say":"Nút đặt bàn đưa khách thẳng đến bước xác nhận, không bắt họ điền lại thông tin đã có. Mỗi bước ngắn hơn cũng làm tỷ lệ hoàn tất cao hơn.","duration":${exampleDurations[3]},"motion":"reveal"},
- {"type":"result","text":"Lượt xem thành lượt ghé","say":"Kết quả là khách không chỉ biết quán mà còn đặt được bàn ngay trong lúc còn quan tâm, giúp doanh nghiệp nắm được nhu cầu trước khi đến.","duration":${exampleDurations[4]},"motion":"zoom"},
- {"type":"cta","text":"Mở website ngay","say":"Hãy đưa món, địa chỉ và giờ mở cửa lên một trang thật rõ. Sau đó thử lại đường đặt bàn như một khách mới để tìm chỗ còn vướng.","duration":${exampleDurations[5]},"motion":"pan"}]}
+KHUNG CẤU TRÚC (thay toàn bộ placeholder bằng nội dung nguồn; không đọc placeholder):
+${JSON.stringify(example)}
 
 Trả JSON:`;
 
@@ -393,10 +397,29 @@ export function fitNarration(sb, work, spawn, log = () => {}) {
     segs = speakSegments(texts(), work, spawn, { only: retry });
   }
 
-  // A scene is never shorter than the voice in it.
+  // A scene is never shorter than the voice in it, and never much longer.
+  //
+  // The old code only grew scenes to fit the voice. A board that planned 90s
+  // of screens but only wrote 60s of narration then ran every scene long: a
+  // measured render spent 33.8s of its 90s with nobody talking, and the last
+  // 20s of it was one completely frozen card. The storyboard asks for 80–95%
+  // speech coverage; this is where that ask is either kept or dropped.
+  //
+  // BREATH is the pause a viewer needs to land a scene — the gap plus a
+  // moment to read. Past that, extra time is silence, so it is taken back and
+  // the video ends when the story does.
+  const BREATH = 1.3;
+  let reclaimed = 0;
   sb.scenes.forEach((s, i) => {
-    s.duration = Math.round(Math.max(s.duration, (segs[i] || 0) + GAP) * 10) / 10;
+    const floor = Math.ceil(((segs[i] || 0) + GAP) * 10) / 10;
+    const ceil = Math.ceil((floor + BREATH) * 10) / 10;
+    const next = Math.min(Math.max(s.duration, floor), ceil);
+    reclaimed += Math.max(0, s.duration - next);
+    s.duration = next;
   });
+  if (reclaimed > 0.5) {
+    log(`tts: ${reclaimed.toFixed(1)}s of planned silence reclaimed — scenes end with the voice`);
+  }
   // Rounding every scene to a tenth and then adding them up drifts: twelve
   // screens can come to 90.1s against a 90s video, and the video would be
   // refused for a tenth of a second it never actually took. The closing
@@ -640,17 +663,85 @@ function motionFor(i, s, isLast = false, hasLogo = false) {
 
   if (media) {
     if (s.motion === 'zoom') {
-      out.push(`tl.fromTo("${media}", { scale: 1.04 }, { scale: 1.12, duration: ${du}, ease: "none" }, ${st});`);
+      out.push(`tl.fromTo("${media}", { scale: 1.02 }, { scale: 1.16, duration: ${du}, ease: "none" }, ${st});`);
     } else if (s.motion === 'pan') {
-      out.push(`tl.fromTo("${media}", { scale: 1.09, xPercent: -2, yPercent: 1 }, { scale: 1.11, xPercent: 2, yPercent: -1, duration: ${du}, ease: "none" }, ${st});`);
+      out.push(`tl.fromTo("${media}", { scale: 1.14, xPercent: -5, yPercent: 2 }, { scale: 1.16, xPercent: 5, yPercent: -2, duration: ${du}, ease: "none" }, ${st});`);
     } else if (s.motion === 'scroll' && s.type === 'ui_demo' && s.asset) {
-      out.push(`tl.fromTo("#s${i} .device-shot", { yPercent: 0, scale: 1.08 }, { yPercent: -12, scale: 1.08, duration: ${du}, ease: "none" }, ${st});`);
+      out.push(`tl.fromTo("#s${i} .device-shot", { yPercent: 4, scale: 1.12 }, { yPercent: -22, scale: 1.12, duration: ${du}, ease: "none" }, ${st});`);
     } else {
-      out.push(`tl.fromTo("${media}", { scale: 1.035, xPercent: -1 }, { scale: 1.08, xPercent: 1, duration: ${du}, ease: "none" }, ${st});`);
+      out.push(`tl.fromTo("${media}", { scale: 1.03, xPercent: -2 }, { scale: 1.13, xPercent: 2, duration: ${du}, ease: "none" }, ${st});`);
     }
   }
   if (s.motion === 'reveal') {
     out.push(`tl.fromTo("#s${i} .ex", { clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0% 0)", duration: 0.7, ease: "power3.out" }, ${st});`);
+  }
+  return out.join('\n  ');
+}
+
+// A video that stops moving stops being watched. Measured on a real render:
+// freezedetect found ~55s of frozen frames — the chart scenes, which have no
+// image to move, sat perfectly still after their 0.5s intro. This gives EVERY
+// scene a living element: bars grow, rings sweep, numbers count, rows rise in
+// sequence, and the card itself breathes. All tweens are fromTo with absolute
+// time so preview and render seek identically.
+function dataChoreography(i, s) {
+  const st = s.start.toFixed(2);
+  const end = (s.start + s.dur).toFixed(2);
+  const du = s.dur.toFixed(2);
+  // A slow counter-breathe on the card itself: without it, a scene whose items
+  // are all animated still sits still in the gaps between beats.
+  const breathe = `tl.fromTo("#s${i} .ex", { scale: 1 }, { scale: 1.014, duration: ${(s.dur / 2).toFixed(2)}, ease: "sine.inOut", yoyo: true, repeat: 1, immediateRender: false }, ${st});`;
+  const out = [breathe];
+  // Stagger helper: reveal each child across the first ~70% of the scene, so the
+  // last item lands while the voice is still on the item before it.
+  const stagger = (sel, per, dy = 18) =>
+    out.push(`tl.fromTo("${sel}", { opacity: 0, y: ${dy} }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out", stagger: ${per.toFixed(2)}, immediateRender: false }, ${st});`);
+
+  switch (s.type) {
+    case 'stat':
+    case 'result':
+      out.push(`tl.fromTo("#s${i} .ex", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.4)", immediateRender: false }, ${st});`);
+      break;
+    case 'bars':
+      out.push(`tl.fromTo("#s${i} .bar-fill", { scaleX: 0 }, { scaleX: 1, duration: ${(du * 0.7).toFixed(2)}, ease: "power3.out", stagger: 0.12, transformOrigin: "left center", immediateRender: false }, ${st});`);
+      stagger('#s' + i + ' .bar-row', 0.1);
+      break;
+    case 'donut':
+      out.push(`tl.fromTo("#s${i} .donut-wrap", { opacity: 0, rotation: -90, scale: 0.9 }, { opacity: 1, rotation: 0, scale: 1, duration: 0.9, ease: "back.out(1.2)", immediateRender: false }, ${st});`);
+      break;
+    case 'line':
+      out.push(`tl.fromTo("#s${i} .line-wrap", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: ${(du * 0.8).toFixed(2)}, ease: "power2.inOut", immediateRender: false }, ${st});`);
+      stagger('#s' + i + ' .line-labs > *', 0.08, 10);
+      break;
+    case 'steps':
+      stagger('#s' + i + ' .step', 0.16, 26);
+      out.push(`tl.fromTo("#s${i} .step-arrow", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: "power2.out", transformOrigin: "center", stagger: 0.16, immediateRender: false }, ${(s.start + 0.5).toFixed(2)});`);
+      break;
+    case 'timeline':
+      stagger('#s' + i + ' .tl-row', 0.14, 22);
+      break;
+    case 'icons':
+      stagger('#s' + i + ' .ig-item', 0.1, 22);
+      out.push(`tl.fromTo("#s${i} .ig-ico", { rotation: -12, scale: 0.6 }, { rotation: 0, scale: 1, duration: 0.5, ease: "back.out(2)", stagger: 0.1, immediateRender: false }, ${st});`);
+      break;
+    case 'compare':
+      out.push(`tl.fromTo("#s${i} .cmp-good", { xPercent: -12, opacity: 0 }, { xPercent: 0, opacity: 1, duration: 0.55, ease: "power3.out", immediateRender: false }, ${st});`);
+      out.push(`tl.fromTo("#s${i} .cmp-bad", { xPercent: 12, opacity: 0 }, { xPercent: 0, opacity: 1, duration: 0.55, ease: "power3.out", immediateRender: false }, ${(s.start + 0.12).toFixed(2)});`);
+      stagger('#s' + i + ' .cmp-i', 0.07, 12);
+      break;
+    case 'keypoints':
+      stagger('#s' + i + ' .kp-row', 0.15, 24);
+      break;
+    case 'quote':
+    case 'headline':
+    case 'feature':
+      out.push(`tl.fromTo("#s${i} .ex", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out", immediateRender: false }, ${st});`);
+      break;
+    case 'cta':
+      out.push(`tl.fromTo("#s${i} .ex", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out", immediateRender: false }, ${st});`);
+      break;
+    default:
+      break;
   }
   return out.join('\n  ');
 }
@@ -842,7 +933,7 @@ ${logoSrc ? `<img id="brandlogo" class="clip brandlogo" data-start="0" data-dura
 </div>
 <script>
   const tl = gsap.timeline({ paused: true });
-${meta.map((s, i) => motionFor(i, s, i === meta.length - 1, Boolean(logoSrc))).join('\n  ')}
+${meta.map((s, i) => [motionFor(i, s, i === meta.length - 1, Boolean(logoSrc)), dataChoreography(i, s)].join('\n  ')).join('\n  ')}
   window.__timelines = window.__timelines || {};
   window.__timelines["main"] = tl;
   tl.seek(0);
@@ -1397,7 +1488,13 @@ export async function renderOne(job, deps = {}) {
     ));
     review = reviewStoryboard(storyboard, { hasLogo, assets });
   }
-  if (!review.ok) throw new Error(`storyboard_quality_failed: ${review.problems.join(', ')}`);
+  if (!review.ok) {
+    // Name the board, not just the complaint: "1_of_3" says a scene is too
+    // plain but not which one, and every bare screen so far was a different
+    // beat degrading to a caption when it had nothing to show.
+    const shape = storyboard.scenes.map((s) => s.type).join(' → ');
+    throw new Error(`storyboard_quality_failed: ${review.problems.join(', ')} | board: ${shape}`);
+  }
   log(`storyboard: ${storyboard.scenes.length} scenes, ${storyboard.duration}s`);
 
   // 4. Narration, written to fit and measured.

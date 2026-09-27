@@ -56,14 +56,21 @@ const ASSET_RENDER_TYPES = new Set([
 // kể cả khi người dùng không chọn thời lượng.
 export const DURATION = { min: 60, max: 90, default: 75 };
 export const MIN_SCENES = 3;
-export const MAX_SCENES = 12;
+// 16 is a pacing decision, not a capacity one. A 90s video at 5.5s per screen
+// is sixteen cuts; at the old twelve it was eight long holds, and a measured
+// render spent half its length on a card that was not moving.
+export const MAX_SCENES = 16;
 export const MAX_TEXT_WORDS = 8;
 
 // A screen you can actually look at needs about this long, and the storyboard
 // spends its seconds on screens rather than on one long one: a 75s video made
-// of six 12s cards reads as a slide deck, the same 75s made of twelve 6s cards
+// of six 12s cards reads as a slide deck, the same 75s made of fifteen 5s cards
 // reads as a video. This is the divisor in `sceneCountFor`.
-const SECONDS_PER_SCREEN = 6.5;
+//
+// It used to be 6.5, which bought ~7.5s screens and left long stretches
+// holding on a card. Cutting faster is also what keeps a short video from
+// feeling padded, so this is the dial for "too little happens on screen".
+const SECONDS_PER_SCREEN = 5.5;
 
 // Vietnamese edge-tts at +8% measures roughly this on the render VPS. It is
 // a starting point, not a truth: the pipeline measures the audio it actually
@@ -111,8 +118,8 @@ export const BEATS = {
   ),
   educational: beats(
     ['hook', 1.1, ['hook']],
-    ['insight', 1.4, ['stat', 'quote', 'donut', 'bars', 'compare', 'timeline', 'icons'], true],
-    ['point', 2.4, ['bars', 'donut', 'line', 'steps', 'icons', 'compare', 'timeline'], true],
+    ['insight', 1.4, ['stat', 'quote', 'donut', 'bars', 'compare', 'timeline', 'icons', 'photo', 'keypoints'], true],
+    ['point', 2.4, ['bars', 'donut', 'line', 'steps', 'icons', 'compare', 'timeline', 'photo', 'keypoints'], true],
     ['conclusion', 1.3, ['quote', 'result']],
     ['cta', 1.3, ['cta']],
   ),
@@ -162,7 +169,9 @@ export const BEATS = {
     ['headline', 1.0, ['headline']],
     ['anchor_intro', 1.3, ['anchor', 'headline', 'feature']],
     ['story', 2.4, ['photo', 'ui_demo', 'stat', 'location', 'feature', 'steps', 'icons'], true],
-    ['anchor_close', 1.2, ['anchor', 'quote']],
+    // A quote is fine here when it carries an image; the fallback picks the
+    // keypoints shape instead when there is no presenter to put on screen.
+    ['anchor_close', 1.2, ['anchor', 'quote', 'keypoints', 'headline']],
     ['cta', 1.1, ['cta']],
   ),
   summary: beats(
@@ -318,8 +327,8 @@ export function suggestDuration(source) {
 // The template is expanded first, so a 75s video is allotted to twelve screens
 // rather than to six long ones. Callers keep the two-argument signature and
 // get the expanded shape.
-export function beatSlots(intent, target = DURATION.default) {
-  const template = expandBeats(intent, target);
+export function beatSlots(intent, target = DURATION.default, maxScenes = MAX_SCENES) {
+  const template = expandBeats(intent, target, maxScenes);
   const total = template.reduce((a, b) => a + b.weight, 0);
   const dur = clampDuration(target);
   const totalUnits = Math.round(dur * 10);
@@ -340,9 +349,12 @@ export function beatSlots(intent, target = DURATION.default) {
 // already sits so the story still runs opener → body → closer. A repeated beat
 // splits its own weight, so feeding the result through `beatSlots` yields the
 // same total duration the target asked for.
-export function expandBeats(intent, target = DURATION.default) {
+export function expandBeats(intent, target = DURATION.default, maxScenes = MAX_SCENES) {
   const template = BEATS[intent] || BEATS.educational;
-  const wanted = Math.min(sceneCountFor(target), MAX_SCENES);
+  // `maxScenes` caps how many EXTRA screens a beat may repeat for. It never
+  // trims the base template: those beats are the story's shape, and dropping
+  // one fails the gate's `missing_beat` check outright.
+  const wanted = Math.max(template.length, Math.min(sceneCountFor(target), maxScenes));
   if (wanted <= template.length) return template;
   const repeatables = REPEATABLE_BY_INTENT[intent] || [];
   if (!repeatables.length) return template;
@@ -809,7 +821,7 @@ const CAPTION_STOPWORDS = new Set([
   'của', 'các', 'cho', 'với', 'và', 'là', 'một', 'những', 'người', 'không',
   'được', 'trong', 'này', 'đó', 'để', 'khi', 'đã', 'rất', 'cũng', 'tại', 'theo', 'như',
   'the', 'and', 'for', 'with', 'that', 'this', 'your', 'you', 'are', 'was', 'not',
-]);
+].map(normalizeForMatch));
 
 // Case, diacritics and punctuation off, so "Google Maps" and "google maps"
 // are the same evidence.
@@ -836,10 +848,12 @@ export function captionFromSay(say, max = MAX_TEXT_WORDS) {
 // caption is kept when at least this many match — two for anything longer than
 // a single word, all of them when the caption is one word.
 export function captionGroundedIn(text, say) {
-  const tokens = captionTokens(text);
+  const spokenNumbers = numbersIn(say);
+  if ([...numbersIn(text)].some((number) => !spokenNumbers.has(number))) return false;
+  const tokens = [...new Set(captionTokens(text))];
   if (!tokens.length) return true;
-  const said = ' ' + normalizeForMatch(say) + ' ';
-  const hit = tokens.filter((w) => said.includes(' ' + w)).length;
+  const said = new Set(normalizeForMatch(say).split(' '));
+  const hit = tokens.filter((w) => said.has(w)).length;
   return hit >= Math.min(2, tokens.length);
 }
 
@@ -873,10 +887,20 @@ export function reviewStoryboard(sb, { hasLogo = false, assets = null } = {}) {
   const hasPresenter = assets === null ? scenes.some((scene) => scene.type === 'anchor') : ownsAsset(assets, 'presenter');
   const beatTemplate = requiredStoryBeats(sb?.intent, { hasPresenter });
   let beatCursor = 0;
+  const claimed = new Set();
   for (const beat of beatTemplate) {
-    const foundAt = scenes.findIndex((scene, index) => index >= beatCursor && beat.types?.includes(scene.type));
+    const from = (scene, index) => index >= beatCursor && !claimed.has(index);
+    // One scene can only answer one beat. Matching greedily by type let an
+    // earlier beat swallow the scene a later one needed — a board sized
+    // exactly to the template then failed with `missing_beat` even though
+    // every beat was on screen. A scene that names its beat is matched on it;
+    // a model scene, which has no beat of its own, falls back to its type.
+    const named = scenes.findIndex((scene, index) => from(scene, index) && scene.__beat === beat.beat);
+    const foundAt = named >= 0
+      ? named
+      : scenes.findIndex((scene, index) => from(scene, index) && beat.types?.includes(scene.type));
     if (foundAt < 0) problems.push(`missing_beat:${beat.beat}`);
-    else beatCursor = foundAt + 1;
+    else { beatCursor = foundAt + 1; claimed.add(foundAt); }
   }
   // A news piece opens on the headline, not a curiosity hook — both count.
   if (!['hook', 'headline'].includes(scenes[0]?.type)) problems.push('does_not_open_on_a_hook');
@@ -1078,14 +1102,23 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
       // behind its words, so it takes one whenever the job has it.
       asset: photoAsset,
     },
+    // A caption over a gradient is a bare screen, and the quality gate refuses
+    // a video built from them. With no photo to show, the beat draws the
+    // source's own points instead of naming the business and stopping there.
     product: intent === 'local_business'
-      ? { type: photoAsset ? 'photo' : 'feature', text: clampText(p.name || title), asset: photoAsset }
+      ? (photoAsset
+        ? { type: 'photo', text: clampText(p.name || title), asset: photoAsset }
+        : { type: 'icons', text: 'Điểm nổi bật', items: (detailItems.length ? detailItems : narrativeItems).slice(0, 4).map((h, i) => ({ icon: ['check', 'trend', 'shield', 'star'][i % 4], label: h.label })) })
       : photoAsset
         ? { type: 'photo', text: clampText(p.name || title), asset: photoAsset, say: clampText(p.tagline || p.name || title) }
         : siteAsset
           ? { type: 'ui_demo', text: clampText(p.name || title), asset: siteAsset, say: clampText(p.tagline || p.name || title) }
           : { type: 'product_reveal', text: clampText(p.name || title), say: clampText(p.tagline || p.name || title) },
-    business: { type: photoAsset ? 'photo' : 'product_reveal', text: clampText(p.name || title), asset: photoAsset },
+    business: photoAsset
+      ? { type: 'photo', text: clampText(p.name || title), asset: photoAsset }
+      : siteAsset
+        ? { type: 'ui_demo', text: clampText(p.name || title), asset: siteAsset }
+        : { type: 'icons', text: 'Quán này có gì', items: (detailItems.length ? detailItems : narrativeItems).slice(0, 4).map((h, i) => ({ icon: ['shop', 'cup', 'map', 'star'][i % 4], label: h.label })) },
     // A device frame with nothing in it is an empty screen, so a demo beat with
     // no screenshot becomes a list of the source's own points instead.
     demo: siteAsset
@@ -1097,7 +1130,14 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     point: nums.length >= 2
       ? { type: 'bars', text: 'Con số đáng chú ý', items: nums.slice(0, 4).map((n, i) => ({ label: `Mục ${i + 1}`, value: n })) }
       : { type: 'steps', text: 'Các bước', items: narrativeItems.slice(0, 3).map((h) => ({ label: h.label })) },
-    conclusion: { type: 'result', text: clampText(brand.cta || title) },
+    // A result card with neither a number nor rows is a caption on a gradient,
+    // which the gate rightly calls a bare screen. The payoff draws the source's
+    // own points when the article offers no figure to put on it.
+    conclusion: {
+      type: 'result',
+      text: clampText(brand.cta || title),
+      items: (detailItems.length ? detailItems : narrativeItems).slice(0, 4).map((h) => ({ label: h.label })),
+    },
     items: { type: 'steps', text: 'Danh sách', items: narrativeItems.slice(0, 3).map((h) => ({ label: h.label })) },
     close: { type: 'quote', text: clampText(title) },
     // A result card with no number is a caption, so it draws the source's own
@@ -1152,16 +1192,26 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     anchor_intro: ownsAsset(assets, 'presenter')
       ? { type: 'anchor', text: clampText(title), asset: 'presenter', name: pName }
       : { type: 'feature', text: clampText(title) },
+    // With nobody on camera the bulletin used to close on a quote: words on a
+    // gradient, which is the bare screen the gate refuses. It now signs off
+    // with the points the bulletin actually made.
     anchor_close: ownsAsset(assets, 'presenter')
       ? { type: 'anchor', text: clampText(brand.cta || title), asset: 'presenter', name: pName }
-      : { type: 'quote', text: clampText(title) },
+      : { type: 'keypoints', text: clampText(title), items: (detailItems.length ? detailItems : narrativeItems).slice(0, 4).map((h) => ({ label: h.label })) },
     story: { type: photoAsset ? 'photo' : 'feature', text: clampText(title), asset: photoAsset },
     keypoints: {
       type: 'keypoints',
       text: '3 ý chính',
       items: summaryItems,
     },
-    takeaway: { type: 'quote', text: clampText(title) },
+    // A quote is words on a gradient. The summary's closing beat is the one
+    // place a viewer looks for the takeaway, so it carries the source's own
+    // points as rows instead of stopping at a caption.
+    takeaway: {
+      type: 'result',
+      text: clampText(title),
+      items: (detailItems.length ? detailItems : narrativeItems).slice(0, 4).map((h) => ({ label: h.label })),
+    },
     question: { type: 'question', text: clampText(title) },
     question2: { type: 'question', text: clampText(bodyQuestion || 'Còn gì nữa?') },
     answer: { type: photoAsset ? 'photo' : 'answer', text: clampText(sentences[0] || title, 8), asset: photoAsset },
@@ -1169,7 +1219,14 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     cta: { type: 'cta', text: clampText(brand.cta || 'Xem thêm'), say: clampText(brand.cta || 'Xem thêm tại website.') },
   };
 
-  const slots = beatSlots(intent, durationTarget);
+  // A screen with nothing to say is a hole in the story, and more screens is
+  // only a win when there are more things to say. The fallback narrates source
+  // sentences and cannot invent them, so asking it for more screens than the
+  // article has sentences came back as scenes holding only their own caption.
+  // It takes no more screens than the source can fill; the seconds it is not
+  // given are spent on the screens it does have, and `fitNarration` ends the
+  // video when the voice does.
+  const slots = beatSlots(intent, durationTarget, sourceDetails.length + 2);
   // Khi model không trả về storyboard, lấy câu ở nhiều vị trí khắp bài thay
   // vì ba câu đầu. Mẫu bị giới hạn theo số beat, rồi cắt theo budget để giữ
   // đầu và kết thay vì làm mất chi tiết giữa câu.
@@ -1230,7 +1287,18 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     bodySlotIndexes.flatMap((index) => bodyDetails[bodyPosition.get(index)] || []),
   );
   const scenes = slots.map((slot, i) => {
-    const base = fill[slot.beat] || { type: 'feature', text: clampText(title) };
+    let base = fill[slot.beat] || { type: 'feature', text: clampText(title) };
+    // The fill map is shared across intents, so a shape that is right for one
+    // beat can be outside another beat's vocabulary — a `photo` for a
+    // product_demo's `product` beat, which may only show the product, a demo or
+    // icons. Sanitize drops such a scene as `not_in_<intent>`, and when the
+    // board is sized exactly to the template that silence loses the beat
+    // entirely (`missing_beat:demo`). The beat decides, so the fill is coerced
+    // into the vocabulary the beat is allowed to use.
+    if (slot.types?.length && !slot.types.includes(base.type)) {
+      const swap = slot.types.find((type) => type !== 'feature') || slot.types[0];
+      base = { ...base, type: swap, asset: ASSET_RENDER_TYPES.has(swap) ? base.asset : undefined };
+    }
     const scene = { ...base, duration: slot.duration };
     let detail = bodyPosition.has(i)
       ? fitDetail(joinSpeech(...(bodyDetails[bodyPosition.get(i)] || [])), narrationBudget(slot.duration))
