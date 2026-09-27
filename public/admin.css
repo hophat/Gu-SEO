@@ -26,25 +26,34 @@
 @font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("/_fonts/inter-700.woff2") format("woff2"); }
 
 :root{
-  --bg: #ffffff;
-  --bg-soft: #f7f9f8;
+  /* Mirrors src/admin/theme.js and src/admin/styles/tokens.css. The
+     surface ladder is ground → inset → soft → card, lightest on top, so
+     a card reads as raised instead of as a hole. On white-on-white a
+     card was 1.00:1 against its own page; it is now 1.34:1, and the
+     control edge clears 3:1 on both the ground and the card. */
+  --bg: #dae0df;
+  --bg-soft: #e9edec;
+  --bg-inset: #f2f5f4;
   --bg-card: #ffffff;
-  --bg-card-hover: #f7f9f8;
+  --bg-card-hover: #eef2f1;
   --ink: #0f1419;
-  --ink-dim: #5b6570;
-  --ink-faint: #666f76;
-  --accent: #c64a0c;
-  --accent-rgb: 198, 74, 12;
+  --ink-dim: #4d5761;
+  --ink-faint: #58626d;
+  --accent: #ab3d08;
+  --accent-rgb: 171, 61, 8;
   --accent-ink: #ffffff;
-  --accent-soft: #fff4ef;
-  --accent-hover: #a83c08;
-  --line: #e7e9ea;
-  --line-2: #d0d5d8;
+  --accent-soft: #fdf0e8;
+  --accent-line: #f3d5c2;
+  --accent-deep: #96330a;
+  --accent-hover: #8f2f08;
+  --line: #bcc2c1;
+  --line-2: #9fa5a4;
+  --line-control: #787e7e;
   --good: #12703a;
-  --warn: #a34a07;
+  --warn: #9c4a06;
   --bad: #b91c1c;
   --good-rgb: 18, 112, 58;
-  --warn-rgb: 163, 74, 7;
+  --warn-rgb: 156, 74, 6;
   --bad-rgb: 185, 28, 28;
   --display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

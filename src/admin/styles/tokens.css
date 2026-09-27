@@ -23,29 +23,43 @@ body {
 }
 
 :root {
-  --bg: #ffffff;
-  --bg-soft: #f7f9f8;
+  /* Light mode. The surface ladder runs ground → inset → soft → card,
+     lightest on top, so a card reads as raised rather than as a hole.
+     Every value below was measured with WCAG 2.1 against the surface it
+     actually lands on: the page ground is the darkest one, so it is the
+     worst case for text and for the control edge.
+       card on ground   1.34:1   a card now actually separates
+       ink-faint        4.64:1   (was 4.44 — under the 4.5 floor)
+       control edge     3.09:1   WCAG 1.4.11, on the ground and the card
+     scripts/check-contrast.js holds these numbers as a gate. */
+  --bg: #dae0df;
+  --bg-soft: #e9edec;
+  --bg-inset: #f2f5f4;
   --bg-card: #ffffff;
-  --bg-card-hover: #f7f9f8;
+  --bg-card-hover: #eef2f1;
   --ink: #0f1419;
-  --ink-dim: #5b6570;
-  --ink-faint: #666f76;
-  --accent: #c64a0c;
-  --accent-deep: #b8430a;
-  --accent-hover: #a83c08;
+  --ink-dim: #4d5761;
+  --ink-faint: #58626d;
+  --accent: #ab3d08;
+  --accent-deep: #96330a;
+  --accent-hover: #8f2f08;
   --accent-ink: #ffffff;
-  --accent-soft: #fff4ef;
-  --accent-line: #f6d9c9;
-  --accent-rgb: 198, 74, 12;
-  --line: #e7e9ea;
-  --line-2: #d0d5d8;
+  --accent-soft: #fdf0e8;
+  --accent-line: #f3d5c2;
+  --accent-rgb: 171, 61, 8;
+  --line: #bcc2c1;
+  --line-2: #9fa5a4;
+  /* The control edge is a *third* line weight. line-2 separates and
+     lines a table; a field's border has to clear 3:1 against whatever
+     it sits on, which line-2 does not on this ground (1.87:1). */
+  --line-control: #787e7e;
   --good: #12703a;
-  --warn: #a34a07;
+  --warn: #9c4a06;
   --bad: #b91c1c;
   --good-soft: #f0fdf4;
   --warn-soft: #fffbeb;
   --bad-soft: #fef2f2;
-  --info-soft: #f2f4f4;
+  --info-soft: #f2f5f4;
   --sidebar-w: 232px;
   --header-h: 56px;
   --display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -424,34 +438,37 @@ body {
   display: none;
 }
 
+/* Chip tones read from the tokens rather than restating hexes, so the
+   step that had to move when the ground was tinted (warn and info) is
+   moved in one place instead of two. */
 .ps-chip--good {
-  color: #12703a;
-  background: #f0fdf4;
+  color: var(--good);
+  background: var(--good-soft);
   border-color: #bbf7d0;
 }
 
 .ps-chip--warn {
-  color: #a34a07;
-  background: #fffbeb;
+  color: var(--warn);
+  background: var(--warn-soft);
   border-color: #fde68a;
 }
 
 .ps-chip--bad {
-  color: #b91c1c;
-  background: #fef2f2;
+  color: var(--bad);
+  background: var(--bad-soft);
   border-color: #fecaca;
 }
 
 .ps-chip--info {
-  color: #b8430a;
-  background: #fff4ef;
-  border-color: #f6d9c9;
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
 }
 
 .ps-chip--muted {
-  color: #5b6570;
-  background: #f2f4f4;
-  border-color: #e7e9ea;
+  color: var(--ink-dim);
+  background: var(--bg-inset);
+  border-color: var(--line);
 }
 
 :root[data-theme='dark'] .ps-chip--good {

@@ -3,10 +3,9 @@
 // The accent is GU SEO's brand orange. antd has no separate token for a
 // primary button's background — it paints it with `colorPrimary` — so
 // that one value has to clear 4.5:1 against the white label text sitting
-// on it. #c64a0c reaches 4.79:1 and doubles as the link and chip-text
-// colour. The blog's own #e05a2b is only 3.71:1 on white: fine as a
-// large decorative fill, not fine as text, so this set sits a little
-// deeper in the same hue family.
+// on it, and again against the page ground, because the same colour is
+// also the link and tab text. The blog's own #e05a2b is 3.71:1 on
+// white; this set sits deeper in the same hue family to clear both.
 //
 // The status colours are deeper than the stock antd values on purpose.
 // The stock green and amber land near 2:1 as 12px text on white, which
@@ -15,7 +14,8 @@
 //
 // These values mirror the CSS custom properties in styles/tokens.css. The
 // vanilla cover editor is not themed by antd and reads those instead, so
-// both files must change together.
+// both files must change together. public/admin.css declares a third copy
+// for the legacy standalone page — all three move together.
 
 import { theme as antdTheme } from 'antd';
 
@@ -26,21 +26,30 @@ export const lightTheme = {
   token: {
     // antd paints the primary button fill with colorPrimary directly — there
     // is no separate "button background" token — so this one value has to
-    // clear 4.5:1 against white label text. #c64a0c reaches 4.79:1, and it
-    // also serves as the link and chip-text colour, where it is legal.
-    colorPrimary: '#c64a0c',
-    colorInfo: '#c64a0c',
+    // clear 4.5:1 against white label text AND against the page ground it
+    // may also be used as text on. #ab3d08 reaches 6.17:1 on a card and
+    // 4.62:1 on the ground. The blog's #e05a2b is 3.71:1 on white and the
+    // previous #c64a0c fell to 3.87:1 once the ground was tinted, so both
+    // had to go deeper in the same hue family.
+    colorPrimary: '#ab3d08',
+    colorInfo: '#ab3d08',
     colorSuccess: '#12703a',
-    colorWarning: '#a34a07',
+    colorWarning: '#9c4a06',
     colorError: '#b91c1c',
-    colorLink: '#b8430a',
+    colorLink: '#96330a',
+    // The ground is now a tint, not white. A white container sitting on it
+    // is what makes a Card read as raised — with both at #ffffff the card
+    // was invisible and only a 1.09:1 hairline separated them.
     colorBgBase: '#ffffff',
     colorTextBase: '#0f1419',
-    colorBgLayout: '#ffffff',
+    colorBgLayout: '#dae0df',
     colorBgContainer: '#ffffff',
-    colorBorder: '#e7e9ea',
-    colorBorderSecondary: '#f0f2f3',
-    colorFillAlter: '#f7f9f8',
+    colorBorder: '#bcc2c1',
+    colorBorderSecondary: '#e9edec',
+    colorFillAlter: '#e9edec',
+    // A field's own border, kept apart from colorBorder so it can clear
+    // 3:1 (WCAG 1.4.11) without darkening every separator on the page.
+    controlOutline: '#787e7e',
     fontFamily: FONT,
     fontSize: 14,
     borderRadius: 4,
@@ -50,9 +59,9 @@ export const lightTheme = {
   },
   components: {
     Layout: {
-      siderBg: '#ffffff',
-      headerBg: '#ffffff',
-      bodyBg: '#ffffff',
+      siderBg: '#dae0df',
+      headerBg: '#dae0df',
+      bodyBg: '#dae0df',
     },
     Menu: {
       itemBg: 'transparent',
@@ -62,18 +71,18 @@ export const lightTheme = {
       itemMarginInline: 8,
       itemMarginBlock: 1,
       iconSize: 15,
-      itemColor: '#5b6570',
+      itemColor: '#4d5761',
       itemHoverColor: '#0f1419',
-      itemHoverBg: '#f7f9f8',
-      itemSelectedColor: '#b8430a',
-      itemSelectedBg: '#fff4ef',
+      itemHoverBg: '#e9edec',
+      itemSelectedColor: '#96330a',
+      itemSelectedBg: '#fdf0e8',
     },
     Table: {
-      headerBg: '#f7f9f8',
-      headerColor: '#5b6570',
+      headerBg: '#e9edec',
+      headerColor: '#4d5761',
       headerSplitColor: 'transparent',
-      rowHoverBg: '#f7f9f8',
-      borderColor: '#e7e9ea',
+      rowHoverBg: '#eef2f1',
+      borderColor: '#bcc2c1',
       headerBorderRadius: 0,
       cellPaddingBlock: 11,
       cellPaddingInline: 12,
@@ -84,6 +93,7 @@ export const lightTheme = {
       headerFontSize: 14,
       bodyPadding: 20,
       boxShadowTertiary: 'none',
+      colorBorderSecondary: '#e9edec',
     },
     Button: {
       fontWeight: 500,
@@ -91,18 +101,32 @@ export const lightTheme = {
       primaryShadow: 'none',
       dangerShadow: 'none',
       defaultBg: '#ffffff',
-      defaultBorderColor: '#d0d5d8',
+      // The default button's own edge, not a separator — see controlOutline.
+      defaultBorderColor: '#787e7e',
       paddingInline: 14,
     },
     Input: {
       activeShadow: '0 0 0 2px rgba(15, 20, 25, 0.10)',
+      colorBorder: '#787e7e',
+      hoverBorderColor: '#96330a',
+      activeBorderColor: '#ab3d08',
     },
     Select: {
-      optionSelectedBg: '#fff4ef',
+      optionSelectedBg: '#fdf0e8',
+      colorBorder: '#787e7e',
+      optionItemBg: '#ffffff',
+    },
+    InputNumber: {
+      colorBorder: '#787e7e',
+      activeBorderColor: '#ab3d08',
+    },
+    DatePicker: {
+      colorBorder: '#787e7e',
+      activeBorderColor: '#ab3d08',
     },
     Tag: {
-      defaultBg: '#f2f4f4',
-      defaultColor: '#5b6570',
+      defaultBg: '#f2f5f4',
+      defaultColor: '#4d5761',
     },
     Statistic: {
       titleFontSize: 12,
@@ -110,23 +134,23 @@ export const lightTheme = {
     },
     Tabs: {
       titleFontSize: 14,
-      itemColor: '#5b6570',
-      itemActiveColor: '#b8430a',
-      itemHoverColor: '#c64a0c',
-      itemSelectedColor: '#b8430a',
-      inkBarColor: '#c64a0c',
+      itemColor: '#4d5761',
+      itemActiveColor: '#96330a',
+      itemHoverColor: '#ab3d08',
+      itemSelectedColor: '#96330a',
+      inkBarColor: '#ab3d08',
       horizontalItemGutter: 24,
     },
     Descriptions: {
-      labelBg: '#f7f9f8',
-      labelColor: '#5b6570',
+      labelBg: '#e9edec',
+      labelColor: '#4d5761',
       titleColor: '#0f1419',
     },
     Alert: {
       borderRadius: 4,
     },
     Steps: {
-      colorSplit: '#d0d5d8',
+      colorSplit: '#9fa5a4',
     },
     Modal: {
       contentBg: '#ffffff',

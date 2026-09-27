@@ -46,6 +46,130 @@ const LIGHT = block(':root {', '@media (prefers-color-scheme: dark)');
 const DARK = block('@media (prefers-color-scheme: dark)', 'html[lang="vi"]');
 const t = (name, scope = LIGHT) => token(name, scope);
 
+// ── The admin's real tokens ───────────────────────────────────────
+// Same reasoning, same source discipline: read tokens.css rather than
+// restate the palette. The admin palette is declared in three parallel
+// files (theme.js, tokens.css, public/admin.css) and the admin shipped
+// a card that was 1.00:1 against its own page for exactly the reason a
+// restated gate cannot catch — all three agreed, and all three were
+// wrong. This reads one of them and checks the others for drift.
+const adminCss = readFileSync(join(REPO_ROOT, 'src', 'admin', 'styles', 'tokens.css'), 'utf8');
+const adminTheme = readFileSync(join(REPO_ROOT, 'src', 'admin', 'theme.js'), 'utf8');
+const legacyAdmin = readFileSync(join(REPO_ROOT, 'public', 'admin.css'), 'utf8');
+
+const adminLight = adminCss.slice(adminCss.indexOf(':root {'), adminCss.indexOf(":root[data-theme='dark']"));
+const a = (name) => {
+  const m = adminLight.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,8})`));
+  if (!m) throw new Error(`check-contrast: --${name} not found in src/admin/styles/tokens.css`);
+  return m[1];
+};
+
+// A tint so faint the surfaces read as one is the original admin bug, so
+// the ladder gets its own non-text check: card must sit clear of ground.
+const ADMIN = [
+  ['— admin light, the surface ladder —', '', '', 0],
+  ['card raised on page ground', a('bg-card'), a('bg'), 1.10],
+  ['soft raised on page ground', a('bg-soft'), a('bg'), 1.05],
+  ['inset raised on page ground', a('bg-inset'), a('bg'), 1.05],
+  ['card raised on soft', a('bg-card'), a('bg-soft'), 1.05],
+  ['card raised on inset', a('bg-card'), a('bg-inset'), 1.05],
+
+  ['— admin light, text on every surface it lands on —', '', '', 0],
+  ['ink on ground', a('ink'), a('bg'), 4.5],
+  ['ink on card', a('ink'), a('bg-card'), 4.5],
+  ['ink-dim on ground', a('ink-dim'), a('bg'), 4.5],
+  ['ink-dim on soft', a('ink-dim'), a('bg-soft'), 4.5],
+  ['ink-dim on card', a('ink-dim'), a('bg-card'), 4.5],
+  ['ink-faint on ground', a('ink-faint'), a('bg'), 4.5],
+  ['ink-faint on soft', a('ink-faint'), a('bg-soft'), 4.5],
+  ['ink-faint on card', a('ink-faint'), a('bg-card'), 4.5],
+  ['accent on ground', a('accent'), a('bg'), 4.5],
+  ['accent on card', a('accent'), a('bg-card'), 4.5],
+  ['accent-deep on ground', a('accent-deep'), a('bg'), 4.5],
+  ['accent-deep on accent-soft', a('accent-deep'), a('accent-soft'), 4.5],
+  ['good on ground', a('good'), a('bg'), 4.5],
+  ['warn on ground', a('warn'), a('bg'), 4.5],
+  ['bad on ground', a('bad'), a('bg'), 4.5],
+  ['good on its chip', a('good'), a('good-soft'), 4.5],
+  ['warn on its chip', a('warn'), a('warn-soft'), 4.5],
+  ['bad on its chip', a('bad'), a('bad-soft'), 4.5],
+  ['ink-dim on the muted chip', a('ink-dim'), a('bg-inset'), 4.5],
+
+  ['— admin light, fills that carry a label —', '', '', 0],
+  ['white on accent (primary button)', a('accent-ink'), a('accent'), 4.5],
+  ['white on accent-deep', a('accent-ink'), a('accent-deep'), 4.5],
+  ['white on accent-hover', a('accent-ink'), a('accent-hover'), 4.5],
+
+  ['— admin light, borders —', '', '', 0],
+  // WCAG 1.4.11: a control's own boundary needs 3:1 against its backdrop.
+  ['control edge on card', a('line-control'), a('bg-card'), 3.0],
+  ['control edge on page ground', a('line-control'), a('bg'), 3.0],
+  ['control edge on soft', a('line-control'), a('bg-soft'), 3.0],
+  ['line-2 on page ground', a('line-2'), a('bg'), 1.5],
+  ['line on page ground', a('line'), a('bg'), 1.3],
+];
+
+// The three files that declare this palette must agree. They are edited
+// by hand in three places, and a silent drift there is invisible until
+// a component starts reading the wrong file. The three do not spell the
+// palette the same way — tokens.css and admin.css use custom properties,
+// theme.js uses antd's own token names — so each is checked in its own
+// vocabulary, mapped by what a token *is* rather than by name order.
+// (antd's colorBorderSecondary is a fill, not a second line weight, and
+// its Table headerColor is the dim ink tier, so mapping those onto
+// --line-2 and --ink-faint would report drift that is not there.)
+const A_TO_ANTD = {
+  bg: 'colorBgLayout',
+  'bg-card': 'colorBgContainer',
+  'bg-soft': 'colorBorderSecondary',
+  ink: 'colorTextBase',
+  'ink-dim': 'itemColor',
+  accent: 'colorPrimary',
+  'accent-deep': 'colorLink',
+  line: 'colorBorder',
+};
+// Tokens antd has no equivalent for. They still have to be present in
+// both CSS files, because the shell chrome and the cover editor read them.
+const CSS_ONLY = ['ink-faint', 'line-2', 'line-control', 'bg-inset', 'accent-soft', 'accent-line', 'accent-hover'];
+const drift = [];
+
+// public/admin.css declares the custom properties directly.
+{
+  const legacy = legacyAdmin.slice(legacyAdmin.indexOf(':root{'));
+  for (const name of [...Object.keys(A_TO_ANTD), ...CSS_ONLY]) {
+    const m = legacy.match(new RegExp(`(?:^|[^-\\w])--${name}:\\s*(#[0-9a-fA-F]{3,8})`));
+    if (!m) { drift.push(`public/admin.css: --${name} not found`); continue; }
+    if (m[1].toLowerCase() !== a(name).toLowerCase()) {
+      drift.push(`public/admin.css: --${name} is ${m[1]}, tokens.css has ${a(name)}`);
+    }
+  }
+}
+
+// src/admin/theme.js declares the same values under antd's token names.
+// Only the light block is checked: the dark block is a different palette,
+// and this script's light checks do not cover it.
+{
+  const light = adminTheme.slice(
+    adminTheme.indexOf('lightTheme'),
+    adminTheme.indexOf('darkTheme'),
+  );
+  for (const [name, antdName] of Object.entries(A_TO_ANTD)) {
+    const re = new RegExp(`${antdName}:\\s*'(#[0-9a-fA-F]{3,8})'`);
+    const m = light.match(re);
+    if (!m) { drift.push(`src/admin/theme.js: ${antdName} not found`); continue; }
+    if (m[1].toLowerCase() !== a(name).toLowerCase()) {
+      drift.push(`src/admin/theme.js: ${antdName} is ${m[1]}, tokens.css --${name} is ${a(name)}`);
+    }
+  }
+  // The control edge is the one token antd spells differently: it is not a
+  // border, it is the outline it draws around a focused control.
+  const edge = light.match(/controlOutline:\s*'(#[0-9a-fA-F]{3,8})'/);
+  if (!edge) drift.push('src/admin/theme.js: controlOutline not found');
+  else if (edge[1].toLowerCase() !== a('line-control').toLowerCase()) {
+    drift.push(`src/admin/theme.js: controlOutline is ${edge[1]}, tokens.css --line-control is ${a('line-control')}`);
+  }
+}
+
 // [label, foreground, background, minimum] — 4.5 for body text, 3.0 for
 // large text (>=18.66px bold or >=24px) and for UI component boundaries.
 const PAIRS = [
@@ -213,11 +337,42 @@ for (const hue of HUES) {
 }
 console.log('-'.repeat(60));
 
+console.log('\nadmin tokens, read from src/admin/styles/tokens.css');
+console.log('-'.repeat(60));
+for (const [label, fg, bg, min] of ADMIN) {
+  if (min === 0) {
+    console.log(label);
+    continue;
+  }
+  const r = ratio(fg, bg);
+  const ok = r >= min;
+  if (!ok) failed++;
+  console.log(
+    `${label.padEnd(32)} ${r.toFixed(2).padStart(5)}  ${min.toFixed(1).padStart(4)}   ${ok ? 'PASS' : 'FAIL'}   ${fg} on ${bg}`,
+  );
+}
+console.log('-'.repeat(60));
+
+// The three files that spell out this palette have to agree, or a
+// component reading one of them renders a surface the other two never
+// heard of.
+console.log('\nadmin palette drift — tokens.css vs theme.js and public/admin.css');
+console.log('-'.repeat(60));
+if (drift.length === 0) {
+  console.log('  all three files declare the same values');
+} else {
+  failed += drift.length;
+  for (const d of drift) console.log(`  FAIL ${d}`);
+}
+console.log('-'.repeat(60));
+
 // The previous palette, for reference — these are the values this replaced.
 const OLD = [
   ['old good chip', '#52c41a', '#ffffff'],
   ['old warn chip', '#faad14', '#ffffff'],
   ['old bad chip',  '#ff4d4f', '#ffffff'],
+  ['old admin card', '#ffffff', '#ffffff'],
+  ['old admin edge', '#e7e9ea', '#ffffff'],
 ];
 console.log('\nPrevious palette at 12px on white (for comparison):');
 for (const [label, fg, bg] of OLD) {
