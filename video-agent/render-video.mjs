@@ -23,7 +23,7 @@ import { spawnSync } from 'node:child_process';
 import { esc, sceneInner, wantsBackground } from './scenes.mjs';
 import {
   DURATION, INTENTS, MIN_SCENES, beatSlots, clampDuration, clampWords, intentFromSignals,
-  reviewStoryboard, sanitizeStoryboard, storyboardFromContent, wordCount,
+  reviewStoryboard, sanitizeStoryboard, storyboardFromContent, suggestDuration, wordCount,
 } from './storyboard.mjs';
 import { collectAssets, downloadLogo } from './assets.mjs';
 import { templateById, intentForTemplate } from './templates.mjs';
@@ -160,12 +160,13 @@ const SCENE_BRIEF = `Các loại cảnh được phép (chỉ dùng trong danh s
 LUẬT BẮT BUỘC:
 1. "text" tối đa 8 từ, là CAPTION ngắn chứ không phải toàn bộ lời kể. Không xuống dòng dài dòng.
 2. "say" là lời đọc đầy đủ của cảnh đó, khoảng 80–95% số giây dàn ý (tính theo 2.3–2.7 từ/giây). Không để cảnh dài nhưng lời đọc chỉ có một câu ngắn.
-3. Lời đọc phải triển khai TẤT CẢ ý chính, bối cảnh, chi tiết, kết quả và hành động có trong nội dung nguồn theo đúng thứ tự. Tuyệt đối không tạo khoảng trống, không giấu ý chính để người xem phải đọc bài mới hiểu.
+3. Lời đọc phải phủ HẾT các ý chính của bài — mỗi ý chính (mỗi mục H2, mỗi luận điểm, mỗi bước) một cảnh riêng, theo đúng thứ tự bài viết. Tuyệt đối không tạo khoảng trống, không gộp nhiều ý vào một câu, không giấu ý chính để người xem phải đọc bài mới hiểu. Cảnh cuối cùng trước CTA dành cho kết luận, không dùng để kể thêm ý mới.
 4. CHỈ dùng asset có trong danh sách. Không bịa ảnh.
 5. CHỈ dùng con số CÓ TRONG NỘI DUNG. Không làm tròn, không suy diễn.
 6. Cảnh đầu là hook (bản tin mở bằng headline), cảnh cuối là cta. Không lặp hai cảnh cùng loại liền nhau.
 7. Người xem phải hiểu nội dung khi TẮT TIẾNG — hình phải mang thông tin.
-8. Phân công "motion" như đạo diễn: zoom cho hook, scroll cho ảnh chụp website trong khung, pan cho ảnh thật, reveal cho biểu đồ. Chuyển động phải chậm, liền mạch; không chọn none cho cảnh có ảnh.`;
+8. MỖI CẢNH, trừ CTA cuối, PHẢI CÓ MINH HOẠ: hoặc "asset" thật trong danh sách trên, hoặc là loại đồ hoạ tự vẽ (bars, donut, line, steps, icons, compare, timeline, stat, keypoints, rating, feature). Cảnh chỉ có chữ trên nền gradient là LỖI, không phải lựa chọn an toàn. Khi một nhịp dàn ý bị lặp (cùng tên beat xuất hiện nhiều lần), hãy dùng MỘT loại hình khác nhau cho mỗi lần lặp để không lặp lại cùng một thẻ.
+9. Phân công "motion" như đạo diễn: zoom cho hook, scroll cho ảnh chụp website trong khung, pan cho ảnh thật, reveal cho biểu đồ. Chuyển động phải chậm, liền mạch; không chọn none cho cảnh có ảnh.`;
 
 async function writeStoryboard(job, { source, suggested, assets, target, forced = null }) {
   if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
@@ -174,10 +175,15 @@ async function writeStoryboard(job, { source, suggested, assets, target, forced 
   // back to `forced` anyway, so a model that ignores the line below cannot
   // move the video off the chosen template.
   const intent = forced || suggested;
+  // The outline already carries the expanded beat list, so the model is shown
+  // the exact number of screens the video is made of and where the extra ones
+  // came from — a repeated beat name is the signal to draw a different shape.
   const slots = beatSlots(intent, target);
-  const outline = slots.map((s) => {
-    const spokenWords = Math.max(5, Math.round(s.duration * 2.5));
-    return `  ${s.beat} (~${s.duration}s, khoảng ${spokenWords} từ): ${s.types.join(' | ')}`;
+  const outline = slots.map((s, i) => {
+    const spokenWords = Math.max(4, Math.round(s.duration * 2.5));
+    const copies = slots.filter((o) => o.beat === s.beat).length;
+    const suffix = copies > 1 ? ` [phần ${slots.slice(0, i + 1).filter((o) => o.beat === s.beat).length}/${copies} — dùng hình khác các phần trước]` : '';
+    return `  ${s.beat} (~${s.duration}s, khoảng ${spokenWords} từ): ${s.types.join(' | ')}${suffix}`;
   }).join('\n');
   const assetList = Object.keys(assets).length
     ? Object.keys(assets).map((k) => `  ${k}`).join('\n')
@@ -721,6 +727,14 @@ function businessShell({ accent, total, sceneHtml, audioHtml, sceneMeta, logoSrc
   .res-n { color:#fff; font-weight:800; line-height:1; letter-spacing:-0.03em; }
   .res-u { font-size:0.5em; margin-left:6px; }
   .res-t { color:#eaf1f8; font-size:42px; font-weight:600; max-width:580px; }
+  /* A result beat with no number left draws the source's own points instead
+     of a lone caption, so the screen still carries its argument in the image. */
+  .res-list { list-style:none; margin:22px 0 0; padding:0; display:flex;
+    flex-direction:column; gap:12px; max-width:600px; }
+  .res-list li { position:relative; padding-left:34px; color:#eaf1f8; font-size:30px;
+    line-height:1.3; font-weight:500; }
+  .res-list li::before { content:''; position:absolute; left:0; top:11px; width:14px;
+    height:14px; border-radius:4px; background:var(--accent,#e8590c); }
   .ba { gap:16px; }
   .ba-col { position:relative; width:100%; border-radius:14px; overflow:hidden;
     background:rgba(255,255,255,0.05); }
@@ -1247,12 +1261,20 @@ export async function renderOne(job, deps = {}) {
 
   // 1. What is there to show? Asset-first: the story is written after the
   // material is known, so it can only reference what actually exists.
-  // A template on the job pins the intent (and its default length) before any
-  // signal is read — the user's choice outranks the classifier.
+  // A template on the job pins the intent before any signal is read — the
+  // user's choice outranks the classifier.
   const tpl = templateById(job.template);
   const forced = tpl && intentForTemplate(tpl, job);
-  const target = clampDuration(Number(job.duration) || Number(E('VIDEO_DURATION')) || tpl?.defaultDuration || DURATION.default);
   const source = job.body_markdown || job.project?.description || '';
+  // How long the video should be is the article's own decision when nobody
+  // said: a short answer gets the 60s floor, a long piece with many sections
+  // earns the 90s ceiling. `source` is the article on purpose — the captured
+  // page text is marketing copy scraped off a footer, and letting it count
+  // would make every business job look like a long read.
+  const target = clampDuration(
+    Number(job.duration) || Number(E('VIDEO_DURATION')) || suggestDuration(source)
+    || tpl?.defaultDuration || DURATION.default,
+  );
   const suggested = forced
     ? { intent: forced, reason: `template "${tpl.id}" chosen by the user` }
     : intentFromSignals(job, source);

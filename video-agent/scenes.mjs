@@ -311,12 +311,18 @@ export function featureCard(s, accent) {
   </div>`;
 }
 
-// The payoff. A real number when the source had one, otherwise the claim.
+// The payoff. A real number when the source had one, otherwise the claim —
+// and, on a long video, otherwise the source's own points. A result card with
+// nothing but a caption is the bare screen the storyboard gate refuses, so
+// when the beat repeats and the article offers no number, it draws rows.
 export function resultCard(s, accent) {
   const value = s.value === undefined || s.value === null || s.value === '' ? '' : fmtNum(s.value);
+  const rows = !value && Array.isArray(s.items)
+    ? s.items.filter((item) => item?.label).slice(0, 4) : [];
   return `<div class="ex result">
     ${value ? `<p class="res-n" style="font-size:${statSize(value + (s.unit || ''))}px">${esc(value)}<span class="res-u" style="color:${accent}">${esc(s.unit || '')}</span></p>` : ''}
     <p class="res-t">${esc(s.text)}</p>
+    ${rows.length ? `<ul class="res-list">${rows.map((item) => `<li>${esc(item.label)}</li>`).join('')}</ul>` : ''}
   </div>`;
 }
 

@@ -54,7 +54,7 @@ import {
 import { onRequestPost as createExplainerJob } from '../functions/api/admin/video/explainer.js';
 import { onRequestDelete as deleteProgKeyword } from '../functions/api/admin/prog/queue.js';
 import { onRequestPost as claimVideoJob } from '../functions/api/admin/video/claim.js';
-import { VIDEO_TEMPLATES, videoTemplateById } from '../functions/_lib/video_templates.js';
+import { VIDEO_TEMPLATES, videoTemplateById, clampVideoDuration } from '../functions/_lib/video_templates.js';
 import { BGM_TRACKS } from '../functions/_lib/bgm_catalog.js';
 import { onRequestPost as createVideoJob } from '../functions/api/admin/video/create.js';
 import { onRequestGet as listVideoTemplates } from '../functions/api/admin/video/templates.js';
@@ -2923,15 +2923,33 @@ async function testVideoTemplates() {
     'presenter_image_url ships absolute for the off-platform agent');
   ok('claim returns template, duration and an absolute presenter_image_url');
 
-  // The business/website claim path carries the same fields.
+  // The business/website claim path carries the same fields. A 30s request
+  // comes back as 60: the floor is a contract with the operator, not a
+  // suggestion the endpoint is free to ignore.
   await create({ project_id: PROJECT, source: { type: 'business' }, template: 'local', duration: 30 });
   const biz = await (await claimVideoJob({
     env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'business', project_id: PROJECT } }),
   })).json();
   assert.equal(biz?.job?.template, 'local');
-  assert.equal(biz?.job?.duration, 30);
+  assert.equal(biz?.job?.duration, 60, 'a sub-minute request is raised to the 60s floor on the way in');
   assert.equal(biz?.job?.project?.presenter_image_url, 'https://x/image/project/x/presenter/p.png');
   ok('the business claim path carries template/duration/presenter too');
+
+  // The duration band itself, at both ends and outside it.
+  assert.equal(clampVideoDuration(20), 60, '20s is raised to the floor');
+  assert.equal(clampVideoDuration(59), 60, 'just under a minute is still the floor');
+  assert.equal(clampVideoDuration(60), 60, 'the floor itself is left alone');
+  assert.equal(clampVideoDuration(75), 75, 'the middle of the band passes through');
+  assert.equal(clampVideoDuration(90), 90, 'the ceiling is left alone');
+  assert.equal(clampVideoDuration(200), 90, 'above the ceiling is clamped, not refused');
+  assert.equal(clampVideoDuration(null), null, 'no duration means the engine decides');
+  assert.equal(clampVideoDuration(''), null, 'an empty duration means the engine decides');
+  // Every template leaves the length to the article, so nothing in the catalog
+  // can reintroduce a 20-second video.
+  for (const t of VIDEO_TEMPLATES) {
+    assert.equal(t.defaultDuration, null, `template "${t.id}" no longer hardcodes a length`);
+  }
+  ok('durations are clamped to 60-90s and no template hardcodes one');
 
   // ── background music ──────────────────────────────────────────────
   // 'bgm' validates against the catalog like template does: an unknown

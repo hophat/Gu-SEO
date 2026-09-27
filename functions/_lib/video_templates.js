@@ -11,7 +11,11 @@
 //                    ('post' | 'url' | 'business'); 'auto' accepts all.
 //   needsPresenter — the template draws a talking head, so it stays
 //                    disabled until the project uploads presenter_image_url.
-//   defaultDuration— seconds; NULL (auto) lets the engine decide.
+//   defaultDuration— seconds; NULL on every row means the engine measures the
+//                    article and picks 60/75/90 (see suggestDuration in
+//                    video-agent/storyboard.mjs). Nothing here hardcodes a
+//                    length any more, because a length chosen before reading
+//                    the article is the length that used to cut it in half.
 //   intent         — display hint only; the API does not consume it.
 
 export const VIDEO_TEMPLATES = [
@@ -31,7 +35,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'news',
     sources: ['post'],
     needsPresenter: true,
-    defaultDuration: 30,
+    defaultDuration: null,
   },
   {
     id: 'story',
@@ -40,7 +44,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'storytelling',
     sources: ['post', 'url', 'business'],
     needsPresenter: false,
-    defaultDuration: 25,
+    defaultDuration: null,
   },
   {
     id: 'summary',
@@ -49,7 +53,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'summary',
     sources: ['post'],
     needsPresenter: false,
-    defaultDuration: 20,
+    defaultDuration: null,
   },
   {
     id: 'product',
@@ -58,7 +62,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'product',
     sources: ['url', 'business', 'post'],
     needsPresenter: false,
-    defaultDuration: 20,
+    defaultDuration: null,
   },
   {
     id: 'local',
@@ -67,7 +71,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'local_business',
     sources: ['business', 'post'],
     needsPresenter: false,
-    defaultDuration: 20,
+    defaultDuration: null,
   },
   {
     id: 'explainer',
@@ -76,7 +80,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'educational',
     sources: ['post'],
     needsPresenter: false,
-    defaultDuration: 30,
+    defaultDuration: null,
   },
   {
     id: 'listicle',
@@ -85,7 +89,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'listicle',
     sources: ['post'],
     needsPresenter: false,
-    defaultDuration: 25,
+    defaultDuration: null,
   },
   {
     id: 'launch',
@@ -94,7 +98,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'announcement',
     sources: ['post', 'url', 'business'],
     needsPresenter: false,
-    defaultDuration: 20,
+    defaultDuration: null,
   },
   {
     id: 'review',
@@ -103,7 +107,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'testimonial',
     sources: ['post', 'business'],
     needsPresenter: false,
-    defaultDuration: 20,
+    defaultDuration: null,
   },
   {
     id: 'before_after',
@@ -112,7 +116,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'before_after',
     sources: ['post', 'url', 'business'],
     needsPresenter: false,
-    defaultDuration: 20,
+    defaultDuration: null,
   },
   {
     id: 'qa',
@@ -121,7 +125,7 @@ export const VIDEO_TEMPLATES = [
     intent: 'qa',
     sources: ['post'],
     needsPresenter: false,
-    defaultDuration: 25,
+    defaultDuration: null,
   },
 ];
 
@@ -140,11 +144,14 @@ export function parseTemplateParam(value) {
   return t ? { ok: true, template: t.id, def: t } : { ok: false };
 }
 
-// 15–90s covers legacy short templates and the 60s comprehensive default.
-// Values outside the band are clamped rather than rejected.
+// 60–90s. The floor is a promise the whole pipeline keeps: a blog video that
+// runs shorter than a minute has not covered the article, and the templates
+// that used to ask for 20–30s were cutting every piece in half. Values outside
+// the band are clamped rather than rejected, so an old stored value or a stale
+// wizard still lands on a legal length.
 export function clampVideoDuration(value) {
   if (value === undefined || value === null || value === '') return null;
   const n = Math.round(Number(value));
   if (!Number.isFinite(n)) return null;
-  return Math.min(90, Math.max(15, n));
+  return Math.min(90, Math.max(60, n));
 }

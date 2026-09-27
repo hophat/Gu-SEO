@@ -51,12 +51,19 @@ const ASSET_RENDER_TYPES = new Set([
 ]);
 
 // ── budgets ──────────────────────────────────────────────────────────
-// Mặc định mới: đủ thời gian kể các ý chính của bài, không ép lời đọc thành
-// teaser. 15–90s vẫn giữ mọi template cũ hợp lệ; wizard auto dùng 60s.
-export const DURATION = { min: 15, max: 90, default: 60 };
+// Mọi video phải đủ thời gian kể hết các ý chính của bài, không ép lời đọc
+// thành teaser. 60s là sàn cứng: `clampDuration` áp nó lên mọi template,
+// kể cả khi người dùng không chọn thời lượng.
+export const DURATION = { min: 60, max: 90, default: 75 };
 export const MIN_SCENES = 3;
-export const MAX_SCENES = 8;
+export const MAX_SCENES = 12;
 export const MAX_TEXT_WORDS = 8;
+
+// A screen you can actually look at needs about this long, and the storyboard
+// spends its seconds on screens rather than on one long one: a 75s video made
+// of six 12s cards reads as a slide deck, the same 75s made of twelve 6s cards
+// reads as a video. This is the divisor in `sceneCountFor`.
+const SECONDS_PER_SCREEN = 6.5;
 
 // Vietnamese edge-tts at +8% measures roughly this on the render VPS. It is
 // a starting point, not a truth: the pipeline measures the audio it actually
@@ -67,96 +74,164 @@ export const WORDS_PER_SECOND = 2.6;
 // Ordered beats per intent. `weight` is a share of the total duration, and
 // `types` is the whole vocabulary that beat is allowed to use — so a
 // `bars` scene in a local-business video is dropped, not drawn.
-const beats = (...rows) => rows.map(([beat, weight, types]) => ({ beat, weight, types }));
+//
+// `repeatable` marks the beats that may take a second screen when a long
+// article has more key points than the base template has room for. The
+// opener, the closer and the single-shape signature beats (summary's
+// keypoints, a bulletin's headline) never repeat: a second keypoints card
+// directly after the first is the repetition the variety rule exists to stop.
+const beats = (...rows) => rows.map(([beat, weight, types, repeatable = false]) => ({ beat, weight, types, repeatable }));
 
 export const BEATS = {
   product_demo: beats(
     ['hook', 1.0, ['hook']],
-    ['problem', 1.2, ['problem', 'photo']],
-    ['product', 1.5, ['product_reveal', 'ui_demo']],
-    ['demo', 2.2, ['ui_demo', 'feature']],
+    ['problem', 1.2, ['problem', 'photo', 'compare'], true],
+    ['product', 1.5, ['product_reveal', 'ui_demo', 'icons'], true],
+    ['demo', 2.2, ['ui_demo', 'feature', 'steps', 'icons'], true],
     ['result', 1.2, ['result', 'stat']],
     ['cta', 1.4, ['cta']],
   ),
   product_promotion: beats(
     ['hook', 1.1, ['hook']],
-    ['product', 1.5, ['product_reveal', 'ui_demo']],
-    ['benefit', 1.6, ['feature', 'icons']],
-    ['proof', 1.3, ['rating', 'quote', 'stat']],
+    ['product', 1.5, ['product_reveal', 'ui_demo', 'icons'], true],
+    ['benefit', 1.6, ['feature', 'icons', 'steps'], true],
+    ['proof', 1.3, ['rating', 'quote', 'stat'], true],
     ['offer', 1.1, ['result', 'stat']],
     ['cta', 1.4, ['cta']],
   ),
   local_business: beats(
     ['hook', 1.0, ['hook']],
-    ['business', 1.3, ['product_reveal', 'photo']],
-    ['product', 2.0, ['photo', 'feature']],
-    ['experience', 1.6, ['photo', 'ui_demo']],
+    ['business', 1.3, ['product_reveal', 'photo', 'icons'], true],
+    ['product', 2.0, ['photo', 'feature', 'icons'], true],
+    ['experience', 1.6, ['photo', 'ui_demo', 'icons', 'steps'], true],
     ['location', 1.4, ['location', 'rating']],
     ['cta', 1.4, ['cta']],
   ),
   educational: beats(
     ['hook', 1.1, ['hook']],
-    ['insight', 1.4, ['stat', 'quote']],
-    ['point', 2.4, ['bars', 'donut', 'line', 'steps', 'icons', 'compare', 'timeline']],
+    ['insight', 1.4, ['stat', 'quote', 'donut', 'bars', 'compare', 'timeline', 'icons'], true],
+    ['point', 2.4, ['bars', 'donut', 'line', 'steps', 'icons', 'compare', 'timeline'], true],
     ['conclusion', 1.3, ['quote', 'result']],
     ['cta', 1.3, ['cta']],
   ),
   storytelling: beats(
     ['hook', 1.0, ['hook']],
-    ['problem', 1.3, ['problem', 'photo']],
-    ['tension', 1.5, ['quote', 'photo']],
-    ['transformation', 1.8, ['before_after', 'ui_demo']],
+    // A story's problem and tension used to resolve to a bare caption. The
+    // extra shapes are what a second screen of the same beat turns into.
+    ['problem', 1.3, ['problem', 'photo', 'compare', 'icons'], true],
+    ['tension', 1.5, ['quote', 'photo', 'icons', 'timeline', 'stat', 'compare'], true],
+    ['transformation', 1.8, ['before_after', 'ui_demo', 'compare', 'steps'], true],
     ['result', 1.4, ['result', 'stat']],
     ['cta', 1.3, ['cta']],
   ),
   announcement: beats(
     ['hook', 1.0, ['hook']],
-    ['what', 1.6, ['product_reveal', 'ui_demo']],
-    ['why', 1.5, ['feature', 'stat']],
-    ['demo', 1.9, ['ui_demo', 'feature']],
+    ['what', 1.6, ['product_reveal', 'ui_demo', 'icons'], true],
+    ['why', 1.5, ['feature', 'stat', 'icons', 'steps'], true],
+    ['demo', 1.9, ['ui_demo', 'feature', 'steps', 'icons'], true],
     ['cta', 1.4, ['cta']],
   ),
   testimonial: beats(
     ['hook', 1.1, ['hook']],
-    ['voice', 2.0, ['quote', 'rating']],
-    ['proof', 1.6, ['result', 'stat', 'photo']],
+    // A beat that may repeat needs a second shape that is *drawn*, or the
+    // second screen is a caption on a gradient. `icons` and `stat` give the
+    // extra screens something to look at.
+    ['voice', 2.0, ['quote', 'rating', 'icons', 'timeline', 'stat', 'before_after'], true],
+    ['proof', 1.6, ['result', 'stat', 'photo', 'ui_demo', 'rating'], true],
     ['cta', 1.3, ['cta']],
   ),
   before_after: beats(
     ['hook', 1.0, ['hook']],
-    ['before', 1.7, ['photo', 'problem']],
-    ['after', 1.7, ['photo', 'result']],
-    ['change', 1.9, ['before_after', 'ui_demo']],
+    ['before', 1.7, ['photo', 'problem', 'compare', 'icons'], true],
+    ['after', 1.7, ['photo', 'result', 'ui_demo', 'rating'], true],
+    ['change', 1.9, ['before_after', 'ui_demo', 'compare', 'steps']],
     ['cta', 1.3, ['cta']],
   ),
   listicle: beats(
     ['hook', 1.1, ['hook']],
-    ['items', 3.2, ['steps', 'icons', 'bars']],
+    ['items', 3.2, ['steps', 'icons', 'bars'], true],
     ['close', 1.2, ['quote', 'result']],
     ['cta', 1.3, ['cta']],
   ),
   news: beats(
     ['headline', 1.0, ['headline']],
     ['anchor_intro', 1.3, ['anchor', 'headline', 'feature']],
-    ['story', 2.4, ['photo', 'ui_demo', 'stat', 'location', 'feature']],
+    ['story', 2.4, ['photo', 'ui_demo', 'stat', 'location', 'feature', 'steps', 'icons'], true],
     ['anchor_close', 1.2, ['anchor', 'quote']],
     ['cta', 1.1, ['cta']],
   ),
   summary: beats(
     ['hook', 1.0, ['hook']],
-    ['keypoints', 2.6, ['keypoints']],
+    // A second card cannot be a second keypoints card. `steps` is the same
+    // idea drawn as a numbered list, so a summary that runs long reads as two
+    // different ways of listing rather than one list shown twice.
+    ['keypoints', 2.6, ['keypoints', 'steps'], true],
     ['takeaway', 1.2, ['quote', 'result']],
     ['cta', 1.2, ['cta']],
   ),
   qa: beats(
     ['hook', 1.0, ['hook']],
     ['question', 1.2, ['question']],
-    ['answer', 2.0, ['answer', 'photo', 'ui_demo', 'stat', 'steps']],
+    ['answer', 2.0, ['answer', 'photo', 'ui_demo', 'stat', 'steps'], true],
     ['question2', 1.0, ['question']],
-    ['answer2', 1.6, ['answer', 'feature', 'icons']],
+    ['answer2', 1.6, ['answer', 'feature', 'icons'], true],
     ['cta', 1.2, ['cta']],
   ),
 };
+
+// A beat may only name scene types the vocabulary has, and a repeatable beat
+// must offer at least one shape that draws something — otherwise the extra
+// screens a long article earns are all captions on a gradient. Both are cheap
+// to assert at load and expensive to discover in a rendered video.
+for (const [intent, rows] of Object.entries(BEATS)) {
+  for (const row of rows) {
+    if (typeof row.weight !== 'number' || !Number.isFinite(row.weight) || row.weight <= 0) {
+      throw new Error(`BEATS.${intent}.${row.beat} has a non-positive weight`);
+    }
+    if (!Array.isArray(row.types) || !row.types.length) {
+      throw new Error(`BEATS.${intent}.${row.beat} names no scene types`);
+    }
+    for (const type of row.types) {
+      if (!SCENE_TYPES.includes(type)) {
+        throw new Error(`BEATS.${intent}.${row.beat} names the unknown scene type "${type}"`);
+      }
+    }
+  }
+}
+
+// ── repeatable beats ─────────────────────────────────────────────────
+// A repeat is a *second point*, so it only makes sense where a beat already
+// means "one point of the body". The opener, the closer and the closing turn
+// (`result`, `conclusion`, `offer`, `change`, `close`, `takeaway`, `location`,
+// `anchor_close`) are excluded by the NEVER_REPEAT set below: two of them in a
+// row is a video that lands its ending twice and never arrives.
+const NEVER_REPEAT = new Set([
+  'hook', 'headline', 'cta',
+  'result', 'conclusion', 'offer', 'change', 'close', 'takeaway', 'location',
+  'anchor_intro', 'anchor_close',
+]);
+
+const REPEATABLE_BY_INTENT = Object.fromEntries(
+  Object.entries(BEATS)
+    .map(([intent, rows]) => [intent, rows.filter((b) => b.repeatable && !NEVER_REPEAT.has(b.beat))])
+    .filter(([, rows]) => rows.length),
+);
+
+// What a repeated screen should turn into, best first. Ordered by how much the
+// card actually draws: a chart or a list carries the point in the picture, a
+// quote is words on a gradient, so a repeat reaches for a drawn shape first and
+// only falls back to prose when the beat offers nothing else.
+const DRAWN_ALTERNATIVES = [
+  'bars', 'line', 'donut', 'compare', 'timeline', 'steps', 'icons', 'keypoints',
+  'stat', 'before_after', 'location', 'rating', 'result', 'feature',
+  'photo', 'ui_demo', 'product_reveal', 'answer', 'headline', 'question', 'quote',
+];
+
+// A quote is a legitimate screen — a line worth stopping on is not a defect.
+// But a run of them is a deck someone forgot to illustrate, so a beat that
+// offers a drawn shape may only keep `quote` for as many screens as it has
+// alternatives. This is the share of a repeated beat that may stay prose.
+const MAX_QUOTE_SHARE = 0.4;
 
 // ── text ─────────────────────────────────────────────────────────────
 export function words(s) {
@@ -189,11 +264,57 @@ export function clampDuration(sec) {
   return Math.min(DURATION.max, Math.max(DURATION.min, Math.round(n * 10) / 10));
 }
 
+// How many screens a video of this length is made of. The band is what keeps
+// the result a video at both ends: under 8 the seconds have to stretch over
+// too few cards and the video reads as a slideshow, and the template can
+// never have more beats than MAX_SCENES anyway.
+export function sceneCountFor(seconds) {
+  const wanted = Math.round((Number(seconds) || DURATION.default) / SECONDS_PER_SCREEN);
+  return Math.max(8, Math.min(MAX_SCENES, wanted));
+}
+
+// How long a video should be when the operator did not say. The article's own
+// structure decides, and a heading is the unit that matters: a 3,000-word post
+// is a list of sections, and each one is a point the video has to cover. Posts
+// written as loose prose have no headings, so their substantial sentences play
+// the same role.
+//
+// Counting words instead would be a trap — two posts of identical length can
+// carry very different numbers of sections, and it is the sections that decide
+// how many screens the video needs.
+const SECTIONS_SHORT = 5;
+const SECTIONS_LONG = 10;
+const SENTENCES_SHORT = 8;
+const SENTENCES_LONG = 16;
+
+export function suggestDuration(source) {
+  const body = String(source || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[[^\]]*]\([^)]+\)/g, ' ')
+    .replace(/\[([^\]]+)]\([^)]+\)/g, '$1');
+  const headings = (body.match(/^#{1,6}\s+\S/gm) || []).length;
+  if (headings) {
+    if (headings < SECTIONS_SHORT) return 60;
+    if (headings >= SECTIONS_LONG) return 90;
+    return 75;
+  }
+  const sentences = body
+    .split(/\n+|(?<=[.!?])\s+/)
+    .filter((sentence) => wordCount(sentence.replace(/^#{1,6}\s+/, '')) >= 8).length;
+  if (sentences < SENTENCES_SHORT) return 60;
+  if (sentences >= SENTENCES_LONG) return 90;
+  return 75;
+}
+
 // Spread `target` seconds across the intent's beats by weight. This is the
 // inversion at the heart of the rework: the story decides how long the video
 // is, and the narration is written to fit — not the other way round.
+//
+// The template is expanded first, so a 75s video is allotted to twelve screens
+// rather than to six long ones. Callers keep the two-argument signature and
+// get the expanded shape.
 export function beatSlots(intent, target = DURATION.default) {
-  const template = BEATS[intent] || BEATS.educational;
+  const template = expandBeats(intent, target);
   const total = template.reduce((a, b) => a + b.weight, 0);
   const dur = clampDuration(target);
   const totalUnits = Math.round(dur * 10);
@@ -204,6 +325,38 @@ export function beatSlots(intent, target = DURATION.default) {
     .sort((a, b) => b.fraction - a.fraction || a.index - b.index);
   for (let i = 0; remainder > 0; i = (i + 1) % order.length, remainder--) units[order[i].index]++;
   return template.map((b, index) => ({ ...b, duration: units[index] / 10 }));
+}
+
+// The intent's beats, repeated until they fill the screen budget for `target`.
+//
+// This is how a longer video stays a longer *video* instead of a longer slideshow:
+// the seconds go into more screens, not longer ones. Only beats marked
+// repeatable take a second slot, and the repeats are inserted where the beat
+// already sits so the story still runs opener → body → closer. A repeated beat
+// splits its own weight, so feeding the result through `beatSlots` yields the
+// same total duration the target asked for.
+export function expandBeats(intent, target = DURATION.default) {
+  const template = BEATS[intent] || BEATS.educational;
+  const wanted = Math.min(sceneCountFor(target), MAX_SCENES);
+  if (wanted <= template.length) return template;
+  const repeatables = REPEATABLE_BY_INTENT[intent] || [];
+  if (!repeatables.length) return template;
+
+  // Split the extra screens across the repeatable beats, round-robin from the
+  // heaviest so the biggest beat absorbs the first repeat.
+  const extra = wanted - template.length;
+  const extraPerBeat = new Map(repeatables.map((b) => [b.beat, 0]));
+  const order = [...repeatables].sort((a, b) => b.weight - a.weight);
+  for (let i = 0; i < extra; i++) {
+    const beat = order[i % order.length].beat;
+    extraPerBeat.set(beat, extraPerBeat.get(beat) + 1);
+  }
+
+  return template.flatMap((beat) => {
+    const copies = 1 + (extraPerBeat.get(beat.beat) || 0);
+    if (copies === 1) return [beat];
+    return Array.from({ length: copies }, () => ({ ...beat, weight: beat.weight / copies }));
+  });
 }
 
 // ── numbers ──────────────────────────────────────────────────────────
@@ -276,6 +429,116 @@ const NEEDS_ASSETS = new Set([
   'product_demo', 'product_promotion', 'local_business', 'before_after', 'announcement',
 ]);
 
+// Whether a screen has something to look at. This is the per-screen version of
+// the "illustrated everywhere" promise, and it is deliberately stricter than
+// `isTextOnly`: a card that draws its own structure — a chart, a numbered
+// list, a row of icons, a comparison — illustrates its point, while a caption
+// floating on a gradient does not, no matter how well the caption is written.
+export function isIllustrated(scene, { hasLogo = false, assets = null } = {}) {
+  // The asset the scene points at has to be one the collector actually holds:
+  // a scene that names a file nobody downloaded renders as an empty frame,
+  // which is the bare screen this check exists to catch.
+  const held = scene.asset && ASSET_RENDER_TYPES.has(scene.type)
+    && (assets === null || ownsAsset(assets, scene.asset));
+  if (held) return true;
+  if (isGraphic(scene.type)) {
+    if (['bars', 'line'].includes(scene.type)) return Array.isArray(scene.items) && scene.items.length >= 2;
+    if (['steps', 'icons', 'timeline', 'keypoints'].includes(scene.type)) return Array.isArray(scene.items) && scene.items.length >= 2;
+    if (scene.type === 'compare') return !!scene.left && !!scene.right;
+    return true; // stat, donut, question, answer
+  }
+  if (['feature', 'rating', 'answer', 'anchor', 'photo', 'location'].includes(scene.type)) return true;
+  // A quote over a full-bleed photo is an illustrated screen; the same words on
+  // the gradient are a caption. The renderer draws the photo when the asset is
+  // there, so the gate asks the same question.
+  if (scene.type === 'quote') return !!scene.asset;
+  // A result card illustrates itself when it carries a number, and equally when
+  // it carries rows — a repeated beat with no number left draws the source's
+  // own points instead of a lone caption.
+  if (scene.type === 'result') {
+    if (scene.value !== undefined && scene.value !== null && scene.value !== '') return true;
+    return Array.isArray(scene.items) && scene.items.length >= 2;
+  }
+  if (scene.type === 'product_reveal') return !!scene.asset || hasLogo;
+  return false;
+}
+
+// Clean a scene's rows for the type it is about to be drawn as, or return null
+// when the rows cannot support that type at all. Every chart's rows have to be
+// numbers the source really contains, and every list needs enough rows to be a
+// list — a card with nothing to draw is the bare screen this module refuses.
+//
+// It is a function rather than inline code because a scene can change type
+// twice: once here, and again when a repeated beat is re-cast into a different
+// shape. Re-running it is what stops a `stat` that became a `bars` from
+// rendering as an empty chart.
+function shapeItems(raw, type, have, dropped, index) {
+  if (type === 'bars' || type === 'line') {
+    const items = (Array.isArray(raw.items) ? raw.items : []).filter((i) => have.has(numOf(i?.value)));
+    if (items.length < 2) { dropped.push({ index, type, reason: 'too_few_verified_numbers' }); return null; }
+    return items;
+  }
+  // A keypoints card with one row is a sentence wearing a number.
+  if (type === 'keypoints') {
+    const items = (Array.isArray(raw.items) ? raw.items : [])
+      .map((i) => ({ ...i, label: clampText(i?.label) }))
+      .filter((i) => i.label)
+      .slice(0, 4);
+    if (items.length < 2) { dropped.push({ index, type, reason: 'too_few_items' }); return null; }
+    return items;
+  }
+  if (['steps', 'icons', 'timeline'].includes(type)) {
+    // A scene re-cast from a card that kept no `items` still has its own rows
+    // somewhere — a comparison holds them under left/right. Flattening both
+    // sides is what lets a comparison become a list instead of being dropped
+    // for having no rows of its own.
+    const fromSides = [
+      ...(Array.isArray(raw.left?.items) ? raw.left.items : []),
+      ...(Array.isArray(raw.right?.items) ? raw.right.items : []),
+    ].map((item) => ({ label: typeof item === 'string' ? item : item?.label }));
+    const source = Array.isArray(raw.items) && raw.items.length ? raw.items : fromSides;
+    const items = source
+      .map((i) => ({
+        ...i,
+        label: clampText(i?.label || i?.text || i?.detail, 6),
+        ...(type === 'steps' ? { detail: clampText(i?.detail, 10) } : {}),
+        ...(type === 'timeline' ? { text: clampText(i?.text || i?.detail, 10) } : {}),
+      }))
+      .filter((i) => i.label)
+      .slice(0, 6);
+    if (!items.length) { dropped.push({ index, type, reason: `${type}_needs_items` }); return null; }
+    return items;
+  }
+  // A result card illustrates itself with rows when the beat repeats and the
+  // article carries no number to put on it.
+  if (type === 'result' && (raw.value === undefined || raw.value === null || raw.value === '')) {
+    const items = (Array.isArray(raw.items) ? raw.items : [])
+      .map((i) => ({ label: clampText(i?.label || i?.text, 8) }))
+      .filter((i) => i.label)
+      .slice(0, 4);
+    return items.length >= 2 ? items : [];
+  }
+  if (type === 'compare') {
+    const cleanSide = (side) => (Array.isArray(side?.items) ? side.items : [])
+      .map((item) => clampText(typeof item === 'string' ? item : item?.label || item?.text, 8))
+      .filter(Boolean);
+    const items = {
+      left: { ...(raw.left || {}), items: cleanSide(raw.left) },
+      right: { ...(raw.right || {}), items: cleanSide(raw.right) },
+    };
+    if (!items.left.items.length || !items.right.items.length) {
+      dropped.push({ index, type, reason: 'compare_needs_both_sides' });
+      return null;
+    }
+    return items;
+  }
+  if (type === 'donut' && !have.has(numOf(raw.value))) {
+    dropped.push({ index, type, reason: 'number_not_in_source' });
+    return null;
+  }
+  return raw.items;
+}
+
 // The single gate every storyboard passes through. Returns a storyboard that
 // is safe to draw plus a report of what was changed — a drop is never silent.
 export function sanitizeStoryboard(sb, { source = '', intent = 'educational', target = DURATION.default, assets = {}, presenterName = '' } = {}) {
@@ -323,48 +586,8 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
       dropped.push({ index, type, reason: 'number_not_in_source' });
       continue;
     }
-    let items = raw.items;
-    if (type === 'bars' || type === 'line') {
-      items = (Array.isArray(raw.items) ? raw.items : []).filter((i) => have.has(numOf(i?.value)));
-      if (items.length < 2) { dropped.push({ index, type, reason: 'too_few_verified_numbers' }); continue; }
-    }
-    // A keypoints card with one row is a sentence wearing a number.
-    if (type === 'keypoints') {
-      items = (Array.isArray(raw.items) ? raw.items : [])
-        .map((i) => ({ ...i, label: clampText(i?.label) }))
-        .filter((i) => i.label)
-        .slice(0, 4);
-      if (items.length < 2) { dropped.push({ index, type, reason: 'too_few_items' }); continue; }
-    }
-    if (['steps', 'icons', 'timeline'].includes(type)) {
-      items = (Array.isArray(raw.items) ? raw.items : [])
-        .map((i) => ({
-          ...i,
-          label: clampText(i?.label || i?.text || i?.detail, 6),
-          ...(type === 'steps' ? { detail: clampText(i?.detail, 10) } : {}),
-          ...(type === 'timeline' ? { text: clampText(i?.text || i?.detail, 10) } : {}),
-        }))
-        .filter((i) => i.label)
-        .slice(0, 6);
-      if (!items.length) { dropped.push({ index, type, reason: `${type}_needs_items` }); continue; }
-    }
-    if (type === 'compare') {
-      const cleanSide = (side) => (Array.isArray(side?.items) ? side.items : [])
-        .map((item) => clampText(typeof item === 'string' ? item : item?.label || item?.text, 8))
-        .filter(Boolean);
-      items = {
-        left: { ...(raw.left || {}), items: cleanSide(raw.left) },
-        right: { ...(raw.right || {}), items: cleanSide(raw.right) },
-      };
-      if (!items.left.items.length || !items.right.items.length) {
-        dropped.push({ index, type, reason: 'compare_needs_both_sides' });
-        continue;
-      }
-    }
-    if (type === 'donut' && !have.has(numOf(raw.value))) {
-      dropped.push({ index, type, reason: 'number_not_in_source' });
-      continue;
-    }
+    let items = shapeItems(raw, type, have, dropped, index);
+    if (items === null) continue;
 
     // An asset the collector does not have is worse than no asset: it renders
     // as a broken frame. Drop the reference, keep the scene.
@@ -389,18 +612,88 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
       name: type === 'anchor' && presenterName ? presenterName : raw.name,
       say: clampWords(modelSay && wordCount(modelSay) >= 5 ? modelSay : fallbackSay, 0),
       __needsSourceSay: needsSourceSay,
+      __index: index,
+      // The deterministic board labels every scene with the beat it answers.
+      // Carrying that through is what lets a repeated beat here find its own
+      // vocabulary instead of borrowing a neighbour's.
+      __beat: raw.__beat,
     });
   }
 
+  // Claim a beat for every scene as it survives, in order. Doing this now —
+  // rather than after de-duplication, as the old code did — is what lets a
+  // repeated beat know which alternative types it is still allowed to use.
+  //
+  // A scene that names its beat takes that beat, because the model answered
+  // the expanded outline in order. A scene that does not — every scene the
+  // model wrote itself — is matched on the type it chose, so a `stat` lands on
+  // a beat whose vocabulary contains `stat` rather than on the next free beat.
+  const claim = new Set();
+  const claimSlot = (scene) => {
+    const named = scene.__beat
+      ? slots.findIndex((b, index) => !claim.has(index) && b.beat === scene.__beat)
+      : -1;
+    if (named >= 0) { claim.add(named); return named; }
+    const byType = slots.findIndex((b, index) => !claim.has(index) && b.types?.includes(scene.type));
+    const at = byType >= 0 ? byType : slots.findIndex((_, index) => !claim.has(index));
+    if (at >= 0) claim.add(at);
+    return at >= 0 ? at : Math.max(0, slots.length - 1);
+  };
+  for (const scene of kept) scene.__slot = claimSlot(scene);
+
   // No two consecutive scenes of the same type: the third "big number" in a
   // row is where a video starts to feel like a deck.
+  //
+  // A repeat is usually not a mistake but a consequence of a long article
+  // getting more screens: the same beat is told to cover a second point. So a
+  // repeat is first re-cast into a different type its own beat allows, and
+  // only dropped when that beat has no second shape to offer. Dropping first
+  // is what used to make every extra screen vanish.
+  //
+  // The same reasoning applies one step later: a beat that repeats can only
+  // keep its prose shape for as many screens as it has drawn alternatives. A
+  // quote alternating with a chart is still half a deck, and on a twelve-screen
+  // video the deck is the thing being bought.
   const varied = [];
   for (const scene of kept) {
-    if (varied.length && varied.at(-1).type === scene.type) {
-      dropped.push({ index: kept.indexOf(scene), type: scene.type, reason: 'repeat_of_previous' });
+    const alternatives = DRAWN_ALTERNATIVES.filter((t) => (slots[scene.__slot]?.types || []).includes(t)
+      && t !== scene.type);
+    const proseSoFar = varied.filter((s) => s.__beat === scene.__beat && s.type === 'quote').length;
+    const copiesSoFar = varied.filter((s) => s.__beat === scene.__beat).length + 1;
+    const proseCapped = scene.type === 'quote' && alternatives.length
+      && copiesSoFar > 1
+      && proseSoFar >= Math.max(1, Math.ceil(copiesSoFar * MAX_QUOTE_SHARE));
+    if (proseCapped) {
+      const alt = alternatives.find((t) => t !== varied.at(-1)?.type);
+      if (alt) {
+        const reshaped = shapeItems(scene, alt, have, dropped, scene.__index);
+        if (reshaped !== null) {
+          dropped.push({ index: scene.__index, type: 'quote', reason: 'recast_to_illustrate', as: alt });
+          varied.push({ ...scene, type: alt, items: reshaped });
+          continue;
+        }
+      }
+    }
+    if (!varied.length || varied.at(-1).type !== scene.type) {
+      varied.push(scene);
       continue;
     }
-    varied.push(scene);
+    const allowed = slots[scene.__slot]?.types || [];
+    const swap = DRAWN_ALTERNATIVES.find((t) => allowed.includes(t)
+      && t !== scene.type && t !== varied.at(-1).type);
+    const alt = swap || allowed.find((t) => t !== scene.type && t !== varied.at(-1).type);
+    if (alt) {
+      dropped.push({ index: scene.__index, type: scene.type, reason: 'repeated_as_alternative', as: alt });
+      // The new type has to be able to draw what the old one was drawing. A
+      // chart swapped for another chart keeps its rows; a card swapped for a
+      // caption drops them, because carrying rows into a type that never
+      // renders them would claim an illustration the screen does not have.
+      const reshaped = shapeItems(scene, alt, have, dropped, scene.__index);
+      if (reshaped === null) continue;
+      varied.push({ ...scene, type: alt, items: reshaped });
+      continue;
+    }
+    dropped.push({ index: scene.__index, type: scene.type, reason: 'repeat_of_previous' });
   }
 
   const scenes = varied.slice(0, MAX_SCENES);
@@ -410,18 +703,11 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
 
   // Duration: the caller/template owns the target. Honour each scene's
   // relative slot, then rescale to that target so a model cannot silently
-  // turn a 20s template into a 60s or 90s render.
-  const used = new Set();
-  const slotFor = (type) => {
-    const exact = slots.findIndex((b, i) => !used.has(i) && b.types.includes(type));
-    const idx = exact >= 0 ? exact : slots.findIndex((_, i) => !used.has(i));
-    used.add(idx >= 0 ? idx : slots.length - 1);
-    return slots[idx >= 0 ? idx : slots.length - 1];
-  };
+  // turn a 60s template into a 90s render.
   const wanted = scenes.map((s) => {
     const asked = Number(s.duration);
     if (Number.isFinite(asked) && asked > 0) return asked;
-    return slotFor(s.type).duration;
+    return slots[s.__slot]?.duration ?? 0;
   });
   const wantedTotal = wanted.reduce((a, b) => a + b, 0) || 1;
   const finalTotal = clampDuration(target);
@@ -474,6 +760,9 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
   for (const scene of scenes) {
     delete scene.__sourceSayAssigned;
     delete scene.__needsSourceSay;
+    delete scene.__slot;
+    delete scene.__index;
+    delete scene.__beat;
   }
 
   return {
@@ -504,7 +793,7 @@ export function reviewStoryboard(sb, { hasLogo = false, assets = null } = {}) {
   const beatTemplate = requiredStoryBeats(sb?.intent, { hasPresenter });
   let beatCursor = 0;
   for (const beat of beatTemplate) {
-    const foundAt = scenes.findIndex((scene, index) => index >= beatCursor && beat.types.includes(scene.type));
+    const foundAt = scenes.findIndex((scene, index) => index >= beatCursor && beat.types?.includes(scene.type));
     if (foundAt < 0) problems.push(`missing_beat:${beat.beat}`);
     else beatCursor = foundAt + 1;
   }
@@ -523,6 +812,16 @@ export function reviewStoryboard(sb, { hasLogo = false, assets = null } = {}) {
   const hasMiddleVisual = middle.some((scene) => !isTextOnly(scene, { hasLogo }));
   if (middle.length && textOnly * 2 > middle.length && !hasMiddleVisual) {
     problems.push(`slideshow:${textOnly}_of_${middle.length}_body_scenes_are_text_only`);
+  }
+
+  // "An illustration on every screen" is a stricter claim than the slideshow
+  // test, so it is measured separately. A screen counts as illustrated when it
+  // shows a real asset or draws a chart of its own; the closing CTA is exempt
+  // because a call to action is words over a logo by design, and so is the
+  // opener, which exists to be read.
+  const bare = scenes.slice(1, -1).filter((scene) => !isIllustrated(scene, { hasLogo, assets })).length;
+  if (bare * 5 > Math.max(1, scenes.length - 2)) {
+    problems.push(`bare_screens:${bare}_of_${scenes.length - 2}_have_no_illustration`);
   }
   const hasRenderedAsset = scenes.some((s) => s.asset && ASSET_RENDER_TYPES.has(s.type)
     && (assets === null || ownsAsset(assets, s.asset)));
@@ -558,6 +857,77 @@ export function signatureTypes(intent) {
   return [...new Set((BEATS[intent] || [])
     .filter((b) => b.types.length === 1 && !['hook', 'cta'].includes(b.types[0]))
     .map((b) => b.types[0]))];
+}
+
+// Build the card a repeated screen becomes, or return null when this type has
+// nothing real to draw. Null matters: the caller walks its candidate list, and
+// a chart the source has no numbers for has to be skipped rather than rendered
+// as an empty frame.
+function buildRepeatCard(type, { text, nums, kpItems, narrativeItems, detailItems, siteAsset, photoAsset, presenter, pName }) {
+  switch (type) {
+    // A device frame with nothing in it is an empty screen, so a `ui_demo` is
+    // only offered when there is actually a screenshot to put in the frame.
+    case 'ui_demo': return siteAsset ? { type, text, asset: siteAsset } : null;
+    case 'product_reveal': return { type, text };
+    case 'photo': return photoAsset ? { type, text, asset: photoAsset } : null;
+    case 'feature': return { type, text, icon: 'check' };
+    // A quote or a problem card reads as a caption unless something is behind
+    // it, so both are offered only when the job carries a photo to show.
+    case 'quote': return photoAsset ? { type, text, asset: photoAsset } : null;
+    case 'problem': return photoAsset ? { type, text, asset: photoAsset } : null;
+    case 'headline': return { type, text };
+    case 'question': return { type, text };
+    case 'answer': return { type, text };
+    case 'anchor': return presenter ? { type, text, asset: 'presenter', name: pName } : { type: 'headline', text };
+    case 'keypoints': {
+      const rows = kpItems.length >= 2 ? kpItems : narrativeItems;
+      return rows.length >= 2 ? { type, text, items: rows.slice(0, 4) } : null;
+    }
+    case 'steps': {
+      // A numbered list needs three rows to read as a list, so it reaches for
+      // the source's own sentences rather than the summary's three highlights.
+      const rows = detailItems.length >= 3 ? detailItems : (narrativeItems.length >= 3 ? narrativeItems : detailItems);
+      return rows.length >= 2 ? { type, text, items: rows.slice(0, 4) } : null;
+    }
+    case 'icons': {
+      const rows = detailItems.length >= 2 ? detailItems : narrativeItems;
+      return rows.length ? {
+        type, text,
+        items: rows.slice(0, 4).map((h, k) => ({ icon: ['check', 'trend', 'shield', 'star'][k % 4], label: h.label })),
+      } : null;
+    }
+    case 'timeline': {
+      const rows = detailItems.length >= 2 ? detailItems : narrativeItems;
+      return rows.length ? { type, text, items: rows.slice(0, 5).map((h) => ({ label: h.label })) } : null;
+    }
+    case 'compare': {
+      // A comparison needs two sides of at least two rows each. The source's
+      // own sentences are split in half rather than inventing a "before" and
+      // an "after" that were never in it.
+      const rows = detailItems.length >= 4 ? detailItems : narrativeItems;
+      if (rows.length < 4) return null;
+      return {
+        type, text,
+        left: { title: 'Vấn đề', items: rows.slice(0, 2).map((h) => h.label) },
+        right: { title: 'Cách giải quyết', items: rows.slice(2, 4).map((h) => h.label) },
+      };
+    }
+    // A chart cannot be invented out of a sentence: its rows have to be numbers
+    // the source really contains, or the gate refuses the scene and the beat it
+    // belonged to goes with it.
+    case 'bars': case 'line': return nums.length >= 2
+      ? { type, text, items: nums.slice(0, 4).map((n, k) => ({ label: `Mục ${k + 1}`, value: n })) }
+      : null;
+    case 'stat': case 'donut': return nums.length ? { type, text, value: nums[0] } : null;
+    // A bare result with no number is a caption, not a card. The source's own
+    // sentences turn it into a list that illustrates itself.
+    case 'result': return nums.length
+      ? { type, text, value: nums.at(-1) }
+      : (detailItems.length >= 2 ? { type, text, items: detailItems.slice(0, 4) } : null);
+    case 'rating': return { type, text, value: '5' };
+    case 'before_after': return photoAsset ? { type, text, asset: photoAsset } : null;
+    default: return null;
+  }
 }
 
 // ── deterministic fallback ───────────────────────────────────────────
@@ -611,16 +981,31 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     { label: 'Bổ sung thông tin' },
   ];
   const summaryItems = kpItems.length >= 2 ? kpItems : [...narrativeItems, { label: 'Tổng quan' }].slice(0, 4);
+  // A long article is told across a dozen screens, and a list card needs more
+  // rows than the three the summary gets — so repeated beats draw from a wider
+  // slice of the source's own sentences rather than repeating the same three.
+  const detailItems = sourceDetails.slice(0, 8).map((s) => ({ label: clampText(s, 6) })).filter((i) => i.label);
   const bodyQuestion = sentences.find((s) => s.includes('?'));
 
   const fill = {
     hook: { type: 'hook', text: clampText(title), say: clampText(title) },
-    problem: { type: 'problem', text: 'Vấn đề khách hàng gặp', say: `${clampText(title)} — vấn đề đặt ra.` },
+    problem: {
+      type: 'problem',
+      text: 'Vấn đề khách hàng gặp',
+      say: `${clampText(title)} — vấn đề đặt ra.`,
+      // A problem card is one of the few scenes that can carry a real image
+      // behind its words, so it takes one whenever the job has it.
+      asset: photoAsset,
+    },
     product: intent === 'local_business'
       ? { type: photoAsset ? 'photo' : 'feature', text: clampText(p.name || title), asset: photoAsset }
       : { type: siteAsset ? 'ui_demo' : 'product_reveal', text: clampText(p.name || title), asset: siteAsset, say: clampText(p.tagline || p.name || title) },
     business: { type: photoAsset ? 'photo' : 'product_reveal', text: clampText(p.name || title), asset: photoAsset },
-    demo: { type: 'ui_demo', text: 'Xem thử', asset: siteAsset },
+    // A device frame with nothing in it is an empty screen, so a demo beat with
+    // no screenshot becomes a list of the source's own points instead.
+    demo: siteAsset
+      ? { type: 'ui_demo', text: 'Xem thử', asset: siteAsset }
+      : { type: 'steps', text: 'Các bước', items: (detailItems.length ? detailItems : narrativeItems).slice(0, 4) },
     feature: { type: photoAsset ? 'photo' : 'feature', text: clampText(p.tagline || title), asset: photoAsset },
     benefit: { type: 'icons', text: 'Lợi ích chính', items: narrativeItems.slice(0, 4).map((h, i) => ({ icon: ['check', 'trend', 'shield', 'star'][i % 4], label: h.label })) },
     insight: nums.length ? { type: 'stat', text: clampText(title), value: nums[0], say: clampText(title) } : { type: 'quote', text: clampText(title) },
@@ -630,7 +1015,11 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     conclusion: { type: 'result', text: clampText(brand.cta || title) },
     items: { type: 'steps', text: 'Danh sách', items: narrativeItems.slice(0, 3).map((h) => ({ label: h.label })) },
     close: { type: 'quote', text: clampText(title) },
-    result: nums.length ? { type: 'stat', text: 'Kết quả', value: nums.at(-1) } : { type: 'result', text: clampText(title), asset: siteAsset },
+    // A result card with no number is a caption, so it draws the source's own
+    // points instead of asking the viewer to read a claim.
+    result: nums.length
+      ? { type: 'stat', text: 'Kết quả', value: nums.at(-1) }
+      : { type: 'result', text: clampText(title), items: (detailItems.length >= 2 ? detailItems : narrativeItems).slice(0, 4) },
     proof: intent === 'testimonial' && photoAsset
       ? { type: 'photo', text: clampText(p.name || title), asset: photoAsset }
       : nums.length
@@ -639,7 +1028,13 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     offer: { type: 'result', text: clampText(brand.cta || 'Đăng ký ngay') },
     why: { type: 'feature', text: clampText(p.tagline || title) },
     what: { type: siteAsset ? 'ui_demo' : 'product_reveal', text: clampText(p.name || title), asset: siteAsset },
-    voice: { type: 'quote', text: clampText(sentences[0] || title, 10) },
+    voice: {
+      type: 'quote',
+      text: clampText(sentences[0] || title, 10),
+      // A quote draws full-bleed when it has an image, so the customer's own
+      // photo is what keeps a repeated testimonial screen from being a caption.
+      asset: photoAsset,
+    },
     before: hasDistinctComparison
       ? { type: 'photo', text: 'Trước đây', asset: comparisonFirstAsset }
       : { type: 'problem', text: 'Trước đây' },
@@ -648,11 +1043,19 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
       : { type: 'result', text: 'Sau khi dùng' },
     change: hasDistinctComparison
       ? { type: 'before_after', text: 'Thay đổi', asset: comparisonFirstAsset, asset2: comparisonSecondAsset }
-      : { type: 'ui_demo', text: 'Thay đổi', asset: comparisonFirstAsset },
-    tension: { type: 'quote', text: clampText(sentences[1] || sentences[0] || title, 10) },
-    transformation: { type: 'ui_demo', text: clampText(p.name || title), asset: siteAsset },
+      : comparisonFirstAsset
+        ? { type: 'ui_demo', text: 'Thay đổi', asset: comparisonFirstAsset }
+        : { type: 'compare', text: 'Thay đổi', left: { title: 'Trước', items: narrativeItems.slice(0, 2).map((h) => h.label) }, right: { title: 'Sau', items: (detailItems.length ? detailItems : narrativeItems).slice(2, 4).map((h) => h.label) } },
+    tension: { type: 'quote', text: clampText(sentences[1] || sentences[0] || title, 10), asset: photoAsset },
+    transformation: siteAsset
+      ? { type: 'ui_demo', text: clampText(p.name || title), asset: siteAsset }
+      : { type: 'compare', text: 'Thay đổi', left: { title: 'Trước', items: narrativeItems.slice(0, 2).map((h) => h.label) }, right: { title: 'Sau', items: (detailItems.length ? detailItems : narrativeItems).slice(2, 4).map((h) => h.label) } },
     experience: intent === 'local_business'
-      ? { type: siteAsset ? 'ui_demo' : photoAsset ? 'photo' : 'ui_demo', text: 'Trải nghiệm', asset: siteAsset || photoAsset }
+      ? (siteAsset
+        ? { type: 'ui_demo', text: 'Trải nghiệm', asset: siteAsset }
+        : photoAsset
+          ? { type: 'photo', text: 'Trải nghiệm', asset: photoAsset }
+          : { type: 'steps', text: 'Trải nghiệm', items: (detailItems.length ? detailItems : narrativeItems).slice(0, 4) })
       : { type: photoAsset ? 'photo' : 'feature', text: 'Trải nghiệm', asset: photoAsset },
     location: mapAsset ? { type: 'location', text: clampText(p.address || title, 6), asset: 'map' }
       : { type: 'rating', text: clampText(p.address || title, 6) },
@@ -732,6 +1135,11 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     }
   }
   const bodyPosition = new Map(bodySlotIndexes.map((sceneIndex, bodyIndex) => [sceneIndex, bodyIndex]));
+  // Every source sentence the body screens have already claimed, so the hook
+  // can open on a fact the body is not already saying.
+  const variedSaySources = new Set(
+    bodySlotIndexes.flatMap((index) => bodyDetails[bodyPosition.get(index)] || []),
+  );
   const scenes = slots.map((slot, i) => {
     const base = fill[slot.beat] || { type: 'feature', text: clampText(title) };
     const scene = { ...base, duration: slot.duration };
@@ -742,9 +1150,21 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     else if (slot.beat === 'cta') detail = endpointDetails.cta;
     if (slot.beat === 'hook') {
       const hookBudget = narrationBudget(slot.duration);
-      const titlePart = clampText(title, Math.max(1, Math.floor(hookBudget * 0.45)));
+      // The title opens the video; the article's own first fact is what makes
+      // it worth watching. A title long enough to fill the slot must not
+      // squeeze that fact out, so the title never takes more than a third of
+      // the hook and the rest is reserved for the source.
+      const titleCap = Math.max(1, Math.min(wordCount(title), Math.floor(hookBudget * 0.4) - 2));
+      const titlePart = clampText(title, titleCap);
       const titleWords = wordCount(titlePart);
-      scene.say = joinSpeech(titlePart, fitDetail(detail, Math.max(1, hookBudget - titleWords)));
+      // The hook opens on the article's first fact. When the body is short
+      // enough that it has already claimed that sentence, the hook still says
+      // it — a repeated opener is better than a hook that is only a title.
+      const opening = [detail, ...detailSample].filter(Boolean)
+        .find((sentence) => !variedSaySources.has(sentence))
+        || detailSample[0] || '';
+      variedSaySources.add(opening);
+      scene.say = joinSpeech(titlePart, fitDetail(opening, Math.max(1, hookBudget - titleWords)));
     } else if (slot.beat === 'cta') {
       scene.say = joinSpeech(detail, clampText(brand.cta || 'Đọc bài viết đầy đủ', 8));
     } else if (detail) {
@@ -752,6 +1172,10 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     }
     if (scene.say === undefined) scene.say = clampText(scene.text, 12);
     scene.__sourceSayAssigned = true;
+    // The beat this scene answers. A repeated beat fills the same template
+    // twice, so the gate needs the name to know the two belong together and
+    // to re-cast the second one instead of dropping it.
+    scene.__beat = slot.beat;
     if (url && scene.type === 'cta') scene.url = url;
     return scene;
   });
@@ -765,32 +1189,55 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
   // (News without a presenter hits this: its anchor_intro fill is already a
   // headline, and 'anchor' cannot resolve it — a rebuilt anchor would just be
   // rewritten back into a headline by the gate and dropped as a repeat.)
+  // A repeated *beat* reuses the same fill, so the alternates are tried in a
+  // fixed order too — and that order leads with the shapes that draw
+  // something, because a second caption on a gradient is the bare screen the
+  // release gate exists to refuse.
   const REPEAT_ALT = { anchor: 'headline', headline: 'feature', keypoints: 'steps', question: 'quote', answer: 'feature' };
   for (let i = 1; i < scenes.length; i++) {
     if (scenes[i].type !== scenes[i - 1].type) continue;
     const allowedForBeat = slots[i].types || [];
-    const alt = scenes[i].type === 'anchor' && slots[i].beat === 'anchor_close'
-      ? 'quote'
-      : (REPEAT_ALT[scenes[i].type] || allowedForBeat.find((t) => t !== scenes[i].type));
-    if (!alt || !allowedForBeat.includes(alt)) continue;
-    if (!alt) continue;
+    // Ranked the same way the gate ranks them, so the deterministic board and
+    // the model's own answer land on the same alternative: the best shape the
+    // beat has, not merely the first one its list happens to mention.
+    const candidates = [
+      ...DRAWN_ALTERNATIVES.filter((t) => allowedForBeat.includes(t)
+        && t !== scenes[i].type && t !== scenes[i - 1].type),
+      ...(scenes[i].type === 'anchor' && slots[i].beat === 'anchor_close' ? ['quote'] : []),
+      ...(REPEAT_ALT[scenes[i].type] ? [REPEAT_ALT[scenes[i].type]] : []),
+      ...allowedForBeat.filter((t) => t !== scenes[i].type),
+    ];
     const text = scenes[i].text;
-    const rebuilt = {
-      ui_demo: { type: 'ui_demo', text, asset: siteAsset },
-      product_reveal: { type: 'product_reveal', text },
-      photo: { type: 'photo', text, asset: photoAsset },
-      feature: { type: 'feature', text, icon: 'check' },
-      quote: { type: 'quote', text },
-      result: { type: 'result', text },
-      problem: { type: 'problem', text },
-      anchor: ownsAsset(assets, 'presenter') ? { type: 'anchor', text, asset: 'presenter', name: pName } : { type: 'headline', text },
-      headline: { type: 'headline', text },
-      keypoints: { type: 'keypoints', text, items: kpItems },
-      steps: { type: 'steps', text, items: narrativeItems.slice(0, 3) },
-      question: { type: 'question', text },
-      answer: { type: 'answer', text },
-    }[alt];
-    if (rebuilt) scenes[i] = { ...rebuilt, duration: scenes[i].duration, say: scenes[i].say, __sourceSayAssigned: true };
+    // Walk the candidates until one can actually be drawn. A chart the source
+    // has no numbers for is not a fallback — it is an empty frame, and
+    // stopping at the first candidate is what used to leave the repeat as the
+    // caption it was meant to replace.
+    let rebuilt = null;
+    for (const candidate of candidates) {
+      if (!candidate || !allowedForBeat.includes(candidate)) continue;
+      rebuilt = buildRepeatCard(candidate, { text, nums, kpItems, narrativeItems, detailItems, siteAsset, photoAsset, presenter: ownsAsset(assets, 'presenter'), pName });
+      if (rebuilt) break;
+    }
+    if (!rebuilt) continue;
+    scenes[i] = { ...rebuilt, duration: scenes[i].duration, say: scenes[i].say, __sourceSayAssigned: true, __beat: scenes[i].__beat };
+  }
+
+  // Last pass: a job can arrive with no photo, no screenshot and no logo, and
+  // every scene that wanted one of those is now a bare caption. A video like
+  // that fails the release gate, so the board swaps those screens for shapes
+  // the source alone can draw — a list of its own points, a chart of its own
+  // numbers — rather than shipping a deck and hoping nobody looks closely.
+  for (let i = 1; i < scenes.length - 1; i++) {
+    if (isIllustrated(scenes[i], { hasLogo: ownsAsset(assets, 'logo'), assets })) continue;
+    const allowedForBeat = slots[i].types || [];
+    const drawn = DRAWN_ALTERNATIVES.filter((t) => allowedForBeat.includes(t) && t !== scenes[i].type);
+    let swapped = null;
+    for (const candidate of drawn) {
+      swapped = buildRepeatCard(candidate, { text: scenes[i].text, nums, kpItems, narrativeItems, detailItems, siteAsset, photoAsset, presenter: ownsAsset(assets, 'presenter'), pName });
+      if (swapped && isIllustrated({ ...scenes[i], ...swapped }, { hasLogo: ownsAsset(assets, 'logo'), assets })) break;
+      swapped = null;
+    }
+    if (swapped) scenes[i] = { ...scenes[i], ...swapped };
   }
   return { intent, duration: durationTarget, scenes };
 }

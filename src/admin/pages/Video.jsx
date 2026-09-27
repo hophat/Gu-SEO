@@ -7,9 +7,12 @@
 //
 // Creation goes through ONE wizard ("Tạo video"): pick a source (bài
 // viết / URL / doanh nghiệp), pick a template from the catalog the
-// templates endpoint serves, pick a duration when overriding the template.
-// The endpoint stores template + optional duration; null lets the agent choose
-// its default.
+// templates endpoint serves, and optionally override the length.
+//
+// The length is the one field the operator rarely needs: no template carries
+// one any more. Left alone, the agent measures the article and picks 60, 75 or
+// 90 seconds so it has room to cover every section. Touching the slider
+// overrides that, and "Dùng thời lượng tự động" puts it back.
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Card, Table, Button, Space, Typography, message, Row, Col, Tooltip, Alert, Popconfirm, Input, Modal, Select,
@@ -519,7 +522,7 @@ export default function Video() {
                       </span>
                       <span className="ps-option-desc">{t.desc}</span>
                       <span className="ps-option-meta">
-                        {t.defaultDuration ? `~${t.defaultDuration}s` : 'Thời lượng tự động'}
+                        {t.defaultDuration ? `~${t.defaultDuration}s` : '60–90s · tự động theo bài'}
                       </span>
                     </button>
                   );
@@ -587,15 +590,26 @@ export default function Video() {
             </Text>
           </div>
           <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>Thời lượng: {duration ?? 60}s</Text>
+            <Text strong style={{ display: 'block', marginBottom: 4 }}>
+              Thời lượng: {duration ? `${duration}s (tuỳ chọn)` : 'tự động theo độ dài bài'}
+            </Text>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12 }}>
+              Để tự động, video dài 60–90s tuỳ bài có bao nhiêu mục, và mỗi màn hình đều có hình minh hoạ.
+            </Text>
             <Slider
-              min={15}
+              min={60}
               max={90}
               step={5}
-              value={duration ?? 60}
+              marks={{ 60: '60s', 75: '75s', 90: '90s' }}
+              value={duration ?? 75}
               onChange={setDuration}
               tooltip={{ formatter: (v) => `${v}s` }}
             />
+            {duration ? (
+              <Button type="link" size="small" onClick={() => setDuration(null)} style={{ padding: 0 }}>
+                Dùng thời lượng tự động
+              </Button>
+            ) : null}
           </div>
         </Space>
       </Modal>
