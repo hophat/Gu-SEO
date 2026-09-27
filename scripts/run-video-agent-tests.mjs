@@ -53,7 +53,7 @@ globalThis.fetch = async (url, opts) => {
 
 const {
   composeCarouselSlideHtml, composeStoryboardHtml, fitNarration, LOUDNESS, makeBgm,
-  cutBgm, prepareBgm, speakSegments,
+  cutBgm, prepareBgm, speakSegments, writeStoryboard,
   masterLoudness, renderCarousel, renderOne, slideQueries,
 } = await import('../video-agent/render-video.mjs');
 // Scene renderers live in scenes.mjs; the story rules in storyboard.mjs.
@@ -2202,6 +2202,61 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
     globalThis.fetch = realFetch;
     rmSync(work, { recursive: true, force: true });
   }
+}
+
+// ── the storyboard call the whole pipeline rests on ───────────────────
+// Every run that cannot write a storyboard falls back to the deterministic
+// board — a generic story, placeholder captions, and one reason. The model
+// call is the one step with a silent failure mode, so both halves are pinned:
+// the token budget has to cover reasoning AND the answer, and a failure has
+// to say why it failed.
+{
+  const job = { title: 'Tạo Website Cho Quán Cà Phê', body_markdown: STORY_ARTICLE, project: { name: 'Cà Phê Sáng' } };
+  const ask = { source: STORY_ARTICLE, suggested: 'local_business', assets: {}, target: 75 };
+
+  const realFetch = globalThis.fetch;
+  let body = null;
+  try {
+    globalThis.fetch = async (url, opts) => {
+      body = JSON.parse(opts?.body || '{}');
+      return { ok: true, json: async () => ({ choices: [{ message: { content: '' }, finish_reason: 'length' }], usage: { completion_tokens: 3200, completion_tokens_details: { reasoning_tokens: 3200 } } }) };
+    };
+    await assert.rejects(
+      writeStoryboard(job, ask),
+      (e) => {
+        assert.ok(body, 'the model is called');
+        assert.match(e.message, /finish_reason=length/, 'a truncated answer must name itself');
+        assert.match(e.message, /reasoning_tokens=3200/,
+          'and report where the budget went — the old message hid this and cost a day to find');
+        return true;
+      },
+    );
+    // A 12-screen Vietnamese board is ~2 800 tokens of JSON and the model
+    // reasons for ~2 600 more. Under that total the model finished thinking
+    // with nothing left to answer, returned "", and every run quietly fell
+    // back to the deterministic board.
+    assert.equal(body.max_tokens, 8192,
+      'max_tokens must cover reasoning AND a full 12-screen answer — it is not a cap on the reply');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  ok('the storyboard budget covers reasoning, and a failure reports why');
+
+  // The happy path still parses: one model answer, the scenes the board needs.
+  try {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ choices: [{
+      message: { content: JSON.stringify({ intent: 'local_business', duration: 75, scenes: [
+        { type: 'hook', text: 'Mở bằng câu hỏi', say: 'Vì sao quán đầy khách mà doanh thu vẫn đi ngang?', duration: 12 },
+        { type: 'cta', text: 'Mở website ngay', say: 'Hãy đưa món và giờ mở cửa lên một trang thật rõ.', duration: 12 },
+      ] }) },
+    }] }) });
+    const sb = await writeStoryboard(job, ask);
+    assert.equal(sb.scenes.length, 2, 'a model answer still comes back as a board');
+    assert.equal(sb.scenes[0].type, 'hook');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  ok('the storyboard call still returns a board when the model answers');
 }
 
 console.log(`\nALL VIDEO AGENT TESTS PASSED (${passed} checks)`);

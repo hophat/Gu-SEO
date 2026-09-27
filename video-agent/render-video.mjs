@@ -182,7 +182,7 @@ LUẬT BẮT BUỘC:
 8. MỖI CẢNH, trừ CTA cuối, PHẢI CÓ MINH HOẠ: hoặc "asset" thật trong danh sách trên, hoặc là loại đồ hoạ tự vẽ (bars, donut, line, steps, icons, compare, timeline, stat, keypoints, rating, feature). Cảnh chỉ có chữ trên nền gradient là LỖI, không phải lựa chọn an toàn. Khi một nhịp dàn ý bị lặp (cùng tên beat xuất hiện nhiều lần), hãy dùng MỘT loại hình khác nhau cho mỗi lần lặp để không lặp lại cùng một thẻ.
 9. Phân công "motion" như đạo diễn: zoom cho hook, scroll cho ảnh chụp website trong khung, pan cho ảnh thật, reveal cho biểu đồ. Chuyển động phải chậm, liền mạch; không chọn none cho cảnh có ảnh.`;
 
-async function writeStoryboard(job, { source, suggested, assets, target, forced = null }) {
+export async function writeStoryboard(job, { source, suggested, assets, target, forced = null }) {
   if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
   // A user-chosen template fixes the intent: the model fills the shape it was
   // given rather than picking another one — and the caller pins the result
@@ -254,14 +254,33 @@ Trả JSON:`;
         { role: 'system', content: 'Bạn là đạo diễn và người viết lời dẫn video dài cho TikTok/Reels. Bạn kể đủ ý bằng hình, dùng chuyển động chậm và liền mạch, không tạo tò mò giả bằng cách giấu thông tin quan trọng. Chỉ trả JSON thuần.' },
         { role: 'user', content: user },
       ],
-      temperature: 0.65, max_tokens: 3200, response_format: { type: 'json_object' },
+      // max_tokens is the WHOLE budget, reasoning included — not a cap on
+      // the answer. A 12-screen Vietnamese storyboard measures ~2 800 tokens
+      // of JSON, and the model spends ~2 600 more thinking first: at the old
+      // 3 200 it finished its reasoning with nothing left to say, answered
+      // with an empty string, and every run silently fell back to the
+      // deterministic board. 8 192 is what a full board actually costs.
+      temperature: 0.65, max_tokens: 8192, response_format: { type: 'json_object' },
     }),
   }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
   if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
   const data = await r.json();
-  const raw = data?.choices?.[0]?.message?.content || '';
+  const choice = data?.choices?.[0];
+  const raw = choice?.message?.content || '';
   const sb = parseStoryboard(raw);
-  if (!sb) throw new Error('storyboard_schema_bad: ' + String(raw).slice(0, 150));
+  if (!sb) {
+    // The reason travels with the failure. An empty answer used to report
+    // `storyboard_schema_bad: ` and nothing else, which is indistinguishable
+    // from a malformed answer — and cost a day to find, because the real
+    // cause (finish_reason: length, budget spent on reasoning) is only
+    // visible in the response the error threw away.
+    const why = choice?.finish_reason || 'no_finish_reason';
+    const reasoning = Number(data?.usage?.completion_tokens_details?.reasoning_tokens) || 0;
+    throw new Error(
+      `storyboard_schema_bad: finish_reason=${why} reasoning_tokens=${reasoning} `
+      + `completion_tokens=${data?.usage?.completion_tokens ?? '?'} raw="${String(raw).slice(0, 120)}"`,
+    );
+  }
   return sb;
 }
 
