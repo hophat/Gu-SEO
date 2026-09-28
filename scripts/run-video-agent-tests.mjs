@@ -2553,6 +2553,11 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
     assert.equal(streamCalls, 1, 'a chunked answer is read, not retried');
     assert.equal(streamed.scenes.length, 2, 'and it comes back as a whole board');
     assert.equal(streamed.scenes[0].type, 'hook', 'the first scene survives the reassembly');
+    // The run log names the provider that answered. When the ladder picked
+    // the fallback, a line that still said "GuRouter" while 9router wrote
+    // the board is the kind of thing nobody believes after the third
+    // confusing render.
+    assert.equal(streamed.provider, 'ninerouter', 'the board carries the provider that answered');
   } finally {
     globalThis.fetch = realFetch;
   }

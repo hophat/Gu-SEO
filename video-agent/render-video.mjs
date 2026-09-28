@@ -377,7 +377,7 @@ Trả JSON:`;
       + `completion_tokens=${data?.usage?.completion_tokens ?? '?'} raw="${String(raw).slice(0, 120)}"`,
     );
   }
-  return sb;
+  return { ...sb, provider };
 }
 
 // edge-tts can answer with a file that holds only the first part of a long
@@ -1645,9 +1645,12 @@ export async function renderOne(job, deps = {}) {
     .filter(Boolean).join('\n\n');
   let raw = null;
   try {
-    log('writing storyboard via GuRouter…');
+    // No provider named here: the ladder decides, and a line that says
+    // "GuRouter" while 9Router answered is a lie in the log an operator
+    // reads when a video comes out wrong.
+    log('writing storyboard…');
     raw = await writeStoryboard(job, { source: storySource, suggested: suggested.intent, assets, target, forced });
-    log(`storyboard ok (intent ${raw.intent || suggested.intent}, ${raw.scenes.length} scenes)`);
+    log(`storyboard ok (via ${raw.provider || 'unknown'}, intent ${raw.intent || suggested.intent}, ${raw.scenes.length} scenes)`);
   } catch (e) {
     log(`storyboard failed (${String(e?.message || e).slice(0, 140)}) — deriving from the content`);
   }
