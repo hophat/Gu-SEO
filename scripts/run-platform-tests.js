@@ -2900,6 +2900,31 @@ async function testExplainerVideoJobs() {
   assert.equal(fresh.blog_post_id, ref, 'and the new row keeps the sentinel, so UNIQUE(blog_post_id) holds');
   assert.equal(fresh.status, 'pending');
   ok('re-creating a finished explainer replaces it and keeps the sentinel');
+
+  // 5. A claim whose agent died. systemd's start timeout killed real renders
+  // mid-flight, and because every query here only ever selects pending/failed,
+  // those jobs were never selected again: the queue reported "empty" while
+  // finished-looking posts sat unrendered forever.
+  await env.DB.prepare("UPDATE video_jobs SET status = 'claimed', claimed_at = ?, updated_at = ? WHERE id = 'vj_explain'")
+    .bind(Math.floor(Date.now() / 1000) - 7200, Math.floor(Date.now() / 1000)).run();
+  const reclaim = await (await claimVideoJob({
+    env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'explainer' } }),
+  })).json();
+  assert.equal((await env.__get("SELECT status FROM video_jobs WHERE id = 'vj_explain'"))?.status !== 'claimed', true,
+    'an expired claim is released instead of held forever');
+  assert.ok(reclaim?.job, 'and the queue has work to hand out again');
+  ok('a claim left behind by a dead agent is requeued instead of stranded');
+
+  // A claim that is still fresh belongs to a render in progress.
+  await env.DB.prepare("UPDATE video_jobs SET status = 'pending' WHERE kind = 'explainer'").run();
+  await create({ project_id: PROJECT, slug: 'alpha-post' });
+  const live = await env.__get("SELECT id FROM video_jobs WHERE kind = 'explainer'");
+  await env.DB.prepare("UPDATE video_jobs SET status = 'claimed', claimed_at = ? WHERE id = ?")
+    .bind(Math.floor(Date.now() / 1000) - 60, live.id).run();
+  await claimVideoJob({ env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'explainer' } }) });
+  assert.equal((await env.__get(`SELECT status FROM video_jobs WHERE id = '${live.id}'`))?.status, 'claimed',
+    'a render still in progress is not stolen');
+  ok('a live claim is left alone');
 }
 
 // ── T. user-chosen video templates ──────────────────────────────────

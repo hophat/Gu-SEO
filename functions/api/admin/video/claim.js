@@ -25,6 +25,21 @@ import { BGM_NONE, autoBgmTrack, bgmTrackById, bgmTrackPath } from '../../../_li
 // would try to backfill the entire archive.
 const QUEUE_WINDOW = 48 * 3600;
 
+// A claim older than this belongs to a process that is gone. Nothing else
+// requeues a claim, and every other query here only ever selects
+// `pending`/`failed` — so a render killed by systemd's start timeout (or
+// any crash, or a reboot) left its job `claimed` forever: the queue reported
+// "empty" while fourteen finished-looking posts had never been rendered.
+// Fourteen is not a guess; it is what the table held.
+//
+// The window has to clear a genuine render, which is not quick — sixteen
+// scenes, edge-tts per scene, image generation with retries, then a
+// hyperframes render — while still being short enough that one dead process
+// is not a long outage. A stuck job is put back on the queue rather than
+// marked failed, because nothing is known to be wrong with it: the agent
+// simply never got to finish.
+const STALE_CLAIM = 60 * 60;
+
 // Every per-post kind rides this one queue: they all need the same blog
 // post payload (title, body_markdown, hero). A new per-post kind that is
 // not listed here is never claimed and its jobs sit `pending` forever —
@@ -55,6 +70,17 @@ export const onRequestPost = async ({ env, request }) => {
   const projectId = body?.project_id ? String(body.project_id) : null;
   const slug = body?.slug ? String(body.slug) : null;
   const now = nowSec();
+
+  // Requeue anything a dead agent left holding. Before this ran, a claim
+  // outlived its process forever and the queue looked empty while real posts
+  // sat unrendered. The agent bumps `attempts` on its next claim, so a job
+  // that keeps dying stays visible in that column instead of vanishing.
+  const stale = await env.DB.prepare(
+    `UPDATE video_jobs SET status='pending', error=?, updated_at=?
+     WHERE status='claimed' AND claimed_at IS NOT NULL AND claimed_at < ?`
+  ).bind('requeued: claim expired', now, now - STALE_CLAIM).run();
+  const requeued = stale?.meta?.changes || 0;
+  if (requeued) await audit(env, 'admin', 'video.stale_claims_requeued', 'video_jobs', { requeued });
 
   // ── business / website promo claim ───────────────────────────────
   // The admin buttons create PENDING jobs (blog_post_id carries a
