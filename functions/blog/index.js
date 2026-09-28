@@ -13,6 +13,7 @@ import { loadSettings } from '../_lib/settings.js';
 import { themeStyle } from '../_lib/page_render.js';
 import { resolveProjectForRequest, resolveProjectBySlug, normalizeHost, projectLocale } from '../_lib/project_scope.js';
 import { listPillars, pillarLabel } from '../_lib/hubs.js';
+import { ui, fmt, countArticles } from '../_lib/i18n.js';
 
 // Page size for /blog and /blog/page/N. Matches the embed widget's
 // default so the SERP archive feels the same as the embed.
@@ -83,14 +84,17 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
   }
   const posts = r.results || [];
 
-  const isVi = true;
   const locale = projectLocale(project?.language);
+  // Every label below follows the brand's language pick. English is the
+  // fallback, so a language with no strings yet still renders a page that
+  // reads in one language.
+  const t = ui(project?.language);
   const homeHost = (() => { try { return new URL(project?.website_url || '').hostname; } catch { return ''; } })();
   const isGulagi = !project || !homeHost || /(^|\.)gulagi\.com$/.test(homeHost);
   const homeUrl = project?.website_url || 'https://gulagi.com';
   const siteName = project?.site_name || env.SITE_NAME || settings.site_name || 'Gulagi';
   const siteDesc = project?.site_description || env.SITE_DESCRIPTION || settings.site_description ||
-                   (isVi ? `Bài viết và giải pháp phát triển kinh doanh từ ${siteName}.` : `Articles from ${siteName}.`);
+                   fmt(t.site_desc, { name: siteName });
 
   // Pillar slug -> label, so an entry can name its own topic. The rail
   // gives us the list; this turns the seed on the row into the same slug
@@ -106,7 +110,7 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
     return pl ? { label: pl.label, slug: pl.slug } : { label: pillarLabel(p.topic_seed), slug: null };
   };
 
-  const fmtDate = (ts) => new Date((ts || 0) * 1000).toLocaleDateString('vi-VN', {
+  const fmtDate = (ts) => new Date((ts || 0) * 1000).toLocaleDateString(locale.htmlLang, {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
   // Vietnamese averages ~1.8 words/chars shorter than the English 200
@@ -151,13 +155,13 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
   const leadHTML = lead ? `
 <article class="lead-story">
   <div class="lead-body">
-    <div class="lead-kicker">${isVi ? 'Mới nhất' : 'Latest'}</div>
+    <div class="lead-kicker">${t.kicker_latest}</div>
     <h2><a href="${bp}/blog/${esc(lead.slug)}">${esc(lead.title)}</a></h2>
     <p>${esc((lead.meta_description || '').slice(0, 220))}</p>
     <div class="entry-facts">
       <span>${esc(fmtDate(lead.published_at))}</span>
       <span class="fact-sep">·</span>
-      <span>${readMin(lead.body_len)} ${isVi ? 'phút đọc' : 'min read'}</span>
+      <span>${fmt(t.read_time, { n: readMin(lead.body_len) })}</span>
       ${topicHTML(lead)}
     </div>
   </div>
@@ -179,7 +183,7 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
         <div class="entry-facts">
           <span>${esc(fmtDate(p.published_at))}</span>
           <span class="fact-sep">·</span>
-          <span>${readMin(p.body_len)} ${isVi ? "ph" : "min"}</span>
+          <span>${fmt(t.read_time_short, { n: readMin(p.body_len) })}</span>
         </div>
       </li>`).join('');
 
@@ -193,7 +197,7 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
   const maxCount = railPillars.reduce((m, pl) => Math.max(m, pl.count), 1);
   const railHTML = railPillars.length ? `
 <section class="topic-index" aria-labelledby="topic-index-title">
-  <h2 id="topic-index-title">${isVi ? 'Chủ đề' : 'Topics'}</h2>
+  <h2 id="topic-index-title">${t.nav_topics}</h2>
   <ul class="topic-list">
     ${railPillars.map((pl) => {
       const pct = Math.max(6, Math.round((pl.count / maxCount) * 100));
@@ -204,7 +208,7 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
     </a></li>`;
     }).join('\n    ')}
   </ul>
-  <a class="topic-more" href="${bp}/hubs">${isVi ? 'Toàn bộ chủ đề' : 'All topics'} →</a>
+  <a class="topic-more" href="${bp}/hubs">${t.all_topics} →</a>
 </section>` : '';
 
   const customHost = project?.custom_domain ? normalizeHost(project.custom_domain) : null;
@@ -241,22 +245,22 @@ export async function renderBlogIndex({ env, request, page = 1, projectSlug = nu
   // so the page never looks like the list is the whole story — it
   // also gives Google a hint about the collection size.
   const pagerHTML = totalPages > 1 ? `
-<nav class="pager" aria-label="Blog pagination">
-  ${prevHref ? `<a class="pager-prev" rel="prev" href="${prevHref}">${isVi ? '← Trang trước' : '← Newer'}</a>` : ''}
+<nav class="pager" aria-label="${esc(t.pager_aria)}">
+  ${prevHref ? `<a class="pager-prev" rel="prev" href="${prevHref}">${t.pager_newer}</a>` : ''}
   <span class="pager-nums">${pagerLinks}</span>
-  ${nextHref ? `<a class="pager-next" rel="next" href="${nextHref}">${isVi ? 'Trang sau →' : 'Older →'}</a>` : ''}
-  <span class="pager-pos">${isVi ? `Trang ${page} trên ${totalPages} · ${total} bài viết` : `Page ${page} of ${totalPages} · ${total} post${total === 1 ? '' : 's'}`}</span>
+  ${nextHref ? `<a class="pager-next" rel="next" href="${nextHref}">${t.pager_older}</a>` : ''}
+  <span class="pager-pos">${fmt(t.pager_position, { page, pages: totalPages, count: countArticles(t, total) })}</span>
 </nav>` : (total > 0 ? `
-<nav class="pager pager-single" aria-label="Blog pagination">
-  <span class="pager-pos">${isVi ? `${total} bài viết` : `${total} post${total === 1 ? '' : 's'}`}</span>
+<nav class="pager pager-single" aria-label="${esc(t.pager_aria)}">
+  <span class="pager-pos">${countArticles(t, total)}</span>
 </nav>` : '');
 
   // Page-specific title hint: page 1 keeps the canonical "Blog ·
   // brand"; later pages append "page N" so the SERP listing
   // disambiguates.
   const titleStr = page === 1
-    ? (isVi ? `Blog · ${siteName}` : `Blog · ${siteName}`)
-    : (isVi ? `Blog · Trang ${page} · ${siteName}` : `Blog · page ${page} · ${siteName}`);
+    ? `${t.nav_blog} · ${siteName}`
+    : fmt(t.blog_title_page, { page, name: siteName });
 
   // JSON-LD: WebSite with SearchAction. The archive page is the
   // canonical "site search entry point" for the SERP Sitelinks
@@ -331,10 +335,10 @@ ${themeStyle(project?.theme_color)}
         : `<span class="header-logo">${esc(siteName)}</span>`}
     </a>
     <nav class="header-nav">
-      <a href="${esc(homeUrl)}">Trang chủ</a>
-      <a href="${bp}/blog" class="active">Blog</a>
-      <a href="${bp}/hubs">Chủ đề</a>
-      ${isGulagi ? `<a href="${esc(homeUrl)}" class="header-cta">Tạo website ngay</a>` : ''}
+      <a href="${esc(homeUrl)}">${t.nav_home}</a>
+      <a href="${bp}/blog" class="active">${t.nav_blog}</a>
+      <a href="${bp}/hubs">${t.nav_topics}</a>
+      ${isGulagi ? `<a href="${esc(homeUrl)}" class="header-cta">${t.cta_create_site}</a>` : ''}
     </nav>
   </div>
 </header>
@@ -344,14 +348,14 @@ ${themeStyle(project?.theme_color)}
   <div class="masthead-top">
     <div class="masthead-issue">
       <span>${esc(siteName)}</span>
-      ${total > 0 ? `<span>${isVi ? `${total} bài viết` : `${total} post${total === 1 ? '' : 's'}`}</span>` : ''}
+      ${total > 0 ? `<span>${countArticles(t, total)}</span>` : ''}
     </div>
     <div class="masthead-issue">
-      ${totalPages > 1 ? `<span>${isVi ? `Trang ${page} / ${totalPages}` : `Page ${page} / ${totalPages}`}</span>` : ''}
+      ${totalPages > 1 ? `<span>${fmt(t.page_of, { page, pages: totalPages })}</span>` : ''}
       <span>${new Date().getFullYear()}</span>
     </div>
   </div>
-  <h1>${isVi ? 'Bài viết' : 'The Dispatch'}</h1>
+  <h1>${esc(t.masthead_title)}</h1>
   <p class="masthead-lede">${esc(siteDesc)}</p>
   <div class="masthead-tools">
     <!-- Search box. Filters the visible list via /api/widget?q=…
@@ -360,14 +364,14 @@ ${themeStyle(project?.theme_color)}
          /blog?q= URL if JavaScript is disabled — Google's
          SearchAction JSON-LD targets that URL too. -->
     <form id="blog-search-form" role="search" action="${bp}/blog" method="GET" class="blog-search">
-      <label class="blog-search-label" for="blog-search-input">${isVi ? 'Tìm' : 'Find'}</label>
+      <label class="blog-search-label" for="blog-search-input">${t.search_label}</label>
       <input id="blog-search-input"
              type="search" name="q"
-             placeholder="${isVi ? 'Tìm trong các bài đã đăng…' : 'Search published writing…'}"
+             placeholder="${esc(t.search_placeholder)}"
              autocomplete="off" spellcheck="false"
-             aria-label="${isVi ? 'Tìm kiếm bài viết' : 'Search posts'}"
+             aria-label="${esc(t.search_aria)}"
              value="" />
-      <button type="submit" class="blog-search-go" aria-label="${isVi ? 'Tìm kiếm' : 'Search'}">→</button>
+      <button type="submit" class="blog-search-go" aria-label="${esc(t.search_button_aria)}">→</button>
     </form>
     <a class="masthead-rss" href="${effectiveBaseUrl}${effectiveBp}/feed.xml">RSS ↗</a>
   </div>
@@ -377,17 +381,15 @@ ${leadHTML}
 
 ${rest.length ? `
 <div class="index-head">
-  <h2>${isVi ? 'Tất cả bài viết' : 'All entries'}</h2>
-  <h2>${isVi ? `Cập nhật lần cuối · ${esc(fmtDate(posts[0].published_at))}` : `Last updated · ${esc(fmtDate(posts[0].published_at))}`}</h2>
+  <h2>${t.all_entries}</h2>
+  <h2>${esc(fmt(t.last_updated, { date: fmtDate(posts[0].published_at) }))}</h2>
 </div>
 <ul class="blog-list" id="blog-list">${entryHTML}</ul>` : `<ul class="blog-list" id="blog-list" hidden></ul>`}
 
 ${!posts.length ? `
 <div class="blog-noposts">
-  <strong>${isVi ? 'Chưa có bài viết nào' : 'Nothing published yet'}</strong>
-  <span>${isVi
-    ? `Khi ${esc(siteName)} bắt đầu đăng, các bài mới sẽ xuất hiện ngay tại đây.`
-    : `When ${esc(siteName)} starts publishing, new writing lands here.`}</span>
+  <strong>${t.noposts_title}</strong>
+  <span>${esc(fmt(t.noposts_body, { name: siteName }))}</span>
 </div>` : ''}
 
 <div id="blog-empty" class="blog-empty" hidden></div>
@@ -409,6 +411,15 @@ ${pagerHTML}
 (function () {
   var PS_BP = ${JSON.stringify(bp)};
   var PS_PROJECT = ${JSON.stringify(project?.slug || '')};
+  // The same strings the server rendered, so the search empty/error states
+  // land in the brand's language too. '<' is escaped so a value can never
+  // close the <script> block.
+  var PS_T = ${JSON.stringify({
+    noMatchTitle: t.no_match_title,
+    noMatchBody: t.no_match_body,
+    errTitle: t.search_error_title,
+    errBody: t.search_error_body,
+  }).replace(/</g, '\\u003c')};
   var form  = document.getElementById('blog-search-form');
   var input = document.getElementById('blog-search-input');
   var list  = document.getElementById('blog-list');
@@ -556,7 +567,7 @@ ${pagerHTML}
         if (!d.posts || !d.posts.length) {
           setReadingMode(true);
           if (q) {
-            setEmpty('Không có bài nào khớp', 'Từ khóa "' + q + '" không trả về kết quả nào. Thử một từ ngắn hơn, hoặc xem toàn bộ chủ đề.');
+            setEmpty(PS_T.noMatchTitle, PS_T.noMatchBody.replace('{q}', q));
           } else {
             setReadingMode(false);
             setEmpty('');
@@ -574,7 +585,7 @@ ${pagerHTML}
         if (pager) pager.style.display = q ? 'none' : '';
       })
       .catch(function () {
-        setEmpty('Tìm kiếm không hoạt động', 'Kết nối có vẻ đã gián đoạn. Thử lại, hoặc duyệt toàn bộ danh sách bài viết.');
+        setEmpty(PS_T.errTitle, PS_T.errBody);
       });
   }
 })();
@@ -585,13 +596,13 @@ ${pagerHTML}
       <strong>${esc(siteName)}</strong> — ${esc(siteDesc)}
     </div>
     <div class="footer-links">
-      <a href="${esc(homeUrl)}">Trang chủ</a>
-      <a href="${bp}/blog">Blog</a>
-      <a href="${bp}/hubs">Chủ đề</a>
-      <a href="${bp}/tools/seo-check">Công cụ</a>
+      <a href="${esc(homeUrl)}">${t.nav_home}</a>
+      <a href="${bp}/blog">${t.nav_blog}</a>
+      <a href="${bp}/hubs">${t.nav_topics}</a>
+      <a href="${bp}/tools/seo-check">${t.nav_tools}</a>
       <a href="${bp}/feed.xml">RSS</a>
     </div>
-    <div class="footer-copy">© ${new Date().getFullYear()} ${esc(siteName)}. Bảo lưu mọi quyền.</div>
+    <div class="footer-copy">© ${new Date().getFullYear()} ${esc(siteName)}. ${t.footer_rights}</div>
   </div>
 </footer>
 </body>
