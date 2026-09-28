@@ -7,6 +7,47 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.26.0 — 2026-09-28
+
+Video có sẵn kịch bản riêng, và 9Router viết nội dung trước.
+
+### Added
+- **Kịch bản riêng cho job video không có bài viết.** `POST /api/admin/video/create`
+  nhận thêm `source.brief` (tối đa 20 000 ký tự) và lưu vào cột mới
+  `video_jobs.body_markdown` — migration `014`, additive, `NULL` nghĩa là hành
+  vi cũ giữ nguyên. Job `business`/`website` trước đây lấy `projects.description
+  làm nguyên liệu, đúng cho promo nhưng sai cho một bản tóm tắt có nguồn, tin
+  tức, hay kịch bản operator đã duyệt và muốn render nguyên văn. `claim` ưu
+  tiên brief, không có thì mới rơi về `project.description`. `post` không đổi:
+  vẫn lấy body của bài.
+- **Provider `ninerouter` (9Router).** `https://aifree.gulagi.com/v1`, model
+  `guguseo`, OpenAI-compatible. Đứng đầu chuỗi text: **9Router → Workers AI →
+  GuRouter**. Cấu hình qua `NINEROUTER_API_KEY`, `NINEROUTER_BASE_URL`,
+  `NINEROUTER_TEXT_MODEL`; key thiếu thì provider biến mất khỏi chuỗi chứ không
+  làm hỏng chuỗi. Thêm thẻ provider trong `/admin`.
+- **Video 30–90 giây.** `video_templates.js` và `video-agent/storyboard.mjs`
+  nhận `duration: 30` (trước sàn là 60). `suggestDuration` vẫn giữ 60/75/90 nên
+  video bài viết tự động không đổi chiều dài.
+- **Harness nội dung (`.pi/`)** — 5 agent code + `trend-scout` / `scriptwriter` /
+  `video-producer`, skill `trend-search` (search API thay Firecrawl), `brand-voice`,
+  `shortform-script`, `video-pipeline-ops`, và hai prompt `/trend-scan`,
+  `/daily-video`. Trend chỉ được dùng khi có publisher + trích dẫn nguyên văn +
+  tín hiệu mới; không dùng trí nhớ model làm nguồn.
+- **`content-factory/trend-ledger.jsonl`** — nhật ký trend đã dùng, để không
+  viết lại cùng một cái.
+
+### Fixed
+- **Cổng trả SSE không còn bị đọc thành provider chết.** 9Router đôi khi trả
+  `data:` chunk trên HTTP 200 dù không set `stream: true`; `r.json()` ném
+  exception nên một request thành công bị báo là lỗi. `chatBody()` gộp cả hai
+  kiểu về một object (cả ở `functions/_lib/ai.js` lẫn `video-agent`), và
+  `usage.model` ghi đúng model upstream thật sự trả lời thay vì tên đã hỏi.
+- **`video-agent` retry 5xx/429 một lần** trước khi chuyển provider tiếp theo,
+  giống `chatCompletion()` bên platform. Một lần 504 lệch không còn làm mất
+  luôn provider dự phòng.
+- **Ảnh scene chất lượng `high` thay `auto`.** `auto` của gateway dùng ngân
+  sách cho bản nháp, và bản nháp chính là thứ nằm tràn màn hình sau các chữ.
+
 ## 1.25.0 — 2026-09-27
 
 Video có ảnh riêng cho từng màn hình, và chữ trên màn hình nói đúng lời đang đọc.

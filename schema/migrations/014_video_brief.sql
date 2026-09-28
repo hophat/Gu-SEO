@@ -1,0 +1,17 @@
+-- 014: per-job script source for jobs with no blog post behind them.
+--
+-- A business/website video job is identified by a 'project:<id>' sentinel,
+-- not a post id, so there was no row carrying its material. The claim
+-- answered with projects.description and the agent wrote the story from the
+-- project blurb — correct for a promo, wrong for a researched brief, a news
+-- item, or a script an operator approved and wanted rendered verbatim.
+--
+-- video_jobs.body_markdown is that material. NULL preserves the old
+-- behaviour exactly, so every existing job renders as it did before.
+--
+-- Additive only, and written idempotently: a database created before the
+-- migration runner has no schema_migrations rows, so its first run attempts
+-- this statement too. The runner tolerates "duplicate column name", and
+-- ADD COLUMN is the only safe shape here — a NOT NULL column could not be
+-- added to a populated table.
+ALTER TABLE video_jobs ADD COLUMN body_markdown TEXT;

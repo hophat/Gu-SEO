@@ -144,14 +144,21 @@ export function parseTemplateParam(value) {
   return t ? { ok: true, template: t.id, def: t } : { ok: false };
 }
 
-// 60–90s. The floor is a promise the whole pipeline keeps: a blog video that
-// runs shorter than a minute has not covered the article, and the templates
-// that used to ask for 20–30s were cutting every piece in half. Values outside
-// the band are clamped rather than rejected, so an old stored value or a stale
-// wizard still lands on a legal length.
+// 30–90s.
+//
+// The lower bound is a platform floor, not an editorial one. It used to be
+// 60s because a blog video under a minute had not covered its article — but
+// that argument is about *article* videos, and it is still enforced where it
+// belongs: `suggestDuration` in the agent only ever proposes 60/75/90, so an
+// auto-lengthed post video is unchanged. A 30s request is short-form social
+// (a researched trend, a single claim), which is a different animal from a
+// post summary and never goes through that path.
+//
+// Values outside the band are clamped rather than rejected, so an old stored
+// value or a stale wizard still lands on a legal length.
 export function clampVideoDuration(value) {
   if (value === undefined || value === null || value === '') return null;
   const n = Math.round(Number(value));
   if (!Number.isFinite(n)) return null;
-  return Math.min(90, Math.max(60, n));
+  return Math.min(90, Math.max(30, n));
 }

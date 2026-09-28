@@ -54,7 +54,13 @@ const ASSET_RENDER_TYPES = new Set([
 // Mọi video phải đủ thời gian kể hết các ý chính của bài, không ép lời đọc
 // thành teaser. 60s là sàn cứng: `clampDuration` áp nó lên mọi template,
 // kể cả khi người dùng không chọn thời lượng.
-export const DURATION = { min: 60, max: 90, default: 75 };
+// min is a platform floor, not an editorial one. It was 60 because a blog
+// video under a minute had not covered its article; that reasoning still
+// holds for article videos and is enforced by `suggestDuration` below, which
+// only ever proposes 60/75/90. The floor itself is 30 so a short-form social
+// video — one researched claim, 30–60s — is expressible. `default` stays 75
+// because it is what an unspecified length falls back to.
+export const DURATION = { min: 30, max: 90, default: 75 };
 export const MIN_SCENES = 3;
 // 16 is a pacing decision, not a capacity one. A 90s video at 5.5s per screen
 // is sixteen cuts; at the old twelve it was eight long holds, and a measured

@@ -1557,8 +1557,10 @@ async function testProviderDispatch() {
   const bare = (await listProviders({ AIFREE_API_KEY: undefined })).image;
   assert.ok(!bare.includes('aifree'), 'aifree must not be offered without its key');
   const withAifree = (await listProviders({ ...env, AIFREE_API_KEY: 'k' })).image;
-  assert.equal(withAifree[1], 'aifree',
-    'aifree must be the first keyed image provider — the platform gateway is spent before a third-party key');
+  assert.equal(withAifree[0], 'aifree',
+    'aifree leads the image chain — the platform gateway is spent before Workers AI or any third-party key');
+  assert.equal(withAifree[1], 'workers-ai',
+    'workers-ai is the fallback right behind it, so an exhausted gateway still paints');
   assert.equal(withAifree[withAifree.length - 1], 'pollinations',
     'pollinations still closes the chain with aifree configured');
   ok('aifree is registered as a keyed image provider ahead of the other vendors');
@@ -1628,6 +1630,68 @@ async function testProviderDispatch() {
   assert.deepEqual(names(orderProviders(partial, {}, null)), ['gurouter'],
     'an unconfigured provider is not offered');
   ok('an unconfigured provider is excluded from the order');
+
+  // ── 9Router, and a gateway that answers with a stream ───────────
+  // The operator's own OpenAI-compatible gateway, registered ahead of
+  // GuRouter so it writes the content. Two things are worth pinning here:
+  // where it sits in the order, and the fact that it answers a plain
+  // request with `data:` chunks — which a JSON-only reader turns into a
+  // provider outage on a 200.
+  const both = { NINEROUTER_API_KEY: 'k1', GUROUTER_API_KEY: 'k2' };
+  assert.deepEqual((await listProviders(both)).text, ['ninerouter', 'gurouter'],
+    '9router answers before gurouter when both are configured');
+  assert.deepEqual((await listProviders({ ...both, AI: 'binding' })).text,
+    ['ninerouter', 'workers-ai', 'gurouter'],
+    "the operator's order: 9router, then Workers AI, then GuRouter");
+  assert.deepEqual((await listProviders({ GUROUTER_API_KEY: 'k2' })).text, ['gurouter'],
+    'a deployment without 9router keeps the chain it had');
+  assert.deepEqual((await listProviders({})).text, [],
+    'neither configured means no text provider, and the caller says so');
+  const aiSrc3 = readFileSync(join(ROOT, 'functions', '_lib', 'ai.js'), 'utf8');
+  assert.match(aiSrc3, /ninerouter[\s\S]*gurouter/,
+    'the registry must list 9router ahead of gurouter, not after it');
+  ok('9router is registered ahead of gurouter and stays optional');
+
+  // The streaming answer, folded back into an object. Stubbed because the
+  // real gateway alternates between a JSON body and a chunked one, and a
+  // test must not depend on which it picked today.
+  const ssePayload = (text) => {
+    const half = Math.ceil(text.length / 2);
+    return 'data: {"id":"x","object":"chat.completion.chunk","model":"upstream-model","choices":[{"index":0,"delta":{"content":'
+      + JSON.stringify(text.slice(0, half)) + '},"finish_reason":null}]}\n\n'
+      + 'data: {"id":"x","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":'
+      + JSON.stringify(text.slice(half)) + '},"finish_reason":"stop"}],"usage":{"prompt_tokens":7,"completion_tokens":9}}\n\n'
+      + 'data: [DONE]\n\n';
+  };
+  const realFetch2 = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes('/chat/completions')) {
+      return new Response(ssePayload('{"ok":true,"viet":"xin chào"}'), {
+        status: 200, headers: { 'content-type': 'text/event-stream' },
+      });
+    }
+    return new Response('{}', { status: 200 });
+  };
+  try {
+    const streamed = await runTextProvider(both, 'ninerouter', 'Trả JSON thuần');
+    assert.deepEqual(streamed.parsed, { ok: true, viet: 'xin chào' },
+      'a chunked 200 is folded into the same parsed object as a JSON body');
+    assert.equal(streamed.usage.model, 'upstream-model',
+      'the model that actually answered is recorded, not the one that was asked for');
+    assert.equal(streamed.usage.estimated, false,
+      'the terminal frame carries real token counts');
+    const plainFetch = realFetch2;
+    globalThis.fetch = async (url) => (String(url).includes('/chat/completions')
+      ? new Response(JSON.stringify({ choices: [{ message: { content: '{"ok":false}' } }] }), {
+        status: 200, headers: { 'content-type': 'application/json' } })
+      : plainFetch(url));
+    const plain = await runTextProvider(both, 'ninerouter', 'Trả JSON thuần');
+    assert.deepEqual(plain.parsed, { ok: false },
+      'a plain JSON body still parses, so the tolerant reader is not a replacement');
+  } finally {
+    globalThis.fetch = realFetch2;
+  }
+  ok('9router answers a chunked 200 without reading as a failed provider');
 
   // brand-dna must consult the setting, not just the request body.
   assert.match(brandSrc, /settings\.default_ai_provider/,
@@ -2995,21 +3059,23 @@ async function testVideoTemplates() {
   ok('claim returns template, duration and an absolute presenter_image_url');
 
   // The business/website claim path carries the same fields. A 30s request
-  // comes back as 60: the floor is a contract with the operator, not a
-  // suggestion the endpoint is free to ignore.
+  // comes back as 30: short-form social is a legal length, and the operator
+  // asked for it by name.
   await create({ project_id: PROJECT, source: { type: 'business' }, template: 'local', duration: 30 });
   const biz = await (await claimVideoJob({
     env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'business', project_id: PROJECT } }),
   })).json();
   assert.equal(biz?.job?.template, 'local');
-  assert.equal(biz?.job?.duration, 60, 'a sub-minute request is raised to the 60s floor on the way in');
+  assert.equal(biz?.job?.duration, 30, 'a 30s short-form request survives the clamp on the way in');
   assert.equal(biz?.job?.project?.presenter_image_url, 'https://x/image/project/x/presenter/p.png');
   ok('the business claim path carries template/duration/presenter too');
 
   // The duration band itself, at both ends and outside it.
-  assert.equal(clampVideoDuration(20), 60, '20s is raised to the floor');
-  assert.equal(clampVideoDuration(59), 60, 'just under a minute is still the floor');
-  assert.equal(clampVideoDuration(60), 60, 'the floor itself is left alone');
+  assert.equal(clampVideoDuration(20), 30, 'below the floor is raised to 30');
+  assert.equal(clampVideoDuration(29), 30, 'one under the floor is still the floor');
+  assert.equal(clampVideoDuration(30), 30, 'the floor itself is left alone');
+  assert.equal(clampVideoDuration(45), 45, 'short-form middle of the band passes through');
+  assert.equal(clampVideoDuration(60), 60, 'the article-length default is untouched');
   assert.equal(clampVideoDuration(75), 75, 'the middle of the band passes through');
   assert.equal(clampVideoDuration(90), 90, 'the ceiling is left alone');
   assert.equal(clampVideoDuration(200), 90, 'above the ceiling is clamped, not refused');
@@ -3020,7 +3086,45 @@ async function testVideoTemplates() {
   for (const t of VIDEO_TEMPLATES) {
     assert.equal(t.defaultDuration, null, `template "${t.id}" no longer hardcodes a length`);
   }
-  ok('durations are clamped to 60-90s and no template hardcodes one');
+  ok('durations are clamped to 30-90s and no template hardcodes one');
+
+  // ── the brief a job renders from ──────────────────────────────────
+  // A business job has no post behind it, so before video_jobs.body_markdown
+  // the claim answered with the project blurb and the agent wrote the story
+  // from that. These cover both halves of the contract: a supplied brief wins,
+  // and its absence reproduces the old behaviour exactly.
+  const BRIEF = '## Nguồn: Guardian\n\nGiá điện tăng 12% ở Việt Nam.\n\n## Bước tiếp theo\n\nDự kiến 10/10.';
+  // OTHER, because PROJECT still holds the business job claimed above and
+  // one in-flight job per project is a 409 by design.
+  await create({ project_id: OTHER, source: { type: 'business', brief: BRIEF }, template: 'local' });
+  const withBrief = await (await claimVideoJob({
+    env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'business', project_id: OTHER } }),
+  })).json();
+  assert.equal(withBrief?.job?.body_markdown, BRIEF, 'a supplied brief is the material the agent writes from');
+  // The first claim leaves the job 'claimed', so free the slot before the next
+  // create — same rule the endpoint enforces, restated here so the test does
+  // not depend on a side effect.
+  await env.DB.prepare("UPDATE video_jobs SET status = 'done' WHERE project_id = ?").bind(OTHER).run();
+  await create({ project_id: OTHER, source: { type: 'business' } });
+  // Give the project a description so the fallback assertion is a real one:
+  // '' would pass just as well as a wrong value.
+  const DESC = 'Mô tả dự án mẫu.';
+  await env.DB.prepare('UPDATE projects SET description = ? WHERE id = ?').bind(DESC, OTHER).run();
+  const noBrief = await (await claimVideoJob({
+    env, request: adminReq('https://x/api/admin/video/claim', { body: { type: 'business', project_id: OTHER } }),
+  })).json();
+  assert.equal(noBrief?.job?.body_markdown, DESC, 'no brief falls back to the project description, as before');
+  // A brief that is present but blank is a caller mistake, not a reason to
+  // silently fall back: the caller would never learn their text was dropped.
+  const blankBrief = await create({ project_id: OTHER, source: { type: 'business', brief: '   ' } });
+  assert.equal(blankBrief.status, 400);
+  assert.equal((await blankBrief.json()).error, 'empty_brief', 'a whitespace-only brief is refused instead of ignored');
+  const longBrief = await create({ project_id: OTHER, source: { type: 'business', brief: 'x'.repeat(20001) } });
+  assert.equal(longBrief.status, 413, 'an oversized brief is refused rather than stored');
+  // Hand OTHER back with a free business slot: the bgm block below creates on
+  // it, and a job still 'claimed' from the checks above would 409 it.
+  await env.DB.prepare("UPDATE video_jobs SET status = 'done' WHERE project_id = ?").bind(OTHER).run();
+  ok('a business job renders from its brief, and falls back to the description without one');
 
   // ── background music ──────────────────────────────────────────────
   // 'bgm' validates against the catalog like template does: an unknown

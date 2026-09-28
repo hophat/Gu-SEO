@@ -382,7 +382,9 @@ export async function aiImage(prompt, base, { config, work, log = () => {} }) {
     prompt,
     n: 1,
     size: config?.size || AIFREE_SIZE,
-    quality: 'auto',
+    // 'high', not 'auto': the gateway's auto spends the budget on a draft
+    // render, and the draft is what ends up full-bleed behind the words.
+    quality: 'high',
     background: 'auto',
     image_detail: 'high',
     output_format: 'png',

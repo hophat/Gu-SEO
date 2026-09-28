@@ -14,7 +14,7 @@ export const onRequestPost = async ({ env, request }) => {
     const t0 = Date.now();
     const res = await generateImage(env, {
       prompt,
-      provider: body?.provider || 'workers-ai',
+      provider: body?.provider || undefined,
       source: 'test-generate'
     });
     const ms = Date.now() - t0;

@@ -4,8 +4,9 @@
 #
 #   bash setup.sh
 #
-# Then edit /root/video-agent/.env (BASE_URL, ADMIN_TOKEN, GUROUTER_API_KEY)
-# and run: node render-video.mjs --slug <slug>
+# Then edit /root/video-agent/.env (BASE_URL, ADMIN_TOKEN, and at least one
+# of NINEROUTER_API_KEY / GUROUTER_API_KEY) and run:
+#   node render-video.mjs --slug <slug>
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -24,13 +25,20 @@ if [[ ! -f .env ]]; then
   cat > .env <<'EOF'
 BASE_URL=https://gu-seo.pages.dev
 ADMIN_TOKEN=paste-admin-token-here
+# Model providers, tried in this order. 9Router is the operator's own
+# OpenAI-compatible gateway and answers first; GuRouter is the fallback, so
+# one gateway being down does not cost the video. Leave either blank to skip
+# it — the ladder keeps whoever has a key.
+NINEROUTER_API_KEY=paste-9router-key-here
+NINEROUTER_BASE_URL=https://aifree.gulagi.com/v1
+NINEROUTER_TEXT_MODEL=guguseo
 GUROUTER_API_KEY=paste-gurouter-key-here
 VIDEO_VOICE=vi-VN-NamMinhNeural
 # VIDEO_PROJECT_ID=proj_gulagi_001
 # ACCENT=#1677ff
 EOF
   chmod 600 .env
-  echo "▸ Wrote video-agent/.env (0600) — fill in ADMIN_TOKEN + GUROUTER_API_KEY."
+  echo "▸ Wrote video-agent/.env (0600) — fill in ADMIN_TOKEN + at least one model key."
 else
   echo "▸ .env already exists — left untouched."
 fi

@@ -749,6 +749,14 @@ ALTER TABLE projects ADD COLUMN presenter_image_url TEXT;
 -- a track id resolved to a playable /image/music/ URL.
 ALTER TABLE video_jobs ADD COLUMN bgm TEXT;
 
+-- Per-job script source, see migration 014. A business/website job has no
+-- blog post behind it, so before this the claim fell back to
+-- projects.description and the story was written from the project blurb.
+-- That is right for a promo and wrong for anything with its own material —
+-- a researched brief, a news item, a script the operator approved. This
+-- column is that material: NULL keeps the previous behaviour exactly.
+ALTER TABLE video_jobs ADD COLUMN body_markdown TEXT;
+
 -- YouTube resumable upload checkpoints, see migration 013. Session URIs are
 -- encrypted with the existing vault; next_offset is the last acknowledged
 -- byte boundary, allowing a later cron tick to resume safely.

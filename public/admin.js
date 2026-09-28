@@ -1673,6 +1673,17 @@
       ],
     },
     {
+      name: 'ninerouter', label: '9Router', envKey: 'NINEROUTER_API_KEY',
+      text: true, image: false, optional: true,
+      modelEnvKey: 'NINEROUTER_TEXT_MODEL',
+      modelDefault: 'guguseo',
+      models: [
+        { id: 'guguseo', label: 'GuGuseo (Mặc định)' },
+        { id: 'free', label: 'Free (combo)' },
+        { id: 'mimo-v2.5', label: 'Mimo V2.5' },
+      ],
+    },
+    {
       name: 'gurouter', label: 'GuRouter', envKey: 'GUROUTER_API_KEY',
       text: true, image: false, optional: true,
       modelEnvKey: 'GUROUTER_TEXT_MODEL',

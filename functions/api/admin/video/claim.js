@@ -15,6 +15,11 @@
 // The UNIQUE index on video_jobs(blog_post_id) makes the INSERT the
 // atomic claim; failed jobs are resurrected (attempts++) so a re-render
 // never trips the unique index.
+//
+// A business/website job has no blog post behind it, so the material it
+// renders from is video_jobs.body_markdown when the creator supplied one
+// (migration 014) and projects.description otherwise. The second path is
+// the original behaviour and is kept intact.
 import { json, nowSec, newId, audit } from '../../../_lib/util.js';
 import { adminGate } from '../../../_lib/auth.js';
 import { postIdFromRef, CAROUSEL_KIND, EXPLAINER_KIND } from '../../../_lib/video_jobs.js';
@@ -89,10 +94,10 @@ export const onRequestPost = async ({ env, request }) => {
   if (body?.type === 'business' || body?.type === 'website') {
     const kind = body.type;
     const pendSql = projectId
-      ? `SELECT id, project_id, source_url, template, duration, bgm FROM video_jobs
+      ? `SELECT id, project_id, source_url, template, duration, bgm, body_markdown FROM video_jobs
           WHERE kind = ? AND project_id = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`
-      : `SELECT id, project_id, source_url, template, duration, bgm FROM video_jobs
+      : `SELECT id, project_id, source_url, template, duration, bgm, body_markdown FROM video_jobs
           WHERE kind = ? AND status IN ('pending','failed')
           ORDER BY created_at ASC LIMIT 1`;
     const rows = projectId
@@ -193,7 +198,11 @@ export const onRequestPost = async ({ env, request }) => {
           },
           hero_image_base64: heroBase64,
         },
-        body_markdown: project.description || '',
+        // A brief the operator (or the content factory) supplied wins over the
+        // project blurb: it is the material this specific video is about. The
+        // fallback is unchanged, so a job created without a brief still
+        // renders exactly as it did before migration 014.
+        body_markdown: (pendingJob.body_markdown || '').trim() || project.description || '',
       },
     });
   }

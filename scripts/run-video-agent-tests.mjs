@@ -32,9 +32,27 @@ import { join } from 'node:path';
 // here can reach the network.
 process.env.BASE_URL = 'https://agent.test';
 process.env.ADMIN_TOKEN = 'test-token';
+// Both model keys, set before the module is imported because the ladder is
+// built at import time. A real VPS configures both, and the ordering tests
+// below need the operator's chain: 9router, then GuRouter. Workers AI has no
+// place in this list — it is a Workers binding, and this agent renders on a
+// plain Node host where there is nothing to bind to.
+process.env.NINEROUTER_API_KEY = 'test-key';
 process.env.GUROUTER_API_KEY = 'test-key';
 
 let scriptStub = null;
+// How the stubbed model answers. The 9Router gateway streams OpenAI-style
+// `data:` chunks on a 200 even when nothing asked for a stream, so the agent
+// reads the body as text and folds both shapes together. `scriptStubAs` picks
+// which shape this test exercises; the default is the plain JSON body.
+let scriptStubAs = 'json';
+const sseBody = (obj) => {
+  const s = JSON.stringify(obj);
+  const head = s.slice(0, s.length / 2), tail = s.slice(s.length / 2);
+  return `data: {"id":"x","object":"chat.completion.chunk","model":"test-upstream","choices":[{"index":0,"delta":{"content":${JSON.stringify(head)}},"finish_reason":null}]}\n\n`
+    + `data: {"id":"x","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":${JSON.stringify(tail)}},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":20}}\n\n`
+    + 'data: [DONE]\n\n';
+};
 // The last prompt handed to the model — the template tests check what the
 // storyboard request said, not just what it got back.
 let lastPrompt = null;
@@ -46,7 +64,13 @@ globalThis.fetch = async (url, opts) => {
     lastPrompt = body?.messages?.[1]?.content || '';
   }
   if (scriptStub && String(url).includes('/chat/completions')) {
-    return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify(scriptStub) } }] }) };
+    const payload = { choices: [{ message: { content: JSON.stringify(scriptStub) } }] };
+    const text = scriptStubAs === 'sse' ? sseBody(payload) : JSON.stringify(payload);
+    return {
+      ok: true,
+      headers: new Map([['content-type', scriptStubAs === 'sse' ? 'text/event-stream' : 'application/json']]),
+      text: async () => text,
+    };
   }
   throw new Error(`network disabled in tests: ${url}`);
 };
@@ -54,7 +78,7 @@ globalThis.fetch = async (url, opts) => {
 const {
   composeCarouselSlideHtml, composeStoryboardHtml, fitNarration, LOUDNESS, makeBgm,
   cutBgm, prepareBgm, speakSegments, writeStoryboard,
-  masterLoudness, renderCarousel, renderOne, slideQueries,
+  masterLoudness, renderCarousel, renderOne, slideQueries, ttsChunks,
 } = await import('../video-agent/render-video.mjs');
 // Scene renderers live in scenes.mjs; the story rules in storyboard.mjs.
 // MIN/MAX_SCENES are aliased because both modules export them with different
@@ -70,7 +94,7 @@ const {
   DURATION, INTENTS, MAX_TEXT_WORDS, alignCaptions, beatSlots, captionFromSay,
   captionGroundedIn, intentFromSignals, reviewStoryboard,
   sanitizeStoryboard, signatureTypes, storyboardFromContent, suggestDuration, wordCount,
-  narrationBudget, expandBeats, sceneCountFor, isIllustrated, numOf,
+  narrationBudget, expandBeats, sceneCountFor, isIllustrated, numOf, clampDuration,
   MIN_SCENES: SB_MIN_SCENES, MAX_SCENES: SB_MAX_SCENES,
 } = await import('../video-agent/storyboard.mjs');
 const { carouselPrefix, carouselSlideKey } = await import('../functions/_lib/video_jobs.js');
@@ -364,7 +388,11 @@ function postRig({ raw = 'quiet', renderFails = false, checkFails = false } = {}
     spawn(cmd, args, opts) {
       seen.spawns.push({ cmd, args, cwd: opts?.cwd });
       if (cmd === 'edge-tts') {
-        spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=2',
+        // At the voice's real pace, so a segment's audio length tracks the
+        // words it was given instead of a constant that would let a clipped
+        // response pass for a whole one.
+        const words = wordCount(args[args.indexOf('--text') + 1] || '');
+        spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `sine=f=440:d=${Math.max(0.6, words / 3)}`,
           '-b:a', '128k', args[args.indexOf('--write-media') + 1]]);
         return { status: 0, stdout: '', stderr: '' };
       }
@@ -1112,7 +1140,7 @@ if (!HAS_FFMPEG) {
     ] };
     const { storyboard } = sanitizeStoryboard(sb, { source: '', intent: 'educational', target: 60, assets: {} });
     const { segs, total } = fitNarration(storyboard, r.work, r.deps.spawn, () => {});
-    assert.ok(segs.every((s) => s > 1.5), 'every scene was actually spoken');
+    assert.ok(segs.every((s) => s > 0.4), 'every scene was actually spoken');
     // A 2s tone cannot fill a 30s screen. The video ends when the story does.
     assert.ok(total < 10, `a 2s voice must not hold a 30s screen (video came to ${total}s)`);
     for (const [i, scene] of storyboard.scenes.entries()) {
@@ -1208,21 +1236,33 @@ if (!HAS_FFMPEG) {
     const gapSpawn = (cmd, args) => {
       if (cmd === 'edge-tts') {
         const text = args[args.indexOf('--text') + 1] || '';
-        const seconds = text.startsWith('LONG') && wordCount(text) >= 10 ? 5.5 : 1.2;
+        // Spoken at the voice's real pace — Vietnamese at +8% runs just over
+        // three words a second. A stub returning one fixed length for every
+        // sentence is indistinguishable from the truncation the agent now
+        // refuses to ship, so it would have hidden the very thing under test.
+        const seconds = Math.max(0.6, wordCount(text) / 3);
         spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `sine=f=440:d=${seconds}`,
           '-b:a', '128k', args[args.indexOf('--write-media') + 1]]);
         return { status: 0, stdout: '', stderr: '' };
       }
       return { status: 0, stdout: '', stderr: '' };
     };
+    // Whole sentences, at the voice's real pace, so this board overruns the
+    // 15s it planned and the fitter has to do something about it.
+    const gapSay = Array(4).fill('Câu dài ngữ cảnh ngữ cảnh ngữ cảnh ngữ cảnh.').join(' ');
     const gapBoard = { intent: 'storytelling', duration: 15, scenes: [
-      { type: 'hook', text: 'Mở đầu', say: `LONG ${Array(9).fill('ngữcảnh').join(' ')}`, duration: 5 },
+      { type: 'hook', text: 'Mở đầu', say: gapSay, duration: 5 },
       { type: 'problem', text: 'Vấn đề', say: 'vấn đề ngắn', duration: 5 },
       { type: 'result', text: 'Kết quả', say: 'kết quả ngắn', duration: 5 },
     ] };
     const gapFit = fitNarration(gapBoard, gapWork, gapSpawn, () => {});
-    assert.ok(gapFit.total <= 15, 'a 0.35s gap is included in the initial overrun test');
-    assert.ok(wordCount(gapBoard.scenes[0].say) < 10, 'the boundary case re-speaks the first segment');
+    // A scene longer than its voice needs the gap on top of the voice, or the
+    // pause runs into the next scene's first word. 4.0s of speech is a 4.35s
+    // screen, not a 4.0s one — and the words are all still there.
+    assert.equal(gapBoard.scenes[0].say, gapSay, 'a voice that fits its screen is never cut for length');
+    assert.ok(gapBoard.scenes[0].duration >= gapFit.segs[0] + 0.35,
+      `the 0.35s gap is part of the screen the voice plays over (${gapBoard.scenes[0].duration}s vs ${(gapFit.segs[0] + 0.35).toFixed(2)}s of voice+gap)`);
+    assert.ok(gapFit.total >= gapFit.segs[0] + 0.35, 'a video is never shorter than the voice in it');
     rmSync(gapWork, { recursive: true, force: true });
     ok('narration fitting respects per-scene gap at the hard boundary');
   }
@@ -1254,6 +1294,54 @@ if (!HAS_FFMPEG) {
     assert.ok(retrySegments[0] > 0 && retrySegments[0] < 2, 'the fresh segment, not stale audio, is measured');
     rmSync(retryWork, { recursive: true, force: true });
     ok('TTS retries cannot reuse stale audio after a failed attempt');
+  }
+
+  {
+    // edge-tts answers a long `--text` with audio that stops partway through
+    // it, and re-sending the same long text stops in the same place — which
+    // is the missing-end-of-sentence symptom. The agent's answer is not to
+    // retry harder but to never send a long request: a scene is spoken as
+    // short sentences and stitched back together.
+    const long = 'Một hai ba bốn năm sáu bảy tám chín mười. Mười một mười hai mười ba mười bốn mười lăm mười sáu mười bảy. Mười tám mười chín hai mươi hai mươi mốt hai mươi hai hai mươi ba hai mươi bốn.';
+    const chunks = ttsChunks(long);
+    assert.ok(chunks.length > 1, 'a long segment is spoken as more than one request');
+    assert.ok(chunks.every((c) => wordCount(c) <= 12), 'no single request is long enough to be truncated');
+    // Nothing is dropped in the split: the words of the chunks are the words
+    // of the segment, in order, and the tail survives.
+    assert.equal(chunks.map((c) => wordCount(c)).reduce((a, b) => a + b, 0), wordCount(long),
+      'the split loses no words');
+    assert.ok(chunks[chunks.length - 1].endsWith('hai mươi ba hai mươi bốn.'),
+      `the last words of the segment are the last chunk, not a lost tail (got "${chunks[chunks.length - 1]}")`);
+    assert.equal(ttsChunks('Câu ngắn một.').length, 1, 'a short segment is still a single request');
+    assert.equal(ttsChunks('').length, 0, 'an empty segment asks for nothing');
+
+    // And the joined file is the whole scene, not the first request's worth.
+    const chunkWork = mkdtempSync(join(tmpdir(), 'tts-chunk-'));
+    mkdirSync(join(chunkWork, 'assets'), { recursive: true });
+    const asked = [];
+    const chunkSpawn = (cmd, args) => {
+      if (cmd === 'edge-tts') {
+        const text = args[args.indexOf('--text') + 1] || '';
+        asked.push(text);
+        const file = args[args.indexOf('--write-media') + 1];
+        spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi', '-i', `sine=f=440:d=${Math.max(0.6, wordCount(text) / 3)}`,
+          '-b:a', '128k', file]);
+        return { status: 0, stdout: '', stderr: '' };
+      }
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    const [seconds] = speakSegments([long], chunkWork, chunkSpawn);
+    assert.equal(asked.length, chunks.length, 'one TTS request per chunk, and no more');
+    assert.ok(seconds > wordCount(long) / 3 - 0.2,
+      `the joined segment carries every word (${seconds.toFixed(1)}s of audio for ${wordCount(long)} words)`);
+    assert.equal(existsSync(join(chunkWork, 'assets', 'seg0.mp3')), true, 'the scene is one joined file');
+    // The part files are scratch: leaving them in assets/ would let a later
+    // pass pick a chunk up as if it were a whole scene.
+    assert.deepEqual(
+      readdirSync(join(chunkWork, 'assets')).filter((f) => /\.p\d+\.mp3$/.test(f)), [],
+      'chunk scratch files are cleaned up');
+    rmSync(chunkWork, { recursive: true, force: true });
+    ok('a long segment is spoken in short pieces and stitched, so no words go missing');
   }
 
   {
@@ -1438,9 +1526,18 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
 }
 
 {
-  // A blog video has to cover the article, so the floor is a minute and the
-  // ceiling is a minute and a half. Nothing renders below 60s any more.
-  assert.deepEqual(DURATION, { min: 60, max: 90, default: 75 });
+  // The floor is a platform limit, not an editorial one: 30s so a short-form
+  // social video is expressible. The article-length promise is unchanged and
+  // lives in `suggestDuration`, which only ever proposes 60/75/90 — so an
+  // auto-lengthed post video is still at least a minute.
+  assert.deepEqual(DURATION, { min: 30, max: 90, default: 75 });
+  for (const target of [30, 45, 60, 75, 90]) {
+    assert.equal(clampDuration(target), target, `${target}s is inside the band and survives the clamp`);
+  }
+  assert.equal(suggestDuration('# Một\n## Hai\n'), 60,
+    'a two-heading source still gets the article-length minute, not the short-form floor');
+  assert.equal(clampDuration(29), 30, 'below the floor is raised to the floor');
+  assert.equal(clampDuration(91), 90, 'above the ceiling is lowered to the ceiling');
 
   // The inversion: beats get the story's seconds, and the video is that long.
   for (const intent of INTENTS) {
@@ -1451,7 +1548,7 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
     assert.ok(['hook', 'headline'].includes(slots[0].types[0]), `${intent} must open on a hook or a headline`);
     assert.ok(slots.at(-1).types.includes('cta'), `${intent} must close on a call to action`);
   }
-  for (const target of [60, 75, 90]) {
+  for (const target of [30, 45, 60, 75, 90]) {
     for (const intent of INTENTS) {
       const total = beatSlots(intent, target).reduce((a, b) => a + b.duration, 0);
       assert.equal(Math.round(total * 10) / 10, target, `${intent} at ${target}s keeps the exact duration`);
@@ -1459,10 +1556,10 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
   }
   assert.equal(beatSlots('product_demo', 999).reduce((a, b) => a + b.duration, 0) <= DURATION.max + 0.4, true,
     'a silly target is still clamped to the ceiling');
-  // A target below the floor is raised, never honoured: this is the rule that
-  // stops a stale 20-second job from rendering a video that skips the article.
-  assert.equal(Math.round(beatSlots('educational', 20).reduce((a, b) => a + b.duration, 0) * 10) / 10, 60,
-    'a sub-minute request is raised to the floor rather than obeyed');
+  // A target below the floor is raised, never honoured — a stale stored
+  // duration still lands on a legal length instead of rendering a 12s clip.
+  assert.equal(Math.round(beatSlots('educational', 20).reduce((a, b) => a + b.duration, 0) * 10) / 10, 30,
+    'a sub-floor request is raised to the floor rather than obeyed');
   ok('every intent opens on a hook, closes on a CTA, and fits the band');
 
   // A long video is told across more screens, not across longer ones.
@@ -1881,12 +1978,12 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
     'Kết quả thực tế đã được đo lại và ghi nhận.',
     'Kết luận cần ưu tiên hành động quan trọng nhất.',
   ].join(' ');
-  // A sub-minute request is raised to the floor rather than honoured — that is
-  // the whole point of the floor. A 20-second job still renders 60 seconds.
+  // A below-floor request is raised rather than honoured — that is the whole
+  // point of the floor. A 20-second job renders 30, the shortest legal length.
   const shortFallback = storyboardFromContent(
     { title: 'Bài ngắn', body_markdown: STORY_ARTICLE }, 'educational', {}, 20);
-  assert.equal(shortFallback.duration, 60, 'a sub-minute request is raised to the floor');
-  assert.ok(Math.abs(shortFallback.scenes.reduce((sum, s) => sum + s.duration, 0) - 60) < 0.4,
+  assert.equal(shortFallback.duration, 30, 'a below-floor request is raised to the floor');
+  assert.ok(Math.abs(shortFallback.scenes.reduce((sum, s) => sum + s.duration, 0) - 30) < 0.4,
     'and the raised length is the length the scenes actually carry');
   const fullFallback = storyboardFromContent(
     { title: 'Bài viết đầy đủ', body_markdown: completeArticle,
@@ -2370,7 +2467,7 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
   try {
     globalThis.fetch = async (url, opts) => {
       body = JSON.parse(opts?.body || '{}');
-      return { ok: true, json: async () => ({ choices: [{ message: { content: '' }, finish_reason: 'length' }], usage: { completion_tokens: 3200, completion_tokens_details: { reasoning_tokens: 3200 } } }) };
+      return { ok: true, status: 200, text: async () => JSON.stringify({ choices: [{ message: { content: '' }, finish_reason: 'length' }], usage: { completion_tokens: 3200, completion_tokens_details: { reasoning_tokens: 3200 } } }) };
     };
     await assert.rejects(
       writeStoryboard(job, ask),
@@ -2411,7 +2508,7 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
 
   // The happy path still parses: one model answer, the scenes the board needs.
   try {
-    globalThis.fetch = async () => ({ ok: true, json: async () => ({ choices: [{
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ choices: [{
       message: { content: JSON.stringify({ intent: 'local_business', duration: 75, scenes: [
         { type: 'hook', text: 'Mở bằng câu hỏi', say: 'Vì sao quán đầy khách mà doanh thu vẫn đi ngang?', duration: 12 },
         { type: 'cta', text: 'Mở website ngay', say: 'Hãy đưa món và giờ mở cửa lên một trang thật rõ.', duration: 12 },
@@ -2422,8 +2519,97 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
     assert.equal(sb.scenes[0].type, 'hook');
   } finally {
     globalThis.fetch = realFetch;
+  }  ok('the storyboard call still returns a board when the model answers');
+
+  // The gateway answers with `data:` chunks on a 200, sometimes, even though
+  // nothing asked for a stream. A JSON-only reader turns that into
+  // `all providers failed` and a red job for a request that in fact
+  // succeeded, so the chunks are folded back into one answer.
+  const board = { intent: 'local_business', duration: 60, scenes: [
+    { type: 'hook', text: 'Mở bằng câu hỏi', say: 'Vì sao quán đầy khách mà doanh thu vẫn đi ngang?', duration: 10 },
+    { type: 'cta', text: 'Mở website ngay', say: 'Hãy đưa món và giờ mở cửa lên một trang thật rõ.', duration: 10 },
+  ] };
+  // The stream carries the answer text itself, one delta at a time — the
+  // agent reassembles it into the message, so a board spread over several
+  // chunks must come back as one board.
+  const asStream = (text) => {
+    const s = JSON.stringify(text);
+    const half = Math.ceil(s.length / 2);
+    return `data: {"id":"x","object":"chat.completion.chunk","model":"test-upstream","choices":[{"index":0,"delta":{"content":${JSON.stringify(s.slice(0, half))}},"finish_reason":null}]}\n\n`
+      + `data: {"id":"x","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":${JSON.stringify(s.slice(half))}},"finish_reason":"stop"}],"usage":{"prompt_tokens":5,"completion_tokens":6}}\n\n`
+      + 'data: [DONE]\n\n';
+  };
+  const scriptPath = process.env.NINEROUTER_BASE_URL || 'https://aifree.gulagi.com/v1';
+  try {
+    let streamCalls = 0;
+    globalThis.fetch = async (url) => {
+      if (String(url).includes('/chat/completions')) {
+        streamCalls++;
+        return { ok: true, status: 200, text: async () => asStream(board) };
+      }
+      throw new Error(`network disabled in tests: ${url}`);
+    };
+    const streamed = await writeStoryboard(job, ask);
+    assert.equal(streamCalls, 1, 'a chunked answer is read, not retried');
+    assert.equal(streamed.scenes.length, 2, 'and it comes back as a whole board');
+    assert.equal(streamed.scenes[0].type, 'hook', 'the first scene survives the reassembly');
+  } finally {
+    globalThis.fetch = realFetch;
   }
-  ok('the storyboard call still returns a board when the model answers');
+  ok('a chunked 200 from the gateway is not mistaken for a failed model');
+
+  // The ladder, and who answers. 9router is the operator's own gateway and
+  // goes first; GuRouter is the cover. Workers AI cannot appear here — it is
+  // a Workers binding and this agent runs on a plain host.
+  const hosts = [];
+  const recordHost = (fn) => async (url, opts) => {
+    if (String(url).includes('/chat/completions')) hosts.push(new URL(url).host);
+    return fn(url, opts);
+  };
+  const answers = async (url) => {
+    if (String(url).includes('/chat/completions')) {
+      return { ok: true, status: 200, text: async () => JSON.stringify({ choices: [{ message: { content: JSON.stringify(board) } }] }) };
+    }
+    throw new Error(`network disabled in tests: ${url}`);
+  };
+  try {
+    globalThis.fetch = recordHost(answers);
+    await writeStoryboard(job, ask);
+    assert.equal(hosts[0], new URL(scriptPath).host,
+      '9router is asked first, and a good answer from it ends the ladder');
+    assert.equal(hosts.length, 1, 'the next provider is not called when the first one works');
+
+    // 9router unreachable for this one call, and the cover answers.
+    hosts.length = 0;
+    globalThis.fetch = recordHost(async (url, opts) => {
+      if (String(url).includes('/chat/completions')) {
+        if (new URL(url).host === new URL(scriptPath).host) {
+          return { ok: false, status: 502, text: async () => '<!DOCTYPE html>' };
+        }
+        return answers(url, opts);
+      }
+      throw new Error(`network disabled in tests: ${url}`);
+    });
+    const covered = await writeStoryboard(job, ask);
+    // Three calls, not two: a 5xx is retried once against 9router before the
+    // ladder moves on. A transient gateway blip should not cost the cover
+    // provider, and a real outage should not cost a second full attempt.
+    assert.equal(hosts.length, 3,
+      '9router is retried once on a 5xx, then the ladder moves to the next provider');
+    assert.ok(hosts.slice(0, 2).every((h) => h === new URL(scriptPath).host),
+      'both attempts went to 9router');
+    assert.ok(hosts[2] !== new URL(scriptPath).host, 'and the third to a different gateway');
+    assert.equal(covered.scenes.length, 2, 'and the job still gets its board');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  const agentSrc = readFileSync(new URL('../video-agent/render-video.mjs', import.meta.url), 'utf8');
+  const ninerouterAt = agentSrc.indexOf("'ninerouter'");
+  const gurouterAt = agentSrc.indexOf("'gurouter'");
+  assert.ok(ninerouterAt > -1 && gurouterAt > ninerouterAt,
+    'the ladder must list 9router before GuRouter');
+  assert.ok(!/workers-ai/.test(agentSrc), 'Workers AI is not a video-agent provider — it has no host to bind to');
+  ok('the video agent asks 9router first and GuRouter covers for it');
 }
 
 console.log(`\nALL VIDEO AGENT TESTS PASSED (${passed} checks)`);

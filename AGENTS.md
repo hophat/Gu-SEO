@@ -1,7 +1,8 @@
 # pages-seo · agent guidance
 
 Self-hosted programmatic-SEO + daily-AI-blog toolkit for Cloudflare
-Pages. Workers AI by default; 8 cloud providers as fallback. D1 for
+Pages. Text writes go to the 9Router gateway first, then Workers AI,
+then GuRouter, with 8 cloud providers behind those. D1 for
 storage, R2 for images. Source:
 <https://github.com/Benjamin-Bloch/pages-seo>.
 
@@ -131,3 +132,30 @@ deploys routes the source no longer has.
   ask. Uptime monitors and embed widgets depend on the shape.
 - A "small fix" that requires editing `wrangler.toml` → it doesn't.
   Edit `wrangler.template.toml` instead.
+
+---
+
+## Harness: pages-seo
+
+**목표:** Route every change to the agent that owns the layer, and
+gate every release through one verified path.
+
+**트리거 (code):** Feature, refactor, or bug in this repo → `/feature`.
+Schema / DDL change → `/schema-migration`. SEO audit of the public
+surface → `/seo-audit`. Ship, deploy, version bump, or a red CI →
+`/ship`. Small fixes (one file, one layer) are done directly, no
+delegation.
+
+**트리거 (content):** Daily short-form video for a brand → `/daily-video`.
+Research only, no script → `/trend-scan`. The content factory researches
+live web trends through the aifree search API; nothing about a claimed
+trend may come from the model's memory. State used in
+`content-factory/trend-ledger.jsonl`. Commit, tag, push, deploy, and any remote D1 write are
+never run without an explicit user instruction in the current
+conversation.
+
+**변경 이력:**
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|------|----------|------|------|
+| 2026-09-10 | 초기 구성 — 5 agents, 5 skills, 4 prompts | 전체 | 멀티에이전트 하네스 구축 |
+| 2026-09-28 | Content factory bổ sung — 3 agents, 4 skills, 2 prompts | `.pi/agents/{trend-scout,scriptwriter,video-producer}.md` | Trend thật (search API) → video 30–60s/ngày |

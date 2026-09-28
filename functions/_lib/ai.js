@@ -509,7 +509,10 @@ async function aifreeImage(env, prompt) {
       prompt,
       n: 1,
       size: env.AIFREE_IMAGE_SIZE || AIFREE_IMAGE_SIZE,
-      quality: 'auto',
+      // 'high' is the only quality this gateway is asked for: the model
+      // defaults to 'auto' and spends its budget on a draft render, which
+      // then ships as the blog header.
+      quality: 'high',
       background: 'auto',
       image_detail: 'high',
       output_format: 'png',
@@ -548,6 +551,39 @@ function b64ToBytes(b64) {
 // chat-completions endpoint with the same request/response shape. Wrap
 // the differences (base URL, model id, optional `response_format`) in
 // one helper so adding a new compatible provider is one config entry.
+// The gateway does not always answer with a JSON body. Under load it streams
+// OpenAI-style `data:` chunks even though nothing asked for `stream: true`, so
+// a plain `r.json()` throws on a 200 and reads as a provider outage. Both
+// shapes are folded into one object here: the SSE deltas are concatenated
+// into `content`, and the terminal frame supplies `finish_reason` and
+// `usage`.
+//
+// An empty answer returns an empty `content` rather than throwing, so the
+// caller's existing empty-response handling (and its retry) is what reacts.
+function chatBody(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return { choices: [{ message: { content: '' } }] };
+  if (!raw.startsWith('data:')) return JSON.parse(raw);
+  let content = '', model = '', finish = null, usage = null;
+  for (const line of raw.split('\n')) {
+    const s = line.trim();
+    if (!s.startsWith('data:')) continue;
+    const payload = s.slice(5).trim();
+    if (!payload || payload === '[DONE]') continue;
+    let frame;
+    try { frame = JSON.parse(payload); } catch { continue; }
+    const ch = frame?.choices?.[0];
+    // A gateway that streams puts the text in `delta`; one that streams for
+    // show and then sends the whole message puts it in `message`.
+    const piece = ch?.delta?.content ?? ch?.message?.content;
+    if (typeof piece === 'string') content += piece;
+    if (ch?.finish_reason) finish = ch.finish_reason;
+    if (frame?.usage) usage = frame.usage;
+    if (frame?.model) model = frame.model;
+  }
+  return { choices: [{ message: { content }, finish_reason: finish }], usage, model };
+}
+
 async function chatCompletion({ provider, url, apiKey, model, prompt, useJsonFormat = true, extraHeaders = {} }) {
   const body = {
     model,
@@ -589,7 +625,7 @@ async function chatCompletion({ provider, url, apiKey, model, prompt, useJsonFor
       }
       throw err;
     }
-    const data = await r.json();
+    const data = chatBody(await r.text());
     const text = data?.choices?.[0]?.message?.content || '';
     if (!text) {
       // chat_empty: the API returned 200 but with no content. This
@@ -604,7 +640,11 @@ async function chatCompletion({ provider, url, apiKey, model, prompt, useJsonFor
     return {
       parsed: looseJsonParse(text),
       usage: {
-        provider, model,
+        provider,
+        // The model that actually answered, which a routing gateway may not be
+        // the one that was asked for. Worth recording: the same provider id
+        // can land on a different upstream model between runs.
+        model: data?.model || model,
         prompt_tokens: u.prompt_tokens || estimateTokens(SYSTEM_JSON_ONLY + prompt),
         completion_tokens: u.completion_tokens || estimateTokens(text),
         estimated: !u.prompt_tokens,
@@ -943,14 +983,51 @@ async function gurouterText(env, prompt) {
   throw lastErr || new Error('gurouter_all_models_failed');
 }
 
+// ── 9Router (aifree.gulagi.com) ──────────────────────────────────────
+// The operator's own OpenAI-compatible gateway, tried before GuRouter so
+// content is written by the model they picked. `guguseo` is the model it
+// fronts by default; NINEROUTER_TEXT_MODEL pins another one from
+// /v1/models without a code change.
+//
+// The provider is named `ninerouter` rather than `9router` because the
+// registry derives an env var from the name (`providerEnvKey`), and a
+// leading digit is not a portable identifier across wrangler and CI. The
+// label the operator sees is 9Router.
+//
+// Note on the answer: this gateway returns the JSON object followed by an
+// `<|im_end|>` sentinel. `looseJsonParse` (used by chatCompletion) slices
+// from the first `{` to the last `}`, so the sentinel is dropped — the same
+// tolerant parse the other OpenAI-compatible providers here already rely on.
+async function ninerouterText(env, prompt) {
+  if (!env?.NINEROUTER_API_KEY) throw new Error('ninerouter_not_configured');
+  const baseUrl = (env?.NINEROUTER_BASE_URL || 'https://aifree.gulagi.com/v1').replace(/\/+$/, '');
+  const model = env?.NINEROUTER_TEXT_MODEL || 'guguseo';
+  return chatCompletion({
+    provider: 'ninerouter',
+    url: `${baseUrl}/chat/completions`,
+    apiKey: env.NINEROUTER_API_KEY,
+    model,
+    prompt,
+  });
+}
+
 // ── provider registry ─────────────────────────────────────────────────
 
 // Order matters: when no `provider` is specified, we walk the list in
 // order and use the first one whose `available(env)` returns true.
 // Workers AI is first because it's always present in this deployment.
+// 9Router sits ahead of GuRouter because the operator asked for their own
+// gateway to write the content; GuRouter keeps the next slot and stays the
+// fallback. Move 9Router above workers-ai only if you want the free tier
+// off the default path entirely.
 const TEXT_PROVIDERS = [
-  { name: 'workers-ai', available: (e) => !!e?.AI,                call: workersAIText  },
-  { name: 'gurouter',   available: (e) => !!e?.GUROUTER_API_KEY,  call: gurouterText   },
+  // Order is the operator's: their own 9Router gateway writes the content
+  // first, Workers AI covers for it when the gateway is out of quota, and
+  // GuRouter is the last resort. Anything in the list is optional — a
+  // deployment without a key just does not get it.
+  { name: 'ninerouter',  available: (e) => !!e?.NINEROUTER_API_KEY, call: ninerouterText },
+  { name: 'workers-ai',  available: (e) => !!e?.AI,                call: workersAIText  },
+  { name: 'gurouter',    available: (e) => !!e?.GUROUTER_API_KEY,  call: gurouterText   },
   { name: 'openai',     available: (e) => !!e?.OPENAI_API_KEY,    call: openAIText     },
   { name: 'anthropic',  available: (e) => !!e?.ANTHROPIC_API_KEY, call: anthropicText  },
   { name: 'gemini',     available: (e) => !!e?.GEMINI_API_KEY,    call: geminiText     },
@@ -962,12 +1039,14 @@ const TEXT_PROVIDERS = [
 ];
 
 // Image providers — Anthropic, Groq, DeepSeek etc. don't do image gen,
-// so they don't appear here. Workers AI stays first because the binding is
-// always present; aifree is the first *keyed* one so the platform's own
-// gateway is used before a third-party key is spent.
+// so they don't appear here. aifree is FIRST: the platform's own gateway is
+// the one that has to be spent before anything else, and Workers AI is the
+// fallback for the minute the gateway is out of quota or answering 5xx.
+// Workers AI is still always present, so a deployment without AIFREE_API_KEY
+// resolves to the same chain it always did.
 const IMAGE_PROVIDERS = [
-  { name: 'workers-ai',   available: (e) => !!e?.AI,             call: workersAIImage    },
   { name: 'aifree',       available: (e) => !!e?.AIFREE_API_KEY, call: aifreeImage       },
+  { name: 'workers-ai',   available: (e) => !!e?.AI,             call: workersAIImage    },
   { name: 'openai',       available: (e) => !!e?.OPENAI_API_KEY, call: openAIImage       },
   { name: 'gemini',       available: (e) => !!e?.GEMINI_API_KEY, call: geminiImage       },
   { name: 'pollinations', available: () => true,                 call: pollinationsImage },
@@ -988,6 +1067,7 @@ export function orderProviders(registry, env, preferred) {
 // Every provider-secret name we care about, for vault overlay.
 import { envWithVault, getVaultSecret } from './secret_vault.js';
 const PROVIDER_SECRET_NAMES = [
+  'NINEROUTER_API_KEY',
   'GUROUTER_API_KEY',
   'AIFREE_API_KEY',
   'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY',
@@ -996,6 +1076,7 @@ const PROVIDER_SECRET_NAMES = [
   // Model overrides
   'WORKERS_AI_TEXT_MODEL', 'ANTHROPIC_TEXT_MODEL', 'OPENAI_TEXT_MODEL',
   'GEMINI_TEXT_MODEL', 'GUROUTER_TEXT_MODEL', 'GROQ_TEXT_MODEL',
+  'NINEROUTER_TEXT_MODEL',
   'DEEPSEEK_TEXT_MODEL', 'MISTRAL_TEXT_MODEL', 'TOGETHER_TEXT_MODEL',
   'CEREBRAS_TEXT_MODEL', 'AIFREE_IMAGE_MODEL',
 ];

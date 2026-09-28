@@ -51,6 +51,104 @@ const TOKEN = E('ADMIN_TOKEN');
 const GUROUTER_KEY = E('GUROUTER_API_KEY');
 const GUROUTER_BASE = (E('GUROUTER_BASE_URL') || 'https://gurouter.com/v1').replace(/\/+$/, '');
 const GUROUTER_MODEL = E('GUROUTER_TEXT_MODEL') || 'deepseek/deepseek-v4.1-flash';
+// 9Router — the operator's own OpenAI-compatible gateway, written first so
+// video copy comes from the model they picked. GuRouter stays as the
+// fallback, so a gateway that is down or out of quota does not cost the
+// video. Named NINEROUTER_* rather than 9ROUTER_* because a leading digit is
+// not a portable env-var name across shells and CI.
+const NINEROUTER_KEY = E('NINEROUTER_API_KEY');
+const NINEROUTER_BASE = (E('NINEROUTER_BASE_URL') || 'https://aifree.gulagi.com/v1').replace(/\/+$/, '');
+const NINEROUTER_MODEL = E('NINEROUTER_TEXT_MODEL') || 'guguseo';
+
+// Model providers in the order they are tried. Only those with a key are
+// listed, so a deployment that configured neither keeps its old behaviour of
+// reporting a missing GUROUTER_API_KEY.
+const MODEL_PROVIDERS = [
+  NINEROUTER_KEY && { name: 'ninerouter', key: NINEROUTER_KEY, base: NINEROUTER_BASE, model: NINEROUTER_MODEL },
+  GUROUTER_KEY && { name: 'gurouter', key: GUROUTER_KEY, base: GUROUTER_BASE, model: GUROUTER_MODEL },
+].filter(Boolean);
+
+// The gateway does not always answer with a JSON body. Under load it streams
+// OpenAI-style `data:` chunks even though nothing asked for `stream: true`, so
+// a plain `r.json()` throws on a 200 and reads as a broken provider. Both
+// shapes are folded into one object: SSE deltas are concatenated into
+// `content`, and the terminal frame supplies `finish_reason` and `usage`.
+// An empty answer yields an empty `content` so the caller's existing
+// empty-answer handling is what reacts.
+function chatBody(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return { choices: [{ message: { content: '' } }] };
+  if (!raw.startsWith('data:')) return JSON.parse(raw);
+  let content = '', model = '', finish = null, usage = null;
+  for (const line of raw.split('\n')) {
+    const s = line.trim();
+    if (!s.startsWith('data:')) continue;
+    const payload = s.slice(5).trim();
+    if (!payload || payload === '[DONE]') continue;
+    let frame;
+    try { frame = JSON.parse(payload); } catch { continue; }
+    const ch = frame?.choices?.[0];
+    // A gateway that streams puts the text in `delta`; one that streams for
+    // show and then sends the whole message puts it in `message`.
+    const piece = ch?.delta?.content ?? ch?.message?.content;
+    if (typeof piece === 'string') content += piece;
+    if (ch?.finish_reason) finish = ch.finish_reason;
+    if (frame?.usage) usage = frame.usage;
+    if (frame?.model) model = frame.model;
+  }
+  return { choices: [{ message: { content }, finish_reason: finish }], usage, model };
+}
+
+// One chat call, the first provider that answers wins. Returns the raw
+// response so callers can read `finish_reason` and the token usage — the
+// storyboard path needs both to explain a malformed answer.
+//
+// 5xx and 429 get one retry before the next provider. A long storyboard call
+// (16 384 max_tokens, reasoning included) intermittently comes back as a
+// gateway 504 — the endpoint is healthy for short prompts, so this is a
+// request-size timeout, not an outage. Same bound as chatCompletion() in
+// functions/_lib/ai.js, for the same reason.
+const MAX_RETRIES = 1;
+
+async function chatJson(messages, opts = {}) {
+  const errs = [];
+  for (const p of MODEL_PROVIDERS) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      let r;
+      try {
+        r = await fetch(`${p.base}/chat/completions`, {
+          method: 'POST',
+          headers: { authorization: `Bearer ${p.key}`, 'content-type': 'application/json' },
+          body: JSON.stringify({
+            model: p.model,
+            messages,
+            temperature: opts.temperature ?? 0.7,
+            // The WHOLE budget, reasoning included — not a cap on the answer.
+            // guguseo thinks before it writes and spends those tokens out of
+            // the same allowance, so a budget sized for the answer alone comes
+            // back truncated at finish_reason=length.
+            max_tokens: opts.max_tokens ?? 1200,
+            response_format: { type: 'json_object' },
+          }),
+        });
+      } catch (e) {
+        errs.push(`${p.name}_unreachable: ${e.message}`);
+        break; // a dead host will not answer on the second try
+      }
+      if (!r.ok) {
+        const body = await r.text().catch(() => '');
+        errs.push(`${p.name} HTTP ${r.status}: ${body.slice(0, 200)}`);
+        // 4xx is a bad request, a bad model or a bad key — none of which a
+        // retry fixes, so stop here rather than spend the ladder on it. 5xx
+        // and 429 are transient; 429 is worth a second go, 5xx often is.
+        if (r.status >= 400 && r.status < 500 && r.status !== 429) break;
+        continue;
+      }
+      return { data: chatBody(await r.text()), provider: p.name };
+    }
+  }
+  throw new Error('chat_all_providers_failed: ' + errs.join(' | '));
+}
 const VOICE = E('VIDEO_VOICE') || 'vi-VN-NamMinhNeural';
 const PROJECT_ID = E('VIDEO_PROJECT_ID');
 const ACCENT = E('ACCENT') || '#1677ff';
@@ -183,7 +281,7 @@ LUẬT BẮT BUỘC:
 9. Phân công "motion" như đạo diễn: zoom cho hook, scroll cho ảnh chụp website trong khung, pan cho ảnh thật, reveal cho biểu đồ. Chuyển động phải chậm, liền mạch; không chọn none cho cảnh có ảnh.`;
 
 export async function writeStoryboard(job, { source, suggested, assets, target, forced = null }) {
-  if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
+  if (!MODEL_PROVIDERS.length) throw new Error('no model provider configured (set NINEROUTER_API_KEY or GUROUTER_API_KEY in video-agent/.env)');
   // A user-chosen template fixes the intent: the model fills the shape it was
   // given rather than picking another one — and the caller pins the result
   // back to `forced` anyway, so a model that ignores the line below cannot
@@ -249,26 +347,19 @@ ${JSON.stringify(example)}
 
 Trả JSON:`;
 
-  const r = await fetch(`${GUROUTER_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${GUROUTER_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: GUROUTER_MODEL,
-      messages: [
-        { role: 'system', content: 'Bạn là đạo diễn và người viết lời dẫn video dài cho TikTok/Reels. Bạn kể đủ ý bằng hình, dùng chuyển động chậm và liền mạch, không tạo tò mò giả bằng cách giấu thông tin quan trọng. Chỉ trả JSON thuần.' },
-        { role: 'user', content: user },
-      ],
-      // max_tokens is the WHOLE budget, reasoning included — not a cap on
-      // the answer, and the model's share of it grows with the board. Measured
-      // on the real call: an 8-screen board spent ~2 600 tokens thinking, a
-      // 12-screen board spent 7 510, and at 8 192 the larger one finished its
-      // reasoning with nothing left to say. The board is up to 16 screens now,
-      // so the budget has to leave room for the answer after a long think.
-      temperature: 0.65, max_tokens: 16384, response_format: { type: 'json_object' },
-    }),
-  }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
-  if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  const data = await r.json();
+  const { data, provider } = await chatJson(
+    [
+      { role: 'system', content: 'Bạn là đạo diễn và người viết lời dẫn video dài cho TikTok/Reels. Bạn kể đủ ý bằng hình, dùng chuyển động chậm và liền mạch, không tạo tò mò giả bằng cách giấu thông tin quan trọng. Chỉ trả JSON thuần.' },
+      { role: 'user', content: user },
+    ],
+    // max_tokens is the WHOLE budget, reasoning included — not a cap on
+    // the answer, and the model's share of it grows with the board. Measured
+    // on the real call: an 8-screen board spent ~2 600 tokens thinking, a
+    // 12-screen board spent 7 510, and at 8 192 the larger one finished its
+    // reasoning with nothing left to say. The board is up to 16 screens now,
+    // so the budget has to leave room for the answer after a long think.
+    { temperature: 0.65, max_tokens: 16384 },
+  );
   const choice = data?.choices?.[0];
   const raw = choice?.message?.content || '';
   const sb = parseStoryboard(raw);
@@ -277,15 +368,80 @@ Trả JSON:`;
     // `storyboard_schema_bad: ` and nothing else, which is indistinguishable
     // from a malformed answer — and cost a day to find, because the real
     // cause (finish_reason: length, budget spent on reasoning) is only
-    // visible in the response the error threw away.
+    // visible in the response the error threw away. The provider name is in
+    // there too, because the two gateways in the ladder truncate differently.
     const why = choice?.finish_reason || 'no_finish_reason';
     const reasoning = Number(data?.usage?.completion_tokens_details?.reasoning_tokens) || 0;
     throw new Error(
-      `storyboard_schema_bad: finish_reason=${why} reasoning_tokens=${reasoning} `
+      `storyboard_schema_bad: provider=${provider} finish_reason=${why} reasoning_tokens=${reasoning} `
       + `completion_tokens=${data?.usage?.completion_tokens ?? '?'} raw="${String(raw).slice(0, 120)}"`,
     );
   }
   return sb;
+}
+
+// edge-tts can answer with a file that holds only the first part of a long
+// segment. The exit status is a success and the file is comfortably over the
+// size floor, so the missing words ship silently and the sentence simply
+// stops before it lands its point — the exact symptom of a voice that is
+// "missing the end of the sentence". Speed is the tell: this voice reads
+// Vietnamese at a little over three words a second, so a clip implying much
+// more than that is missing audio, not fast speech.
+const MIN_WORDS_PER_SECOND = 2;
+
+// The cap is what keeps the truncation away. edge-tts answers a long `--text`
+// with audio that stops partway through it, and the same request retried
+// stops in the same place — so a segment is spoken as a few short sentences
+// and stitched back together, and the endpoint never gets the chance to drop
+// the tail. Twelve words is a comfortable sentence: it is what this voice
+// reads in about four seconds, and every answer measured so far came back
+// whole at that length.
+const TTS_CHUNK_WORDS = 12;
+
+// Whole sentences first, so a chunk still sounds like speech and not like a
+// fragment the listener has to reassemble. A sentence longer than the cap is
+// cut at its commas, then at a word boundary — never mid-word, and never
+// short: the words removed from a segment are words the viewer never hears.
+export function ttsChunks(text, maxWords = TTS_CHUNK_WORDS) {
+  const value = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!value) return [];
+  const byWord = (s) => {
+    const w = s.split(/\s+/).filter(Boolean);
+    const out = [];
+    for (let i = 0; i < w.length; i += maxWords) out.push(w.slice(i, i + maxWords).join(' '));
+    return out;
+  };
+  const chunks = [];
+  let cur = '';
+  const flush = () => { if (cur) { chunks.push(cur); cur = ''; } };
+  const add = (piece) => {
+    if (!cur) { cur = piece; return; }
+    if (wordCount(cur) + wordCount(piece) <= maxWords) { cur += ' ' + piece; return; }
+    flush(); cur = piece;
+  };
+  for (const sentence of sentencesOf(value)) {
+    if (wordCount(sentence) <= maxWords) { add(sentence); continue; }
+    flush();
+    for (const part of sentence.split(/(?<=,)\s+/)) {
+      if (wordCount(part) <= maxWords) { add(part); continue; }
+      flush();
+      for (const piece of byWord(part)) add(piece);
+    }
+  }
+  flush();
+  return chunks;
+}
+
+// One mp3 from the chunk files, in order. `-c copy` so the audio is not
+// re-encoded a second time on the way to the master.
+function concatAudio(parts, out) {
+  if (parts.length === 1) { copyFileSync(parts[0], out); return; }
+  const list = `${out}.concat.txt`;
+  writeFileSync(list, parts.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n'));
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', out], { encoding: 'utf8' });
+  if (r.status !== 0 || !existsSync(out) || statSync(out).size <= 500) {
+    throw new Error(`tts_concat_failed: ${(r.stderr || '').toString().slice(-200)}`);
+  }
 }
 
 // `only` re-speaks just those indices and measures the rest from disk —
@@ -296,23 +452,53 @@ export function speakSegments(segTexts, work, spawn, { only = null } = {}) {
     const mp3 = join(work, 'assets', `seg${i}.mp3`);
     if (only && !only.includes(i)) { segs.push(audioSeconds(mp3)); continue; }
     const ok = (f) => existsSync(f) && statSync(f).size > 500;
-    let done = false, lastErr = '';
-    // The endpoint throttles bursts: space every attempt out, escalate
-    // the backoff, and keep the last stderr for the failure report.
-    for (const voice of [VOICE, 'vi-VN-HoaiMyNeural']) {
-      for (let attempt = 0; attempt < 3 && !done; attempt++) {
-        // Never let a previous attempt's file satisfy the size check after a
-        // failed TTS retry. A stale segment would silently ship old words.
-        rmSync(mp3, { force: true });
-        const r = spawn('edge-tts', ['--voice', voice, '--rate=+8%', '--text', text, '--write-media', mp3], { encoding: 'utf8' });
-        if (r.status === 0 && ok(mp3)) { done = true; break; }
-        lastErr = (r.stderr || r.stdout || '').toString().slice(-120);
-        spawn('sleep', [String(4 + attempt * 4)]);
+    // One file per chunk, so a chunk that comes back short is re-spoken on
+    // its own instead of costing the whole segment another pass.
+    const parts = [];
+    for (const [c, chunk] of ttsChunks(text).entries()) {
+      const part = join(work, 'assets', `seg${i}.p${c}.mp3`);
+      parts.push(part);
+      let done = false, lastErr = '';
+      const words = wordCount(chunk);
+      // The endpoint throttles bursts: space every attempt out, escalate
+      // the backoff, and keep the last stderr for the failure report.
+      for (const voice of [VOICE, 'vi-VN-HoaiMyNeural']) {
+        for (let attempt = 0; attempt < 3 && !done; attempt++) {
+          // Never let a previous attempt's file satisfy the size check after a
+          // failed TTS retry. A stale segment would silently ship old words.
+          rmSync(part, { force: true });
+          const r = spawn('edge-tts', ['--voice', voice, '--rate=+8%', '--text', chunk, '--write-media', part], { encoding: 'utf8' });
+          if (r.status === 0 && ok(part)) {
+            const seconds = audioSeconds(part);
+            if (words >= 10 && seconds > 0.5 && words / seconds < MIN_WORDS_PER_SECOND) {
+              // Re-spoken rather than shipped: the audio is missing the words
+              // at the end, and every voice in the list will read them.
+              lastErr = `truncated: ${words} words would need ${(words / MIN_WORDS_PER_SECOND).toFixed(1)}s, got ${seconds.toFixed(1)}s`;
+              spawn('sleep', [String(4 + attempt * 4)]);
+              continue;
+            }
+            done = true; break;
+          }
+          lastErr = (r.stderr || r.stdout || '').toString().slice(-120);
+          spawn('sleep', [String(4 + attempt * 4)]);
+        }
+        if (done) break;
       }
-      if (done) break;
+      if (!done) throw new Error(`edge-tts failed for segment ${i} chunk ${c} (both voices): ${lastErr}`);
     }
-    if (!done) throw new Error(`edge-tts failed for segment ${i} (both voices): ${lastErr}`);
-    segs.push(audioSeconds(mp3));
+    concatAudio(parts, mp3);
+    for (const p of parts) rmSync(p, { force: true });
+    // The last word of the segment is the one that goes missing, so the
+    // joined file is measured as a whole: a short answer now fails the job
+    // loudly instead of shipping a voice that stops mid-thought.
+    const seconds = audioSeconds(mp3);
+    const total = wordCount(text);
+    if (total >= 10 && seconds > 0.5 && total / seconds < MIN_WORDS_PER_SECOND) {
+      throw new Error(
+        `edge-tts_truncated_segment_${i}: ${total} words would need ${(total / MIN_WORDS_PER_SECOND).toFixed(1)}s, got ${seconds.toFixed(1)}s`,
+      );
+    }
+    segs.push(seconds);
     spawn('sleep', ['2']); // pace consecutive calls — no bursts
   }
   log(`tts: ${segs.map((d) => d.toFixed(1) + 's').join(' + ')}`);
@@ -325,14 +511,38 @@ export function speakSegments(segTexts, work, spawn, { only = null } = {}) {
 // mastering — and only a real run of the whole chain shows which file that
 // is. Production calls it with the job alone.
 // ── 2b. narration fitting ─────────────────────────────────────────────
-// Keep the action tail when a CTA must be shortened. Cutting from the front
-// of "Đăng ký ngay để..." can leave a video ending on context instead of an
-// action, which is a silent script regression.
-function clampNarrationWords(text, max, preserveTail = false) {
+// Cutting narration is a last resort, and when it happens it drops WHOLE
+// sentences, never words off the end. Truncating the tail is the worst
+// version of this: the viewer hears a sentence stop exactly where it was
+// about to land its point. A CTA keeps its action — the last sentences, not
+// the first — because cutting "Đăng ký ngay để…" from the front leaves a
+// video ending on context instead of an ask.
+function sentencesOf(text) {
+  return String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(/(?<=[.!?…])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function trimNarrationToWords(text, maxWords, keepTail = false) {
   const value = String(text || '').trim().replace(/\s+/g, ' ');
-  const parts = value.split(' ').filter(Boolean);
-  if (parts.length <= max) return value;
-  return preserveTail ? parts.slice(-max).join(' ') : clampWords(value, max);
+  if (wordCount(value) <= maxWords) return value;
+  const sents = sentencesOf(value);
+  const ordered = keepTail ? sents.slice().reverse() : sents;
+  const kept = [];
+  let used = 0;
+  for (const sentence of ordered) {
+    const w = wordCount(sentence);
+    if (kept.length && used + w > maxWords) break;
+    kept.push(sentence);
+    used += w;
+  }
+  // A single sentence longer than the whole budget stays whole. Half a
+  // sentence is worse than a long one, and the scene can take the time.
+  if (!kept.length) return value;
+  return (keepTail ? kept.reverse() : kept).join(' ');
 }
 
 // The storyboard owns the length; the voice has to fit inside it. When a
@@ -345,30 +555,23 @@ export function fitNarration(sb, work, spawn, log = () => {}) {
   const limit = clampDuration(sb.duration || DURATION.default);
   const texts = () => sb.scenes.map((s) => s.say || s.text);
   let segs = speakSegments(texts(), work, spawn);
-  const over = sb.scenes
-    .map((s, i) => ({ s, i, seg: segs[i] }))
-    .filter((x) => x.seg + GAP > x.s.duration);
 
-  if (over.length) {
-    for (const x of over) {
-      const spoken = wordCount(x.s.say || x.s.text);
-      const speechRoom = Math.max(0.1, x.s.duration - GAP);
-      const budget = Math.max(1, Math.floor(spoken * (speechRoom / x.seg)));
-      x.s.say = clampNarrationWords(
-        x.s.say || x.s.text,
-        budget,
-        x.s.type === 'cta' || x.i >= sb.scenes.length - 2,
-      );
-    }
-    log(`tts: ${over.length} segment(s) overran their slot — saying less and speaking again`);
-    segs = speakSegments(texts(), work, spawn, { only: over.map((x) => x.i) });
-  }
+  // A scene is never shorter than the voice in it. The storyboard plans a
+  // length; the voice is the thing that actually has to fit, and the video
+  // has room to spare — a measured render was planning 90s of screens for
+  // 54s of speech. Answering an overlong segment by deleting words is what
+  // left sentences stopping before their point, when the time was there all
+  // along. So every scene is given what its own voice needs FIRST.
+  let grew = 0;
+  sb.scenes.forEach((s, i) => {
+    const need = (segs[i] || 0) + GAP;
+    if (need > s.duration) { grew += need - s.duration; s.duration = need; }
+  });
+  if (grew > 0.5) log(`tts: ${grew.toFixed(1)}s handed back to the scenes — no voice is cut short to hit a plan`);
 
-  // TTS can still overrun after the first fit (rate, punctuation, minimum
-  // pause). Shorten against the total voice budget, re-speak only changed
-  // segments, and keep the user's 15–90s contract intact. Protect the final
-  // source beat and CTA on early passes; only touch them if earlier scenes
-  // cannot absorb enough reduction.
+  // Now, and only now, can the video still be too long — and only whole
+  // sentences come off. Protect the final source beat and CTA on early
+  // passes; only touch them if earlier scenes cannot absorb enough.
   const voiceTotal = () => segs.reduce((sum, seconds) => sum + (seconds || 0), 0);
   const room = Math.max(1, limit - GAP * sb.scenes.length);
   const protectedIndices = new Set([sb.scenes.length - 1, sb.scenes.length - 2].filter((i) => i >= 0));
@@ -381,7 +584,7 @@ export function fitNarration(sb, work, spawn, log = () => {}) {
     for (const [i, scene] of candidates) {
       const current = scene.say || scene.text;
       const budget = Math.max(1, Math.floor(wordCount(current) * ratio));
-      const next = clampNarrationWords(
+      const next = trimNarrationToWords(
         current,
         budget,
         scene.type === 'cta' || i >= sb.scenes.length - 2,
@@ -391,9 +594,8 @@ export function fitNarration(sb, work, spawn, log = () => {}) {
         retry.push(i);
       }
     }
-    if (!retry.length && pass < 2) continue;
     if (!retry.length) break;
-    log(`tts: narration exceeds ${limit}s — shortening ${retry.length} segment(s), pass ${pass + 1}/3`);
+    log(`tts: video would run ${(voiceTotal() + GAP * sb.scenes.length).toFixed(1)}s over ${limit}s — dropping whole sentences from ${retry.length} segment(s), pass ${pass + 1}/3`);
     segs = speakSegments(texts(), work, spawn, { only: retry });
   }
 
@@ -509,7 +711,7 @@ export function composeStoryboardHtml(job, sb, segs, assets = {}, logoSrc = null
 // interesting bit, 3 concrete takeaways, then an open question whose
 // answer lives in the article — the video sells the read.
 async function writeCarouselScript(job) {
-  if (!GUROUTER_KEY) throw new Error('GUROUTER_API_KEY missing in video-agent/.env');
+  if (!MODEL_PROVIDERS.length) throw new Error('no model provider configured (set NINEROUTER_API_KEY or GUROUTER_API_KEY in video-agent/.env)');
   const sys = `Bạn là creator video ngắn tóm tắt bài blog (TikTok/Reels). Mục tiêu: khiến người xem MUỐN ĐỌC bài gốc. Chỉ trả JSON thuần, không markdown.`;
   const user = `Viết kịch bản video ~30 giây tóm tắt bài blog sau.
 
@@ -531,17 +733,10 @@ VÍ DỤ ĐÚNG (bài "5 địa điểm ăn sáng ngon ở Lagi"):
 {"hook":"5 quán ăn sáng ở Lagi mà khách du lịch tìm mãi không ra","points":["Quán đầu chỉ người Lagi mới biết, 25k no căng","Bánh căn nướng than hoa, chờ 15 phút vẫn đáng","Địa chỉ chính xác từng quán — lưu lại là tới nơi"],"question":"Bạn đã thử quán số mấy rồi?"}
 
 Trả JSON: {"hook":"...","points":["...","...","..."],"question":"..."}`;
-  const r = await fetch(`${GUROUTER_BASE}/chat/completions`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${GUROUTER_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: GUROUTER_MODEL,
-      messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
-      temperature: 0.7, max_tokens: 1200, response_format: { type: 'json_object' },
-    }),
-  }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
-  if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  const data = await r.json();
+  const { data } = await chatJson(
+    [{ role: 'system', content: sys }, { role: 'user', content: user }],
+    { temperature: 0.7, max_tokens: 1200 },
+  );
   const raw = data?.choices?.[0]?.message?.content || '';
   const parsed = parseScript(raw);
   const points = (parsed.points || []).slice(0, 3).map((p) => String(p).trim()).filter(Boolean);
