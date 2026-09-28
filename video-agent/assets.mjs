@@ -363,23 +363,52 @@ function imageExtension(buf) {
 // One image into assets/<base><ext>. Returns the workspace-relative path, or
 // null when the gateway would not produce a usable picture. A failed image is
 // never a failed video: the scene falls back to the gradient it draws today.
+//
+// The gateway answers a fair share of requests with a 5xx HTML error page
+// under load, and a 502 is worth another try — one attempt turned four scenes
+// of a real render into flat cards, which is also how they lost their camera
+// move and read as frozen. Only the failure is retried, and only when the
+// status says the request might succeed unchanged.
+const AI_IMAGE_ATTEMPTS = 3;
+const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 export async function aiImage(prompt, base, { config, work, log = () => {} }) {
   const key = String(config?.key || '');
   if (!key) return null;
   const root = (config?.base || AIFREE_BASE).replace(/\/+$/, '');
+  const body = JSON.stringify({
+    model: config?.model || AIFREE_MODEL,
+    prompt,
+    n: 1,
+    size: config?.size || AIFREE_SIZE,
+    quality: 'auto',
+    background: 'auto',
+    image_detail: 'high',
+    output_format: 'png',
+  });
+  let lastError = null;
+  for (let attempt = 1; attempt <= AI_IMAGE_ATTEMPTS; attempt++) {
+    try {
+      return await fetchAndWrite(body, { root, key, base, work });
+    } catch (e) {
+      lastError = e;
+      const status = Number(String(e.message).match(/aifree_http_(\d+)/)?.[1]);
+      const transient = e.name === 'TimeoutError' || e.name === 'TypeError'
+        || (Number.isFinite(status) && RETRYABLE_STATUS.has(status));
+      if (!transient || attempt === AI_IMAGE_ATTEMPTS) break;
+      log(`ai image: ${status ? `HTTP ${status}` : e.name}, retrying (${attempt}/${AI_IMAGE_ATTEMPTS - 1})`);
+      await sleep(1500 * attempt);
+    }
+  }
+  throw lastError;
+}
+
+async function fetchAndWrite(body, { root, key, base, work }) {
   const r = await fetch(`${root}/images/generations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: config?.model || AIFREE_MODEL,
-      prompt,
-      n: 1,
-      size: config?.size || AIFREE_SIZE,
-      quality: 'auto',
-      background: 'auto',
-      image_detail: 'high',
-      output_format: 'png',
-    }),
+    body,
     signal: AbortSignal.timeout(90000),
   });
   if (!r.ok) throw new Error('aifree_http_' + r.status + ': ' + (await r.text().catch(() => '')).slice(0, 120));

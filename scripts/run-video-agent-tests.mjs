@@ -890,15 +890,56 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
   assert.match(alive, /#s0 \.bar-row.*stagger/s, 'and the rows arrive in sequence');
   assert.match(alive, /#s1 \.step", \{ opacity: 0, y: 26 \}/, 'steps rise one after another');
   assert.match(alive, /#s2 \.ig-ico", \{ rotation: -12/, 'icons pop rather than appearing flat');
-  // Every scene pushes in for its whole length, so the gap between beats is
+  // Every scene eases in for its whole length, so the gap between beats is
   // never a still frame — this is what the freeze detector was measuring, and
   // the amplitude is pinned because a 1.4% breath measured 2/255 per frame,
-  // which is technically moving and visually a freeze.
+  // which is technically moving and visually a freeze. It pushes the SCENE,
+  // not the card: a photo keeps its picture outside the card, so a card-sized
+  // push left the frame still, and a failed image left it still outright.
   for (const id of [0, 1, 2]) {
-    assert.match(alive, new RegExp(`tl\\.fromTo\\("#s${id} \\.ex", \\{ scale: 1\\.055, yPercent: 1\\.2 \\}, \\{ scale: 1\\.005, yPercent: -1\\.2, duration: \\d+\\.\\d+, ease: "sine\\.inOut"`),
+    assert.match(alive, new RegExp(`tl\\.fromTo\\("#s${id}", \\{ scale: 1\\.05, yPercent: 1\\.2 \\}, \\{ scale: 1, yPercent: -1\\.2, duration: \\d+\\.\\d+, ease: "sine\\.inOut"`),
       `scene ${id} keeps moving for its whole length`);
   }
+  // The push owns `scale` on the scene. An entrance or exit writing it too
+  // would silently win the fight and leave the scene still.
+  assert.doesNotMatch(alive, /tl\.to\("#s\d+", \{[^}]*scale/, 'the exit does not fight the push for scale');
+  assert.doesNotMatch(alive, /tl\.fromTo\("#s\d+", \{ opacity: 0, filter[^}]*scale/, 'nor does the entrance');
   ok('a graphic scene animates its data, and no scene is ever a still frame');
+
+  // The image gateway answers a fair share of requests with a 502 HTML page
+  // under load. One attempt turned four scenes of a real render into flat
+  // cards, and a flat card is also a card with no camera move — so a transient
+  // 5xx has to be retried rather than taken as a final answer.
+  {
+    const { aiImage } = await import('../video-agent/assets.mjs');
+    const work = mkdtempSync(join(tmpdir(), 'ai-image-retry-'));
+    const realFetch = globalThis.fetch;
+    // Only the header is inspected here: the agent sniffs the magic bytes to
+    // pick an extension, and this test is about the retry, not about pixels.
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(3000, 7)]);
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      if (calls === 1) return { ok: false, status: 502, text: async () => '<!DOCTYPE html>' };
+      return { ok: true, json: async () => ({ data: [{ b64_json: png.toString('base64') }] }) };
+    };
+    const retried = await aiImage('một con mèo', 'retry', { config: { key: 'k' }, work });
+    globalThis.fetch = realFetch;
+    assert.equal(calls, 2, 'a 502 is retried once');
+    assert.ok(existsSync(join(work, retried)), 'and the scene still gets its picture');
+    ok('a transient 5xx from the image gateway is retried, not taken as final');
+
+    let hardCalls = 0;
+    globalThis.fetch = async () => { hardCalls++; return { ok: false, status: 502, text: async () => 'busy' }; };
+    await assert.rejects(
+      () => aiImage('một con mèo', 'hard', { config: { key: 'k' }, work }),
+      /aifree_http_502/,
+      'a gateway that never recovers still reports the real status');
+    globalThis.fetch = realFetch;
+    assert.equal(hardCalls, 3, 'after three attempts, not three hundred');
+    rmSync(work, { recursive: true, force: true });
+    ok('a gateway that never recovers gives up, and says why');
+  }
 
   ok('image motion targets real media, and scene transitions hand off without empty selectors');
 }

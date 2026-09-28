@@ -637,16 +637,19 @@ function motionFor(i, s, isLast = false, hasLogo = false) {
   const end = (s.start + s.dur).toFixed(2);
   const out = [];
 
+  // `scale` is deliberately absent here: the camera push in dataChoreography
+  // owns it for the whole scene, and two tweens writing one property means one
+  // of them silently wins.
   if (i === 0) {
     out.push(`tl.fromTo("#s${i} .ex", { opacity: 0, y: 22, scale: 0.985 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: "power3.out" }, ${st});`);
   } else {
-    out.push(`tl.fromTo("#s${i}", { opacity: 0, filter: "blur(12px)", scale: 0.985 }, { opacity: 1, filter: "blur(0px)", scale: 1, duration: 0.50, ease: "power3.out", immediateRender: false }, ${st});`);
+    out.push(`tl.fromTo("#s${i}", { opacity: 0, filter: "blur(12px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.50, ease: "power3.out", immediateRender: false }, ${st});`);
     if (s.bgId) {
       out.push(`tl.fromTo("#${s.bgId}", { opacity: 0 }, { opacity: 1, duration: 0.50, ease: "power2.out", immediateRender: false }, ${st});`);
     }
   }
   if (!isLast) {
-    out.push(`tl.to("#s${i}", { opacity: 0, filter: "blur(12px)", scale: 1.015, duration: 0.50, ease: "power2.in" }, ${end});`);
+    out.push(`tl.to("#s${i}", { opacity: 0, filter: "blur(12px)", duration: 0.50, ease: "power2.in" }, ${end});`);
     if (s.bgId) out.push(`tl.to("#${s.bgId}", { opacity: 0, duration: 0.50, ease: "power2.in" }, ${end});`);
   }
 
@@ -687,14 +690,23 @@ function motionFor(i, s, isLast = false, hasLogo = false) {
 function dataChoreography(i, s) {
   const st = s.start.toFixed(2);
   const du = s.dur.toFixed(2);
-  // The camera push. Every scene drifts and eases in for its whole length, so
-  // there is no instant where the frame is simply still.
+  // The camera push. Every scene eases in for its whole length, so there is no
+  // instant where the frame is simply still.
+  //
+  // It targets the scene, not the card: a photo scene puts its picture in a
+  // sibling background layer and its caption is a small card, so pushing the
+  // card moved almost nothing. Pushing the scene moves whatever is on screen,
+  // and it keeps moving when the image call fails and the picture is a flat
+  // gradient — the case that measured 0.000 frame difference, a dead frame.
+  //
+  // It eases IN (1.05 → 1) rather than breathing out and back, so it settles
+  // where the scene's exit expects to pick it up, and it starts at the moment
+  // the scene is still fading in, where the starting scale is not yet visible.
   //
   // The amplitude is measured, not guessed: at 1.4% the mean frame-to-frame
   // difference was 2/255 — technically moving, visually a freeze. A push that
-  // actually reads is roughly four times that, and a slow drift in the opposite
-  // direction on the way out keeps the card from ever sitting square.
-  const push = `tl.fromTo("#s${i} .ex", { scale: 1.055, yPercent: 1.2 }, { scale: 1.005, yPercent: -1.2, duration: ${du}, ease: "sine.inOut", immediateRender: false }, ${st});`;
+  // actually reads is roughly four times that.
+  const push = `tl.fromTo("#s${i}", { scale: 1.05, yPercent: 1.2 }, { scale: 1, yPercent: -1.2, duration: ${du}, ease: "sine.inOut", immediateRender: false }, ${st});`;
   const out = [push];
   // Stagger helper: reveal each child across the first ~70% of the scene, so the
   // last item lands while the voice is still on the item before it.
