@@ -722,9 +722,32 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
     dropped.push({ index: scene.__index, type: scene.type, reason: 'repeat_of_previous' });
   }
 
-  const scenes = varied.slice(0, MAX_SCENES);
-  if (varied.length > MAX_SCENES) {
-    dropped.push({ index: MAX_SCENES, type: '(rest)', reason: 'over_max_scenes', lost: varied.length - MAX_SCENES });
+  // A board is not thrown away over a couple of plain screens. The quality
+  // gate fails the WHOLE video when too much of it is words, and its first
+  // response to that is to fall back to the deterministic board — so a model
+  // that wrote 14 good scenes and left two of them bare lost all fourteen.
+  // A bare scene is repairable: the source almost always has points the scene
+  // never claimed. Give it a drawn shape, and only when the model left nothing
+  // to draw does the gate still see a bare screen and still fail.
+  // Only the middle of the board is repairable. The first and last screens are
+  // the hook and the call to action, and the gate checks both by position —
+  // swapping either for a chart does not make the video better, it makes it
+  // fail `does_not_open_on_a_hook`.
+  const repaired = varied.map((scene, index) => {
+    if (index === 0 || index === varied.length - 1) return scene;
+    if (isIllustrated(scene, { assets: null })) return scene;
+    const swap = DRAWN_ALTERNATIVES.find((t) => allowed.has(t)
+      && t !== scene.type && !ASSET_RENDER_TYPES.has(t));
+    if (!swap) return scene;
+    const points = sourceSayDetails.slice(0, 4).map((sentence) => ({ label: clampText(sentence, 12) }));
+    if (points.length < 2) return scene;
+    dropped.push({ index: scene.__index, type: scene.type, reason: 'bare_screen_given_points', as: swap });
+    return { ...scene, type: swap, items: shapeItems(scene, swap, have, dropped, scene.__index) || points };
+  });
+
+  const scenes = repaired.slice(0, MAX_SCENES);
+  if (repaired.length > MAX_SCENES) {
+    dropped.push({ index: MAX_SCENES, type: '(rest)', reason: 'over_max_scenes', lost: repaired.length - MAX_SCENES });
   }
 
   // Duration: the caller/template owns the target. Honour each scene's

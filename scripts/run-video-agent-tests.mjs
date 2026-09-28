@@ -1335,8 +1335,11 @@ if (!HAS_FFMPEG) {
 
   {
     // The model's summary board survives the gate as hook→quote→cta —
-    // valid, but it is not a summary: the numbered card the template
-    // promised is gone. The deterministic board still has it.
+    // valid, but the quote is a caption, so the numbered card the template
+    // promised is gone. The source has the points, so the bare screen is
+    // handed them and the model's own wording survives. Rebuilding the whole
+    // board here would throw away everything the model wrote for the sake of
+    // one missing card.
     const r = postRig();
     scriptStub = {
       intent: 'summary', duration: 20,
@@ -1349,12 +1352,41 @@ if (!HAS_FFMPEG) {
     const lines = await captureLogs(() => renderOne({ ...STORY_JOB, template: 'summary' }, r.deps));
     scriptStub = null;
 
+    assert.ok(lines.some((l) => /bare_screen_given_points/.test(l)),
+      'a bare screen is handed the source\'s points rather than shipped as words');
+    const composed = readFileSync(join(r.work, 'index.html'), 'utf8');
+    assert.match(composed, /class="ex keypoints"/, 'and it becomes the numbered card the template promised');
+    assert.ok(!lines.some((l) => /lost keypoints — rebuilding/.test(l)),
+      'and the model\'s board is kept rather than thrown away for one missing card');
+    assert.equal(r.seen.delivers.length, 1, 'and the video still delivers');
+    ok('a summary missing its card is repaired in place, keeping the model\'s words');
+    r.done();
+  }
+
+  {
+    // Nothing to repair with: every screen here is already illustrated, so
+    // the missing numbered card cannot be patched from the source. The only
+    // honest fix left is to rebuild the board from the template.
+    const r = postRig();
+    scriptStub = {
+      intent: 'summary', duration: 20,
+      scenes: [
+        { type: 'hook', text: 'Mở đầu', say: 'Mở đầu.', duration: 3 },
+        { type: 'result', text: 'Chi phí là vấn đề', say: 'Chi phí là vấn đề.', duration: 5, value: 12 },
+        { type: 'cta', text: 'Đọc tiếp', say: 'Đọc tiếp.', duration: 3 },
+      ],
+    };
+    const lines = await captureLogs(() => renderOne({ ...STORY_JOB, template: 'summary' }, r.deps));
+    scriptStub = null;
+
+    assert.ok(!lines.some((l) => /bare_screen_given_points/.test(l)),
+      'a board with nothing bare has nothing to repair');
     assert.ok(lines.some((l) => /lost keypoints — rebuilding/.test(l)),
-      'a summary that lost its card is rebuilt, not shipped');
+      'so a missing signature beat is rebuilt from the template');
     const composed = readFileSync(join(r.work, 'index.html'), 'utf8');
     assert.match(composed, /class="ex keypoints"/, 'the rebuilt summary carries its numbered card');
     assert.equal(r.seen.delivers.length, 1, 'and still delivers');
-    ok('a forced template rebuilds when its signature scene is gone');
+    ok('a board with nothing to repair falls back to a rebuild');
     r.done();
   }
 }
