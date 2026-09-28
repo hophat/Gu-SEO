@@ -736,13 +736,29 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
   const repaired = varied.map((scene, index) => {
     if (index === 0 || index === varied.length - 1) return scene;
     if (isIllustrated(scene, { assets: null })) return scene;
-    const swap = DRAWN_ALTERNATIVES.find((t) => allowed.has(t)
+    // The swap stays inside the beat's own vocabulary whenever the beat has a
+    // drawn shape. Taking the scene out of its beat is how a repair meant to
+    // save a board destroys it: a bare `quote` turned into an icon grid left
+    // `conclusion` (which may only be a quote or a result) with nothing, and
+    // the gate then threw away all fourteen scenes over the one it had just
+    // tried to fix.
+    const ownBeat = template.find((b) => b.types.includes(scene.type));
+    const withinBeat = ownBeat
+      ? DRAWN_ALTERNATIVES.find((t) => ownBeat.types.includes(t) && t !== scene.type)
+      : null;
+    const anywhere = DRAWN_ALTERNATIVES.find((t) => allowed.has(t)
       && t !== scene.type && !ASSET_RENDER_TYPES.has(t));
+    const swap = withinBeat || anywhere;
     if (!swap) return scene;
     const points = sourceSayDetails.slice(0, 4).map((sentence) => ({ label: clampText(sentence, 12) }));
     if (points.length < 2) return scene;
+    // An empty array is truthy, so a reshaper returning nothing usable used to
+    // pass this `||` and leave the screen with no rows at all — and a result
+    // with no value and no rows is exactly the caption the repair replaced.
+    const shaped = shapeItems(scene, swap, have, dropped, scene.__index);
+    const items = Array.isArray(shaped) && shaped.length ? shaped : points;
     dropped.push({ index: scene.__index, type: scene.type, reason: 'bare_screen_given_points', as: swap });
-    return { ...scene, type: swap, items: shapeItems(scene, swap, have, dropped, scene.__index) || points };
+    return { ...scene, type: swap, items };
   });
 
   const scenes = repaired.slice(0, MAX_SCENES);
@@ -909,21 +925,34 @@ export function reviewStoryboard(sb, { hasLogo = false, assets = null } = {}) {
   if (scenes.length < MIN_SCENES) problems.push(`too_few_scenes:${scenes.length}`);
   const hasPresenter = assets === null ? scenes.some((scene) => scene.type === 'anchor') : ownsAsset(assets, 'presenter');
   const beatTemplate = requiredStoryBeats(sb?.intent, { hasPresenter });
-  let beatCursor = 0;
   const claimed = new Set();
+  const claimFor = (beat, forwardOnly) => {
+    // A scene that names its beat is matched on it; a model scene, which has
+    // no beat of its own, is matched on its type.
+    const free = (scene, index) => !claimed.has(index) && (!forwardOnly || index >= cursor);
+    const named = scenes.findIndex((scene, index) => free(scene, index) && scene.__beat === beat.beat);
+    if (named >= 0) return named;
+    return scenes.findIndex((scene, index) => free(scene, index) && beat.types?.includes(scene.type));
+  };
+  let cursor = 0;
+  // First pass, in story order: the narrative order of the beats is what the
+  // viewer is actually watching, so this is how scenes are matched whenever
+  // there is room to.
+  const unmet = [];
   for (const beat of beatTemplate) {
-    const from = (scene, index) => index >= beatCursor && !claimed.has(index);
-    // One scene can only answer one beat. Matching greedily by type let an
-    // earlier beat swallow the scene a later one needed — a board sized
-    // exactly to the template then failed with `missing_beat` even though
-    // every beat was on screen. A scene that names its beat is matched on it;
-    // a model scene, which has no beat of its own, falls back to its type.
-    const named = scenes.findIndex((scene, index) => from(scene, index) && scene.__beat === beat.beat);
-    const foundAt = named >= 0
-      ? named
-      : scenes.findIndex((scene, index) => from(scene, index) && beat.types?.includes(scene.type));
-    if (foundAt < 0) problems.push(`missing_beat:${beat.beat}`);
-    else { beatCursor = foundAt + 1; claimed.add(foundAt); }
+    const foundAt = claimFor(beat, true);
+    if (foundAt < 0) unmet.push(beat);
+    else { cursor = foundAt + 1; claimed.add(foundAt); }
+  }
+  // Second pass, anywhere on the board. Greedy first-fit alone reported
+  // `missing_beat` for a board where every beat WAS on screen, because an
+  // earlier beat whose vocabulary is wide enough (`insight` accepts a result)
+  // claimed the one scene a later beat had. A false miss is not a small thing:
+  // the caller answers it by throwing the whole storyboard away.
+  for (const beat of unmet) {
+    const foundAt = claimFor(beat, false);
+    if (foundAt >= 0) claimed.add(foundAt);
+    else problems.push(`missing_beat:${beat.beat}`);
   }
   // A news piece opens on the headline, not a curiosity hook — both count.
   if (!['hook', 'headline'].includes(scenes[0]?.type)) problems.push('does_not_open_on_a_hook');

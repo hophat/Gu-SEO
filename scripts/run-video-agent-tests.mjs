@@ -1334,12 +1334,12 @@ if (!HAS_FFMPEG) {
   }
 
   {
-    // The model's summary board survives the gate as hook→quote→cta —
-    // valid, but the quote is a caption, so the numbered card the template
-    // promised is gone. The source has the points, so the bare screen is
-    // handed them and the model's own wording survives. Rebuilding the whole
-    // board here would throw away everything the model wrote for the sake of
-    // one missing card.
+    // The model's summary board survives the gate as hook→quote→cta — valid,
+    // but the quote is a caption with nothing to look at. The source has the
+    // points, so the bare screen is handed them and turned into a drawn card
+    // from its OWN beat (a quote may be a quote or a result, so it becomes a
+    // result; a result still draws rows). Swapping it for something outside
+    // the beat would fix the screen and break the story.
     const r = postRig();
     scriptStub = {
       intent: 'summary', duration: 20,
@@ -1352,15 +1352,35 @@ if (!HAS_FFMPEG) {
     const lines = await captureLogs(() => renderOne({ ...STORY_JOB, template: 'summary' }, r.deps));
     scriptStub = null;
 
-    assert.ok(lines.some((l) => /bare_screen_given_points/.test(l)),
-      'a bare screen is handed the source\'s points rather than shipped as words');
-    const composed = readFileSync(join(r.work, 'index.html'), 'utf8');
-    assert.match(composed, /class="ex keypoints"/, 'and it becomes the numbered card the template promised');
-    assert.ok(!lines.some((l) => /lost keypoints — rebuilding/.test(l)),
-      'and the model\'s board is kept rather than thrown away for one missing card');
+    const repair = lines.find((l) => /bare_screen_given_points/.test(l));
+    assert.ok(repair, 'a bare screen is handed the source\'s points rather than shipped as words');
+    assert.ok(!lines.some((l) => /quality gate — .*bare_screens/.test(l)),
+      'so repairing it stops it counting against the board');
     assert.equal(r.seen.delivers.length, 1, 'and the video still delivers');
-    ok('a summary missing its card is repaired in place, keeping the model\'s words');
+    ok('a bare screen is repaired in place instead of failing the whole board');
     r.done();
+  }
+
+  {
+    // The swap stays inside the beat's own vocabulary. A bare quote is given
+    // the source's points and becomes a result — still the closing beat, and
+    // a result draws rows. Swapped for an icon grid instead it would draw
+    // beautifully and leave `conclusion` with nothing, which is how a repair
+    // meant to save a board throws it away.
+    const fixed = sanitizeStoryboard({
+      intent: 'summary',
+      scenes: [
+        { type: 'hook', text: 'Mở đầu' },
+        { type: 'quote', text: 'Chi phí là vấn đề' },
+        { type: 'cta', text: 'Đọc tiếp' },
+      ],
+    }, { source: 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển chỉ 7%. Bao bì tái chế giảm thêm 12%.', intent: 'summary', target: 60, assets: {} });
+    const repairedScene = fixed.storyboard.scenes.find((s) => s.type !== 'hook' && s.type !== 'cta');
+    assert.equal(repairedScene?.type, 'result', 'a bare quote becomes a result, not a chart');
+    assert.ok(repairedScene?.items?.length >= 2, 'and carries the source\'s own points as rows');
+    assert.equal(reviewStoryboard(fixed.storyboard, { assets: {} }).problems.some((p) => p === 'missing_beat:takeaway'), false,
+      'and the beat it belongs to is still covered');
+    ok('a repaired screen keeps the beat it was carrying');
   }
 
   {
