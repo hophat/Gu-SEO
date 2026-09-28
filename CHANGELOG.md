@@ -7,6 +7,54 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.27.0 — 2026-09-29
+
+Video có "hình dáng cả phim" và một cảnh nào cũng phải biết mình đang thuyết phục ai.
+
+### Added
+- **Tầng trên tầng cảnh: message, arc, audience, mood.** `filmShape()` trong
+  `video-agent/storyboard.mjs` khai bốn thứ này MỘT LẦN ở đầu prompt — câu
+  thesis theo intent, dàn ý dịch sang tiếng Việt, đối tượng đọc thẳng từ
+  `project_brands.audience` (không có thì rơi về mô tả project, không bịa thêm
+  ai), và nhịp cảm xúc. Không có tầng này thì mỗi khung chỉ là "một cảnh nào
+  cho thấy con số"; có nó thì con số đó chạm được ai. `VISTAL_NEGATIVES` nói
+  thẳng với prompt cần loại trừ gì (gradient tím-xanh kiểu AI, bokeh, ảnh vector
+  phẳng) thay vì trông chờ model tự tránh.
+- **Ba trường tu từ đi cùng mỗi cảnh: `persuasion`, `beat`, `focal`.** Prompt
+  buộc model gọi TÊN thiết bị tu từ (`before_after`, `numbered_enumeration`,
+  `counterexample`, `callback_then_distillation`) chứ không mô tả — mô tả thì
+  viết cho có, gọi tên thì phải nghĩ ra cách chứng minh trước khi chọn chữ.
+  `sanitizeStoryboard` loại cảnh thiếu `persuasion` hoặc `beat` (reason
+  `no_persuasion` / `no_beat`, ghi vào `dropped` chứ không âm thầm). Cờ
+  `requireRhetoric` CHỈ bật cho board do model viết: bảng tất định đi qua
+  `derivedOpts` với `requireRhetoric: false` ở cả ba đường fallback, vì nó
+  sinh ra từ bài chứ không có lý do tu từ để mà đòi.
+- **`idle` là một chuyển động thật, không phải `none` viết khác.** Khung có ảnh
+  mà model xin `none` — hoặc quên mất trường `motion` — rơi về `idle`:
+  `scale 1.045 → 1.105` nửa thời lượng, `sine.inOut`, `yoyo`. Cảnh cuối đủ dài
+  (`TAIL_BREATH_MIN = 5`) cũng `idle` dù không có ảnh. Biên độ 6% là con số đo,
+  không phải số đoán: 1.4% chỉ nhấp nháy 2/255 mỗi khung — kỹ thuật là có
+  chuyển động, thị giác là đóng băng.
+
+### Changed
+- **Prompt yêu cầu tổng thời lượng đúng `${target}` giây** thay vì để model tự
+  hiểu "khoảng 75 giây", và yêu cầu cảnh cuối phải có việc để làm trong suốt
+  thời lượng của nó. `sanitizeStoryboard` vẫn rescale về đúng target — cảnh
+  cuối nhận phần dư nên tổng luôn khớp.
+
+### Fixed
+- **Test của cổng quality gate không còn xanh vì lý do sai.** Assert ở
+  `scripts/run-video-agent-tests.mjs` khớp `/deriving from the content/` — mà
+  dòng log `storyboard failed … — deriving from the content` cũng chứa đúng
+  cụm đó, nên test pass ngay cả khi provider chết và chưa từng chạy quality gate.
+  Nay assert khớp riêng hai dòng gate thật và phủ định dòng `storyboard failed`.
+- **Deck scratch không lọt vào `git status`.** `GU-SEO-Gi*` và `guseo-deck/` (output
+  `.pptx` cùng thư mục làm việc `.pptd`) thêm vào `.gitignore`.
+
+### Changed (hạ tầng)
+- **`.pi/agents/*.md` bỏ dòng `model:`** (trừ `scriptwriter` thêm `edit` vào
+  `tools:`) để harness chọn model theo mặc định của phiên.
+
 ## 1.26.0 — 2026-09-28
 
 Video có sẵn kịch bản riêng, và 9Router viết nội dung trước.

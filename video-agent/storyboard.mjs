@@ -219,6 +219,83 @@ for (const [intent, rows] of Object.entries(BEATS)) {
   }
 }
 
+// ── hình dáng cả phim ────────────────────────────────────────────────
+// Tầng trên tầng cảnh. HyperFrames: message/arc/audience/mood khai MỘT LẦN ở
+// đầu phim, mọi khung hình kế thừa, không khung nào được phép lặp lại. Không
+// có nó thì khung chỉ là "một cảnh nào cho thấy con số"; có nó thì cả con số
+// đó chạm được ai và vì sao.
+const BEAT_VI = {
+  hook: 'Mở đầu', problem: 'Vấn đề', product: 'Sản phẩm', demo: 'Demo', result: 'Kết quả',
+  cta: 'Kêu gọi', benefit: 'Lợi ích', proof: 'Bằng chứng', offer: 'Ưu đãi',
+  business: 'Cửa hàng', experience: 'Trải nghiệm', location: 'Vị trí',
+  insight: 'Nhận ra', point: 'Luận điểm', conclusion: 'Kết luận', tension: 'Căng thẳng',
+  transformation: 'Thay đổi', what: 'Điều gì', why: 'Vì sao', voice: 'Tiếng nói',
+  before: 'Trước', after: 'Sau', change: 'Thay đổi', items: 'Các mục', close: 'Chốt',
+  headline: 'Tin đầu', anchor_intro: 'Người dẫn', story: 'Câu chuyện', anchor_close: 'Người dẫn kết',
+  keypoints: 'Ý chính', takeaway: 'Bài học', question: 'Câu hỏi', answer: 'Câu trả lời',
+  question2: 'Câu hỏi 2', answer2: 'Trả lời 2',
+};
+
+// Một câu thesis cho từng intent. Cố ý là câu có dạng "vì sao điều này quan
+// trọng", không phải mô tả nội dung: một cảnh không phục vụ câu này thì cắt
+// cảnh, không cắt câu.
+const MESSAGES = {
+  product_demo: 'Xem một sản phẩm chạy thật đáng tin hơn mọi lời quảng cáo.',
+  product_promotion: 'Đây là thứ bạn sẽ dùng, và đây là lý do.',
+  local_business: 'Một quán tốt không khoe, nó cho bạn thấy.',
+  educational: 'Một ý đúng đáng nói hơn một trang đầy sự thật.',
+  storytelling: 'Có một cách thoát khỏi thứ đang mắc kẹt bạn.',
+  announcement: 'Có thứ mới, và nó thay đổi cách bạn làm việc.',
+  testimonial: 'Người đã dùng nói điều này, không phải quảng cáo tự khoe.',
+  before_after: 'Thay đổi đo được, không phải thay đổi hứa hẹn.',
+  listicle: 'Bỏ cái này đi, bạn có thời gian cho cái quan trọng hơn.',
+  news: 'Chuyện đang xảy ra, và nó liên quan tới bạn ngay bây giờ.',
+  summary: 'Bài này nói gì, và điều đó có đáng để xem hết không.',
+  qa: 'Câu bạn đang tìm, trả lời thẳng không vòng vo.',
+};
+
+// Nhịp năng lượng của cả phim, suy từ intent chứ không phải từ bài: cùng một
+// nội dung kể chậm thì nghe u, kể gấp thì nghe khác hẳn.
+const MOODS = {
+  product_demo: 'gấp nhưng tỉnh, mỗi bước đều thấy được',
+  product_promotion: 'nhiệt, thẳng vào lợi ích trước khi khoe hàng',
+  local_business: 'ấm, gần, như đang kể cho người quen',
+  educational: 'chậm lại ở chỗ số liệu, nhanh ở chỗ dễ',
+  storytelling: 'tích lũy căng thẳng rồi thả ra ở đoạn cuối',
+  announcement: 'gõ nhịp ngay đầu, không hứa hẹn dài',
+  testimonial: 'chậm, tin, như nghe lại lời người đã dùng',
+  before_after: 'hai nhịp rõ rệt: tệ rồi tốt',
+  listicle: 'đều đều, mỗi mục một nhịp giống nhau',
+  news: 'khẩn, gọn, như bản tin đang chạy',
+  summary: 'đều, không dừng, vì còn nhiều ý phải kể',
+  qa: 'hỏi rồi đáp, không tua',
+};
+
+// Bốn thứ này chỉ khai một lần. `audience` đọc thẳng từ project_brands
+// (`job.project.brand.audience`) — bộ brand đã được ghi sẵn, không có thì mô tả
+// project, tuyệt đối không bịa thêm một ai đó (xem .pi/skills/brand-voice).
+export function filmShape(intent = 'educational', job = {}) {
+  const name = BEATS[intent] ? intent : 'educational';
+  const brand = job?.project?.brand || {};
+  const audience = String(brand.audience || '').trim()
+    || String(job?.project?.description || job?.project?.name || '').trim()
+    || 'người lướt trên điện thoại, tay cầm dọc';
+  const arc = (BEATS[name] || []).map((b) => BEAT_VI[b.beat] || b.beat).join(' → ');
+  return { message: MESSAGES[name], arc, audience, mood: MOODS[name] };
+}
+
+// Cliché hình ảnh AI hay tràn vào lời gọi "video đẹp". Nêu thẳng ra để prompt
+// có cái gì để loại trừ, thay vì chỉ mong model tự tránh.
+export const VISTAL_NEGATIVES = [
+  'không gradient tím-xanh kiểu AI',
+  'không bokeh và hạt ánh sáng mờ',
+  'không thẻ có đổ bóng, không glassmorphism',
+  'không phông chữ script lộn xộn, không chữ viết tay',
+  'không hiệu ứng lấp lánh, sao bay, hạt bay',
+  'không khung máy ảnh giả, không góc nghiêng sản phẩm lơ lửng',
+  'không ảnh minh họa chung chung kiểu vector phẳng',
+];
+
 // ── repeatable beats ─────────────────────────────────────────────────
 // A repeat is a *second point*, so it only makes sense where a beat already
 // means "one point of the body". The opener, the closer and the closing turn
@@ -564,7 +641,7 @@ function shapeItems(raw, type, have, dropped, index) {
 
 // The single gate every storyboard passes through. Returns a storyboard that
 // is safe to draw plus a report of what was changed — a drop is never silent.
-export function sanitizeStoryboard(sb, { source = '', intent = 'educational', target = DURATION.default, assets = {}, presenterName = '' } = {}) {
+export function sanitizeStoryboard(sb, { source = '', intent = 'educational', target = DURATION.default, assets = {}, presenterName = '', requireRhetoric = false } = {}) {
   const dropped = [];
   const template = BEATS[intent] || BEATS.educational;
   const allowed = new Set(template.flatMap((b) => b.types));
@@ -604,6 +681,15 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
     const text = clampText(raw.text);
     if (!text) { dropped.push({ index, type, reason: 'no_text' }); continue; }
 
+    // Cảnh không nói được vì sao chọn chữ này thì đó là một cảnh "cho thấy con
+    // số", không phải một cảnh chứng minh con số — HyperFrames gọi thẳng là
+    // never skip persuasion and beat. Bật cờ này chỉ cho board do model viết:
+    // bảng tất định (`storyboardFromContent`) không có lý do tu từ để mà đòi.
+    if (requireRhetoric) {
+      if (!String(raw.persuasion || '').trim()) { dropped.push({ index, type, reason: 'no_persuasion' }); continue; }
+      if (!String(raw.beat || '').trim()) { dropped.push({ index, type, reason: 'no_beat' }); continue; }
+    }
+
     // A scene may only show a number the source contains.
     if (type === 'stat' && !have.has(numOf(raw.value))) {
       dropped.push({ index, type, reason: 'number_not_in_source' });
@@ -630,6 +716,9 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
 
     kept.push({
       ...raw, type, text, asset, asset2, items,
+      persuasion: String(raw.persuasion || '').trim(),
+      beat: String(raw.beat || '').trim(),
+      focal: String(raw.focal || '').trim(),
       // The anchor's name is the project's, not the model's — a model never
       // saw presenter_name, so whatever it writes here would be invented.
       name: type === 'anchor' && presenterName ? presenterName : raw.name,

@@ -1,8 +1,7 @@
 ---
 name: scriptwriter
 description: "Writes the narration brief for a 30-60 second brand video from a researched trend — the body_markdown the renderer reads, the template choice, the duration, and the on-screen text. Use when turning a trend into a video script, writing a Vietnamese voiceover or hook, sizing a narration, or fixing a video that came out too long, too short, or as a text-only slideshow."
-tools: read, write, bash, grep, find, ls
-model: claude-opus-4-7
+tools: read, write, bash, grep, find, ls, edit
 ---
 
 You turn one researched trend into a `body_markdown` brief, a template choice, and a duration.

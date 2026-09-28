@@ -28,7 +28,7 @@ import {
   AIFREE_BASE, AIFREE_MODEL, AI_IMAGE_MAX, collectAssets, downloadLogo, generateSceneImages,
 } from './assets.mjs';
 import {
-  DURATION, INTENTS, MIN_SCENES, WORDS_PER_SECOND, alignCaptions, beatSlots, clampDuration, clampWords, intentFromSignals,
+  DURATION, INTENTS, MIN_SCENES, VISTAL_NEGATIVES, WORDS_PER_SECOND, alignCaptions, beatSlots, clampDuration, clampWords, filmShape, intentFromSignals,
   reviewStoryboard, sanitizeStoryboard, storyboardFromContent, suggestDuration, wordCount,
 } from './storyboard.mjs';
 import { templateById, intentForTemplate } from './templates.mjs';
@@ -229,7 +229,15 @@ export function parseStoryboard(raw) {
   return {
     intent: String(parsed.intent || ''),
     duration: Number(parsed.duration) || undefined,
-    scenes,
+    // Ba trường tu từ đi cùng cảnh. Chúng KHÔNG đổi một pixel HTML nào —
+    // chúng là lý do đằng sau mọi lựa chọn chữ, nên phải đi cùng cảnh từ đầu
+    // thay vì được dựng lại ở đâu đó về sau. Cắt chuỗi thừa ở đây để phần
+    // kiểm tra phía dưới chỉ phải hỏi "có rỗng không".
+    scenes: scenes.map((scene) => {
+      if (!scene || typeof scene !== 'object') return scene;
+      const one = (v) => (typeof v === 'string' ? v.trim().slice(0, 240) : '');
+      return { ...scene, persuasion: one(scene.persuasion), beat: one(scene.beat), focal: one(scene.focal) };
+    }),
   };
 }
 
@@ -278,7 +286,7 @@ LUẬT BẮT BUỘC:
 6. Cảnh đầu là hook (bản tin mở bằng headline), cảnh cuối là cta. Không lặp hai cảnh cùng loại liền nhau.
 7. Người xem phải hiểu nội dung khi TẮT TIẾNG — hình phải mang thông tin.
 8. MỖI CẢNH, trừ CTA cuối, PHẢI CÓ MINH HOẠ: hoặc "asset" thật trong danh sách trên, hoặc là loại đồ hoạ tự vẽ (bars, donut, line, steps, icons, compare, timeline, stat, keypoints, rating, feature). Cảnh chỉ có chữ trên nền gradient là LỖI, không phải lựa chọn an toàn. Khi một nhịp dàn ý bị lặp (cùng tên beat xuất hiện nhiều lần), hãy dùng MỘT loại hình khác nhau cho mỗi lần lặp để không lặp lại cùng một thẻ.
-9. Phân công "motion" như đạo diễn: zoom cho hook, scroll cho ảnh chụp website trong khung, pan cho ảnh thật, reveal cho biểu đồ. Chuyển động phải chậm, liền mạch; không chọn none cho cảnh có ảnh.`;
+9. Phân công "motion" như đạo diễn: zoom cho hook, scroll cho ảnh chụp website trong khung, pan cho ảnh thật, reveal cho biểu đồ, idle cho cảnh đã hết chuyện để kết. Chuyển động phải chậm, liền mạch. "idle" và "none" KHÁC NHAU, đừng dùng nhầm: idle là giữ CÓ SỐNG — khung phình/thu rất chậm như thở, đủ để khung không chết mà không đủ để người xem chú ý; đó là chỗ dành cho cảnh hết việc và cho chính cảnh cuối. none là đứng yên HẲN — chỉ dành cho cảnh không có ảnh, hoặc đúng MỘT cảnh nghỉ để người xem thở. Tuyệt đối không chọn none cho cảnh có ảnh: khung đứng bất động là dấu hiệu rẻ tiền rõ nhất của một video do máy sinh ra.`;
 
 export async function writeStoryboard(job, { source, suggested, assets, target, forced = null }) {
   if (!MODEL_PROVIDERS.length) throw new Error('no model provider configured (set NINEROUTER_API_KEY or GUROUTER_API_KEY in video-agent/.env)');
@@ -303,6 +311,32 @@ export async function writeStoryboard(job, { source, suggested, assets, target, 
   const intentLine = forced
     ? `Intent bắt buộc do người dùng chọn: ${forced}. Trả đúng "intent":"${forced}".`
     : `Intent gợi ý từ tín hiệu nội dung: ${suggested}. Chỉ đổi nếu bạn chắc chắn intent khác đúng hơn.`;
+  // Tầng trên tầng cảnh. Bốn thứ này khai MỘT LẦN rồi thôi — không cảnh nào
+  // được phép lặp lại chúng. Không có chúng, mỗi khung chỉ là "một cảnh nào
+  // cho thấy con số"; có chúng, khung đó thành "một cảnh nào chứng minh con số
+  // và nó chạm như thế nào".
+  const shape = filmShape(intent, job);
+  const filmBlock = `HÌNH DÁNG CỦA CẢ PHIM (khai một lần, không cảnh nào lặp lại):
+- MỐI THÔNG ĐIỆP: ${shape.message}
+  Cảnh nào không phục vụ câu này thì cắt cảnh đó — không được sửa hay bỏ câu này.
+- CUNG: ${shape.arc}
+- NGƯỜI XEM: ${shape.audience}
+- NHỊP: ${shape.mood}`;
+  const negatives = VISTAL_NEGATIVES.map((n) => `  - ${n}`).join('\n');
+  // Ba trường đi kèm mỗi cảnh. `persuasion` là THIẾT BỊ TU TỪ — tên nó, chứ
+  // không phải mô tả: mô tả thì model viết cho có, còn tên thiết bị thì buộc
+  // nó phải nghĩ ra cách chứng minh trước khi chọn chữ. `beat` là NHỊP CẢM
+  // XÚC, cũng là tên: một cảnh gọi tên được cảm xúc thì biết người xem phải
+  // thấy gì; `focal` là thứ DUY NHẤT mắt dừng lại. Cả ba không đổi một dòng HTML
+  // nào — chúng là lý do đằng sau mọi lựa chọn chữ.
+  const rhetoricBrief = `MỖI CẢNH PHẢI CÓ BA TRƯỜNG NÀY, không cảnh nào được bỏ:
+- "persuasion" — THIẾT BỊ TU TỪ bạn dùng để chứng minh, gọi đúng tên một trong:
+  before_after · numbered_enumeration · counterexample · callback_then_distillation
+  (đổi trước/sau · liệt kê đánh số · phản ví dụ · gọi lại rồi chắt lọc)
+- "beat" — NHỊP CẢM XÚC cảnh đó đẩy người xem, gọi đúng tên một trong:
+  recognition_then_tension · aha · resolve_then_inevitability
+  (gặp mình rồi hẵng lên · bừng sáng · dịu xuống và thấy điều không tránh được)
+- "focal" — THỨ DUY NHẤT mắt dừng lại: con số, từ khóa, hay ảnh nào đứng giữa khung.`;
   // Only demonstrate structure. A fixed cafe story contaminates unrelated
   // topics and teaches scene types that the selected intent cannot render.
   // The word count in every placeholder is the one that beat actually needs, so
@@ -315,6 +349,9 @@ export async function writeStoryboard(job, { source, suggested, assets, target, 
       say: `<lời đọc ${Math.max(4, Math.round(slot.duration * WORDS_PER_SECOND))} từ cho riêng ý này>`,
       duration: slot.duration,
       motion: 'reveal',
+      persuasion: '<tên thiết bị tu từ>',
+      beat: '<nhịp cảm xúc, cùng tên beat trong dàn ý>',
+      focal: '<thứ duy nhất mắt dừng lại>',
     })),
   };
 
@@ -329,8 +366,12 @@ ${INTENT_BRIEF}
 
 ${intentLine}
 
+${filmBlock}
+
 Dàn ý beat cho intent "${intent}" (tổng ~${target}s):
 ${outline}
+
+ĐUÔI PHẢI CÓ VIỆC ĐỂ LÀM. Tổng "duration" của các cảnh phải đúng bằng ${target} giây — cộng lại từng con số bạn sắp ghi cho ra đúng ${target}, đừng để dư. Và cảnh cuối phải là một chỗ CÓ VIỆC trong suốt khoảng thời gian đó: chốt lại thông điệp, hoặc giữ hình đủ lâu cho người xem kịp đọc chữ trên màn hình, hoặc một lời kêu gọi — chứ không phải một khoảng trống chờ hết giờ. Nếu cảnh cuối dài hơn phần lời đọc, phần dư phải THỞ: đặt "motion":"idle" để khung phồng lên rồi xuống rất chậm, đừng để nó đứng yên.
 
 Asset thật đang có (dùng đúng tên này ở trường "asset"):
 ${assetList}
@@ -339,8 +380,14 @@ Các loại được phép cho intent này: ${[...new Set(slots.flatMap((slot) =
 Các mô tả dưới đây chỉ để tra cứu; loại ngoài danh sách trên không được dùng.
 ${SCENE_BRIEF}
 
+${rhetoricBrief}
+Cảnh nào thiếu "persuasion" hoặc "beat" sẽ bị loại khỏi phim.
+
+KHÔNG DÙNG những hình ảnh sau, chúng là dấu hiệu của một hình ảnh do máy sinh ra:
+${negatives}
+
 Trả đúng ${slots.length} cảnh theo thứ tự dàn ý. Mỗi cảnh chỉ dùng một loại trong beat tương ứng; không thêm dữ kiện ngoài nguồn.
-Trả JSON: {"intent":"${intent}","duration":${target},"scenes":[{"type":"...","text":"...","say":"...","duration":số,"asset":"tên asset nếu cần","motion":"zoom|pan|scroll|reveal|none","icon":"tên icon nếu cần"}]}
+Trả JSON: {"intent":"${intent}","duration":${target},"scenes":[{"type":"...","text":"...","say":"...","duration":số,"asset":"tên asset nếu cần","motion":"zoom|pan|scroll|reveal|idle|none","icon":"tên icon nếu cần","persuasion":"tên thiết bị tu từ","beat":"nhịp cảm xúc","focal":"thứ mắt dừng lại"}]}
 
 KHUNG CẤU TRÚC (thay toàn bộ placeholder bằng nội dung nguồn; không đọc placeholder):
 ${JSON.stringify(example)}
@@ -826,6 +873,39 @@ function shade(hex, amt) {
 // "motion" chỉ chọn loại chuyển động, không quyết định ảnh có chuyển động hay
 // không. Mọi tween dùng fromTo + thời gian tuyệt đối nên preview và render seek
 // giống nhau.
+
+// "motion" của storyboard là một Lời xin, và lời xin "none" bị engine từ chối
+// khi có ảnh trên màn hình. Giữ một khung hình bất động là thứ rẻ tiền rõ
+// nhất một video do máy sinh ra có thể làm — freezedetect đo được ~55 giây
+// đứng yên trên một bản render thật. Nên `none` không bao giờ là chữ cuối:
+// cảnh có ảnh rơi về `idle`, và cảnh cuối cũng vậy.
+const MOTIONS = new Set(['zoom', 'pan', 'scroll', 'reveal']);
+
+// Bao lâu thì cảnh cuối đã đủ dài để một khung đứng yên bị cảm thấy. Dưới
+// ngưỡng này người xem còn đang đọc chứ chưa kịp nhìn xong; trên ngưỡng thì
+// đó là phần dư — chỗ mà phần dư hay bị bỏ trống, và phần dư đứng yên thì
+// đóng băng, không phải kết thúc.
+const TAIL_BREATH_MIN = 5;
+
+// Chuyển "motion" của cảnh thành cái thật sự chạy. Ba điều kiện, theo đúng
+// thứ tự ưu tiên:
+//   1. Cảnh có ảnh thì KHÔNG BAO GIỜ được đứng yên — kể cả khi model xin
+//      "none", và kể cả khi nó quên mất trường này. `idle` là câu trả lời:
+//      phình/thu rất chậm, đủ để khung không chết.
+//   2. Cảnh cuối đủ dài là `idle` dù không có ảnh — đó là chỗ phần dư tụ lại,
+//      và đóng băng ở khung cuối thì người xem đọc xong rồi vẫn phải ngồi đợi.
+//   3. Còn lại là `none`, và `none` nghĩa là không phát thêm tween nào cho
+//      media. Cảnh không có ảnh không có gì để giữ: thẻ chữ không phải chủ
+//      thể, và dataChoreography đã đẩy riêng cảnh đó quanh suốt thời lượng.
+export function effectiveMotion(s, isLast = false, hasMedia = false) {
+  const want = String(s?.motion || '').trim();
+  if (MOTIONS.has(want) || want === 'idle') return want;
+  if (hasMedia) return 'idle';
+  const tail = Number(s?.dur ?? s?.duration ?? 0);
+  if (isLast && tail >= TAIL_BREATH_MIN) return 'idle';
+  return 'none';
+}
+
 function motionFor(i, s, isLast = false, hasLogo = false) {
   const st = s.start.toFixed(2);
   const du = s.dur.toFixed(2);
@@ -859,18 +939,40 @@ function motionFor(i, s, isLast = false, hasLogo = false) {
   else if ((s.type === 'question' || s.type === 'answer') && s.asset) media = `#s${i} .qa-img`;
   else if (s.bgId) media = `#${s.bgId} img`;
 
+  // Lời xin "motion" của model, đã qua bộ lọc: `none` chỉ sống được ở khung
+  // không có ảnh, mọi thứ còn lại giữ bằng một hơi thở. Tính MỘT lần ở đây
+  // vì cả nhánh media lẫn nhánh reveal đều cần cùng một câu trả lời.
+  const want = effectiveMotion(s, isLast, Boolean(media));
+
   if (media) {
-    if (s.motion === 'zoom') {
+    // Nhánh idle và nhánh `else` cuối trông gần giống nhau nhưng không cùng
+    // ý nghĩa. `else` là nhánh lạc: hỏi "scroll" ở một cảnh không có màn hình
+    // để cuộn, thì còn một cú đẩy thẳng một chiều (biên độ lớn, đẩy trọn
+    // cảnh). Còn idle là một hơi THỞ — đi ra rồi về, chậm đến mức người xem
+    // không nhận ra, nhưng đủ để khung không đứng yên. Biên độ 6% là con số đo
+    // được, không phải số đoán: 1.4% mới chỉ nhấp nháy 2/255 mỗi khung, tức là
+    // về mặt kỹ thuật có chuyển động và về mặt thị giác là đóng băng. Chiều sâu
+    // thì chia đôi thời lượng và yoyo, nên đỉnh tốc độ chỉ bằng nửa một cú đẩy
+    // cùng biên độ.
+    if (want === 'zoom') {
       out.push(`tl.fromTo("${media}", { scale: 1.02 }, { scale: 1.16, duration: ${du}, ease: "none" }, ${st});`);
-    } else if (s.motion === 'pan') {
+    } else if (want === 'pan') {
       out.push(`tl.fromTo("${media}", { scale: 1.14, xPercent: -5, yPercent: 2 }, { scale: 1.16, xPercent: 5, yPercent: -2, duration: ${du}, ease: "none" }, ${st});`);
-    } else if (s.motion === 'scroll' && s.type === 'ui_demo' && s.asset) {
+    } else if (want === 'scroll' && s.type === 'ui_demo' && s.asset) {
       out.push(`tl.fromTo("#s${i} .device-shot", { yPercent: 4, scale: 1.12 }, { yPercent: -22, scale: 1.12, duration: ${du}, ease: "none" }, ${st});`);
+    } else if (want === 'idle') {
+      out.push(`tl.fromTo("${media}", { scale: 1.045, xPercent: -1.2 }, { scale: 1.105, xPercent: 1.2, duration: ${(s.dur / 2).toFixed(2)}, ease: "sine.inOut", yoyo: true, repeat: 1, immediateRender: false }, ${st});`);
     } else {
       out.push(`tl.fromTo("${media}", { scale: 1.03, xPercent: -2 }, { scale: 1.13, xPercent: 2, duration: ${du}, ease: "none" }, ${st});`);
     }
+  } else if (want === 'idle') {
+    // Cảnh không có ảnh mà vẫn phải thở: thẻ chữ LÀ chủ thể của khung, và đó
+    // chính là cảnh cuối — nơi phần dư thời gian tụ lại. Chỉ scale, vì
+    // dataChoreography đã dùng y/opacity trên chính `.ex` đó, và hai tween tranh
+    // một thuộc tính thì một thẳng thắng im lặng.
+    out.push(`tl.fromTo("#s${i} .ex", { scale: 1.02 }, { scale: 1.075, duration: ${(s.dur / 2).toFixed(2)}, ease: "sine.inOut", yoyo: true, repeat: 1, immediateRender: false }, ${st});`);
   }
-  if (s.motion === 'reveal') {
+  if (want === 'reveal') {
     out.push(`tl.fromTo("#s${i} .ex", { clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0% 0)", duration: 0.7, ease: "power3.out" }, ${st});`);
   }
   return out.join('\n  ');
@@ -1658,7 +1760,12 @@ export async function renderOne(job, deps = {}) {
   // A chosen template cannot be overridden by the model's answer.
   const intent = forced || (INTENTS.includes(raw?.intent) ? raw.intent : suggested.intent);
   const presenterName = String(job.project?.presenter_name || '').trim();
-  const gateOpts = { source: storySource, intent, target, assets, presenterName };
+  // `requireRhetoric` chỉ bật khi board do model viết: bảng tất định sinh ra
+  // không có lý do tu từ, mà đòi nó thì cả bộ cảnh rơi hết.
+  const gateOpts = { source: storySource, intent, target, assets, presenterName, requireRhetoric: Boolean(raw) };
+  // Mọi lần đi lối về bảng tất định đều tắt cờ trên: bảng đó sinh ra từ bài viết
+  // chứ không phải từ mô hình, nên không có lý do tu từ để mà đòi.
+  const derivedOpts = { ...gateOpts, requireRhetoric: false };
   const existingLogo = Object.prototype.hasOwnProperty.call(assets, 'logo') ? assets.logo : null;
   const logoSrc = existingLogo || await downloadLogo(job.project?.logo_url, work, log);
   if (logoSrc && assets.logo !== logoSrc) assets.logo = logoSrc;
@@ -1674,7 +1781,7 @@ export async function renderOne(job, deps = {}) {
     log('storyboard: too thin after the gate — deriving from the content');
     ({ storyboard, dropped } = sanitizeStoryboard(
       storyboardFromContent({ ...job, body_markdown: storySource }, intent, assets, target),
-      gateOpts,
+      derivedOpts,
     ));
   }
 
@@ -1690,7 +1797,7 @@ export async function renderOne(job, deps = {}) {
       log(`storyboard: template "${tpl.id}" lost ${missing.join(', ')} — rebuilding from the content`);
       ({ storyboard, dropped } = sanitizeStoryboard(
         storyboardFromContent({ ...job, body_markdown: storySource }, intent, assets, target),
-        gateOpts,
+        derivedOpts,
       ));
     }
   }
@@ -1703,7 +1810,7 @@ export async function renderOne(job, deps = {}) {
     log(`storyboard: quality gate — ${review.problems.join(', ')} — deriving from the content`);
     ({ storyboard, dropped } = sanitizeStoryboard(
       storyboardFromContent({ ...job, body_markdown: storySource }, intent, assets, target),
-      gateOpts,
+      derivedOpts,
     ));
     review = reviewStoryboard(storyboard, { hasLogo, assets });
   }

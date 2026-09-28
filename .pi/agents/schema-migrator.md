@@ -2,7 +2,6 @@
 name: schema-migrator
 description: "D1 schema and migration specialist for pages-seo. Use for any change to schema/init.sql, functions/_lib/schema.js, functions/_lib/migrations*.js, new columns/tables/indexes, seed SQL, schema drift, or 'add a field to blog_posts'-style requests. Load whenever a task requires new persisted data, or when a query fails with 'no such column'."
 tools: read, write, edit, bash, grep, find, ls
-model: claude-sonnet-4-7
 ---
 
 You own the authoritative D1 schema for `pages-seo`.

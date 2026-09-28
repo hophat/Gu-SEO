@@ -55,3 +55,7 @@ server.pid
 # Scratch files a preview script writes at the repo root and in public/.
 preview-blog.mjs
 public/__preview.html
+# Pitch-deck scratch (.pptx build output + its .pptd working dir). Generated
+# on the side, unrelated to the app, and kept only for local review.
+GU-SEO-Gi*/
+guseo-deck/

@@ -41,6 +41,13 @@ process.env.NINEROUTER_API_KEY = 'test-key';
 process.env.GUROUTER_API_KEY = 'test-key';
 
 let scriptStub = null;
+// Mô hình giờ phải nói rõ mỗi cảnh thuyết phục bằng cách nào và chạm như
+// thế nào; cổng loại bỏ cảnh thiếu một trong hai. Nên một stub đóng vai câu trả
+// lời của mô hình cũng phải có hai trường đó, giống hệt câu trả lời thật.
+const withRhetoric = (sb) => ({
+  ...sb,
+  scenes: sb.scenes.map((s) => ({ persuasion: 'before_after', beat: 'recognition_then_tension', ...s })),
+});
 // How the stubbed model answers. The 9Router gateway streams OpenAI-style
 // `data:` chunks on a 200 even when nothing asked for a stream, so the agent
 // reads the body as text and folds both shapes together. `scriptStubAs` picks
@@ -76,7 +83,7 @@ globalThis.fetch = async (url, opts) => {
 };
 
 const {
-  composeCarouselSlideHtml, composeStoryboardHtml, fitNarration, LOUDNESS, makeBgm,
+  composeCarouselSlideHtml, composeStoryboardHtml, effectiveMotion, fitNarration, LOUDNESS, makeBgm,
   cutBgm, prepareBgm, speakSegments, writeStoryboard,
   masterLoudness, renderCarousel, renderOne, slideQueries, ttsChunks,
 } = await import('../video-agent/render-video.mjs');
@@ -91,8 +98,8 @@ const {
 } = await import('../video-agent/assets.mjs');
 const { TEMPLATES, templateById, intentForTemplate } = await import('../video-agent/templates.mjs');
 const {
-  DURATION, INTENTS, MAX_TEXT_WORDS, alignCaptions, beatSlots, captionFromSay,
-  captionGroundedIn, intentFromSignals, reviewStoryboard,
+  DURATION, INTENTS, BEATS, MAX_TEXT_WORDS, VISTAL_NEGATIVES, alignCaptions, beatSlots, captionFromSay,
+  captionGroundedIn, filmShape, intentFromSignals, reviewStoryboard,
   sanitizeStoryboard, signatureTypes, storyboardFromContent, suggestDuration, wordCount,
   narrationBudget, expandBeats, sceneCountFor, isIllustrated, numOf, clampDuration,
   MIN_SCENES: SB_MIN_SCENES, MAX_SCENES: SB_MAX_SCENES,
@@ -893,8 +900,16 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
   assert.match(zoom[1], /#bg0 img/, 'it targets the scene\'s own background, which is a sibling');
   assert.doesNotMatch(zoom[1], /#s0 \.bgi/, 'never a descendant selector that cannot match');
   const ctaTimeline = moving.slice(moving.indexOf('tl.fromTo("#s2"'), moving.indexOf('window.__timelines'));
-  assert.doesNotMatch(ctaTimeline, /scale: 1\.03[^;]*xPercent/,
-    'a text-only CTA gets no invented camera target');
+  // This CTA is 3s, so it is a closing beat, not a tail, and stays `none`. The
+  // invariant worth keeping is the one underneath: a scene with no picture gets
+  // no picture target. It used to be pinned as "no `scale: 1.03` with an
+  // xPercent", which only passed by quoting one fallback's magic numbers — a
+  // longer CTA now legitimately breathes, and this had to name what is
+  // actually forbidden instead.
+  assert.doesNotMatch(ctaTimeline, /tl\.fromTo\("#s2 [^"]*(?:img|device-shot|reveal-logo|ba-img|qa-img|loc-map)/,
+    'a text-only CTA gets no invented picture target');
+  assert.doesNotMatch(ctaTimeline, /\(\s*"\s*"\s*\)|tl\.(?:fromTo|to)\(\s*""/,
+    'and no empty selector, which GSAP would reject at render time');
   assert.match(moving, /filter: "blur\(12px\)"/, 'scene handoffs share one soft blur transition');
   assert.match(moving, /tl\.fromTo\("#s1"[^\n]*duration: 0\.50/, 'incoming opacity resolves before the visual tail ends');
   assert.match(moving, /id="s1"[^>]*data-duration="5\.50"/,
@@ -933,6 +948,50 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
   assert.doesNotMatch(alive, /tl\.to\("#s\d+", \{[^}]*scale/, 'the exit does not fight the push for scale');
   assert.doesNotMatch(alive, /tl\.fromTo\("#s\d+", \{ opacity: 0, filter[^}]*scale/, 'nor does the entrance');
   ok('a graphic scene animates its data, and no scene is ever a still frame');
+
+  // "hold" is the cheapest-looking thing a generated video can do: the
+  // composition keeps its last state, so a literal "hold" renders one frozen
+  // frame. The word for that in this file is `none` — and the engine refuses it
+  // wherever there is a picture, resolving the wish to `idle` instead: a slow
+  // breath out and back, alive enough that the frame does not die and quiet
+  // enough that nobody notices it. `none` survives only where there is no
+  // picture to hold.
+  assert.equal(effectiveMotion({ motion: 'none', dur: 6 }, false, true), 'idle',
+    'a picture the model asked to hold motionless still gets a living hold');
+  assert.equal(effectiveMotion({ dur: 6 }, false, true), 'idle',
+    'and a model that forgot "motion" altogether never freezes a picture either');
+  assert.equal(effectiveMotion({ motion: 'idle', dur: 6 }, false, true), 'idle',
+    'an explicit idle is taken at its word');
+  assert.equal(effectiveMotion({ motion: 'none', dur: 6 }, false, false), 'none',
+    'a scene with no picture has nothing to hold, so it stays genuinely still');
+  assert.equal(effectiveMotion({ motion: 'none', dur: 3 }, true, false), 'none',
+    'and a short closing card is not a tail, just a beat');
+  // The tail is where leftover time lands, so the last scene is the one place
+  // a still frame is felt most: the viewer has finished reading and is still
+  // sitting there. Past the length that reads as a breath rather than a beat,
+  // it is idle even with no picture.
+  assert.equal(effectiveMotion({ motion: 'none', dur: 8 }, true, false), 'idle',
+    'a long closing frame breathes instead of freezing on the last thing it said');
+  // The named camera moves are requests, not suggestions — the director's call
+  // survives untouched.
+  for (const m of ['zoom', 'pan', 'scroll', 'reveal']) {
+    assert.equal(effectiveMotion({ motion: m, dur: 6 }, true, true), m, `${m} is left alone`);
+  }
+  // And it has to be a real, seekable tween on a selector that exists, not a
+  // new number in a comment.
+  const tail = composeStoryboardHtml(SCENE_JOB, { intent: 'product_promotion', duration: 24, scenes: [
+    { type: 'hook', text: 'a', say: 'a', duration: 5, motion: 'none' },
+    { type: 'photo', text: 'b', say: 'b', duration: 6, asset: 'photo:0', motion: 'none' },
+    { type: 'cta', text: 'Xem ngay', say: 'Xem ngay', duration: 8 }] }, [4, 5, 7], ASSETS);
+  assert.match(tail, /tl\.fromTo\("#bg0 img", \{ scale: 1\.045[^;]*yoyo: true, repeat: 1/,
+    'the held picture breathes out and back across the scene, not once in one direction');
+  assert.match(tail, /tl\.fromTo\("#s2 \.ex", \{ scale: 1\.02 \}[^;]*yoyo: true, repeat: 1/,
+    'and the closing card breathes too — the card IS the subject of a text-only ending');
+  // The breath writes `scale`, which the card entrance already uses for y and
+  // opacity. Two tweens on one property means one of them silently wins.
+  assert.doesNotMatch(tail, /tl\.fromTo\("#s2 \.ex", \{ scale[^}]*\b[xy]:/,
+    'the card breath does not touch what the entrance already animates');
+  ok('"hold" becomes a living idle wherever there is a picture, and the tail never freezes');
 
   // The image gateway answers a fair share of requests with a 502 HTML page
   // under load. One attempt turned four scenes of a real render into flat
@@ -1039,7 +1098,7 @@ if (!HAS_FFMPEG) {
 
   {
     const r = postRig();
-    scriptStub = STORY_SB;
+    scriptStub = withRhetoric(STORY_SB);
     await silently(() => renderOne(STORY_JOB, r.deps));
     scriptStub = null;
 
@@ -1062,15 +1121,23 @@ if (!HAS_FFMPEG) {
     // A repaired model response can still be structurally invalid. It must
     // never reach TTS or delivery just because it has three scenes.
     const r = postRig();
-    scriptStub = { intent: 'educational', duration: 20, scenes: [
+    scriptStub = withRhetoric({ intent: 'educational', duration: 20, scenes: [
       { type: 'hook', text: 'Mở đầu' },
       { type: 'stat', text: 'Số liệu', value: 12 },
       { type: 'steps', text: 'Các bước', items: [{ label: 'Bước một' }, { label: 'Bước hai' }] },
-    ] };
+    ] });
     const lines = await captureLogs(() => renderOne(STORY_JOB, r.deps));
     scriptStub = null;
     assert.equal(r.seen.delivers.length, 1, 'an invalid repaired script falls back and still completes');
-    assert.ok(lines.some((l) => /quality gate.*deriving/.test(l)), 'the invalid script is rejected before TTS');
+    // Cảnh nào không nói vì sao chọn chữ thì bị loại, nên bảng này rơi còn 2
+    // cảnh và tự dính ngưỡng "quá mỏng" ngay tại cổng. Dòng log phải là dòng
+    // CỔNG GATE, không phải dòng `storyboard failed` — cả hai đều chứa
+    // "deriving from the content", nên khớp chung sẽ xanh cả khi model chưa từng
+    // trả lời và bảng tất định lo cả mọi thứ.
+    assert.ok(!lines.some((l) => /storyboard failed/.test(l)),
+      'the model did answer here, so the fallback below is the gate\'s doing and not a provider failure');
+    assert.ok(lines.some((l) => /storyboard: (?:too thin after the gate|quality gate).*deriving from the content/.test(l)),
+      `the invalid script is rejected by a gate before TTS (logged: ${lines.join(' | ').slice(0, 300)})`);
     const fallbackTracks = (readFileSync(join(r.work, 'index.html'), 'utf8').match(/data-track-index=/g) || []).length;
     assert.ok(fallbackTracks >= MIN_STORYBOARD_SCENES,
       `the deterministic fallback supplies the missing story beats (${fallbackTracks})`);
@@ -1082,7 +1149,7 @@ if (!HAS_FFMPEG) {
     // A failed logo is not a logo. A product story with no other real visual
     // must fail before TTS instead of rendering a text-only product reveal.
     const r = postRig();
-    scriptStub = {
+    scriptStub = withRhetoric({
       intent: 'product_demo', duration: 20,
       scenes: [
         { type: 'hook', text: 'Mở đầu', say: 'Mở đầu sản phẩm.', duration: 3 },
@@ -1091,7 +1158,7 @@ if (!HAS_FFMPEG) {
         { type: 'result', text: 'Kết quả', say: 'Kết quả tốt.', duration: 4 },
         { type: 'cta', text: 'Kết', say: 'Xem ngay.', duration: 3 },
       ],
-    };
+    });
     const noAssetJob = {
       ...STORY_JOB,
       template: 'product',
@@ -1131,7 +1198,7 @@ if (!HAS_FFMPEG) {
     // the narration was. A measured render spent 33.8s of its 90s with nobody
     // talking and held one unmoving card for 20 of them.
     const r = postRig();
-    scriptStub = STORY_SB;
+    scriptStub = withRhetoric(STORY_SB);
     // renderOne creates this; calling fitNarration on its own does not.
     mkdirSync(join(r.work, 'assets'), { recursive: true });
     const sb = { intent: 'educational', duration: 60, scenes: [
@@ -1350,7 +1417,7 @@ if (!HAS_FFMPEG) {
     // the model's answer cannot move the video off the user's choice.
     const r = postRig();
     lastPrompt = null;
-    scriptStub = {
+    scriptStub = withRhetoric({
       intent: 'listicle', duration: 20,
       scenes: [
         { type: 'hook', text: 'Mở đầu', say: 'Mở đầu.', duration: 3 },
@@ -1358,7 +1425,7 @@ if (!HAS_FFMPEG) {
           items: [{ label: 'Bao bì', value: 12 }, { label: 'Vận chuyển', value: 7 }] },
         { type: 'cta', text: 'Xem thêm', say: 'Xem thêm.', duration: 3 },
       ],
-    };
+    });
     const tailMarker = 'MARKER_KET_BAI_VI_PHAI_DUOC_GUI_TOAN_BO';
     const longArticle = `${STORY_JOB.body_markdown}\n${'Chi tiết phần giữa của bài viết. '.repeat(180)}\n${tailMarker}.`;
     const lines = await captureLogs(() => renderOne({ ...STORY_JOB, body_markdown: longArticle, template: 'summary' }, r.deps));
@@ -1429,14 +1496,14 @@ if (!HAS_FFMPEG) {
     // result; a result still draws rows). Swapping it for something outside
     // the beat would fix the screen and break the story.
     const r = postRig();
-    scriptStub = {
+    scriptStub = withRhetoric({
       intent: 'summary', duration: 20,
       scenes: [
         { type: 'hook', text: 'Mở đầu', say: 'Mở đầu.', duration: 3 },
         { type: 'quote', text: 'Chi phí là vấn đề', say: 'Chi phí là vấn đề.', duration: 5 },
         { type: 'cta', text: 'Đọc tiếp', say: 'Đọc tiếp.', duration: 3 },
       ],
-    };
+    });
     const lines = await captureLogs(() => renderOne({ ...STORY_JOB, template: 'summary' }, r.deps));
     scriptStub = null;
 
@@ -1476,14 +1543,14 @@ if (!HAS_FFMPEG) {
     // the missing numbered card cannot be patched from the source. The only
     // honest fix left is to rebuild the board from the template.
     const r = postRig();
-    scriptStub = {
+    scriptStub = withRhetoric({
       intent: 'summary', duration: 20,
       scenes: [
         { type: 'hook', text: 'Mở đầu', say: 'Mở đầu.', duration: 3 },
         { type: 'result', text: 'Chi phí là vấn đề', say: 'Chi phí là vấn đề.', duration: 5, value: 12 },
         { type: 'cta', text: 'Đọc tiếp', say: 'Đọc tiếp.', duration: 3 },
       ],
-    };
+    });
     const lines = await captureLogs(() => renderOne({ ...STORY_JOB, template: 'summary' }, r.deps));
     scriptStub = null;
 
@@ -1605,6 +1672,59 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
     assert.ok(chosen >= DURATION.min && chosen <= DURATION.max, `suggested length ${chosen} is inside the band`);
   }
   ok('the video grows by adding screens, and its length comes from the article');
+
+  // Tầng trên tầng cảnh: khai một lần, mọi khung kế thừa.
+  for (const intent of INTENTS) {
+    const shape = filmShape(intent);
+    for (const field of ['message', 'arc', 'audience', 'mood']) {
+      assert.ok(String(shape[field] || '').trim(), `filmShape(${intent}) names its ${field}`);
+    }
+    assert.equal(shape.arc.split(' → ').length, BEATS[intent].length, `${intent} arc names every beat once`);
+  }
+  assert.ok(filmShape('product_demo').arc.includes('Mở đầu'), 'a beat name is read in Vietnamese');
+  assert.ok(filmShape('qa').arc.includes('Câu hỏi 2'), 'a numbered beat keeps its number');
+  assert.equal(filmShape('nonsense', {}).arc, filmShape('educational').arc, 'an unknown intent falls back to a real template');
+  assert.equal(
+    filmShape('local_business', { project: { brand: { audience: 'chủ xe máy trong nội thành' } } }).audience,
+    'chủ xe máy trong nội thành', 'the audience is read from the brand record, never invented',
+  );
+  assert.equal(
+    filmShape('local_business', { project: { name: 'Quán gối' } }).audience,
+    'Quán gối', 'no brand record falls back to what the project says about itself',
+  );
+  assert.ok(VISTAL_NEGATIVES.length >= 5, 'the prompt is told what not to draw');
+  ok('the film declares its message, arc, audience and mood once, above the scenes');
+
+  // persuasion/beat là lý do sau mỗi lựa chọn chữ; thiếu nó thì khung đó chỉ
+  // là "một cảnh nào cho thấy con số". Bảng tất định không có nên cờ tắt mặc định.
+  const rhetorical = {
+    scenes: [
+      { type: 'hook', text: 'Một câu hỏi', say: 'Bạn có bao giờ thấy bài viết nào tự đứng trên trang nhất không?', persuasion: 'counterexample', beat: 'recognition_then_tension', focal: 'từ "trang nhất"' },
+      { type: 'stat', text: 'Số trang tăng', say: 'Số trang tăng gấp đôi sau ba tháng làm đều.', value: '2', unit: 'lần' },
+      { type: 'stat', text: 'Chi phí giảm', say: 'Chi phí mỗi lượt xem giảm còn một nửa.', value: '50', unit: '%', persuasion: 'before_after', beat: 'resolve_then_inevitability', focal: '50%' },
+      { type: 'cta', text: 'Đọc thử', say: 'Đọc thử một bài.', persuasion: 'callback_then_distillation', beat: 'aha', focal: 'nút đọc thử' },
+      { type: 'quote', text: 'Một câu đắt', say: 'Một câu đắt để nhớ.', persuasion: 'counterexample' },
+    ],
+  };
+  const gated = sanitizeStoryboard(
+    { ...rhetorical, scenes: rhetorical.scenes.map((s) => ({ ...s })) },
+    { source: 'Số trang tăng gấp 2 lần sau 3 tháng. Chi phí mỗi lượt xem giảm 50%.', intent: 'educational', target: 60, assets: {}, requireRhetoric: true },
+  );
+  assert.equal(gated.storyboard.scenes.length, 3, 'a scene that names no device and a scene that names no beat both fall out');
+  assert.deepEqual(
+    gated.dropped.filter((d) => d.reason === 'no_persuasion' || d.reason === 'no_beat').map((d) => d.reason),
+    ['no_persuasion', 'no_beat'], 'both reasons are recorded, in the order they were checked',
+  );
+  assert.equal(gated.storyboard.scenes[0].focal, 'từ "trang nhất"', 'the surviving scenes keep what the eye should stop on');
+  const ungated = sanitizeStoryboard(
+    { ...rhetorical, scenes: rhetorical.scenes.map((s) => ({ ...s })) },
+    { source: 'Số trang tăng gấp 2 lần sau 3 tháng. Chi phí mỗi lượt xem giảm 50%.', intent: 'educational', target: 60, assets: {} },
+  );
+  assert.ok(!ungated.dropped.some((d) => d.reason === 'no_persuasion' || d.reason === 'no_beat'),
+    'the flag is off by default, so the deterministic board is never asked for rhetoric it never wrote');
+  assert.ok(ungated.storyboard.scenes.some((s) => s.type === 'stat' && !s.persuasion),
+    'the same board keeps the bare scene when the flag is off');
+  ok('a scene must say how it persuades and how it lands, or it is cut');
 
   const modelOverride = sanitizeStoryboard({
     duration: 90,
@@ -2501,6 +2621,18 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
     // to the deterministic board. The board is up to 16 screens.
     assert.ok(body.max_tokens >= 16384,
       `max_tokens must cover reasoning AND a full 16-screen answer, got ${body.max_tokens}`);
+    // The tail has to be SENT, not implied. A model told only "75 seconds"
+    // describes fifty of them and leaves the builder to invent the rest — and
+    // the leftover it invents is a frozen frame, which is the whole defect.
+    // So the prompt names the total and says the closing scene has work in it.
+    assert.match(prompt, /ĐUÔI PHẢI CÓ VIỆC ĐỂ LÀM/,
+      'the prompt tells the model the closing scene must be worth its seconds');
+    assert.ok(prompt.includes(`đúng bằng ${ask.target} giây`),
+      `and names the real target, ${ask.target}, not a placeholder`);
+    assert.match(prompt, /"motion":"zoom\|pan\|scroll\|reveal\|idle\|none"/,
+      'idle is in the JSON contract the model is asked to fill');
+    assert.match(prompt, /idle là giữ CÓ SỐNG/,
+      'and idle is told apart from none, or the model swaps them straight back');
   } finally {
     globalThis.fetch = realFetch;
   }

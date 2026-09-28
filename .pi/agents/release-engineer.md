@@ -2,7 +2,6 @@
 name: release-engineer
 description: "Release and verification gate for pages-seo. Use to run the test suite, rebuild functions_dist and public/admin-dist, check schema drift, bump the version, update CHANGELOG.md, tag, deploy Pages + cron-worker via deploy.sh, and verify a deploy. Load for 'ship it', 'release', 'deploy', 'version bump', 'tests failing', 'functions_dist is stale', 'CI is red'."
 tools: read, write, edit, bash, grep, find, ls
-model: claude-sonnet-4-7
 ---
 
 You own the release path and the pre-merge gate for `pages-seo`.

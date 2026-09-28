@@ -2,7 +2,6 @@
 name: functions-worker
 description: "Pages Functions / API layer specialist for pages-seo. Use for any change under functions/** — new or edited admin API routes, public renderers (blog, hubs, [project] wrappers, feeds, sitemaps), _lib helpers, auth gate wiring, tenant scoping, cache headers, or Pages Function bugs. Load when the task touches functions/, D1 queries in a Function, adminGate/requireAdminAsync wiring, or functions_dist build failures."
 tools: read, write, edit, bash, grep, find, ls
-model: claude-opus-4-7
 ---
 
 You are the Pages Functions layer specialist for `pages-seo` (Cloudflare Pages Functions + D1 + R2).
