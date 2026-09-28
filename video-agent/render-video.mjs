@@ -259,12 +259,12 @@ Trả JSON:`;
         { role: 'user', content: user },
       ],
       // max_tokens is the WHOLE budget, reasoning included — not a cap on
-      // the answer. A 12-screen Vietnamese storyboard measures ~2 800 tokens
-      // of JSON, and the model spends ~2 600 more thinking first: at the old
-      // 3 200 it finished its reasoning with nothing left to say, answered
-      // with an empty string, and every run silently fell back to the
-      // deterministic board. 8 192 is what a full board actually costs.
-      temperature: 0.65, max_tokens: 8192, response_format: { type: 'json_object' },
+      // the answer, and the model's share of it grows with the board. Measured
+      // on the real call: an 8-screen board spent ~2 600 tokens thinking, a
+      // 12-screen board spent 7 510, and at 8 192 the larger one finished its
+      // reasoning with nothing left to say. The board is up to 16 screens now,
+      // so the budget has to leave room for the answer after a long think.
+      temperature: 0.65, max_tokens: 16384, response_format: { type: 'json_object' },
     }),
   }).catch((e) => { throw new Error('gurouter_unreachable: ' + e.message); });
   if (!r.ok) throw new Error(`gurouter HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
@@ -686,12 +686,16 @@ function motionFor(i, s, isLast = false, hasLogo = false) {
 // time so preview and render seek identically.
 function dataChoreography(i, s) {
   const st = s.start.toFixed(2);
-  const end = (s.start + s.dur).toFixed(2);
   const du = s.dur.toFixed(2);
-  // A slow counter-breathe on the card itself: without it, a scene whose items
-  // are all animated still sits still in the gaps between beats.
-  const breathe = `tl.fromTo("#s${i} .ex", { scale: 1 }, { scale: 1.014, duration: ${(s.dur / 2).toFixed(2)}, ease: "sine.inOut", yoyo: true, repeat: 1, immediateRender: false }, ${st});`;
-  const out = [breathe];
+  // The camera push. Every scene drifts and eases in for its whole length, so
+  // there is no instant where the frame is simply still.
+  //
+  // The amplitude is measured, not guessed: at 1.4% the mean frame-to-frame
+  // difference was 2/255 — technically moving, visually a freeze. A push that
+  // actually reads is roughly four times that, and a slow drift in the opposite
+  // direction on the way out keeps the card from ever sitting square.
+  const push = `tl.fromTo("#s${i} .ex", { scale: 1.055, yPercent: 1.2 }, { scale: 1.005, yPercent: -1.2, duration: ${du}, ease: "sine.inOut", immediateRender: false }, ${st});`;
+  const out = [push];
   // Stagger helper: reveal each child across the first ~70% of the scene, so the
   // last item lands while the voice is still on the item before it.
   const stagger = (sel, per, dy = 18) =>
@@ -700,7 +704,12 @@ function dataChoreography(i, s) {
   switch (s.type) {
     case 'stat':
     case 'result':
-      out.push(`tl.fromTo("#s${i} .ex", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.4)", immediateRender: false }, ${st});`);
+      // The pop belongs on the number, not the card: the card already carries
+      // the camera push, and two tweens on one element's `scale` means one of
+      // them silently loses.
+      out.push(`tl.fromTo("#s${i} ${s.type === 'stat' ? '.stat-n' : '.res-n'}", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.7, ease: "back.out(1.6)", immediateRender: false }, ${st});`);
+      if (s.type === 'result') stagger('#s' + i + ' .res-list li', 0.12, 20);
+      else stagger('#s' + i + ' .stat-l', 0.1, 16);
       break;
     case 'bars':
       out.push(`tl.fromTo("#s${i} .bar-fill", { scaleX: 0 }, { scaleX: 1, duration: ${(du * 0.7).toFixed(2)}, ease: "power3.out", stagger: 0.12, transformOrigin: "left center", immediateRender: false }, ${st});`);

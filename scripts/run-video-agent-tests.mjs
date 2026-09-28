@@ -890,10 +890,12 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
   assert.match(alive, /#s0 \.bar-row.*stagger/s, 'and the rows arrive in sequence');
   assert.match(alive, /#s1 \.step", \{ opacity: 0, y: 26 \}/, 'steps rise one after another');
   assert.match(alive, /#s2 \.ig-ico", \{ rotation: -12/, 'icons pop rather than appearing flat');
-  // Every scene breathes for its whole length, so the gap between beats is
-  // never a still frame — this is what the freeze detector was measuring.
+  // Every scene pushes in for its whole length, so the gap between beats is
+  // never a still frame — this is what the freeze detector was measuring, and
+  // the amplitude is pinned because a 1.4% breath measured 2/255 per frame,
+  // which is technically moving and visually a freeze.
   for (const id of [0, 1, 2]) {
-    assert.match(alive, new RegExp(`tl\\.fromTo\\("#s${id} \\.ex", \\{ scale: 1 \\}, \\{ scale: 1\\.014, duration: [\\d.]+, ease: "sine\\.inOut", yoyo: true, repeat: 1`),
+    assert.match(alive, new RegExp(`tl\\.fromTo\\("#s${id} \\.ex", \\{ scale: 1\\.055, yPercent: 1\\.2 \\}, \\{ scale: 1\\.005, yPercent: -1\\.2, duration: \\d+\\.\\d+, ease: "sine\\.inOut"`),
       `scene ${id} keeps moving for its whole length`);
   }
   ok('a graphic scene animates its data, and no scene is ever a still frame');
@@ -2302,8 +2304,13 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
       assert.ok(slots[index].types.includes(scene.type), 'each example uses its own beat vocabulary');
       assert.equal(scene.duration, slots[index].duration);
     });
-    assert.equal(body.max_tokens, 8192,
-      'max_tokens must cover reasoning AND a full 12-screen answer — it is not a cap on the reply');
+    // max_tokens is the whole budget, reasoning included, and the model's share
+    // of it grows with the board: ~2 600 tokens of thinking for an 8-screen
+    // board, 7 510 for a 12-screen one. Under that total it finishes thinking
+    // with nothing left to answer, returns "", and the run quietly falls back
+    // to the deterministic board. The board is up to 16 screens.
+    assert.ok(body.max_tokens >= 16384,
+      `max_tokens must cover reasoning AND a full 16-screen answer, got ${body.max_tokens}`);
   } finally {
     globalThis.fetch = realFetch;
   }
