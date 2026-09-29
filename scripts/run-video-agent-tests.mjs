@@ -2668,6 +2668,27 @@ console.log('\n--- User-chosen templates (catalog · forced intent · new scenes
     assert.equal(survived, 0, 'a failed image is not a failed screen');
     assert.equal(brokenBoard.scenes[0].asset, 'photo:0', 'and it keeps the material it already had');
 
+    // Six scenes against a gateway that is refusing everything used to cost
+    // two full batches of three tries with waits between them before the
+    // render admitted the pictures were never coming. The first batch that
+    // returns nothing is the signal, and this pins that: the second batch is
+    // never requested.
+    let breakerCalls = 0;
+    const breakerLog = [];
+    const sixBoard = { scenes: Array.from({ length: 6 }, (_, i) => ({ type: i % 2 ? 'problem' : 'hook', text: 'N', say: `Câu ${i}` })) };
+    const sixAssets = {};
+    globalThis.fetch = async () => { breakerCalls++; return { ok: false, status: 502, text: async () => 'upstream down' }; };
+    const breakerMade = await generateSceneImages({
+      storyboard: sixBoard, job: {}, assets: sixAssets, work,
+      config: { key: 'sk-test' }, log: (m) => breakerLog.push(m),
+    });
+    assert.equal(breakerMade, 0, 'a gateway that refuses everything yields no pictures');
+    // Three scenes, three tries each. Six scenes would have made eighteen.
+    assert.equal(breakerCalls, 9, `only the first batch of three scenes is attempted (made ${breakerCalls} requests, expected 9)`);
+    assert.ok(breakerLog.some((m) => /skipping 3 more/.test(m)),
+      `and the render says why it stopped early (${breakerLog.filter((m) => m.startsWith('ai images:')).join(' | ')})`);
+    assert.equal(sixBoard.scenes.every((s) => !s.asset), true, 'every scene keeps its own background');
+
     // No key at all: the step is skipped, not attempted.
     assert.equal(await generateSceneImages({
       storyboard: brokenBoard, job: {}, assets: brokenAssets, work, config: {}, log: () => {},

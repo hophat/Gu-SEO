@@ -74,17 +74,31 @@ Video có "hình dáng cả phim" và một cảnh nào cũng phải biết mìn
   file đã nối lấy nhịp giữa các phần, nên nâng ngưỡng chỉ làm mối ghép DÀI
   hơn (0.67s ở 0.4, 1.17s ở 0.9, 1.47s ở 1.2). Giữa hai chunk còn ~0.11s —
   đủ để nghe như một nhịp thở, không phải một mối cắt.
-- **Hai lỗi tạm thời không còn giết job trong vài giây.** 502 ở gateway ảnh: đo
-  10/10 request trả 200, không 502 lần nào, nên đây là burst chứ không phải
-  endpoint hỏng — nhưng backoff cũ chỉ 1.5s/3s, ngắn hơn cả burst phủ 3 ảnh.
-  Nay chờ 5s/20s, vẫn 3 lần thử. `edge-tts` trả `NoAudioReceived` khoảng
-  2/5 request, và voice dự phòng không phải endpoint khác nên không xóa được
-  throttle: đổi voice ngay sau 4 giây là 6 request dính liền. Nay nghỉ 15s
-  trước voice thứ hai.
+- **Renders không còn đốt hàng phút chờ vào một gateway đã chết.** Một cảnh
+  ảnh là 3 lần thử, mỗi lần có chờ giữa; sáu cảnh trên một endpoint từ chối
+  mọi thứ là phút chờ cho những bức ảnh không bao giờ tới. `generateSceneImages`
+  giờ ngừng ngay sau batch đầu tiên trả về không có tấm nào, và log nói rõ
+  nó bỏ bao nhiêu cảnh. Đo trên VPS với endpoint đang chết: 6 cảnh → 3
+  request, `MADE=0`, 69.2s thay vì phải đi hết 6 cảnh. Phần retry vẫn giữ
+  3 lần thử — đó là chỗ duy nhất gateway hồi phục giữa chừng còn cửa.
+- **`edge-tts` không còn bắn 6 request dính liền khi bị throttle.** Đo trên VPS:
+  2/5 request trả `NoAudioReceived`. Voice dự phòng không phải endpoint khác
+  nên không xóa được throttle, và việc đổi voice ngay sau 4 giây chỉ làm
+  nối thêm 6 request. Nay nghỉ 15s trước voice thứ hai.
+- **Đo sai 502 đã tốn một vòng sửa vô ích.** Lần đầu tôi đo bằng request nhẹ
+  (`1024x1024`, prompt ngắn) rồi kết luận "10/10 trả 200, chỉ là burst" và
+  kéo backoff từ 1.5s/3s lên 5s/20s. Đo lại bằng đúng `sceneImagePrompt` và
+  đúng kích thước `1024x1792` thì 9/9 lần đều 502, và không phải chờ: lần
+  đầu 20.8s, các lần sau 0.2–0.5s. Upstream nói rõ:
+  `[antigravity/gemini-3.1-flash-image] [403]`, và `/v1/models` không có
+  model `ag/gemini-3.1-flash-image` lẫn bất kỳ model nào có `imageOutput`.
+  Cùng key từ máy local cũng 502, nên không phải IP của VPS. Retry nhiều hơn
+  không cứu được endpoint đã chết; chỉ chờ lâu hơn cũng vô dụng, vì các
+  request sau bị từ chối ngay lập tức chứ không hết thời gian chờ.
 - **`fitNarration` có thêm 2 pass trước khi ném nội dung đi.** Với padding đã
-  bị cắt, voice ngắn hơn nhiều, nhưng bản 90s từ bài dày vẫn cần tới pass
-  thứ tư mới vừa trần — và pass thứ năm là thứ giữ một lần lệch nhỏ khỏi việc
-  xóa nội dung thật ở cuối một bản dài.
+  bị cắt, voice ngắn hơn nhiều, nên một bản 90s từ bài dày cần nhiều hơn 3
+  pass mới vừa trần. Tăng lên 5 là biện phòng cho job dài, chưa có job thật
+  nào chạm tới — suite và các lần render VPS đều dừng trước ngưỡng cắt.
 - **Deck scratch không lọt vào `git status`.** `GU-SEO-Gi*` và `guseo-deck/` (output
   `.pptx` cùng thư mục làm việc `.pptd`) thêm vào `.gitignore`.
 

@@ -458,6 +458,12 @@ export async function generateSceneImages({ storyboard, job = {}, assets, work, 
   if (!targets.length) { log('ai images: every background scene already has material'); return 0; }
 
   let made = 0;
+  // A dead endpoint costs a whole batch, not a whole video. Each image is
+  // three tries with waits between them, so six scenes against a gateway
+  // that is refusing everything is minutes of waiting for pictures that were
+  // never going to arrive. The first batch that comes back with nothing
+  // successful is the signal, and the rest of the render keeps its gradient
+  // backgrounds instead of paying for the same refusal again.
   for (let i = 0; i < targets.length; i += AI_IMAGE_CONCURRENCY) {
     const batch = targets.slice(i, i + AI_IMAGE_CONCURRENCY);
     const settled = await Promise.all(batch.map(async ({ scene, index }) => {
@@ -476,6 +482,13 @@ export async function generateSceneImages({ storyboard, job = {}, assets, work, 
       }
     }));
     made += settled.filter(Boolean).length;
+    if (!settled.some(Boolean)) {
+      const left = targets.length - i - batch.length;
+      log(left
+        ? `ai images: the gateway answered none of the last ${batch.length} requests — skipping ${left} more, the video keeps its gradient backgrounds`
+        : `ai images: the gateway answered none of the last ${batch.length} requests — no more scenes to try`);
+      return made;
+    }
   }
   return made;
 }
