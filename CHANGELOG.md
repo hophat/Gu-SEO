@@ -48,6 +48,13 @@ Video có "hình dáng cả phim" và một cảnh nào cũng phải biết mìn
   dòng log `storyboard failed … — deriving from the content` cũng chứa đúng
   cụm đó, nên test pass ngay cả khi provider chết và chưa từng chạy quality gate.
   Nay assert khớp riêng hai dòng gate thật và phủ định dòng `storyboard failed`.
+- **Hình và voice của mỗi cảnh không còn kể hai ý khác nhau.** Repair cho cảnh
+  trống và deterministic fallback chỉ lấy nhãn, số, hàng, cột được chính `say`
+  của cảnh chứng minh, thay vì bốn câu hoặc mọi con số đầu bài. `compare` mặc
+  định trung tính; dấu ✓/✕ chỉ xuất hiện khi storyboard khai rõ
+  `tone: good|bad`, nên hai lựa chọn đều hợp không còn bị vẽ thành đúng/sai.
+  Prompt cũng yêu cầu sửa lỗi chính tả rõ ràng trước TTS nhưng giữ nguyên tên
+  riêng, số và sự kiện.
 - **Deck scratch không lọt vào `git status`.** `GU-SEO-Gi*` và `guseo-deck/` (output
   `.pptx` cùng thư mục làm việc `.pptd`) thêm vào `.gitignore`.
 

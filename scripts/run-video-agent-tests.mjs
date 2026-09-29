@@ -725,7 +725,7 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
     sceneInner({ type: 'donut', text: 'Đã đổi', value: 65 }, '#e8590c'),
     sceneInner({ type: 'steps', text: 'Các bước', items: [{ label: 'Đo hộp' }] }, '#e8590c'),
     sceneInner({ type: 'icons', text: 'Điểm chính', items: [{ icon: 'shield', label: 'Bền' }] }, '#e8590c'),
-    sceneInner({ type: 'compare', text: 'Nên tránh', left: { title: 'Nên', items: ['Hộp 1 lớp'] }, right: { title: 'Tránh', items: ['Hộp 3 lớp'] } }, '#e8590c'),
+    sceneInner({ type: 'compare', text: 'Nên tránh', left: { title: 'Nên', items: ['Hộp 1 lớp'], tone: 'good' }, right: { title: 'Tránh', items: ['Hộp 3 lớp'], tone: 'bad' } }, '#e8590c'),
     sceneInner({ type: 'quote', text: 'Đổi hộp là cách rẻ nhất' }, '#e8590c'),
   ].join('');
   assert.match(html, /class="bar-fill" style="width:100%/, 'the largest bar fills the track');
@@ -736,6 +736,15 @@ const ASSETS = { 'site:0': 'assets/site0.png', hero: 'assets/hero.jpg', map: 'as
   assert.match(html, /data-icon="shield"/, 'the icon grid draws real icons');
   assert.match(html, /class="cmp-m good"[\s\S]*class="cmp-m bad"/, 'a comparison shows both sides');
   assert.match(html, /class="quote-mark"/, 'and the quote card is a quote');
+  const neutral = sceneInner({
+    type: 'compare', text: 'Hai cách phối',
+    left: { title: 'Quần tây', items: ['đi làm'] },
+    right: { title: 'Quần jean', items: ['đi chơi'] },
+  }, '#e8590c');
+  assert.doesNotMatch(neutral, /cmp-m (?:good|bad)/,
+    'a comparison does not invent praise or criticism when both sides are valid');
+  assert.match(neutral, /cmp-left cmp-neutral[\s\S]*cmp-right cmp-neutral/,
+    'neutral alternatives still draw as two distinct columns');
   // 608px of content width: a seven-character number at the 150px step
   // would run off the frame, so length has to choose the size.
   assert.ok(statSize('1.250.000') < statSize('40'), 'a long number steps down so it cannot overflow the frame');
@@ -1088,10 +1097,11 @@ if (!HAS_FFMPEG) {
     intent: 'educational', duration: 20,
     scenes: [
       { type: 'hook', text: 'Bao bì ăn mất lợi nhuận', say: 'Bao bì ăn mất lợi nhuận bạn không thấy.', duration: 3 },
-      { type: 'stat', text: 'Chi phí', say: 'Chi phí đang tăng nhanh.', value: 12, duration: 4 },
+      { type: 'stat', text: 'Chi phí', say: 'Chi phí bao bì chiếm 12 phần trăm doanh thu.', value: 12, duration: 4 },
       { type: 'bars', text: 'Chi phí chiếm bao nhiêu', say: 'Bao bì 12 phần trăm, vận chuyển 7 phần trăm.', duration: 5,
         items: [{ label: 'Bao bì', value: 12 }, { label: 'Vận chuyển', value: 7 }] },
-      { type: 'quote', text: 'Kết luận', say: 'Kết luận là cần đo lại từng chi phí.', duration: 4 },
+      { type: 'result', text: 'Hai khoản cần đo', say: 'Đo lại bao bì 12 phần trăm và vận chuyển 7 phần trăm.', duration: 4,
+        items: [{ label: 'Bao bì 12 phần trăm' }, { label: 'Vận chuyển 7 phần trăm' }] },
       { type: 'cta', text: 'Đọc bài viết đầy đủ', say: 'Đọc bài viết đầy đủ để biết thêm.', duration: 3 },
     ],
   };
@@ -1500,7 +1510,7 @@ if (!HAS_FFMPEG) {
       intent: 'summary', duration: 20,
       scenes: [
         { type: 'hook', text: 'Mở đầu', say: 'Mở đầu.', duration: 3 },
-        { type: 'quote', text: 'Chi phí là vấn đề', say: 'Chi phí là vấn đề.', duration: 5 },
+        { type: 'quote', text: 'Chi phí là vấn đề', say: 'Chi phí bao bì chiếm 12 phần trăm doanh thu. Vận chuyển chỉ 7 phần trăm.', duration: 5 },
         { type: 'cta', text: 'Đọc tiếp', say: 'Đọc tiếp.', duration: 3 },
       ],
     });
@@ -1526,7 +1536,7 @@ if (!HAS_FFMPEG) {
       intent: 'summary',
       scenes: [
         { type: 'hook', text: 'Mở đầu' },
-        { type: 'quote', text: 'Chi phí là vấn đề' },
+        { type: 'quote', text: 'Chi phí là vấn đề', say: 'Chi phí bao bì chiếm 12 phần trăm doanh thu. Vận chuyển chỉ 7 phần trăm.' },
         { type: 'cta', text: 'Đọc tiếp' },
       ],
     }, { source: 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển chỉ 7%. Bao bì tái chế giảm thêm 12%.', intent: 'summary', target: 60, assets: {} });
@@ -1794,6 +1804,60 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
 }
 
 {
+  const source = [
+    'Cổ áo dệt hai lớp nên đứng thẳng sau mười lần giặt.',
+    'Mặc cùng quần tây hoặc quần jean đều hợp khi đi làm hay đi chơi.',
+    'Áo rộng ở ngực nên không bó khi gập tay và tập gym.',
+  ].join(' ');
+  const repaired = sanitizeStoryboard({ scenes: [
+    { type: 'hook', text: 'Áo mặc thoải mái', say: 'Chọn áo mặc thoải mái cả ngày.' },
+    { type: 'quote', text: 'Hai cách phối', say: 'Mặc cùng quần tây hoặc quần jean đều hợp khi đi làm hay đi chơi.' },
+    { type: 'cta', text: 'Chọn cỡ', say: 'Chọn cỡ phù hợp hôm nay.' },
+  ] }, { source, intent: 'educational', target: 60, assets: {} });
+  const scene = repaired.storyboard.scenes[1];
+  assert.ok(Array.isArray(scene.items) && scene.items.length >= 2,
+    'a bare scene is repaired with visible points');
+  assert.ok(scene.items.every((item) => captionGroundedIn(item.label, scene.say)),
+    'every repaired point is grounded in that scene voice, not unrelated article text');
+  assert.ok(scene.items.some((item) => /quần tây|quần jean/i.test(item.label)),
+    'the repaired picture keeps the claim being spoken');
+  assert.ok(!scene.items.some((item) => /cổ áo|tập gym/i.test(item.label)),
+    'details narrated by other scenes stay off this picture');
+  ok('automatic illustration repair stays aligned with the scene voice');
+}
+
+{
+  const source = [
+    'Cổ áo đứng sau 10 lần giặt.',
+    'Vải cotton 100 phần trăm thoáng khi mặc cả ngày.',
+    'Vai rộng 52 centimet và áo dài 68 centimet.',
+    'Mặc cùng quần tây hoặc quần jean đều hợp.',
+  ].join(' ');
+  const board = sanitizeStoryboard(
+    storyboardFromContent({ title: 'Chọn áo mặc thoải mái', body_markdown: source }, 'educational', {}, 60),
+    { source, intent: 'educational', target: 60, assets: {} },
+  ).storyboard;
+  for (const scene of board.scenes.slice(1, -1)) {
+    alignCaptions({ scenes: [scene] });
+    if (scene.type === 'result') assert.ok(!(scene.items || []).some((item) => String(item.label || item.text) === scene.text),
+      'deterministic result does not repeat its caption as a row');
+    const labels = [
+      ...(Array.isArray(scene.items) ? scene.items.map((item) => item.label || item.text) : []),
+      ...(Array.isArray(scene.left?.items) ? scene.left.items : []),
+      ...(Array.isArray(scene.right?.items) ? scene.right.items : []),
+    ].filter(Boolean);
+    assert.ok(labels.every((label) => captionGroundedIn(label, scene.say)),
+      `deterministic ${scene.type} labels are spoken in their own scene`);
+    const spokenNumbers = new Set([...scene.say.matchAll(/\d+/g)].map(([value]) => value));
+    const visualNumbers = [scene.value, ...(scene.items || []).map((item) => item.value)]
+      .filter((value) => value !== undefined).map(String);
+    assert.ok(visualNumbers.every((value) => spokenNumbers.has(value)),
+      `deterministic ${scene.type} values are spoken in their own scene`);
+  }
+  ok('deterministic charts and lists only show data spoken in that scene');
+}
+
+{
   const malformedCards = sanitizeStoryboard({
     scenes: [
       { type: 'hook', text: 'Mở đầu' },
@@ -1957,9 +2021,10 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
     { title: 'Sản phẩm có logo', body_markdown: logoSource, project: { name: 'Gulagi' } },
     'product_demo', {}, 60), { source: logoSource, intent: 'product_demo', target: 60, assets: {} }).storyboard;
   const logoReview = reviewStoryboard(logoOnly, { hasLogo: true });
-  assert.equal(logoReview.ok, true, `a real logo counts as the product visual when no screenshot exists (${logoReview.problems.join(', ')})`);
+  assert.equal(logoReview.problems.some((p) => p.startsWith('no_real_asset')), false,
+    `a real logo satisfies the product asset gate (${logoReview.problems.join(', ')})`);
   assert.ok(reviewStoryboard(logoOnly).problems.some((p) => p.startsWith('no_real_asset')),
-    'logo-only acceptance requires an explicit logo signal');
+    'logo-only asset acceptance requires an explicit logo signal');
 
   const wall = { intent: 'educational', scenes: [
     { type: 'hook', text: 'a', duration: 4 }, { type: 'quote', text: 'b', duration: 4 },
@@ -2138,10 +2203,8 @@ const STORY_ARTICLE = 'Chi phí bao bì chiếm 12% doanh thu. Vận chuyển ch
     storyboardFromContent({ title: 'Tóm tắt', body_markdown: '   ' }, 'summary', {}, 60),
     { source: '   ', intent: 'summary', target: 60, assets: {} },
   );
-  assert.equal(sparseSummary.storyboard.scenes.find((s) => s.type === 'keypoints')?.items.length >= 2, true,
-    'an empty summary source still produces drawable keypoints');
-  assert.equal(reviewStoryboard(sparseSummary.storyboard, { assets: {} }).ok, true,
-    'sparse summary does not fail the beat gate');
+  assert.equal(reviewStoryboard(sparseSummary.storyboard, { assets: {} }).ok, false,
+    'an empty summary source is rejected instead of inventing drawable claims');
   const whitespaceVoice = sanitizeStoryboard(
     storyboardFromContent({ title: 'Khách hàng nói gì', body_markdown: '   ' }, 'testimonial', { 'photo:0': 'photo.png' }, 15),
     { source: '   ', intent: 'testimonial', target: 60, assets: { 'photo:0': 'photo.png' } },

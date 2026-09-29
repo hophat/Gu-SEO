@@ -270,7 +270,7 @@ const SCENE_BRIEF = `Các loại cảnh được phép (chỉ dùng trong danh s
 - quote {text} — một câu đắt
 - stat {text, value, unit} · bars {text, items:[{label,value}]} · donut {text, value}
 - line {text, items:[{label,value}]} · steps {text, items:[{label}]} · icons {text, items:[{icon,label}]}
-- compare {text, left:{title,items}, right:{title,items}}
+- compare {text, left:{title,items,tone?}, right:{title,items,tone?}} — chỉ đặt tone "good" hoặc "bad" khi nội dung thật sự khen/chê; hai lựa chọn đều tốt thì bỏ tone
 - anchor {text, name?} — người dẫn bản tin (lower-third); chỉ dùng khi có asset "presenter"
 - headline {text, kicker?} — dòng tin lớn kiểu breaking news
 - keypoints {text, items:[{label}]} — ý chính đánh số, tối đa 4 mục
@@ -279,8 +279,8 @@ const SCENE_BRIEF = `Các loại cảnh được phép (chỉ dùng trong danh s
 
 LUẬT BẮT BUỘC:
 1. "text" tối đa 8 từ, là CAPTION ngắn chứ không phải toàn bộ lời kể. Không xuống dòng dài dòng.
-2. "say" là lời đọc đầy đủ của cảnh đó, phải ĐỦ số từ trong dàn ý để kéo dài đúng số giây đó (2.6 từ/giây). Cảnh nào để trống thời gian thì người xem nghe im lặng rồi bỏ đi — đây là lý do phần lớn video bị rời. Đếm từ trước khi trả về.
-3. Lời đọc phải phủ HẾT các ý chính của bài — mỗi ý chính (mỗi mục H2, mỗi luận điểm, mỗi bước) một cảnh riêng, theo đúng thứ tự bài viết, và mỗi cảnh chỉ kể MỘT ý. Tuyệt đối không tạo khoảng trống, không gộp nhiều ý vào một câu, không giấu ý chính để người xem phải đọc bài mới hiểu. Cảnh cuối cùng trước CTA dành cho kết luận, không dùng để kể thêm ý mới.
+2. "say" là lời đọc đầy đủ của cảnh đó, phải ĐỦ số từ trong dàn ý để kéo dài đúng số giây đó (2.6 từ/giây). Viết tiếng Việt tự nhiên để đọc thành tiếng; âm thầm sửa lỗi chính tả/từ dùng sai rõ ràng trong nguồn nhưng giữ nguyên tên riêng, con số và sự kiện. Cảnh nào để trống thời gian thì người xem nghe im lặng rồi bỏ đi — đây là lý do phần lớn video bị rời. Đếm từ trước khi trả về.
+3. Lời đọc phải phủ HẾT các ý chính của bài — mỗi ý chính (mỗi mục H2, mỗi luận điểm, mỗi bước) một cảnh riêng, theo đúng thứ tự bài viết, và mỗi cảnh chỉ kể MỘT ý. Mọi nhãn, hàng, cột và polarity tốt/xấu trong hình phải được chính "say" của cảnh đó chứng minh. Tuyệt đối không tạo khoảng trống, không gộp nhiều ý vào một câu, không giấu ý chính để người xem phải đọc bài mới hiểu. Cảnh cuối cùng trước CTA dành cho kết luận, không dùng để kể thêm ý mới.
 4. CHỈ dùng asset có trong danh sách. Không bịa ảnh.
 5. CHỈ dùng con số CÓ TRONG NỘI DUNG. Không làm tròn, không suy diễn.
 6. Cảnh đầu là hook (bản tin mở bằng headline), cảnh cuối là cta. Không lặp hai cảnh cùng loại liền nhau.
@@ -1012,13 +1012,13 @@ function dataChoreography(i, s) {
 
   switch (s.type) {
     case 'stat':
+      out.push(`tl.fromTo("#s${i} .stat-n", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.7, ease: "back.out(1.6)", immediateRender: false }, ${st});`);
+      stagger('#s' + i + ' .stat-l', 0.1, 16);
+      break;
     case 'result':
-      // The pop belongs on the number, not the card: the card already carries
-      // the camera push, and two tweens on one element's `scale` means one of
-      // them silently loses.
-      out.push(`tl.fromTo("#s${i} ${s.type === 'stat' ? '.stat-n' : '.res-n'}", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.7, ease: "back.out(1.6)", immediateRender: false }, ${st});`);
-      if (s.type === 'result') stagger('#s' + i + ' .res-list li', 0.12, 20);
-      else stagger('#s' + i + ' .stat-l', 0.1, 16);
+      // A result may be a list with no number; never hand GSAP an empty target.
+      if (s.value !== undefined && s.value !== null && s.value !== '') out.push(`tl.fromTo("#s${i} .res-n", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.7, ease: "back.out(1.6)", immediateRender: false }, ${st});`);
+      stagger('#s' + i + ' .res-list li', 0.12, 20);
       break;
     case 'bars':
       out.push(`tl.fromTo("#s${i} .bar-fill", { scaleX: 0 }, { scaleX: 1, duration: ${(du * 0.7).toFixed(2)}, ease: "power3.out", stagger: 0.12, transformOrigin: "left center", immediateRender: false }, ${st});`);
@@ -1043,8 +1043,8 @@ function dataChoreography(i, s) {
       out.push(`tl.fromTo("#s${i} .ig-ico", { rotation: -12, scale: 0.6 }, { rotation: 0, scale: 1, duration: 0.5, ease: "back.out(2)", stagger: 0.1, immediateRender: false }, ${st});`);
       break;
     case 'compare':
-      out.push(`tl.fromTo("#s${i} .cmp-good", { xPercent: -12, opacity: 0 }, { xPercent: 0, opacity: 1, duration: 0.55, ease: "power3.out", immediateRender: false }, ${st});`);
-      out.push(`tl.fromTo("#s${i} .cmp-bad", { xPercent: 12, opacity: 0 }, { xPercent: 0, opacity: 1, duration: 0.55, ease: "power3.out", immediateRender: false }, ${(s.start + 0.12).toFixed(2)});`);
+      out.push(`tl.fromTo("#s${i} .cmp-left", { xPercent: -12, opacity: 0 }, { xPercent: 0, opacity: 1, duration: 0.55, ease: "power3.out", immediateRender: false }, ${st});`);
+      out.push(`tl.fromTo("#s${i} .cmp-right", { xPercent: 12, opacity: 0 }, { xPercent: 0, opacity: 1, duration: 0.55, ease: "power3.out", immediateRender: false }, ${(s.start + 0.12).toFixed(2)});`);
       stagger('#s' + i + ' .cmp-i', 0.07, 12);
       break;
     case 'keypoints':
@@ -1152,12 +1152,14 @@ function businessShell({ accent, total, sceneHtml, audioHtml, sceneMeta, logoSrc
   .cmp-col { border-radius:16px; padding:18px 16px; background:rgba(255,255,255,0.06); }
   .cmp-good { border:2px solid rgba(82,196,26,0.55); }
   .cmp-bad { border:2px solid rgba(255,77,79,0.5); }
+  .cmp-neutral { border:2px solid rgba(255,255,255,0.2); }
   .cmp-h { color:#fff; font-size:28px; font-weight:700; margin-bottom:12px; }
   .cmp-i { color:#e6edf5; font-size:24px; line-height:1.35; display:flex; gap:8px;
     margin:8px 0; text-align:left; }
   .cmp-m { flex:none; display:flex; }
   .cmp-m.good { color:#52c41a; }
   .cmp-m.bad { color:#ff4d4f; }
+  .cmp-m.neutral { color:${A}; }
   .quote-mark { font-size:150px; line-height:0.55; font-weight:800; }
   .quote-t { color:#fff; font-size:44px; font-weight:600; line-height:1.35; max-width:580px; }
   .quote-s { color:#9fb3c8; font-size:28px; margin-top:16px; }

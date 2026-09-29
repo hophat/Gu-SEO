@@ -597,6 +597,7 @@ function shapeItems(raw, type, have, dropped, index) {
       ...(Array.isArray(raw.right?.items) ? raw.right.items : []),
     ].map((item) => ({ label: typeof item === 'string' ? item : item?.label }));
     const source = Array.isArray(raw.items) && raw.items.length ? raw.items : fromSides;
+    const seen = new Set();
     const items = source
       .map((i) => ({
         ...i,
@@ -604,7 +605,7 @@ function shapeItems(raw, type, have, dropped, index) {
         ...(type === 'steps' ? { detail: clampText(i?.detail, 10) } : {}),
         ...(type === 'timeline' ? { text: clampText(i?.text || i?.detail, 10) } : {}),
       }))
-      .filter((i) => i.label)
+      .filter((i) => i.label && !seen.has(i.label) && seen.add(i.label))
       .slice(0, 6);
     if (!items.length) { dropped.push({ index, type, reason: `${type}_needs_items` }); return null; }
     return items;
@@ -612,20 +613,24 @@ function shapeItems(raw, type, have, dropped, index) {
   // A result card illustrates itself with rows when the beat repeats and the
   // article carries no number to put on it.
   if (type === 'result' && (raw.value === undefined || raw.value === null || raw.value === '')) {
+    const caption = normalizeForMatch(raw.text);
+    const seen = new Set();
     const items = (Array.isArray(raw.items) ? raw.items : [])
       .map((i) => ({ label: clampText(i?.label || i?.text, 8) }))
-      .filter((i) => i.label)
+      .filter((i) => i.label && normalizeForMatch(i.label) !== caption
+        && !seen.has(i.label) && seen.add(i.label))
       .slice(0, 4);
     return items.length >= 2 ? items : [];
   }
   if (type === 'compare') {
-    const cleanSide = (side) => (Array.isArray(side?.items) ? side.items : [])
-      .map((item) => clampText(typeof item === 'string' ? item : item?.label || item?.text, 8))
-      .filter(Boolean);
-    const items = {
-      left: { ...(raw.left || {}), items: cleanSide(raw.left) },
-      right: { ...(raw.right || {}), items: cleanSide(raw.right) },
-    };
+    const cleanSide = (side) => ({
+      ...(side || {}),
+      items: (Array.isArray(side?.items) ? side.items : [])
+        .map((item) => clampText(typeof item === 'string' ? item : item?.label || item?.text, 8))
+        .filter(Boolean),
+      ...(['good', 'bad'].includes(side?.tone) ? { tone: side.tone } : {}),
+    });
+    const items = { left: cleanSide(raw.left), right: cleanSide(raw.right) };
     if (!items.left.items.length || !items.right.items.length) {
       dropped.push({ index, type, reason: 'compare_needs_both_sides' });
       return null;
@@ -722,7 +727,7 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
       // The anchor's name is the project's, not the model's — a model never
       // saw presenter_name, so whatever it writes here would be invented.
       name: type === 'anchor' && presenterName ? presenterName : raw.name,
-      say: clampWords(modelSay && wordCount(modelSay) >= 5 ? modelSay : fallbackSay, 0),
+      say: clampWords(modelSay && (sourceSayAssigned || wordCount(modelSay) >= 5) ? modelSay : fallbackSay, 0),
       __needsSourceSay: needsSourceSay,
       __index: index,
       // The deterministic board labels every scene with the beat it answers.
@@ -837,19 +842,33 @@ export function sanitizeStoryboard(sb, { source = '', intent = 'educational', ta
     // `conclusion` (which may only be a quote or a result) with nothing, and
     // the gate then threw away all fourteen scenes over the one it had just
     // tried to fix.
+    const pointTypes = new Set(['result', 'steps', 'icons', 'timeline', 'keypoints']);
     const ownBeat = template.find((b) => b.types.includes(scene.type));
     const withinBeat = ownBeat
-      ? DRAWN_ALTERNATIVES.find((t) => ownBeat.types.includes(t) && t !== scene.type)
+      ? DRAWN_ALTERNATIVES.find((t) => ownBeat.types.includes(t) && t !== scene.type && pointTypes.has(t))
       : null;
-    const anywhere = DRAWN_ALTERNATIVES.find((t) => allowed.has(t)
-      && t !== scene.type && !ASSET_RENDER_TYPES.has(t));
-    const swap = withinBeat || anywhere;
+    const swap = withinBeat;
     if (!swap) return scene;
-    const points = sourceSayDetails.slice(0, 4).map((sentence) => ({ label: clampText(sentence, 12) }));
+    // A repaired illustration must show this scene's claim, not four arbitrary
+    // sentences from the article. Rank source sentences by words shared with
+    // the voice, then retain their source order on screen. Anything the voice
+    // does not back up stays out; an unrelated chart is worse than a plain card.
+    const claim = new Set(captionTokens(scene.say));
+    const rankedSource = sourceSayDetails
+      .map((sentence, sourceIndex) => ({
+        sentence, sourceIndex,
+        score: captionTokens(sentence).filter((token) => claim.has(token)).length,
+      }))
+      .filter(({ sentence }) => captionGroundedIn(sentence, scene.say))
+      .sort((a, b) => b.score - a.score || a.sourceIndex - b.sourceIndex)
+      .slice(0, 4)
+      .sort((a, b) => a.sourceIndex - b.sourceIndex)
+      .map(({ sentence }) => sentence);
+    const points = [...new Set([
+      captionFromSay(scene.say),
+      ...rankedSource,
+    ].filter(Boolean))].slice(0, 4).map((sentence) => ({ label: clampText(sentence, 12) }));
     if (points.length < 2) return scene;
-    // An empty array is truthy, so a reshaper returning nothing usable used to
-    // pass this `||` and leave the screen with no rows at all — and a result
-    // with no value and no rows is exactly the caption the repair replaced.
     const shaped = shapeItems(scene, swap, have, dropped, scene.__index);
     const items = Array.isArray(shaped) && shaped.length ? shaped : points;
     dropped.push({ index: scene.__index, type: scene.type, reason: 'bare_screen_given_points', as: swap });
@@ -1004,6 +1023,10 @@ export function alignCaptions(sb) {
     // is worse than the mismatch it replaces.
     if (!next) continue;
     scene.text = next;
+    if (scene.type === 'result' && Array.isArray(scene.items)) {
+      const caption = normalizeForMatch(next);
+      scene.items = scene.items.filter((item) => normalizeForMatch(item?.label || item?.text) !== caption);
+    }
     changed++;
   }
   return changed;
@@ -1109,6 +1132,23 @@ export function signatureTypes(intent) {
   return [...new Set((BEATS[intent] || [])
     .filter((b) => b.types.length === 1 && !['hook', 'cta'].includes(b.types[0]))
     .map((b) => b.types[0]))];
+}
+
+function spokenCardData(say, extraRows = []) {
+  const speech = String(say || '').trim();
+  const clauses = speech.split(/(?<=[.!?;])\s+|,\s+|\s+(?:nhưng|và|hoặc|nên)\s+/iu);
+  let labels = [...new Set([...extraRows, ...clauses]
+    .map((value) => clampText(value, 12))
+    .filter((value) => wordCount(value) >= 2 && captionGroundedIn(value, speech)))].slice(0, 4);
+  if (labels.length < 2) {
+    const spoken = words(speech);
+    if (spoken.length >= 4) {
+      const middle = Math.ceil(spoken.length / 2);
+      labels = [spoken.slice(0, middle).join(' '), spoken.slice(middle).join(' ')];
+    }
+  }
+  const items = labels.map((label) => ({ label }));
+  return { nums: [...numbersIn(speech)], kpItems: items, narrativeItems: items, detailItems: items };
 }
 
 // Build the card a repeated screen becomes, or return null when this type has
@@ -1401,8 +1441,10 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
   const bodyDetails = [];
   const simpleBodyAllocation = detailSample.length <= bodySlotIndexes.length + 1;
   for (let i = 0; i < bodySlotIndexes.length; i++) {
+    // Minimum scene count can exceed a very short article's sentence count.
+    // Reuse its real details instead of leaving proof/offer with empty voice.
     const start = simpleBodyAllocation
-      ? i
+      ? (detailSample.length ? i % detailSample.length : i)
       : Math.round(i * Math.max(0, detailSample.length - 1) / Math.max(1, bodySlotIndexes.length - 1));
     const end = simpleBodyAllocation
       ? start + 1
@@ -1475,6 +1517,44 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
       scene.say = detail;
     }
     if (scene.say === undefined) scene.say = clampText(scene.text, 12);
+    // Deterministic cards were filled before narration was assigned, so charts
+    // could show numbers from elsewhere in the article. Rebuild visual data
+    // from this scene's own source rows and spoken line only.
+    const sourceRows = bodyPosition.has(i) ? (bodyDetails[bodyPosition.get(i)] || []) : [];
+    const local = spokenCardData(scene.say, sourceRows);
+    const localPoints = local.detailItems.map(({ label }) => label);
+    const localNumbers = local.nums;
+    const listType = ['steps', 'icons', 'timeline', 'keypoints'].find((type) => slot.types?.includes(type));
+    if (['bars', 'line'].includes(scene.type)) {
+      if (localNumbers.length >= 2) {
+        scene.items = localNumbers.slice(0, 4).map((value) => ({
+          label: clampText(sourceRows.find((row) => numbersIn(row).has(value)) || value, 8), value,
+        }));
+      } else if (localNumbers.length === 1 && slot.types?.includes('donut')) {
+        scene.type = 'donut';
+        scene.value = localNumbers[0];
+        delete scene.items;
+      } else if (listType && localPoints.length >= 2) {
+        scene.type = listType;
+        scene.items = localPoints.map((label, point) => ({ label, ...(listType === 'icons' ? { icon: ['check', 'trend', 'shield', 'star'][point % 4] } : {}) }));
+      }
+    } else if (['stat', 'donut'].includes(scene.type)) {
+      if (localNumbers.length) scene.value = localNumbers[0];
+      else if (listType && localPoints.length >= 2) {
+        scene.type = listType;
+        delete scene.value;
+        scene.items = localPoints.map((label, point) => ({ label, ...(listType === 'icons' ? { icon: ['check', 'trend', 'shield', 'star'][point % 4] } : {}) }));
+      }
+    } else if (scene.type === 'result') {
+      if (localNumbers.length && scene.value !== undefined) scene.value = localNumbers.at(-1);
+      else if (localPoints.length >= 2) { delete scene.value; scene.items = localPoints.map((label) => ({ label })); }
+    } else if (['steps', 'icons', 'timeline', 'keypoints'].includes(scene.type) && localPoints.length >= 2) {
+      scene.items = localPoints.map((label, point) => ({ label, ...(scene.type === 'icons' ? { icon: ['check', 'trend', 'shield', 'star'][point % 4] } : {}) }));
+    } else if (scene.type === 'compare' && localPoints.length >= 2) {
+      const middle = Math.ceil(localPoints.length / 2);
+      scene.left = { title: scene.left?.title || '', items: localPoints.slice(0, middle) };
+      scene.right = { title: scene.right?.title || '', items: localPoints.slice(middle) };
+    }
     scene.__sourceSayAssigned = true;
     // The beat this scene answers. A repeated beat fills the same template
     // twice, so the gate needs the name to know the two belong together and
@@ -1519,7 +1599,7 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     let rebuilt = null;
     for (const candidate of candidates) {
       if (!candidate || !allowedForBeat.includes(candidate)) continue;
-      rebuilt = buildRepeatCard(candidate, { text, nums, kpItems, narrativeItems, detailItems, siteAsset, photoAsset, presenter: ownsAsset(assets, 'presenter'), pName });
+      rebuilt = buildRepeatCard(candidate, { text, ...spokenCardData(scenes[i].say), siteAsset, photoAsset, presenter: ownsAsset(assets, 'presenter'), pName });
       if (rebuilt) break;
     }
     if (!rebuilt) continue;
@@ -1537,7 +1617,7 @@ export function storyboardFromContent(job = {}, intent = 'educational', assets =
     const drawn = DRAWN_ALTERNATIVES.filter((t) => allowedForBeat.includes(t) && t !== scenes[i].type);
     let swapped = null;
     for (const candidate of drawn) {
-      swapped = buildRepeatCard(candidate, { text: scenes[i].text, nums, kpItems, narrativeItems, detailItems, siteAsset, photoAsset, presenter: ownsAsset(assets, 'presenter'), pName });
+      swapped = buildRepeatCard(candidate, { text: scenes[i].text, ...spokenCardData(scenes[i].say), siteAsset, photoAsset, presenter: ownsAsset(assets, 'presenter'), pName });
       if (swapped && isIllustrated({ ...scenes[i], ...swapped }, { hasLogo: ownsAsset(assets, 'logo'), assets })) break;
       swapped = null;
     }

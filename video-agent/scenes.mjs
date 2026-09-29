@@ -242,15 +242,16 @@ export function iconGrid(s, accent) {
 }
 
 export function compare(s, accent) {
-  const col = (side, good) => {
+  const col = (side, position) => {
     const items = Array.isArray(side?.items) ? side.items.slice(0, 4) : [];
+    const tone = ['good', 'bad'].includes(side?.tone) ? side.tone : 'neutral';
     const rows = items.map((t) => `<p class="cmp-i">
-        <span class="cmp-m ${good ? 'good' : 'bad'}">${icon(good ? 'check' : 'x', 30)}</span>${esc(t)}
+        <span class="cmp-m ${tone}">${icon(tone === 'bad' ? 'x' : tone === 'good' ? 'check' : 'star', 30)}</span>${esc(t)}
       </p>`).join('');
-    return `<div class="cmp-col ${good ? 'cmp-good' : 'cmp-bad'}">
+    return `<div class="cmp-col cmp-${position} cmp-${tone}">
       <p class="cmp-h">${esc(side?.title || '')}</p>${rows}</div>`;
   };
-  return `<div class="ex">${exTitle(s.title)}<div class="compare">${col(s.left, true)}${col(s.right, false)}</div></div>`;
+  return `<div class="ex">${exTitle(s.title)}<div class="compare">${col(s.left, 'left')}${col(s.right, 'right')}</div></div>`;
 }
 
 export function quoteCard(s, accent) {
