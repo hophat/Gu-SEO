@@ -55,6 +55,15 @@ Video có "hình dáng cả phim" và một cảnh nào cũng phải biết mìn
   `tone: good|bad`, nên hai lựa chọn đều hợp không còn bị vẽ thành đúng/sai.
   Prompt cũng yêu cầu sửa lỗi chính tả rõ ràng trước TTS nhưng giữ nguyên tên
   riêng, số và sự kiện.
+- **Cổng "voice bị cắt" không còn bắt nhầm mối ghép chunk thành mất từ.**
+  edge-tts chèn padding ở đầu và cuối mỗi chunk, `concatAudio` cộng dồn
+  chúng ở mỗi mối ghép: cùng 14 từ đo 3.8s khi đọc nguyên câu và 5.6s
+  khi tách rồi nối lại, trong khi phần tiếng thật chỉ chênh 6%. Cổng
+  `words / seconds >= 2` đo trên độ dài file nên đọc padding thành đuôi
+  bị mất, throw `edge-tts_truncated_segment_N`, retry, rồi ra đúng con
+  số đó — một job kẹt vĩnh viễn (`ai-infrastructure-best-practices-for-startups`
+  fail liên tiếp 6 lần). Nay `speechSeconds()` đo thời lượng CÓ TIẾNG bằng
+  `silencedetect`; cảnh vẫn dài bằng độ dài file để phát hết padding.
 - **Deck scratch không lọt vào `git status`.** `GU-SEO-Gi*` và `guseo-deck/` (output
   `.pptx` cùng thư mục làm việc `.pptd`) thêm vào `.gitignore`.
 

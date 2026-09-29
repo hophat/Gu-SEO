@@ -84,7 +84,7 @@ globalThis.fetch = async (url, opts) => {
 
 const {
   composeCarouselSlideHtml, composeStoryboardHtml, effectiveMotion, fitNarration, LOUDNESS, makeBgm,
-  cutBgm, prepareBgm, speakSegments, writeStoryboard,
+  cutBgm, prepareBgm, speakSegments, writeStoryboard, audioSeconds, speechSeconds,
   masterLoudness, renderCarousel, renderOne, slideQueries, ttsChunks,
 } = await import('../video-agent/render-video.mjs');
 // Scene renderers live in scenes.mjs; the story rules in storyboard.mjs.
@@ -1419,6 +1419,42 @@ if (!HAS_FFMPEG) {
       'chunk scratch files are cleaned up');
     rmSync(chunkWork, { recursive: true, force: true });
     ok('a long segment is spoken in short pieces and stitched, so no words go missing');
+
+    // The trap this guards is measured, not imagined: edge-tts pads each
+    // chunk with silence, `concatAudio` stacks those pads at every seam, and
+    // a real 14-word segment measured 3.8s as one request and 5.6s as two.
+    // A words/seconds gate on file length then reads the seam as a missing
+    // tail and re-speaks the same number forever. The fixture is a genuine
+    // padded file. The numbers are the ones the VPS measured: 13 words that
+    // need 6.5s, spoken over 6.0s of voice inside 6.6s of file.
+    const padWork = mkdtempSync(join(tmpdir(), 'tts-pad-'));
+    mkdirSync(join(padWork, 'assets'), { recursive: true });
+    const words = 'một hai ba bốn năm sáu bảy tám chín mười mười một mười hai mười ba';
+    const padSeconds = 1.4;
+    const pad = (file, text) => spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'lavfi',
+      '-i', `sine=f=440:d=${Math.max(0.6, wordCount(text) / 2.6)}`,
+      '-af', `adelay=700,apad=pad_dur=${padSeconds}`, '-b:a', '128k', file], { encoding: 'utf8' });
+    const padSpawn = (cmd, args) => {
+      if (cmd === 'edge-tts') {
+        const file = args[args.indexOf('--write-media') + 1];
+        pad(file, args[args.indexOf('--text') + 1] || '');
+        return { status: 0, stdout: '', stderr: '' };
+      }
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    const padFile = join(padWork, 'assets', 'pad.mp3');
+    pad(padFile, words);
+    const rawSeconds = audioSeconds(padFile);
+    const speechOnly = speechSeconds(padFile);
+    assert.ok(rawSeconds > speechOnly + 1, 'the fixture really is padded (a seam, not a cut)');
+    assert.ok(wordCount(words) / rawSeconds < 2, 'measuring the file length alone fails the gate');
+    assert.ok(wordCount(words) / speechOnly >= 2, 'measuring speech alone passes it');
+    // And the real gate agrees: a padded segment ships instead of throwing.
+    const padSegments = speakSegments([words], padWork, padSpawn);
+    assert.equal(padSegments.length, 1, 'a padded segment is not thrown away as truncated');
+    assert.ok(padSegments[0] >= rawSeconds - 0.2, 'the scene is still long enough to play its pads out');
+    rmSync(padWork, { recursive: true, force: true });
+    ok('a chunk seam is silence, not a missing word: the truncation gate measures speech');
   }
 
   {

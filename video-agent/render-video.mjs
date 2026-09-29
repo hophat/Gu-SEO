@@ -516,10 +516,12 @@ export function speakSegments(segTexts, work, spawn, { only = null } = {}) {
           rmSync(part, { force: true });
           const r = spawn('edge-tts', ['--voice', voice, '--rate=+8%', '--text', chunk, '--write-media', part], { encoding: 'utf8' });
           if (r.status === 0 && ok(part)) {
-            const seconds = audioSeconds(part);
+            const seconds = speechSeconds(part);
             if (words >= 10 && seconds > 0.5 && words / seconds < MIN_WORDS_PER_SECOND) {
               // Re-spoken rather than shipped: the audio is missing the words
-              // at the end, and every voice in the list will read them.
+              // at the end, and every voice in the list will read them. Same
+              // speech measure as the segment gate, so one request's own
+              // padding never counts as a lost word.
               lastErr = `truncated: ${words} words would need ${(words / MIN_WORDS_PER_SECOND).toFixed(1)}s, got ${seconds.toFixed(1)}s`;
               spawn('sleep', [String(4 + attempt * 4)]);
               continue;
@@ -537,15 +539,20 @@ export function speakSegments(segTexts, work, spawn, { only = null } = {}) {
     for (const p of parts) rmSync(p, { force: true });
     // The last word of the segment is the one that goes missing, so the
     // joined file is measured as a whole: a short answer now fails the job
-    // loudly instead of shipping a voice that stops mid-thought.
-    const seconds = audioSeconds(mp3);
+    // loudly instead of shipping a voice that stops mid-thought. Measured
+    // on speech, not on file length — a chunk seam is silence, and a seam
+    // is not a missing word. The duration handed back stays the file's, so
+    // the scene is still long enough to play every pad out.
+    const spoken = speechSeconds(mp3);
     const total = wordCount(text);
-    if (total >= 10 && seconds > 0.5 && total / seconds < MIN_WORDS_PER_SECOND) {
+    if (total >= 10 && spoken > 0.5 && total / spoken < MIN_WORDS_PER_SECOND) {
       throw new Error(
-        `edge-tts_truncated_segment_${i}: ${total} words would need ${(total / MIN_WORDS_PER_SECOND).toFixed(1)}s, got ${seconds.toFixed(1)}s`,
+        `edge-tts_truncated_segment_${i}: ${total} words would need ${(total / MIN_WORDS_PER_SECOND).toFixed(1)}s, got ${spoken.toFixed(1)}s`,
       );
     }
-    segs.push(seconds);
+    // The scene is long enough to play the whole padded file, pads included:
+    // cutting them would shave the pause the TTS put between two chunks.
+    segs.push(audioSeconds(mp3));
     spawn('sleep', ['2']); // pace consecutive calls — no bursts
   }
   log(`tts: ${segs.map((d) => d.toFixed(1) + 's').join(' + ')}`);
@@ -850,11 +857,29 @@ function tts(text, outPath) {
     throw new Error(`edge-tts failed (${r.status}): ${(r.stderr || '').toString().slice(0, 200)}`);
   }
 }
-function audioSeconds(file) {
+export function audioSeconds(file) {
   const r = spawnSync('ffprobe', ['-v', 'quiet', '-show_entries', 'format=duration', '-of', 'csv=p=0', file], { encoding: 'utf8' });
   const d = parseFloat((r.stdout || '').trim());
   if (!Number.isFinite(d) || d <= 0) throw new Error('ffprobe_duration_missing');
   return d;
+}
+// edge-tts pads every chunk with silence at both ends, and `concatAudio`
+// stacks those pads on top of each other: the same 14 words measure 3.8s as
+// one request and 5.6s as two. Judging words/seconds on the file length
+// therefore reads a padding seam as a missing tail, and the job re-speaks
+// the same number forever — measured, not guessed. Only the speech counts.
+export function speechSeconds(file) {
+  const total = audioSeconds(file);
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-af', 'silencedetect=noise=-40dB:d=0.15', '-f', 'null', '-'], { encoding: 'utf8' });
+  const log = (r.stderr || '').toString();
+  if (!log.includes('silence_')) return total;
+  const spans = [...log.matchAll(/silence_duration:\s*([\d.]+)/g)].map((m) => Number(m[1]));
+  const starts = [...log.matchAll(/silence_start:\s*(-?[\d.]+)/g)].map((m) => Number(m[1]));
+  const ends = [...log.matchAll(/silence_end:\s*(-?[\d.]+)/g)].map((m) => Number(m[1]));
+  // A silence running to the end of the file reports a start and no duration.
+  const trailing = starts.length > ends.length ? Math.max(0, total - starts[starts.length - 1]) : 0;
+  const speech = total - spans.reduce((a, b) => a + b, 0) - trailing;
+  return speech > 0.5 ? speech : total;
 }
 
 function shade(hex, amt) {
