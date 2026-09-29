@@ -479,13 +479,34 @@ export function ttsChunks(text, maxWords = TTS_CHUNK_WORDS) {
   return chunks;
 }
 
-// One mp3 from the chunk files, in order. `-c copy` so the audio is not
-// re-encoded a second time on the way to the master.
+// One mp3 from the chunk files, in order, with the endpoint's padding cut
+// at the joins. edge-tts wraps every chunk in ~0.2s of lead-in and ~0.8s of
+// tail, and a plain copy stacks them: a measured 16-scene render carried
+// 30.7s of silence inside 84.3s of audio — 36% of the video spent saying
+// nothing, all of it at the seams.
+//
+// Each chunk is trimmed on its own, before the join, and that is not a
+// stylistic choice: `silenceremove` over the joined file keys off the audio
+// BETWEEN the parts, and raising its threshold only made the seams longer
+// (0.67s at 0.4, 1.17s at 0.9, 1.47s at 1.2) because it keeps any pause
+// past the threshold rather than shortening it. A fixed per-chunk cut takes
+// 27.0s down to 18.7s on a four-chunk fixture and leaves ~0.11s between
+// chunks — the breath a listener hears as a pause, not a splice.
 function concatAudio(parts, out) {
   if (parts.length === 1) { copyFileSync(parts[0], out); return; }
+  const trim = 'silenceremove=start_periods=1:start_duration=0.05:start_threshold=-40dB:'
+    + 'stop_periods=1:stop_duration=0.05:stop_threshold=-40dB';
+  const scratch = [];
+  const trimmed = parts.map((p) => {
+    const t = `${p}.trim.mp3`;
+    const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', p, '-af', trim, '-c:a', 'libmp3lame', '-b:a', '128k', t], { encoding: 'utf8' });
+    if (r.status === 0 && existsSync(t) && statSync(t).size > 500) { scratch.push(t); return t; }
+    return p;
+  });
   const list = `${out}.concat.txt`;
-  writeFileSync(list, parts.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n'));
+  writeFileSync(list, trimmed.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n'));
   const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', out], { encoding: 'utf8' });
+  for (const t of scratch) rmSync(t, { force: true });
   if (r.status !== 0 || !existsSync(out) || statSync(out).size <= 500) {
     throw new Error(`tts_concat_failed: ${(r.stderr || '').toString().slice(-200)}`);
   }
@@ -509,7 +530,15 @@ export function speakSegments(segTexts, work, spawn, { only = null } = {}) {
       const words = wordCount(chunk);
       // The endpoint throttles bursts: space every attempt out, escalate
       // the backoff, and keep the last stderr for the failure report.
-      for (const voice of [VOICE, 'vi-VN-HoaiMyNeural']) {
+      //
+      // A probe on the VPS had edge-tts answer 2 of 5 requests with
+      // `NoAudioReceived`, so the fallback voice is not a different endpoint
+      // and does not reset the throttle. Switching to it after only four
+      // seconds fired six requests back to back, which is how one render
+      // ended its segment on an empty answer. The wait between voices is
+      // the longest of the ladder, not the same short nap as a retry.
+      for (const [voiceIndex, voice] of [VOICE, 'vi-VN-HoaiMyNeural'].entries()) {
+        if (voiceIndex) spawn('sleep', ['15']);
         for (let attempt = 0; attempt < 3 && !done; attempt++) {
           // Never let a previous attempt's file satisfy the size check after a
           // failed TTS retry. A stale segment would silently ship old words.
@@ -529,7 +558,7 @@ export function speakSegments(segTexts, work, spawn, { only = null } = {}) {
             done = true; break;
           }
           lastErr = (r.stderr || r.stdout || '').toString().slice(-120);
-          spawn('sleep', [String(4 + attempt * 4)]);
+          spawn('sleep', [String(4 + attempt * 4 + (voiceIndex ? 11 : 0))]);
         }
         if (done) break;
       }
@@ -629,7 +658,11 @@ export function fitNarration(sb, work, spawn, log = () => {}) {
   const voiceTotal = () => segs.reduce((sum, seconds) => sum + (seconds || 0), 0);
   const room = Math.max(1, limit - GAP * sb.scenes.length);
   const protectedIndices = new Set([sb.scenes.length - 1, sb.scenes.length - 2].filter((i) => i >= 0));
-  for (let pass = 0; pass < 3 && voiceTotal() > room; pass++) {
+  // Five passes, not three. With the chunk padding gone the voice is much
+  // shorter, but a dense 90s board can still need a fourth pass to land
+  // inside its ceiling — and the fifth is what stops a near-miss from
+  // throwing away real content at the end of a long render.
+  for (let pass = 0; pass < 5 && voiceTotal() > room; pass++) {
     const ratio = Math.max(0.2, Math.min(0.95, room / Math.max(0.1, voiceTotal())));
     const retry = [];
     const candidates = pass < 2
@@ -649,7 +682,7 @@ export function fitNarration(sb, work, spawn, log = () => {}) {
       }
     }
     if (!retry.length) break;
-    log(`tts: video would run ${(voiceTotal() + GAP * sb.scenes.length).toFixed(1)}s over ${limit}s — dropping whole sentences from ${retry.length} segment(s), pass ${pass + 1}/3`);
+    log(`tts: video would run ${(voiceTotal() + GAP * sb.scenes.length).toFixed(1)}s over ${limit}s — dropping whole sentences from ${retry.length} segment(s), pass ${pass + 1}/5`);
     segs = speakSegments(texts(), work, spawn, { only: retry });
   }
 

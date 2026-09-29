@@ -1452,9 +1452,17 @@ if (!HAS_FFMPEG) {
     // And the real gate agrees: a padded segment ships instead of throwing.
     const padSegments = speakSegments([words], padWork, padSpawn);
     assert.equal(padSegments.length, 1, 'a padded segment is not thrown away as truncated');
-    assert.ok(padSegments[0] >= rawSeconds - 0.2, 'the scene is still long enough to play its pads out');
+    // The seams come off, but the voice is still there: a multi-chunk segment
+    // is the one that pays the padding, and it must not pay it twice over.
+    const seamWords = 'một hai ba bốn năm sáu bảy tám chín mười mười một mười hai mười ba mười bốn mười lăm mười sáu mười bảy mười tám mười chín hai mươi hai mươi mốt hai mươi hai hai mươi ba';
+    const [seamed] = speakSegments([seamWords], padWork, padSpawn);
+    const seamSpeech = speechSeconds(join(padWork, 'assets', 'seg0.mp3'));
+    assert.ok(seamed < wordCount(seamWords) / 2.6 + 2,
+      `chunk seams are cut, not shipped as silence (${seamed.toFixed(1)}s for ${wordCount(seamWords)} words)`);
+    assert.ok(seamSpeech >= wordCount(seamWords) / 2.6,
+      `the voice survives the trim (${seamSpeech.toFixed(1)}s of speech for ${wordCount(seamWords)} words)`);
     rmSync(padWork, { recursive: true, force: true });
-    ok('a chunk seam is silence, not a missing word: the truncation gate measures speech');
+    ok('a chunk seam is silence, not a missing word: the gate measures speech and the seam is cut');
   }
 
   {

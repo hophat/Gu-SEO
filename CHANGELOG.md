@@ -64,6 +64,27 @@ Video có "hình dáng cả phim" và một cảnh nào cũng phải biết mìn
   số đó — một job kẹt vĩnh viễn (`ai-infrastructure-best-practices-for-startups`
   fail liên tiếp 6 lần). Nay `speechSeconds()` đo thời lượng CÓ TIẾNG bằng
   `silencedetect`; cảnh vẫn dài bằng độ dài file để phát hết padding.
+- **36% video không phải tiếng nói không còn mất thời lượng.** Đo trên VPS:
+  một lần render 16 cảnh mang **30.7s im lặng trong 84.3s** audio, và tất cả
+  đều nằm ở mối ghép chunk — padding 0.2s đầu + 0.8s cuối mà edge-tts bọc
+  quanh mỗi request. Video thì "đủ dài" nhờ thứ không ai nghe, còn voice thì
+  phải cắt câu để lấy lại thời lượng. Nay `concatAudio` cắt từng chunk trước
+  khi nối; đo lại cùng loại cảnh: **14.57s → 9.31s, padding 5.30s → 0.00s**.
+  Cắt trên từng chunk là bắt buộc, không phải sở thích: `silenceremove` trên
+  file đã nối lấy nhịp giữa các phần, nên nâng ngưỡng chỉ làm mối ghép DÀI
+  hơn (0.67s ở 0.4, 1.17s ở 0.9, 1.47s ở 1.2). Giữa hai chunk còn ~0.11s —
+  đủ để nghe như một nhịp thở, không phải một mối cắt.
+- **Hai lỗi tạm thời không còn giết job trong vài giây.** 502 ở gateway ảnh: đo
+  10/10 request trả 200, không 502 lần nào, nên đây là burst chứ không phải
+  endpoint hỏng — nhưng backoff cũ chỉ 1.5s/3s, ngắn hơn cả burst phủ 3 ảnh.
+  Nay chờ 5s/20s, vẫn 3 lần thử. `edge-tts` trả `NoAudioReceived` khoảng
+  2/5 request, và voice dự phòng không phải endpoint khác nên không xóa được
+  throttle: đổi voice ngay sau 4 giây là 6 request dính liền. Nay nghỉ 15s
+  trước voice thứ hai.
+- **`fitNarration` có thêm 2 pass trước khi ném nội dung đi.** Với padding đã
+  bị cắt, voice ngắn hơn nhiều, nhưng bản 90s từ bài dày vẫn cần tới pass
+  thứ tư mới vừa trần — và pass thứ năm là thứ giữ một lần lệch nhỏ khỏi việc
+  xóa nội dung thật ở cuối một bản dài.
 - **Deck scratch không lọt vào `git status`.** `GU-SEO-Gi*` và `guseo-deck/` (output
   `.pptx` cùng thư mục làm việc `.pptd`) thêm vào `.gitignore`.
 

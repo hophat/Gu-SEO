@@ -369,8 +369,16 @@ function imageExtension(buf) {
 // of a real render into flat cards, which is also how they lost their camera
 // move and read as frozen. Only the failure is retried, and only when the
 // status says the request might succeed unchanged.
+//
+// Three attempts, spaced wide. Ten probes on the VPS answered 10/10 with a
+// 200 and no 502 at all, so the failure is a short burst rather than a
+// broken endpoint — but the render that lost its hook image was still inside
+// 4.5 seconds of backoff, which is not long enough to outlast a burst that
+// covers three images. Waiting longer beats trying more: the same three
+// tries that fit inside 90 seconds will not fail the render on their own.
 const AI_IMAGE_ATTEMPTS = 3;
 const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
+const IMAGE_BACKOFF_MS = [5000, 20000];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function aiImage(prompt, base, { config, work, log = () => {} }) {
@@ -400,7 +408,7 @@ export async function aiImage(prompt, base, { config, work, log = () => {} }) {
         || (Number.isFinite(status) && RETRYABLE_STATUS.has(status));
       if (!transient || attempt === AI_IMAGE_ATTEMPTS) break;
       log(`ai image: ${status ? `HTTP ${status}` : e.name}, retrying (${attempt}/${AI_IMAGE_ATTEMPTS - 1})`);
-      await sleep(1500 * attempt);
+      await sleep(IMAGE_BACKOFF_MS[attempt - 1] ?? IMAGE_BACKOFF_MS.at(-1));
     }
   }
   throw lastError;
