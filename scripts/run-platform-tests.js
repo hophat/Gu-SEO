@@ -2261,6 +2261,28 @@ async function testEmailSending() {
   ok('every caller passes env to the sender');
 }
 
+// ── P2. domain-management token is its own credential ───────────────
+// Three CF tokens now coexist: CF_DOMAIN_TOKEN (Pages:Edit — attach/detach
+// custom domains), CF_EMAIL_TOKEN (Email Sending:Send), and CF_API_TOKEN
+// (Pages/D1/R2 self-repair). A revoked general token must not be able to take
+// the domain path down with it, so the dedicated one has to win.
+async function testDomainTokenSeparation() {
+  console.log('\nO2. Domain token separation');
+  const { cfCreds } = await import('../functions/_lib/cloudflare_domains.js');
+
+  assert.equal(
+    cfCreds({ CF_DOMAIN_TOKEN: 'dom-tok', CF_API_TOKEN: 'pages-tok', CF_EMAIL_TOKEN: 'mail-tok', CF_ACCOUNT_ID: 'acct' }).token,
+    'dom-tok', 'the dedicated domain token must win over the general one');
+
+  assert.equal(
+    cfCreds({ CF_API_TOKEN: 'pages-tok', CF_ACCOUNT_ID: 'acct' }).token,
+    'pages-tok', 'a single-token install must still attach domains');
+
+  assert.equal(cfCreds({ CF_DOMAIN_TOKEN: 'dom-tok' }), null,
+    'no account id means no usable credentials, even with a token');
+  ok('the domain token is separate, with a working fallback');
+}
+
 // ── P. sign-up email policy ─────────────────────────────────────────
 // Plus-addressing (you+tag@domain) delivers to the same inbox, so it turns one
 // mailbox into unlimited free accounts. The rule has to hold at every door that
@@ -3391,6 +3413,7 @@ async function main() {
   await testSingleDispatch();
   await testPublishReport();
   await testEmailSending();
+  await testDomainTokenSeparation();
   await testEmailPolicy();
   await testCarouselVideoJobs();
   await testThreadsPublishFromVideoAndCarousel();

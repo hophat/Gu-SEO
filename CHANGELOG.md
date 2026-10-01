@@ -7,6 +7,28 @@ version.
 
 The format is loosely Keep-a-Changelog, dates in ISO order.
 
+## 1.27.1 — 2026-10-01
+
+Duyệt domain không còn chết vì một token chung, và trang Video tạm ẩn khỏi menu.
+
+### Fixed
+- **Duyệt custom domain trả 502 không phải vì lỗi code — vì `CF_API_TOKEN` chết.**
+  Cloudflare trả `Authentication error` (code `4001004`) cho mọi lệnh gọi
+  `api.cloudflare.com` bằng secret đó, nên `/api/admin/domains/requests` và cả
+  `/api/repair-bindings` chết cùng lúc; mail thì sống vì `CF_EMAIL_TOKEN` vốn
+  đã là secret riêng. Giờ `CF_DOMAIN_TOKEN` (quyền `Cloudflare Pages: Edit`)
+  là credential của riêng đường gắn/gỡ domain, xoay được không đụng token
+  self-repair hay token mail. `CF_API_TOKEN` còn là fallback, nên bản cài đặt
+  cũ không có secret mới vẫn chạy y hệt.
+  **Migration:** tạo token có `Cloudflare Pages: Edit` rồi
+  `wrangler pages secret put CF_DOMAIN_TOKEN --project-name=<project>`.
+  Token cũ cứ giữ cho `repair-bindings`.
+
+### Changed
+- **Trang "Video 9:16" ẩn khỏi menu Bài viết.** Route `#video` vẫn mở được;
+  chỉ mất entry trong sidebar.
+
+
 ## 1.27.0 — 2026-09-29
 
 Video có "hình dáng cả phim" và một cảnh nào cũng phải biết mình đang thuyết phục ai.

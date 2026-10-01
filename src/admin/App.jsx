@@ -10,7 +10,7 @@ import {
   LogoutOutlined, LockOutlined, BellOutlined, CheckCircleOutlined,
   CalendarOutlined, RiseOutlined, PictureOutlined, LinkOutlined,
   CodeOutlined, RocketOutlined, ApiOutlined, SendOutlined,
-  VideoCameraOutlined, FileImageOutlined,
+  FileImageOutlined,
 } from '@ant-design/icons';
 import { lightTheme, darkTheme } from './theme.js';
 import { useTheme, useAuth, AuthProvider, useProjects, ProjectsProvider } from './hooks/useTheme.jsx';
@@ -54,7 +54,6 @@ const MENU_ITEMS = [
       { key: 'calendar', icon: <CalendarOutlined />, label: 'Lịch nội dung' },
       { key: 'trends', icon: <RiseOutlined />, label: 'Xu hướng' },
       { key: 'social', icon: <SendOutlined />, label: 'Bài đăng mạng xã hội' },
-      { key: 'video', icon: <VideoCameraOutlined />, label: 'Video 9:16' },
       { key: 'carousel', icon: <FileImageOutlined />, label: 'Carousel ảnh' },
     ],
   },

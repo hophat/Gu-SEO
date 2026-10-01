@@ -5,7 +5,11 @@ const CF_API = 'https://api.cloudflare.com/client/v4';
 export const FALLBACK_PAGES_HOST = 'gu-seo.pages.dev';
 
 export function cfCreds(env) {
-  const token = String(env?.CF_API_TOKEN || env?.CLOUDFLARE_API_TOKEN || '').trim();
+  // CF_DOMAIN_TOKEN is the domain-management token, kept apart from
+  // CF_API_TOKEN (Pages self-repair) and CF_EMAIL_TOKEN (Email Sending) so
+  // each permission set rotates on its own. The older names stay as
+  // fallbacks so an install that never sets the new secret keeps working.
+  const token = String(env?.CF_DOMAIN_TOKEN || env?.CF_API_TOKEN || env?.CLOUDFLARE_API_TOKEN || '').trim();
   const accountId = String(env?.CF_ACCOUNT_ID || env?.CLOUDFLARE_ACCOUNT_ID || '').trim();
   const project = String(env?.CF_PROJECT || '').trim();
   if (!token || !accountId) return null;

@@ -279,6 +279,8 @@ echo "$NEW" | wrangler secret put ADMIN_TOKEN --name pages-seo-cron</code></pre>
   <dt><code>ADMIN_TOKEN</code></dt><dd>64-char hex. Recovery credential — if you lose the password, bearer this in <code>Authorization: Bearer &lt;token&gt;</code> headers to admin APIs.</dd>
   <dt><code>SETUP_TOKEN</code></dt><dd>Magic-link token for /api/setup. Used once on first run; not needed afterwards.</dd>
   <dt><code>CF_API_TOKEN</code> / <code>CF_ACCOUNT_ID</code> / <code>CF_PROJECT</code> / <code>CF_D1_ID</code> / <code>CF_R2_NAME</code></dt><dd>Set by the installer. Used by <code>/api/repair-bindings</code> to self-heal if Cloudflare drops bindings.</dd>
+  <dt><code>CF_DOMAIN_TOKEN</code></dt><dd>Optional. Token with <code>Cloudflare Pages: Edit</code> used to attach/detach custom domains in the admin approval queue. Falls back to <code>CF_API_TOKEN</code> when unset.</dd>
+  <dt><code>CF_EMAIL_TOKEN</code></dt><dd>Token with <code>Email Sending: Send</code> for transactional mail. Falls back to <code>CF_API_TOKEN</code> when unset.</dd>
 </dl>
 
 <h3>Bindings</h3>
